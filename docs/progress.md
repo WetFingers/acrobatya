@@ -8,6 +8,11 @@
 Новые пункты — сверху, с номером сессии или рубежа. Ничего из этого не блокирует очередь: она работает на
 `Fake*`-реализациях и фикстурах, живая часть ждёт здесь (эталон 8.1 «Человек отдельно», 9.7).
 
+- **Сессия 2.1 · Тема и витрина на экране (к Р1)**: `AcroBatya.exe --showcase -platform windows` (с
+  `C:\Qt\6.12.0\msvc2022_64\bin` в `PATH`) — наведение, фокус клавишей Tab и нажатия живой мышью совпадают с колонками
+  витрины; переключатель «Системная» следует смене темы Windows (Параметры → Персонализация → Цвета) без перезапуска,
+  включённая контрастная тема Windows даёт «Высокую контрастность»; при масштабе экрана 125–150 % иконки чёткие,
+  «Крупные элементы» не обрезают подписи. Очередь проверила всё это под offscreen (снимки `showcase*`).
 - **Сессия 1.4 · Экспорт текста и буфер обмена вживую (к Р1)**: после `ctest -R compat.rtf` открыть
   `build/debug/compat/rtf/*.rtf` в Word и WordPad — кириллица, абзацы, жирный заголовок, курсив; Word очередь уже
   проверила через COM («Привет» в тексте), глазами — вид. Буфер обмена и «Снимок» на экране — когда окно 2.2b
@@ -563,3 +568,68 @@
   10–50 с; `verify.py` 49 с (214 тестов).
 - Проверки: `verify.py` зелёный (214 тестов); `engine.folder_search.*` 3/3; `compat.rtf` (Word COM) зелёный; экранов
   сессия не строила — сцен нет.
+
+### 2026-10-23 · Сессия 2.1 · Тема, токены, иконки, компоненты, витрина и снимки
+- Сделано:
+  1. **Тема:** `ui/theme/tokens.h` — светлая и тёмная палитры по таблице эталона 6.4, третья «Высокая
+     контрастность» из тех же имён, размеры `Metrics` и `Tokens::scaled(k)` (все размеры × k, время движения — нет);
+     `palette.cpp` (QPalette: Window/Base — surface, Highlight — accent, Mid — border, Dark — canvas…), `qss.cpp`,
+     `fonts.cpp` (Segoe UI 9 pt, заголовки 13/20 px, `tnum`), `Theme::apply(app, choice, scale)` без перезапуска с
+     `themeChanged`, «Системная» — `colorScheme()` и `contrastPreference()` Windows; `--theme`, `--scale`.
+     `ui_tests` — наборы по файлам: `tests/ui/<имя>_test.cpp` + `OT_UI_TEST` → ctest `ui.<имя>` (свой `main` в
+     `tests/ui/support/ui_main.cpp`), `ui.theme`.
+  2. **Иконки:** `ui/theme/icon_names.txt` (16 инструментов и 8 панелей по эталону 6.5, плавающая панель,
+     компоненты) → `tools/copy_icons.py` → 60 SVG в `assets/icons` + LICENSE, ресурс `:/icons` в `ottisk_ui_lib`;
+     `Icons::get` (QSvgRenderer, `stroke`/`currentColor` → цвет токена, `stroke-width` 1,75, кэш по имени, цвету,
+     размеру и dpr, `qFatal` на неизвестное имя в Debug), `Icons::icon` — QIcon с движком, который при каждой
+     отрисовке берёт цвета текущей темы (нажатая — accent, выключенная — приглушённая); `kToolIcons`/`kPaneIcons`;
+     `ui.icons`, `unit.guard.icons` (`copy_icons.py --check`).
+  3. **Компоненты:** `ui/widgets/` — `ToolButton`, `SegmentedBar`, `SearchField`, `PanelHeader`, `Card`, `ListRow`,
+     `Chip`, `Toast`, `EmptyState`, `MessageBar`, `ColorSwatch`, `NumberField`, `PropertySheet`, `ZoomBox`,
+     `FloatingBar` (основа cloud-38: состав и порядок списком id, один выбранный инструмент, тень из токенов, в
+     «Высокой контрастности» — рамка без тени), общий `tone.h`; витрина `showcase.cpp` и `AcroBatya.exe --showcase`
+     (переключатель темы и «Крупных элементов»); `ui.widgets` — клики, сигналы, состояния, контраст, перекраска.
+  4. **Снимки:** таблица `SCENES` (`sceneTable()`): `home`, `showcase`, `showcase-dark`, `showcase-contrast`,
+     `showcase-large`; сцена может закрепить тему или масштаб; `--shots-list`, `--lang`; имя файла
+     `<сцена>[-dark|-contrast][-large][-en].png`; `fixtures.cpp` (`sourceRoot`, `sceneFixture`); `shots.ps1` —
+     `-Dark`, `-Large`, `-Lang`, `-All` (5 вариантов); `review_refs.py --main` и `tools/main_scenes.txt`; `ui.shots`.
+  5. **i18n:** `i18n/ottisk_ru.ts` (пустой), `ottisk_en.ts` (только заголовок окна — для `ui.i18n`),
+     `qt_add_translations(TARGETS AcroBatya ui_tests SOURCE_TARGETS ottisk_ui_lib AcroBatya … MERGE_QT_TRANSLATIONS
+     LUPDATE_OPTIONS -no-obsolete)` — `.qm` ресурсом `:/i18n` с qtbase; `services/i18n` (`--lang` → `language/ui` в
+     `settings.ini` → язык системы; `QLocale::setDefault`); `MainWindow` меняет заголовок по `LanguageChange`;
+     `i18n_guard.py` — кириллица в `src/services` только в комментариях, контекст `translate`/`QT_TRANSLATE_NOOP`
+     — ASCII, `--self-test` (ctest `unit.guard.i18n_selftest`); правило в `CLAUDE.md` (п. 10).
+- Решения:
+  - **Токены сверх таблицы 6.4** (эталон их требует, но не задаёт): `onAccent` — текст на акценте (в тёмной теме
+    #121212: белый на #D9634E — 3,6:1, ниже 4,5), `form` — фиолетовая полоса «Документ содержит поля» (6.1),
+    `shadow` — тень плавающей панели (6.1: rgba(0,0,0,.18); в тёмной .40, в контрастной — нет тени), цвета пометок
+    `kAnnotationColors` (данные документа, не тема). Размеры сверх 6.4: `iconEmpty` 40, `focusRing` 2, тень 16/4.
+  - **Подпись `textMuted` на `hover` светлой темы — 4,34:1**, поэтому у карточки при наведении меняется рамка, а не
+    фон, а у строки списка подпись в наведении и выборе — цветом `text` (`rowColors()`).
+  - QSS компонентов — одна таблица правил в `qss.cpp`: из неё собирается стиль и пары «текст/фон»
+    `componentColors()`, которые тест проверяет на 4,5:1 во всех трёх палитрах — проверяется то, что рисуется.
+    Поля ввода (поиск, число, масштаб), их рамка и фокус — QSS; у `NumberField` нет кнопок-стрелок (шаг — ↑/↓,
+    колесо в фокусе).
+  - Состояния в витрине без мыши: наведение — `WA_UnderMouse`, фокус — свойство `otFocus` (те же правила QSS, что
+    у `:focus`), выключено — `setEnabled(false)`.
+  - `ThemeChoice::System` разрешается в «Высокую контрастность», если Windows сообщает контрастную тему
+    (`QStyleHints::accessibility()->contrastPreference()`, Qt 6.10+).
+  - Ключ языка `language/ui` пока объявлен в `services/i18n.h` — 2.4b переносит его в `settings_keys.h`. Английский
+    `.ts` не пустой: в нём заголовок окна, иначе тест «смена языка меняет заголовок» нечем проверить.
+  - `qt_add_translations`: эталон пишет `TARGETS AcroBatya`; добавлены `ui_tests` (тест языка) и
+    `SOURCE_TARGETS ottisk_ui_lib AcroBatya` (иначе вызов откладывается и lupdate читает все цели, включая core).
+- Подводные камни:
+  - С QSS приложения `QApplication::style()` — обёртка `QStyleSheetStyle` с пустым `name()`: Fusion держится своим
+    указателем (`Theme::baseStyleName()`).
+  - `QAbstractSpinBox` с `NoButtons` под QSS сжимает поле ввода до 1 px — кнопки скрыты нулевой шириной в QSS;
+    отступ QSS до поля ввода не доходит — `lineEdit()->setTextMargins`.
+  - `ToolButton` на `themeChanged` заново ставит минимум 32 px — вложенный крестик чипа вылезал за рамку:
+    `setCompact(side)` для кнопок внутри компонентов.
+  - Встроенный в раскладку `Toast` при смене темы «уезжал» к низу хоста — `place()` только у всплывшего.
+  - `QTest::keyClicks` печатает только Latin-1 (кириллица — `qFatal` в `qasciikey.cpp`): в тестах — `setText`.
+  - Первый фокусируемый виджет окна получает настоящий фокус при показе — у витрины фокус на самой странице.
+  - Heredoc Git Bash с вложенными кавычками ломается — длинные правки Python-скриптом из файла.
+- Замеры: инкремент `ui_tests` 15–35 с; `ui.*` 2,5–4 с; `shots.ps1 -All` (13 снимков, 5 вариантов) 4,3 с;
+  `verify.py` 25 с (221 тест).
+- Проверки: `verify.py` зелёный (221 тест); сцены: home, home-dark, showcase, showcase-dark, showcase-contrast,
+  showcase-large (и `-All` — 13 снимков) — просмотрены: размеры токенов, Segoe UI, кириллица, иконки, состояния.

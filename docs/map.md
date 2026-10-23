@@ -3,7 +3,11 @@
 Где что лежит и как добавляется типовая вещь. Сессия читает этот файл **первым**, до поиска по коду.
 Дерево и состав — эталон `docs/design.md` 5.1–5.3; здесь — короткий путеводитель и рецепты.
 
-> **Состояние: сессия 1.4 — текст: слой, поиск, выделение, индекс FTS5 и экспорт; версия 0.1.0.** `TextPage`
+> **Состояние: сессия 2.1 — тема, иконки, компоненты, витрина, снимки и каркас i18n.** `ui/theme` (токены трёх
+> палитр и `Tokens::scaled`, `Theme::apply` без перезапуска, QSS одной таблицей правил, `Icons` — Lucide по теме),
+> `ui/widgets` (15 компонентов и витрина `--showcase`), `ui/shots` (таблица `SCENES`, варианты темы/масштаба/языка),
+> `services/i18n` (`.qm` ресурсом `:/i18n` с qtbase), `ui_tests` — наборы по файлам (ctest `ui.<имя>`).
+> Из 1.4 — текст: слой, поиск, выделение, индекс FTS5 и экспорт; версия 0.1.0. `TextPage`
 > (`core/text/stext.h`: блоки/строки/символы с рамками и стилем, слова, попадание в символ/строку/слово, векторы,
 > структура) и `TextCache` (LRU 16) в `DocumentSession::textPage`; поиск `searchPage`/`SearchSession` (`fz_new_search`,
 > «целое слово», счётчик «N из M»); своё выделение (`selection.h`) и `ClipboardIo` (текст + HTML, снимок PNG);
@@ -92,49 +96,53 @@
 `.bad`; `handle()` только под `mutex()`), `folder_search.h` (`FolderSearch::run/start` — обход, извлечение в своём пуле,
 индекс, результаты по файлам, `encrypted`/`failed`, сигналы `progress`/`fileFound`/`finished`), `clipboard_io.h`
 (`ClipboardIo::textMime` — text/plain + text/html, `imageMime` — PNG, `put` — нужен QGuiApplication, `snapshot` —
-область страницы при dpi), в `DocumentSession` с 1.4 — `textPage(page, options)` и `exportText(path, options)`; дальше —
+область страницы при dpi), в `DocumentSession` с 1.4 — `textPage(page, options)` и `exportText(path, options)`,
+`i18n.h` (2.1: `install(язык)` — `:/i18n/ottisk_<язык>.qm` с qtbase, прежний переводчик снимается, `QLocale::setDefault`,
+окна получают `LanguageChange`; `resolve` — ru|en|system; `fromSettings` — ключ `language/ui` в `settings.ini`); дальше —
 `settings.h` + `settings_keys.h`, `recent.h`, `http_fetcher.h` (+Fake), `office_converter.h` (+`FakeOfficeBackend`),
 `word_converter.h`, `print_job.h`, `scan/{iscansource,wia,fake}.h`, `tts.h` (+Fake), `mail.h` (+Fake),
-`shell_register.h`, `help.h`, `i18n.h`, `trust_updater.h`, `crypto_worker.h`,
+`shell_register.h`, `help.h`, `trust_updater.h`, `crypto_worker.h`,
 `ocr_service.h`, `commands.h` (реестр команд и клавиш), `script_runner.h` (`--script`, 2.4b), `shell_launcher.h` (2.4).
 
 ### `src/ui/` — Qt Widgets (страж: ни одного `mupdf/`)
 
 | Каталог | Что | Сессия |
 |---|---|---|
-| `app/` | `main.cpp` (QApplication, тема, single-instance), `cli.{h,cpp}` (аргументы эталона 3.18) | 0 |
+| `app/` | `main.cpp` (QApplication, тема `Theme::apply` до окна, язык `i18n::install`, `--showcase`, single-instance), `cli.{h,cpp}` (аргументы эталона 3.18: `--theme system\|light\|dark\|contrast`, `--scale`, `--lang`, `--shots`, `--shots-list`) | 0, 2.1 |
 | `shell/` | `main_window.{h,cpp}` (сейчас — пустое окно), `global_bar.h`, `home/`, `document_tabs.h`, `document_view.h`, `tool_panel.h`, `nav_pane.h`, `quick_bar.h`, `status_bar.h`, `message_bar.h`, `command_palette.h`, `preferences/` | 0, 2.3–2.4, 9.1 |
-| `theme/` | `tokens.h` (`constexpr`, две палитры), `palette.cpp`, `qss.cpp`, `theme.cpp`, `icons.{h,cpp}` (Lucide с перекраской), `fonts.cpp`, `icon_names.txt` | 2.1 |
-| `widgets/` | `ToolButton`, `SegmentedBar`, `SearchField`, `PanelHeader`, `Card`, `ListRow`, `Chip`, `Toast`, `EmptyState`, `MessageBar`, `ColorSwatch`, `NumberField`, `PropertySheet`, `ZoomBox`, `showcase.cpp` | 2.1 |
+| `theme/` | `tokens.h` (`constexpr` палитры `kLightPalette`/`kDarkPalette`/`kHighContrastPalette` — имена таблицы 6.4 + `onAccent`, `form`, `shadow`; `kAnnotationColors`; `Metrics` и `kMetricSizes`; `Tokens::base/scaled/palette`), `theme.h` (`ThemeChoice`, `Theme::apply(app, choice, scale)`, `themeChanged`, `Theme::colors()/sizes()`, `mix`, `softBackground`, `rowColors`, `componentColors`), `palette.cpp` (QPalette), `qss.cpp` (база + таблица правил компонентов → QSS и пары контраста), `fonts.cpp` (`uiFont`, `panelTitleFont`, `homeTitleFont`, `numberFont`), `icons.{h,cpp}` (`Icons::get/icon/exists`, `IconTone`, `kToolIcons`/`kPaneIcons`, `toolIconName`), `icon_names.txt` | 2.1 |
+| `widgets/` | `ToolButton` (`setCompact` — без минимума 32 px внутри компонента), `SegmentedBar`, `SearchField`, `PanelHeader`, `Card`, `ListRow` (рисует сама по `rowColors`), `Chip`, `Toast` (`notify(host, …)`), `EmptyState`, `MessageBar`, `ColorSwatch`, `NumberField`, `PropertySheet`, `ZoomBox`, `FloatingBar` (основа QuickBar), `tone.h` (`Tone`, `repolish`), `showcase.{h,cpp}` (`createShowcase`, `createShowcaseWindow`, `forceShowcaseState`) | 2.1 |
 | `view/` | `page_view.h` (`QAbstractScrollArea`), `layout.h`, `tile_painter.h`, `overlay.h`, `tool_controller.h`, `tools/` (hand, select, marquee_zoom, snapshot, annot_select), `view_history.h` | 2.2, 2.2b |
 | `tools/` | `tool.h` (класс `Tool`), `ToolRegistry`, по папке на инструмент Acrobat: `print/ edit/ organize/ comment/ fillsign/ prepareform/ create/ combine/ export/ protect/ compress/ certificate/ scan/ accessibility/ javascript/ measure/` | 2.3 и далее |
 | `panes/` | миниатюры, закладки, комментарии, вложения, слои, подписи, поля, назначения, поиск | 2.4 и далее |
 | `dialogs/` | диалоги по списку эталона 6.3 | по сессиям |
-| `shots/` | `scenes.{h,cpp}` — реестр сцен для `--shots` (таблица сцен в `scenes.cpp`, эталон 6.10 — `SCENES`; сейчас `scenes()`), `fixtures.cpp` | 0, 2.1+ |
+| `shots/` | `scenes.{h,cpp}` — таблица `SCENES` (`sceneTable()`: имя, функция окна, закреплённые тема/масштаб), `ShotOptions`, `runShots`, `makeScene`, `sceneFileName`, `withMainWindow(setup)`; `fixtures.cpp` (`sourceRoot`, `sceneFixture`) | 0, 2.1+ |
 
 ### Остальное
 
 | Где | Что |
 |---|---|
 | `tests/unit/` | gtest, метка `unit`, < 1 с, данные — `tests/data/mini/*.pdf` (свои, ≤ 50 КБ); `support/test_pdf.h` — PDF в памяти (`makePdf`, `makeHeavyPdf` — секунды рендера на 600 dpi, `makeMixedPdf` — текст/кривые/картинки, `makeImagePagesPdf` — 200 страниц с картинками), `support/qt_app.h` — `QCoreApplication` и `waitUntil` для сигналов из потоков, `support/pdf_objects.h` — объекты PDF текстом («qpdf --json в миниатюре»: сравнение после undo и записи), `support/test_edits.h` — правки в операциях (`tenEdits`, `deletePage` — тяжёлая, `addNote`, `setRotate`, `putRootName`); отключённые тесты-помощники `saver_compat.DISABLED_*` (файлы для `compat.save`) и `autosave_child.DISABLED_*` (дочерний процесс для `taskkill`) |
-| `tests/ui/` | QTest offscreen, метка `ui` (ctest `ui.main_window`), снимки виджетов → `build/ui-shots/` |
+| `tests/ui/` | QTest offscreen, метка `ui`: набор на файл — `<имя>_test.cpp` с `OT_UI_TEST(Класс, "<имя>")` (`support/ui_test.h`) → ctest `ui.<имя>` без правки CMake; один `main` (`support/ui_main.cpp`, QApplication + светлая тема, `ui_tests <имя> [аргументы QTest]`, `--list`); `support/contrast.h` — WCAG; наборы `main_window`, `theme`, `icons`, `widgets`, `shots`, `i18n`; снимки виджетов → `build/<пресет>/ui-shots/`; кириллицу печатать `setText`, не `QTest::keyClicks` (только Latin-1) |
 | `tests/engine/` | gtest на корпусе по `<корпус>/index.json` (`open_corpus_test.cpp`: тег → части по 200 файлов, `progress:`), `mutants_test.cpp`; зонд `support/probe.h` (открыть → 32 × 32 → закрыть, `QuietLog`, `isBrokenFileCode`, `isMemoryFailure`); предел памяти процесса `support/memory_cap.cpp` (Job Object, `OTTISK_TEST_MEMORY_LIMIT_MB`, 2048 / ASan 6144, 0 — выкл.), `PROCESSORS 2` (ASan — 4); `OTTISK_CORPUS_TRACE=1` — печать каждого файла перед зондом (найти файл падения); срок рендера зонда `OTTISK_PROBE_RENDER_TIMEOUT_S` (15 / ASan 45 с); пропуск `tests/corpus/slow.json` — файлы, которые сам MuPDF рисует минутами (`tools/scan_slow_corpus.py --write`), раздел `asan` — только под ASan (процесс упирается в предел памяти); падение процесса — код и стек в stderr (`support/crash_report.cpp`); метки `engine;slow`, `FIXTURES_REQUIRED corpus;mutants` (`engine.corpus.verify` — `fetch_corpus.py --verify --dry-run`, 77 — пропуск; `engine.mutants.generate` — `make_mutants.py` в `build/<пресет>/gen`), `TIMEOUT_AFTER_MATCH 120;^progress:` |
 | `tests/render/` | `render_test.cpp` по `expected/expected.json`, эталоны `expected/<корпус>/<файл>.<стр>.<dpi>.png`, `files.json` — источники |
 | `tests/e2e/`, `tests/compat/`, `tests/bench/`, `tests/build/` | сценарии эталона 2 без UI; `compat_check.py` (SKIP 77; файлы или каталоги); ctest `compat.save.generate` → `compat.save` / `.signed` (pyHanko INTACT) / `.encrypted` по `build/<пресет>/compat/save` (метки `compat;slow`); `compat.rtf.generate` → `compat.rtf` (`tests/compat/rtf_word_check.ps1`: Word COM открывает RTF из `build/<пресет>/compat/rtf`, «Привет» в `Content.Text`; нет Word — 77); `bench.cpp` → `bench.exe <файл\|hello\|pdf32000\|big-1200\|images-200\|enc-r6\|search>` (`search` / `--search <образец>` — `search_all_ms`, порог 3 с только в Release) (только Release: ctest `bench.engine.*`, JSON в `build/bench/`, сравнение — `tools/bench_compare.py docs/bench/baseline-<прошлый>.json "build/bench/*.json"`: +25 % медианы, шум < 5 мс, цели 5.8); `install_test.py` (метка `build`) |
 | `tests/corpus/manifest.json` | корпуса `{id, url\|git, sha256, license, tags[], expect}` → `C:\Tools\ottisk\corpus` (`OTTISK_CORPUS`) |
 | `tests/fixtures/` | свои фикстуры ≤ 50 КБ и пермиссивные (`LICENSES.md`): `annots/ forms/ enc/ sig/ images/ scans/ office/ scenes/ demo/ imgcmp/ (метрики imgcmp) regress/ (падения фаззера → unit.regress.load) pki/ (4.1) text/ (1.4: search.pdf, vectors.pdf, truetype-nonembedded.pdf, text.json — строки генератора, stext_expected.json — слова PDFium)` |
-| `tools/` | `vcenv.cmd`, `verify.py`, `build.ps1`, `build_lock.ps1`, `fuzz.ps1` (фаззер 60 с / 10 мин), `shots.ps1`, `lint.ps1`, стражи `*_guard.py` и `scope_check.py`, `scope_report.py`, `imgcmp/`, `render_refs.cpp`, `review_refs.py`, `fetch_corpus.py`, `scan_slow_corpus.py`, `cl_launcher.py` (обёртка компилятора: русский префикс `/showIncludes` → «Note: including file:», иначе Ninja не видит зависимостей от заголовков), `compat_check.py`, `bench_compare.py`, `analyze_summary.py`, `copy_icons.py`, `gen/` (генераторы фикстур), `get-tessdata.ps1`, `install-qt.ps1`, `mupdf-build.ps1` + `ottisk-md.props`, очередь: `queue-lib.ps1`, `test_reset_parse.ps1`, `test_guard.ps1` |
+| `tools/` | `vcenv.cmd`, `verify.py`, `build.ps1`, `build_lock.ps1`, `fuzz.ps1` (фаззер 60 с / 10 мин), `shots.ps1`, `lint.ps1`, стражи `*_guard.py` и `scope_check.py`, `scope_report.py`, `imgcmp/`, `render_refs.cpp`, `review_refs.py` (`--shots --sheet 16 --main`), `main_scenes.txt`, `fetch_corpus.py`, `scan_slow_corpus.py`, `cl_launcher.py` (обёртка компилятора: русский префикс `/showIncludes` → «Note: including file:», иначе Ninja не видит зависимостей от заголовков), `compat_check.py`, `bench_compare.py`, `analyze_summary.py`, `copy_icons.py`, `gen/` (генераторы фикстур), `get-tessdata.ps1`, `install-qt.ps1`, `mupdf-build.ps1` + `ottisk-md.props`, очередь: `queue-lib.ps1`, `test_reset_parse.ps1`, `test_guard.ps1` |
 | `installer/` | `ottisk.iss` (UTF-8 BOM, per-user), `app.ico`, `app.rc`, `AcroBatya.manifest` (UTF-8 ACP, longPathAware), `licenses/` |
-| `assets/` | `icons/` (только нужные Lucide + `LICENSE`, список `icons.txt`), `stamps/`, `help/ru`, `help/en` |
-| `i18n/` | `ottisk_ru.ts`, `ottisk_en.ts`, части `en-parts/` для перевода агентами (9.2) |
+| `assets/` | `icons/` (только нужные Lucide + `LICENSE`; списки `icons.txt` и `src/ui/theme/icon_names.txt`; встроены ресурсом `:/icons` в `ottisk_ui_lib`), `stamps/`, `help/ru`, `help/en` |
+| `i18n/` | `ottisk_ru.ts`, `ottisk_en.ts` (`qt_add_translations` в `CMakeLists.txt`: `.qm` с qtbase — ресурс `:/i18n` у `AcroBatya` и `ui_tests`), части `en-parts/` для перевода агентами (9.2) |
 
 ### Стражи (ctest `unit.guard.*`, запуск `"$env:OTTISK_PYTHON" -X utf8 -I tools/<имя>.py --root .`; 0 — зелёный, 1 — красный, 77 — пропуск)
 
-`i18n_guard.py` (кириллица только в `tr()`), `fztry_guard.py` (`fz_try` только в `mu::call`), `boundaries_guard.py`
+`i18n_guard.py` (кириллица только в `tr()`/`QT_TR_NOOP()`/`translate()`; в `core`/`services` — только комментарии; контекст
+`translate` — ASCII; `--self-test` → `unit.guard.i18n_selftest`), `copy_icons.py --check` (`unit.guard.icons`: SVG списков на
+месте, лишних нет, LICENSE), `fztry_guard.py` (`fz_try` только в `mu::call`), `boundaries_guard.py`
 (слои), `scope_check.py` (`docs/scope.json` ↔ `docs/features.json` ↔ ID пунктов плана), `encoding_guard.py`
 (BOM у `.ps1`/`.iss`), `no_registry_guard.py` (настройки не в реестре), `format_guard.py` (clang-format).
 PowerShell-стражи очереди `tools/test_reset_parse.ps1` и `tools/test_guard.ps1` запускает `tools/verify.py`.
-Позже: `icons` (`ui.icons.exist`), `hotkeys` (`unit.guard.hotkeys`).
+Позже: `hotkeys` (`unit.guard.hotkeys`).
 
 ## Рецепты
 
@@ -190,15 +198,34 @@ PowerShell-стражи очереди `tools/test_reset_parse.ps1` и `tools/te
 
 ### Новая сцена
 
-1. Функция в `src/ui/shots/scenes.cpp` и строка в таблице сцен там же (имя — `kebab-case`); сцена доводит
-   `MainWindow` до нужного вида на фикстурах `tests/fixtures/scenes/` и `tests/fixtures/demo/` — без сети и без
-   данных человека.
-2. Снять: `powershell -NoProfile -ExecutionPolicy Bypass -File tools\shots.ps1 -Only <имя> [-Theme dark]` →
-   `.queue/screenshots/<имя>.png` (offscreen, 1440 × 900, Segoe UI из `C:/Windows/Fonts`); список имён —
-   `sceneNames()` в `scenes.h` (ключ `--shots-list` — эталон 6.10, когда появится).
+1. Строка в таблице `SCENES` (`sceneTable()` в `src/ui/shots/scenes.cpp`, имя — `kebab-case`): функция окна — обычно
+   `withMainWindow([](MainWindow& w) { … })`, которая доводит окно до нужного вида на фикстурах (`sceneFixture("demo/…")`
+   — `tests/fixtures/scenes/` и `tests/fixtures/demo/`), без сети и данных человека. Тему/масштаб сцена закрепляет
+   полями `theme`/`scale` (как `showcase-dark`, `showcase-large`) — тогда варианты `--theme`/`--scale` её пропускают.
+2. Снять: `powershell -NoProfile -ExecutionPolicy Bypass -File tools\shots.ps1 -Only <имя> [-Dark] [-Large] [-Lang en]`
+   → `.queue/screenshots/<имя>[-dark|-contrast][-large][-en].png` (offscreen, 1440 × 900, Segoe UI из `C:/Windows/Fonts`);
+   `-All` — все сцены в пяти вариантах; список имён — `AcroBatya.exe --shots-list`.
 3. **Посмотреть PNG** (`Read`) и сверить с эталоном 6: размеры 48/320/44/280/32, токены, подписи, иконки,
-   кириллица. Главные экраны — и в тёмной теме; 30 главных сцен рубежа — `tools/main_scenes.txt`.
-4. Пиксельного эталона у сцен нет; pHash к снимкам прошлого рубежа (`tools/review_refs.py --shots`) — сигнал, не закон.
+   кириллица. Главные экраны — и в тёмной теме, и дописать в `tools/main_scenes.txt` (30 главных сцен рубежа).
+4. Пиксельного эталона у сцен нет; pHash к снимкам прошлого рубежа (`tools/review_refs.py --shots --sheet 16 --main`)
+   — сигнал, не закон.
+
+### Новый компонент, цвет или размер (с 2.1)
+
+1. Цвет — только имя токена `Palette` (`tokens.h`, во всех трёх палитрах), размер — поле `Metrics` (и в `kMetricSizes`,
+   если это размер); в коде экранов и компонентов чисел цвета нет — `Theme::colors()`, `Theme::sizes()`.
+2. Компонент — `src/ui/widgets/<имя>.{h,cpp}`, класс в `ot::ui`; размеры — в `applyMetrics()`, подключённом к
+   `Theme::themeChanged` («Крупные элементы» меняют их на лету); иконки — `Icons::icon(name, tone)` (перекрашиваются сами).
+3. Вид — строки таблицы правил в `qss.cpp` (`ot--ui--<Класс>`, варианты — свойства `[tone="…"]`, после смены свойства —
+   `repolish`); у правила с цветами — имя компонента и состояние: пара уходит в `componentColors()` и тест 4,5:1.
+   Рисует сам (`paintEvent`) — цвета через функцию темы вроде `rowColors()`, её пары — тоже в `componentColors()`.
+4. Витрина `showcase.cpp` — строка «компонент × состояния»; тест в `tests/ui/widgets_test.cpp`; снимок `showcase*`.
+
+### Новая строка интерфейса и перевод (с 2.1)
+
+Только `tr("…")` в `ui` (вне QObject — `QCoreApplication::translate("ot::ui::<Класс>", "…")`, контекст ASCII); `.ts`
+обновляет `cmake --build build/debug --target update_translations` (сессия 9.2), `.qm` собирается сам и встроен в
+`:/i18n`; окно, которое должно сменить язык без перезапуска, ловит `QEvent::LanguageChange` в `changeEvent`.
 
 ### Новый тест на корпусе
 
