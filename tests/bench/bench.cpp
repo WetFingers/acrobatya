@@ -13,6 +13,8 @@
 //   tiles_100_ms, tiles_200_ms — все тайлы страниц 1…min(50, N) в RenderPool (списки строятся по порядку,
 //                      как в потоке документа), время «стены»
 //   peak_working_set_mb пиковая память процесса (PeakWorkingSetSize), один файл — один процесс
+// Режим поиска (план 1.4): `bench search` (PDF32000_2008.pdf) или `--search <образец>` у любого файла —
+//   search_all_ms      открыть → текстовые слои всех страниц → SearchSession по всему документу   ≤ 3 000 мс
 #include <windows.h>
 
 #include <psapi.h>
@@ -37,6 +39,8 @@
 #include "core/render/fit.h"
 #include "core/render/renderer.h"
 #include "core/render/tiles.h"
+#include "core/text/search.h"
+#include "core/text/stext.h"
 #include "core/util/paths.h"
 #include "services/render_pool.h"
 
@@ -54,13 +58,17 @@ struct Known {
     const char* name;
     const char* file;
     const char* password;
+    const char* search = nullptr;  // режим поиска: образец
 };
 
 // Файлы плана 1.2 (эталон 5.8).
 const Known kKnown[] = {
-    {"hello", "hello_world.pdf", ""}, {"pdf32000", "PDF32000_2008.pdf", ""},
-    {"big-1200", "big-1200.pdf", ""}, {"images-200", "images-200.pdf", ""},
+    {"hello", "hello_world.pdf", ""},
+    {"pdf32000", "PDF32000_2008.pdf", ""},
+    {"big-1200", "big-1200.pdf", ""},
+    {"images-200", "images-200.pdf", ""},
     {"enc-r6", "enc-r6.pdf", "user"},
+    {"search", "PDF32000_2008.pdf", "", "annotation"},  // план 1.4: поиск по документу ≤ 3 с
 };
 
 fs::path corpusDir() {
@@ -148,10 +156,11 @@ double tilesWall(const ot::Document& doc, int pages, float zoom, ot::RenderPool&
 
 int wmain(int argc, wchar_t** argv) {
     if (argc < 2) {
-        std::fprintf(
-            stderr,
-            "usage: bench <file.pdf | hello | pdf32000 | big-1200 | images-200 | enc-r6> [--name id]\n"
-            "             [--password p] [--runs 5] [--pages 50] [--threads N] [--json out.json]\n");
+        std::fprintf(stderr,
+                     "usage: bench <file.pdf | hello | pdf32000 | big-1200 | images-200 | enc-r6 | search> "
+                     "[--name id]\n"
+                     "             [--password p] [--runs 5] [--pages 50] [--threads N] [--search needle]\n"
+                     "             [--json out.json]\n");
         return 2;
     }
     std::string arg = ot::paths::toUtf8(argv[1]);
@@ -160,6 +169,7 @@ int wmain(int argc, wchar_t** argv) {
     int runs = 5;
     int maxPages = 50;
     int threads = 0;
+    std::string needle;
     fs::path jsonOut;
     for (int i = 2; i + 1 < argc; i += 2) {
         const std::wstring a = argv[i];
@@ -174,6 +184,8 @@ int wmain(int argc, wchar_t** argv) {
             maxPages = std::max(1, std::stoi(v));
         } else if (a == L"--threads") {
             threads = std::stoi(v);
+        } else if (a == L"--search") {
+            needle = v;
         } else if (a == L"--json") {
             jsonOut = argv[i + 1];
         }
@@ -188,6 +200,9 @@ int wmain(int argc, wchar_t** argv) {
                 }
                 if (password.empty()) {
                     password = k.password;
+                }
+                if (needle.empty() && k.search != nullptr) {
+                    needle = k.search;
                 }
             }
         }
@@ -210,7 +225,28 @@ int wmain(int argc, wchar_t** argv) {
     try {
         ot::RenderPool pool(threads);
         std::vector<std::uint8_t> buf;
-        for (int r = 0; r < runs; ++r) {
+        int searchHits = -1;
+        for (int r = 0; r < runs && !needle.empty(); ++r) {
+            // Поиск: открыть → слои всех страниц по запросу поиска → все совпадения (как панель поиска).
+            ot::MuContext::forThisThread().emptyStore();
+            const auto t0 = Clock::now();
+            ot::OpenResult opened = ot::Document::open(file, password);
+            if (!opened.ok) {
+                throw std::runtime_error("open failed: " + opened.error.message);
+            }
+            const std::unique_ptr<ot::Document> doc = std::move(opened.document);
+            pages = doc->pageCount();
+            ot::SearchSession search(needle, {});
+            search.run(pages,
+                       [&](int p) { return ot::TextPage::build(*doc, p, ot::SearchSession::textOptions()); });
+            samples["search_all_ms"].push_back(ms(t0, Clock::now()));
+            searchHits = search.count();
+        }
+        if (searchHits >= 0) {
+            std::printf("%-12s search \"%s\": %d hits on %d pages\n", name.c_str(), needle.c_str(),
+                        searchHits, pages);
+        }
+        for (int r = 0; r < runs && needle.empty(); ++r) {
             ot::MuContext::forThisThread().emptyStore();
             // Открытие → первый растр первой страницы.
             const auto t0 = Clock::now();
@@ -278,6 +314,7 @@ int wmain(int argc, wchar_t** argv) {
                             {"file", ot::paths::toUtf8(file.filename())},
                             {"pages", pages},
                             {"runs", runs},
+                            {"search", needle},
                             {"tile_pages", std::min(pages, maxPages)},
                             {"threads", pool.maxThreads()},
                             {"mupdf", ot::MuContext::version()},
@@ -292,6 +329,17 @@ int wmain(int argc, wchar_t** argv) {
             fs::create_directories(jsonOut.parent_path(), ec);
             ot::paths::writeFile(jsonOut, j.dump(1) + "\n");
         }
+#ifdef NDEBUG
+        // Порог плана 1.4 (только Release): поиск по PDF32000_2008 — не дольше 3 с по медиане.
+        if (const auto it = samples.find("search_all_ms"); it != samples.end() && name == "search") {
+            std::vector<double> sorted = it->second;
+            std::sort(sorted.begin(), sorted.end());
+            if (sorted[sorted.size() / 2] > 3000.0) {
+                std::fprintf(stderr, "bench search: median %.0f ms > 3000 ms\n", sorted[sorted.size() / 2]);
+                return 1;
+            }
+        }
+#endif
     } catch (const std::exception& e) {
         std::fprintf(stderr, "bench %s: %s\n", name.c_str(), e.what());
         return 1;

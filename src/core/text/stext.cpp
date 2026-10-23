@@ -19,8 +19,9 @@ namespace ot {
 
 namespace {
 
-constexpr int kBaseFlags = FZ_STEXT_PRESERVE_LIGATURES | FZ_STEXT_PRESERVE_WHITESPACE |
-                           FZ_STEXT_ACCURATE_BBOXES | FZ_STEXT_PARAGRAPH_BREAK | FZ_STEXT_SEGMENT;
+constexpr int kBaseFlags =
+    FZ_STEXT_PRESERVE_LIGATURES | FZ_STEXT_PRESERVE_WHITESPACE | FZ_STEXT_ACCURATE_BBOXES;
+constexpr int kReadingOrderFlags = FZ_STEXT_PARAGRAPH_BREAK | FZ_STEXT_SEGMENT;
 
 RectF toRect(const fz_rect& r) { return {r.x0, r.y0, r.x1, r.y1}; }
 PointF toPoint(const fz_point& p) { return {p.x, p.y}; }
@@ -49,6 +50,9 @@ bool containsWord(std::string_view name, std::initializer_list<std::string_view>
 
 int TextPage::flagsFor(const Options& options) noexcept {
     int flags = kBaseFlags;
+    if (options.readingOrder) {
+        flags |= kReadingOrderFlags;
+    }
     if (options.collectVectors) {
         flags |= FZ_STEXT_COLLECT_VECTORS;
     }
@@ -145,8 +149,29 @@ fz_context* TextPage::contextForThisThread(std::unique_ptr<MuContext>& temporary
 }
 
 int TextPage::charIndexOf(const fz_stext_char* ch) const {
+    // Карта строится при первом вопросе (поиск спрашивает только у страниц с совпадениями): обход в том же
+    // порядке, что collect.
+    std::call_once(charIndexOnce_, [this] {
+        charIndex_.reserve(chars_.size());
+        int index = 0;
+        indexChars(stext_->first_block, index);
+    });
     const auto it = charIndex_.find(ch);
     return it == charIndex_.end() ? -1 : it->second;
+}
+
+void TextPage::indexChars(fz_stext_block* first, int& index) const {
+    for (fz_stext_block* b = first; b != nullptr; b = b->next) {
+        if (b->type == FZ_STEXT_BLOCK_TEXT) {
+            for (fz_stext_line* l = b->u.t.first_line; l != nullptr; l = l->next) {
+                for (fz_stext_char* c = l->first_char; c != nullptr; c = c->next) {
+                    charIndex_.emplace(c, index++);
+                }
+            }
+        } else if (b->type == FZ_STEXT_BLOCK_STRUCT && b->u.s.down != nullptr) {
+            indexChars(b->u.s.down->first_block, index);
+        }
+    }
 }
 
 int TextPage::fontIndex(fz_context* ctx, fz_font* font) {
@@ -205,7 +230,6 @@ void TextPage::collectBlocks(fz_context* ctx, fz_stext_block* first, int structN
                         ch.flags = c->flags;
                         ch.font = fontIndex(ctx, c->font);
                         ch.line = lineIndex;
-                        charIndex_.emplace(c, static_cast<int>(chars_.size()));
                         chars_.push_back(ch);
                     }
                     line.charCount = static_cast<int>(chars_.size()) - line.firstChar;

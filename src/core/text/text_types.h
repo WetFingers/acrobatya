@@ -15,12 +15,16 @@ namespace ot {
 // Опции извлечения (план 1.4): по умолчанию — PRESERVE_LIGATURES | PRESERVE_WHITESPACE | ACCURATE_BBOXES |
 // PARAGRAPH_BREAK | SEGMENT; флажки добавляют COLLECT_VECTORS (линии и рамки — 5.3, 5.5, 6.4), TABLE_HUNT
 // (таблицы — 7.3), COLLECT_STRUCTURE (дерево тегов — 8.3, 8.4), DEHYPHENATE (перенос в конце строки —
-// мягкий). USE_CID_FOR_UNKNOWN_UNICODE не включается никогда: символ без Unicode остаётся U+FFFD, а не CID.
+// мягкий). readingOrder = false убирает SEGMENT и PARAGRAPH_BREAK: порядок — как в потоке страницы. Так
+// строит слои поиск (SearchSession::textOptions): сегментация — почти всё время извлечения (PDF32000, 756
+// страниц, Release mutool: 23,7 с с SEGMENT против 3,3 с без), а совпадениям порядок блоков не важен.
+// USE_CID_FOR_UNKNOWN_UNICODE не включается никогда: символ без Unicode остаётся U+FFFD, а не CID.
 struct TextOptions {
     bool collectVectors = false;
     bool tableHunt = false;
     bool collectStructure = false;
     bool dehyphenate = false;
+    bool readingOrder = true;
 
     bool operator==(const TextOptions&) const = default;
 };

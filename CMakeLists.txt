@@ -192,7 +192,8 @@ if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 ottisk_gtest_exe(render_tests tests/render render "render;slow" 900 ottisk_core)
 # Замеры движка (план 1.2): только Release — числа Debug с целями 5.8 не сравнимы. big-1200 и images-200 —
-# make_big.py в <сборка>/gen (фикстура, пропускает готовые), PDF32000_2008 — только из корпуса (нет — SKIP 77).
+# make_big.py в <сборка>/gen (фикстура, пропускает готовые), PDF32000_2008 — только из корпуса (нет — SKIP 77);
+# search — поиск по PDF32000_2008 (план 1.4, цель ≤ 3 с).
 # JSON — в build/bench/<имя>.json; сравнение с базой — tools/bench_compare.py docs/bench/baseline-*.json.
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   add_test(NAME bench.engine.generate
@@ -200,7 +201,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
       --corpus "${CMAKE_BINARY_DIR}/gen" --skip-existing
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
   set_tests_properties(bench.engine.generate PROPERTIES LABELS "bench;slow" FIXTURES_SETUP bench_files TIMEOUT 900)
-  foreach(_b hello pdf32000 big-1200 images-200 enc-r6)
+  foreach(_b hello pdf32000 big-1200 images-200 enc-r6 search)
     add_test(NAME bench.engine.${_b} COMMAND bench ${_b} --json "${CMAKE_SOURCE_DIR}/build/bench/${_b}.json")
     set_tests_properties(bench.engine.${_b} PROPERTIES LABELS "bench;slow" FIXTURES_REQUIRED bench_files
       SKIP_RETURN_CODE 77 TIMEOUT 900 RUN_SERIAL TRUE)

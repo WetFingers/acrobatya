@@ -18,6 +18,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -101,6 +102,7 @@ private:
     void collect(fz_context* ctx);
     void collectBlocks(fz_context* ctx, fz_stext_block* first, int structNode);
     int fontIndex(fz_context* ctx, fz_font* font);
+    void indexChars(fz_stext_block* first, int& index) const;
 
     std::unique_ptr<MuContext> owner_;
     const void* family_;
@@ -115,7 +117,8 @@ private:
     std::vector<TextFont> fonts_;
     std::vector<TextVector> vectors_;
     std::vector<TextStructNode> structure_;
-    std::unordered_map<const fz_stext_char*, int> charIndex_;
+    mutable std::once_flag charIndexOnce_;
+    mutable std::unordered_map<const fz_stext_char*, int> charIndex_;  // для charIndexOf, строится лениво
     std::unordered_map<const fz_font*, int> fontIndex_;
 };
 

@@ -313,6 +313,10 @@ TEST(stext, flags_and_page_bounds) {
     EXPECT_EQ(base, FZ_STEXT_PRESERVE_LIGATURES | FZ_STEXT_PRESERVE_WHITESPACE | FZ_STEXT_ACCURATE_BBOXES |
                         FZ_STEXT_PARAGRAPH_BREAK | FZ_STEXT_SEGMENT);
     EXPECT_EQ(base & FZ_STEXT_USE_CID_FOR_UNKNOWN_UNICODE, 0);
+    TextOptions lean;
+    lean.readingOrder = false;  // слои поиска: без сегментации и абзацев
+    EXPECT_EQ(TextPage::flagsFor(lean),
+              FZ_STEXT_PRESERVE_LIGATURES | FZ_STEXT_PRESERVE_WHITESPACE | FZ_STEXT_ACCURATE_BBOXES);
     TextOptions all;
     all.collectVectors = all.tableHunt = all.collectStructure = all.dehyphenate = true;
     EXPECT_EQ(TextPage::flagsFor(all), base | FZ_STEXT_COLLECT_VECTORS | FZ_STEXT_TABLE_HUNT |
