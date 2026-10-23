@@ -100,6 +100,12 @@ target_link_libraries(ottisk_ui_lib PUBLIC ottisk_services Qt6::Widgets Qt6::Svg
 ottisk_qt(ottisk_ui_lib)
 ottisk_warnings(ottisk_ui_lib)
 ottisk_pch(ottisk_ui_lib "${CMAKE_SOURCE_DIR}/src/ui/pch.h")
+# Иконки Lucide (эталон 6.5) — ресурс :/icons/<имя>.svg; список — src/ui/theme/icon_names.txt + assets/icons/icons.txt,
+# копирует tools/copy_icons.py. У статической библиотеки Qt кладёт ресурс в объектную библиотеку, которую получают
+# AcroBatya и ui_tests.
+file(GLOB OTTISK_ICON_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/assets/icons/*.svg")
+qt_add_resources(ottisk_ui_lib ottisk_icons PREFIX "/icons" BASE "${CMAKE_SOURCE_DIR}/assets/icons"
+  FILES ${OTTISK_ICON_FILES})
 
 set(OTTISK_APP_SRC "${CMAKE_SOURCE_DIR}/src/ui/app/main.cpp")
 if(EXISTS "${CMAKE_SOURCE_DIR}/installer/app.rc")
@@ -248,6 +254,11 @@ ottisk_guard(scope scope_check.py)
 ottisk_guard(encoding encoding_guard.py)
 ottisk_guard(no_registry no_registry_guard.py)
 ottisk_guard(format format_guard.py)
+# Иконки: каждый SVG списков есть в assets/icons, лишних нет, LICENSE Lucide на месте (tools/copy_icons.py --check).
+add_test(NAME unit.guard.icons
+  COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/copy_icons.py" --check --root "${CMAKE_SOURCE_DIR}"
+  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+set_tests_properties(unit.guard.icons PROPERTIES LABELS "unit;guard" SKIP_RETURN_CODE 77 TIMEOUT 120)
 
 add_test(NAME build.install
   COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tests/build/install_test.py" --root "${CMAKE_SOURCE_DIR}"

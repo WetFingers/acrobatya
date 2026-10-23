@@ -1,0 +1,62 @@
+# Иконки Lucide 1.50 (ISC) для Icons::get (эталон 6.5). Одно имя на строку, без .svg; базовые этапа 0 — в
+# assets/icons/icons.txt. После правки: "%OTTISK_PYTHON%" -X utf8 -I tools/copy_icons.py — копирует только нужные
+# SVG в assets/icons (они встраиваются в ottisk_ui_lib ресурсом :/icons/<имя>.svg); страж unit.guard.icons и
+# тест ui.icons сверяют список, файлы и таблицы kToolIcons/kPaneIcons (src/ui/theme/icons.h).
+
+# Инструменты «Все инструменты» (эталон 6.2, соответствие — 6.5)
+pencil-line
+layout-grid
+message-square
+pen-line
+clipboard-list
+file-plus
+files
+file-output
+lock
+shrink
+badge-check
+scan-text
+ruler
+accessibility
+braces
+
+# Правая панель навигации
+images
+bookmark
+message-square-text
+layers
+paperclip
+file-signature
+list-tree
+locate
+
+# Плавающая панель быстрых действий (эталон 6.1)
+mouse-pointer-2
+hand
+sticky-note
+highlighter
+pencil
+type
+signature
+
+# Компоненты src/ui/widgets: стрелки, закрыть, масштаб, закрепить, тоны сообщений, пустые состояния
+chevron-down
+chevron-left
+chevron-right
+chevron-up
+x
+plus
+minus
+star
+check
+info
+triangle-alert
+circle-alert
+circle-check
+file-text
+inbox
+palette
+ellipsis
+menu
+share-2
+rotate-ccw
