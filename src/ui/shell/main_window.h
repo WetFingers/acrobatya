@@ -15,6 +15,7 @@
 #include <functional>
 #include <memory>
 
+#include "services/document_session.h"
 #include "services/session_store.h"
 #include "services/single_instance.h"
 
@@ -35,6 +36,7 @@ class DocumentTabs;
 class DocumentView;
 class GlobalBar;
 class NavPane;
+class StatusBar;
 class ToolPanel;
 
 class MainWindow : public QMainWindow {
@@ -66,6 +68,8 @@ public:
     ToolPanel& toolPanel() const { return *toolPanel_; }
     // Правая навигация (2.4): полоса 44 и панель 280 (в сплиттере, ширина 220–480).
     NavPane& navPane() const { return *navPane_; }
+    // Строка состояния 32 (2.4): страница, масштаб, раскладка, поворот, индикаторы, фоновые задачи.
+    StatusBar& status() const { return *status_; }
     DocumentRegistry& registry() const { return *registry_; }
     // Реестр команд окна (меню, клавиши, палитра 2.4b, --script 2.4b, страж unit.guard.hotkeys).
     CommandRegistry& commands() const { return *commands_; }
@@ -134,6 +138,8 @@ private:
     void showAllTools();
     void releaseView(DocumentView* view);
     void applyNavWidth();
+    void updateStatusVisibility();
+    void applyInitialView(DocumentView* view, const OpenSummary& summary);
     void openAttachmentPdf(const QString& path, const QString& title);
     void showInExplorer();
 
@@ -146,6 +152,7 @@ private:
     QSplitter* body_ = nullptr;
     ToolPanel* toolPanel_ = nullptr;
     NavPane* navPane_ = nullptr;
+    StatusBar* status_ = nullptr;
     QStackedWidget* center_ = nullptr;
     QWidget* home_ = nullptr;
     QStackedWidget* documents_ = nullptr;

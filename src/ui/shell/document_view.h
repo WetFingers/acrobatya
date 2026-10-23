@@ -1,9 +1,9 @@
 // DocumentView — вкладка документа (эталон 6.1 «Документ», 4.2; view-27): PageView на холсте, сверху — стек
-// полос сообщений (MessageBar; все виды полос и приоритеты — 2.4), внизу по центру — плавающая панель
-// (QuickBar, setFloatingBar). Документ — сессия DocumentRegistry (вкладка держит shared_ptr; указателей MuPDF
-// нет), пул и кеш тайлов — общие у окна. «Несохранено» — в истории есть шаг назад (UndoState::canUndo;
-// сохранение историю очищает). Не-PDF (XPS, EPUB, CBZ, картинки, TXT, HTML) — «только просмотр»: полоса с
-// кнопкой «Сохранить как PDF» (сигнал saveAsPdfRequested; view-01).
+// полос сообщений (MessageStack, ui/shell/message_bar.h: виды и порядок по важности), внизу по центру —
+// плавающая панель (QuickBar, setFloatingBar). Документ — сессия DocumentRegistry (вкладка держит shared_ptr;
+// указателей MuPDF нет), пул и кеш тайлов — общие у окна. «Несохранено» — в истории есть шаг назад
+// (UndoState::canUndo; сохранение историю очищает). Не-PDF (XPS, EPUB, CBZ, картинки, TXT, HTML) — «только
+// просмотр»: полоса с кнопкой «Сохранить как PDF» (сигнал saveAsPdfRequested; view-01).
 #pragma once
 
 #include <QPointer>
@@ -11,6 +11,9 @@
 
 #include <memory>
 
+#include <optional>
+
+#include "core/links/links.h"
 #include "services/document_session.h"
 #include "services/recent.h"
 #include "ui/widgets/tone.h"
@@ -25,6 +28,7 @@ class TileCache;
 namespace ot::ui {
 
 class MessageBar;
+class MessageStack;
 class PageView;
 
 class DocumentView : public QWidget {
@@ -46,7 +50,8 @@ public:
     // Не PDF: правка и «Сохранить» недоступны, «Сохранить как PDF» — новый файл.
     bool isViewOnly() const;
 
-    // Полоса сообщений над документом (сверху вниз — по порядку добавления).
+    // Полосы сообщений над документом: виды и порядок — MessageStack; addMessage — своя полоса (после видов).
+    MessageStack& messageStack() const { return *stack_; }
     MessageBar* addMessage(Tone tone, const QString& text);
     QList<MessageBar*> messages() const;
 
@@ -58,6 +63,8 @@ public:
     void setInitialPage(int page);
     // Последний вид файла (недавние, services/recent.h): раскладка, масштаб и страница после первого показа.
     void setInitialView(const LastView& view);
+    // /OpenAction файла (начальный вид, view-47): переход после первого показа, как по ссылке.
+    void setInitialAction(const links::LinkAction& action);
     LastView currentView() const;
 
     // «Сохранить» в свой файл с ожиданием (подтверждение закрытия; полный поток сохранения — 2.5). false —
@@ -80,12 +87,12 @@ private:
     std::shared_ptr<DocumentSession> session_;
     RenderPool* pool_ = nullptr;
     PageView* view_ = nullptr;
-    QWidget* messages_ = nullptr;
-    QVBoxLayout* messageLayout_ = nullptr;
+    MessageStack* stack_ = nullptr;
     QPointer<QWidget> floating_;
     QString error_;
     int initialPage_ = -1;
     LastView initialView_;
+    std::optional<links::LinkAction> initialAction_;
     bool modified_ = false;
 };
 

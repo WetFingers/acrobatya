@@ -34,6 +34,9 @@ eye
 eye-off
 external-link
 shield-alert
+# Строка состояния (2.4): раскладка «Непрерывно», «Разворот»
+gallery-vertical-end
+book-open
 
 # Плавающая панель быстрых действий (эталон 6.1)
 mouse-pointer-2

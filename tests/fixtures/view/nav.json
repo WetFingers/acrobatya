@@ -111,6 +111,12 @@
     "page": 1,
     "fit": "Fit"
   },
+  "page_labels": [
+    "i",
+    "ii",
+    "iii",
+    "iv"
+  ],
   "transitions": [
     {
       "page": 1,

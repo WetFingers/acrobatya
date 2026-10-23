@@ -8,6 +8,7 @@
 
 #include <exception>
 
+#include "ui/shell/message_bar.h"
 #include "ui/theme/theme.h"
 #include "ui/view/page_view.h"
 #include "ui/widgets/message_bar.h"
@@ -21,14 +22,8 @@ DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool*
     auto* column = new QVBoxLayout(this);
     column->setContentsMargins(0, 0, 0, 0);
     column->setSpacing(0);
-    messages_ = new QWidget(this);
-    messages_->setObjectName(QStringLiteral("messageStack"));
-    messageLayout_ = new QVBoxLayout(messages_);
-    const Metrics& m = Theme::sizes();
-    messageLayout_->setContentsMargins(m.grid * 2, m.grid * 2, m.grid * 2, 0);
-    messageLayout_->setSpacing(m.grid);
-    messages_->hide();
-    column->addWidget(messages_);
+    stack_ = new MessageStack(this);
+    column->addWidget(stack_);
     view_ = new PageView(this);
     view_->setObjectName(QStringLiteral("pageView"));
     column->addWidget(view_, 1);
@@ -42,8 +37,8 @@ DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool*
     updateModified();
 
     if (isViewOnly()) {
-        MessageBar* bar = addMessage(
-            Tone::Info,
+        MessageBar* bar = stack_->showMessage(
+            MessageKind::ViewOnly,
             tr("Файл открыт только для просмотра. Чтобы править его, сохраните копию в формате PDF."));
         bar->setObjectName(QStringLiteral("viewOnlyBar"));
         bar->addAction(tr("Сохранить как PDF"), QStringLiteral("saveAsPdf"), true);
@@ -64,29 +59,9 @@ QString DocumentView::title() const { return QFileInfo(session_->path()).fileNam
 
 bool DocumentView::isViewOnly() const { return !session_->summary().isPdf; }
 
-MessageBar* DocumentView::addMessage(Tone tone, const QString& text) {
-    auto* bar = new MessageBar(tone, text, messages_);
-    bar->setClosable(true);
-    connect(bar, &MessageBar::closed, this, [this, bar] {
-        bar->setProperty("otClosed", true);
-        bar->hide();
-        bar->deleteLater();
-        QTimer::singleShot(0, this, [this] { messages_->setVisible(!messages().isEmpty()); });
-    });
-    messageLayout_->addWidget(bar);
-    messages_->show();
-    return bar;
-}
+MessageBar* DocumentView::addMessage(Tone tone, const QString& text) { return stack_->add(tone, text); }
 
-QList<MessageBar*> DocumentView::messages() const {
-    QList<MessageBar*> out;
-    for (MessageBar* bar : messages_->findChildren<MessageBar*>(Qt::FindDirectChildrenOnly)) {
-        if (!bar->property("otClosed").toBool()) {
-            out << bar;
-        }
-    }
-    return out;
-}
+QList<MessageBar*> DocumentView::messages() const { return stack_->bars(); }
 
 void DocumentView::setFloatingBar(QWidget* bar) {
     if (floating_ != nullptr && floating_ != bar) {
@@ -116,6 +91,11 @@ const std::pair<PageMode, const char*> kModes[] = {
 void DocumentView::setInitialView(const LastView& view) {
     initialView_ = view;
     initialPage_ = view.page;
+}
+
+void DocumentView::setInitialAction(const links::LinkAction& action) {
+    initialAction_ = action;
+    initialPage_ = action.page;
 }
 
 LastView DocumentView::currentView() const {
@@ -193,7 +173,15 @@ void DocumentView::showEvent(QShowEvent* event) {
             if (initialView_.zoomPercent > 0) {
                 view_->setZoomPercent(static_cast<float>(initialView_.zoomPercent));
             }
-            view_->goToPage(initialPage_);
+            if (initialAction_) {
+                links::LinkInfo link;
+                link.page = initialAction_->page;
+                link.action = *initialAction_;
+                view_->activateLink(link);  // страница, вид (/Fit, /XYZ…), масштаб — как переход по ссылке
+                initialAction_.reset();
+            } else {
+                view_->goToPage(initialPage_);
+            }
             initialPage_ = -1;
         });
     }

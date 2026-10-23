@@ -24,6 +24,7 @@
 #include "ui/shell/main_window.h"
 #include "ui/shell/nav_pane.h"
 #include "ui/shell/quick_bar.h"
+#include "ui/shell/status_bar.h"
 #include "ui/shell/tool_panel.h"
 #include "ui/theme/icons.h"
 #include "ui/tools/tool_registry.h"
@@ -288,8 +289,9 @@ void MainWindow::registerCommands() {
     r.add({.id = QStringLiteral("view.goToPage"),
            .title = tr("Перейти к &странице…"),
            .shortcuts = {key(Qt::CTRL | Qt::SHIFT | Qt::Key_N)},
-           .menu = QStringLiteral("view/navigate"),
-           .stage = 2});
+           .run = [this] { status_->focusPageField(); },
+           .enabled = hasDoc,
+           .menu = QStringLiteral("view/navigate")});
     r.add({.id = QStringLiteral("view.back"),
            .title = tr("Предыдущий &вид"),
            .shortcuts = {key(Qt::ALT | Qt::Key_Left)},
@@ -680,11 +682,12 @@ void MainWindow::setSingleKeyAccelerators(bool on) {
 
 bool MainWindow::singleKeyAccelerators() const { return commands_->singleKeysEnabled(); }
 
-// F8: левая панель, правая навигация и плавающие панели документов скрыты или видны.
+// F8: левая панель, правая навигация, строка состояния и плавающие панели документов скрыты или видны.
 void MainWindow::setPanelsHidden(bool hidden) {
     panelsHidden_ = hidden;
     toolPanel_->setVisible(!hidden && !isHomeShown());
     navPane_->setShown(!hidden && !isHomeShown());
+    updateStatusVisibility();
     for (int i = 0; i < documentCount(); ++i) {
         if (QWidget* bar = document(i)->floatingBar()) {
             bar->setVisible(!hidden);

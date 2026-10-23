@@ -21,6 +21,7 @@
 #include <QPromise>
 #include <QSizeF>
 #include <QString>
+#include <QStringList>
 #include <QVector>
 
 #include <atomic>
@@ -39,6 +40,7 @@
 #include "core/create/text_export.h"
 #include "core/doc/autosave.h"
 #include "core/doc/saver.h"
+#include "core/links/initial_view.h"
 #include "core/mu/error.h"
 #include "core/text/text_types.h"
 
@@ -91,6 +93,10 @@ struct OpenSummary {
     // больше 14 400 pt — уменьшено; масштаб такой страницы — размер раскладки / DisplayList::bounds()).
     QVector<QSizeF> pageSizes;
     QString pageLayout;  // /PageLayout каталога (SinglePage, OneColumn, TwoColumnLeft…) или пусто
+    // Логические номера /PageLabels всех страниц (2.4; пусто — номера 1, 2, 3…) и начальный вид (/PageMode,
+    // /OpenAction, /ViewerPreferences) — окно применяет его при открытии.
+    QStringList pageLabels;
+    InitialView initial;
     TaskFailed error;
 };
 

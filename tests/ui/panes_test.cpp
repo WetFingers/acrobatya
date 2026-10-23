@@ -256,13 +256,14 @@ private slots:
         }
         MainWindow w;
         showActive(w);
+        auto* pane = pageOf<ot::ui::BookmarksPane>(w, "bookmarks");
+        // Спецификация — /PageMode /UseOutlines: панель закладок открывается уже при открытии файла.
+        QSignalSpy levels(pane, &ot::ui::BookmarksPane::levelLoaded);
         QVERIFY(w.openFile(spec));
         DocumentView* doc = w.currentDocument();
-        QTRY_VERIFY_WITH_TIMEOUT(rendered(doc), 20000);
-        auto* pane = pageOf<ot::ui::BookmarksPane>(w, "bookmarks");
-        QSignalSpy levels(pane, &ot::ui::BookmarksPane::levelLoaded);
         w.navPane().showPane(QStringLiteral("bookmarks"));
         QTRY_VERIFY(!levels.isEmpty());
+        QTRY_VERIFY_WITH_TIMEOUT(rendered(doc), 20000);
         const QList<QVariant> top = levels.first();
         QVERIFY(top[0].toList().isEmpty());
         QVERIFY2(top[2].toLongLong() < 200,

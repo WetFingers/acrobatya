@@ -17,7 +17,7 @@
   nav.pdf           — 4 страницы A4 для панелей навигации (сессия 2.4): слои /OCProperties на стр. 1 (вложенные,
                       выключенный, заблокированный, группа-подпись), вложения /EmbeddedFiles (inner.pdf, notes.txt,
                       report.docx, setup.exe) и /FileAttachment на стр. 2, назначения /Names /Dests и /Dests
-                      каталога, закладки с /C и /F, переходы /Trans и /Dur, /OpenAction, /DisplayDocTitle;
+                      каталога, закладки с /C и /F, переходы /Trans и /Dur, /PageLabels i–iv, /OpenAction, /DisplayDocTitle;
   nav.json          — что в nav.pdf (слои, вложения, назначения, закладки, переходы).
 Ожидания раскладки (layout_expected.json рядом) посчитаны вручную по правилам ui/view/layout.h — не этим
 скриптом.
@@ -271,6 +271,7 @@ def nav(out: Path) -> dict:
     pages[1].Trans = Dictionary(Type=Name.Trans, S=Name.Dissolve, D=0.5)
     pages[2].Trans = Dictionary(Type=Name.Trans, S=Name.Wipe, Di=270, D=1)
     pages[2].Dur = 3
+    pdf.Root.PageLabels = Dictionary(Nums=Array([0, Dictionary(S=Name.r)]))  # i, ii, iii, iv
     pdf.Root.OpenAction = Array([pages[1], Name.Fit])
     pdf.Root.ViewerPreferences = Dictionary(DisplayDocTitle=True)
     doc.save(out)
@@ -290,6 +291,7 @@ def nav(out: Path) -> dict:
         "destinations": dests,
         "outline_top": ["Слои", "Глава 1", "Глава 2", "Итоги"],
         "open_action": {"page": 1, "fit": "Fit"},
+        "page_labels": ["i", "ii", "iii", "iv"],
         "transitions": [{"page": 1, "type": "Dissolve", "duration": 0.5},
                         {"page": 2, "type": "Wipe", "duration": 1, "direction": 270, "dur": 3}],
     }

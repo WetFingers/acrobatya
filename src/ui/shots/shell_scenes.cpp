@@ -23,6 +23,7 @@
 #include "ui/view/page_view.h"
 #include "ui/view/tile_painter.h"
 #include "ui/view/tool_controller.h"
+#include "ui/widgets/tool_button.h"
 
 namespace ot::ui {
 

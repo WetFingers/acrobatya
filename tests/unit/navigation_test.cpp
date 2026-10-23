@@ -108,6 +108,16 @@ TEST(outlines, style_color_and_open_state) {
     EXPECT_EQ(sub[1].title, "Раздел 2.2");
 }
 
+TEST(outlines, image_document_has_no_outline_iterator) {
+    // Картинка: у MuPDF нет итератора закладок (NULL) — пусто, без падения; остальные панели тоже пусты.
+    auto doc = Document::openOrThrow(fixture("images/chart.png"));
+    EXPECT_FALSE(ot::outline::hasOutline(*doc));
+    EXPECT_TRUE(ot::outline::children(*doc).empty());
+    EXPECT_TRUE(ot::dests::list(*doc).empty());
+    EXPECT_TRUE(ot::attachments::list(*doc).empty());
+    EXPECT_TRUE(ot::layers::list(*doc).empty());
+}
+
 TEST(outlines, none_in_blank) {
     auto doc = Document::openOrThrow(ot::test::sourceDir() / "tests" / "data" / "mini" / "blank-a4.pdf");
     EXPECT_FALSE(ot::outline::hasOutline(*doc));

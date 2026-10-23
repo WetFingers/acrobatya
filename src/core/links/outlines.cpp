@@ -45,8 +45,8 @@ bool hasOutline(Document& doc) {
     IteratorHandle it(ctx);
     int has = 0;
     mu::call(ctx, [&] {
-        it.reset(fz_new_outline_iterator(ctx, doc.handle()));
-        has = fz_outline_iterator_item(ctx, it) != nullptr ? 1 : 0;
+        it.reset(fz_new_outline_iterator(ctx, doc.handle()));  // NULL — формат без закладок (картинки)
+        has = it && fz_outline_iterator_item(ctx, it) != nullptr ? 1 : 0;
     });
     return has != 0;
 }
@@ -57,8 +57,8 @@ std::vector<Item> children(Document& doc, const std::vector<int>& path) {
     int at = 0;
     mu::call(ctx, [&] {
         it.reset(fz_new_outline_iterator(ctx, doc.handle()));
-        at = fz_outline_iterator_item(ctx, it) != nullptr ? FZ_OUTLINE_ITERATOR_AT_ITEM
-                                                          : FZ_OUTLINE_ITERATOR_AT_EMPTY;
+        at = it && fz_outline_iterator_item(ctx, it) != nullptr ? FZ_OUTLINE_ITERATOR_AT_ITEM
+                                                                : FZ_OUTLINE_ITERATOR_AT_EMPTY;
     });
     // Спуск по пути: на уровне — index шагов вперёд, затем к первому ребёнку.
     for (const int index : path) {

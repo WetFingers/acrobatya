@@ -15,6 +15,7 @@
 #include "core/links/layers.h"
 #include "core/mu/call.h"
 #include "core/mu/context.h"
+#include "core/pages/labels.h"
 #include "core/render/display_cache.h"
 #include "core/render/fit.h"
 #include "core/render/renderer.h"
@@ -53,6 +54,29 @@ quint64 layersHashOf(Document& doc) {
     } catch (const MuError& e) {
         spdlog::warn("layers: cannot read optional content: {}", e.what());
         return 0;
+    }
+}
+
+// Логические номера страниц; испорченное дерево /PageLabels — номера.
+QStringList pageLabelsOf(Document& doc) {
+    QStringList out;
+    try {
+        for (const std::string& label : pages::pageLabels(doc)) {
+            out << QString::fromStdString(label);
+        }
+    } catch (const MuError& e) {
+        spdlog::warn("page labels: {}", e.what());
+        out.clear();
+    }
+    return out;
+}
+
+InitialView initialViewOf(Document& doc) {
+    try {
+        return readInitialView(doc);
+    } catch (const MuError& e) {
+        spdlog::warn("initial view: {}", e.what());
+        return {};
     }
 }
 
@@ -430,6 +454,8 @@ void DocumentSession::afterSave(const SaveReport& report) {
             s.pageCount = doc_->pageCount();
             s.pageSizes = layoutSizes(*doc_, s.pageCount);
             s.pageLayout = QString::fromStdString(props::pageLayout(*doc_));
+            s.pageLabels = pageLabelsOf(*doc_);
+            s.initial = initialViewOf(*doc_);
             const QString docPath = QString::fromStdWString(doc_->path().wstring());
             const std::lock_guard lock(mutex_);
             summary_ = s;
@@ -455,9 +481,11 @@ void DocumentSession::refreshLayout() {
     try {
         const int count = doc_->pageCount();
         QVector<QSizeF> sizes = layoutSizes(*doc_, count);
+        QStringList labels = pageLabelsOf(*doc_);
         const std::lock_guard lock(mutex_);
         summary_.pageCount = count;
         summary_.pageSizes = std::move(sizes);
+        summary_.pageLabels = std::move(labels);
     } catch (const MuError&) {  // NOLINT(bugprone-empty-catch): раскладка останется прежней, ошибку
                                 // страницы покажет её рендер
     }
@@ -559,6 +587,8 @@ void DocumentSession::install(std::unique_ptr<Document> doc, OpenSummary& s, con
             s.pageCount = doc->pageCount();
             s.pageSizes = layoutSizes(*doc, s.pageCount);
             s.pageLayout = QString::fromStdString(props::pageLayout(*doc));
+            s.pageLabels = pageLabelsOf(*doc);
+            s.initial = initialViewOf(*doc);
             layersHash_.store(layersHashOf(*doc));
             doc_ = std::shared_ptr<Document>(std::move(doc));
         } catch (const MuError& e) {

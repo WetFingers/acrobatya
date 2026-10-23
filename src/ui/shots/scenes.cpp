@@ -77,6 +77,9 @@ const std::vector<Scene>& sceneTable() {
         for (Scene& s : paneScenes()) {  // 2.4: pane-thumbnails, pane-bookmarks, pane-layers…
             table.push_back(std::move(s));
         }
+        for (Scene& s : statusScenes()) {  // 2.4: status-bar, message-bar-stack
+            table.push_back(std::move(s));
+        }
         return table;
     }();
     return SCENES;

@@ -27,6 +27,7 @@
 #include <exception>
 
 #include "services/app_info.h"
+#include "services/background_tasks.h"
 #include "services/commands.h"
 #include "services/convert_ops.h"
 #include "services/document_registry.h"
@@ -39,8 +40,10 @@
 #include "ui/shell/document_view.h"
 #include "ui/shell/global_bar.h"
 #include "ui/shell/home/home_page.h"
+#include "ui/shell/message_bar.h"
 #include "ui/shell/nav_pane.h"
 #include "ui/shell/quick_bar.h"
+#include "ui/shell/status_bar.h"
 #include "ui/shell/tool_panel.h"
 #include "ui/theme/theme.h"
 #include "ui/tools/tool_registry.h"
@@ -135,6 +138,10 @@ MainWindow::MainWindow(QWidget* parent)
         }
     });
     column->addWidget(row, 1);
+    // Строка состояния — во всю ширину окна под панелями (эталон 6.1).
+    status_ = new StatusBar(shell);
+    column->addWidget(status_);
+    connect(&BackgroundTasks::shared(), &BackgroundTasks::changed, this, &MainWindow::updateStatusVisibility);
     setCentralWidget(shell);
 
     DocumentTabs* bar = globalBar_->tabs();
@@ -160,6 +167,7 @@ MainWindow::MainWindow(QWidget* parent)
 
 // Вкладки уходят раньше пула и кеша: вид отменяет свои тайлы, сессия закрывается в своём потоке.
 MainWindow::~MainWindow() {
+    disconnect(&BackgroundTasks::shared(), nullptr, this, nullptr);  // реестр задач живёт дольше окна
     while (documentCount() > 0) {
         DocumentView* view = document(0);
         const quint64 id = view->id();
@@ -218,16 +226,22 @@ bool MainWindow::openFile(const QString& path, int page) {
     view->setFloatingBar(quick);
     quick->setVisible(!panelsHidden_);
     connect(&view->view().tools(), &ToolController::toolChanged, this, &MainWindow::updateActions);
+    bool placed = page >= 0;
     if (page >= 0) {
         view->setInitialPage(page);
     } else if (restoreLastViewEnabled()) {
         if (const std::optional<LastView> last = RecentFiles::shared().lastView(view->path())) {
             view->setInitialView(*last);  // «Восстанавливать последний вид при открытии» (как в Acrobat)
+            placed = true;
         }
+    }
+    if (!placed && opened.summary.initial.openAction) {
+        view->setInitialAction(*opened.summary.initial.openAction);  // /OpenAction файла
     }
     RecentFiles::shared().touch(view->path(), opened.summary.pageCount);
     const int index = tabs().addDocument(opened.id, view->title(), view->path());
     showDocument(index);
+    applyInitialView(view, opened.summary);
     emit documentOpened(view);
     return true;
 }
@@ -278,6 +292,8 @@ void MainWindow::showHome() {
     home_->setFocus();
     toolPanel_->hide();
     navPane_->setShown(false);
+    status_->setDocument(nullptr);
+    updateStatusVisibility();
     ToolRegistry::instance().setView(nullptr);
     globalBar_->setHomeActive(true);
     retranslateTitle();
@@ -298,6 +314,8 @@ void MainWindow::showDocument(int index) {
     toolPanel_->setVisible(!panelsHidden_);
     navPane_->setDocument(view);
     navPane_->setShown(!panelsHidden_);
+    status_->setDocument(view);
+    updateStatusVisibility();
     QTimer::singleShot(0, this, &MainWindow::applyNavWidth);
     ToolRegistry::instance().setView(view);
     globalBar_->setHomeActive(false);
@@ -417,6 +435,33 @@ void MainWindow::releaseView(DocumentView* view) {
     if (navPane_ != nullptr && navPane_->document() == view) {
         navPane_->setDocument(nullptr);
     }
+    if (status_ != nullptr && status_->document() == view) {
+        status_->setDocument(nullptr);
+    }
+}
+
+// Строка состояния: с документом — всегда (кроме F8); на Главной — только пока идёт фоновая задача.
+void MainWindow::updateStatusVisibility() {
+    status_->setVisible(!panelsHidden_ && (!isHomeShown() || !BackgroundTasks::shared().isEmpty()));
+}
+
+// Начальный вид файла (view-47): /OpenAction — если страницу не задали и последний вид не восстановлен;
+// /PageMode — панель навигации (закладки, миниатюры, слои, вложения); /PageLayout применяет PageView;
+// DisplayDocTitle — заголовок окна (retranslateTitle). Hide* из /ViewerPreferences не применяются (окно
+// программы — не встроенный просмотр).
+void MainWindow::applyInitialView(DocumentView* view, const OpenSummary& summary) {
+    const InitialView& v = summary.initial;
+    const QString mode = QString::fromStdString(v.pageMode);
+    const std::pair<const char*, const char*> panes[] = {{"UseOutlines", "bookmarks"},
+                                                         {"UseThumbs", "thumbnails"},
+                                                         {"UseOC", "layers"},
+                                                         {"UseAttachments", "attachments"}};
+    for (const auto& [pdfMode, pane] : panes) {
+        if (mode == QLatin1String(pdfMode)) {
+            navPane_->showPane(QLatin1String(pane));
+        }
+    }
+    Q_UNUSED(view);
 }
 
 // Ширина панели навигации — из settings.ini (её пишет перетаскивание разделителя).
@@ -443,8 +488,9 @@ void MainWindow::openAttachmentPdf(const QString& path, const QString& title) {
         return;
     }
     if (DocumentView* view = currentDocument()) {
-        MessageBar* bar = view->addMessage(
-            Tone::Warn,
+        // Вид полосы — защищённый просмотр: его ограничения для вложений добавит 2.5b.
+        MessageBar* bar = view->messageStack().showMessage(
+            MessageKind::ProtectedView,
             tr("Вложение «%1» открыто из временной папки: изменения в нём не попадут в исходный документ.")
                 .arg(title));
         bar->setObjectName(QStringLiteral("attachmentBar"));
@@ -558,7 +604,15 @@ void MainWindow::dropEvent(QDropEvent* event) {
 
 void MainWindow::retranslateTitle() {
     DocumentView* view = currentDocument();
-    setWindowTitle(view == nullptr ? tr("АкроБатя") : tr("%1 — АкроБатя").arg(view->title()));
+    if (view == nullptr) {
+        setWindowTitle(tr("АкроБатя"));
+        return;
+    }
+    // /ViewerPreferences /DisplayDocTitle — заголовок документа вместо имени файла.
+    const OpenSummary s = view->session().summary();
+    const QString title =
+        s.initial.displayDocTitle ? QString::fromStdString(s.initial.title).trimmed() : QString();
+    setWindowTitle(tr("%1 — АкроБатя").arg(title.isEmpty() ? view->title() : title));
 }
 
 void MainWindow::openDialog() {
@@ -623,14 +677,20 @@ void MainWindow::saveAsPdf(DocumentView* view) {
         return;
     }
     QPointer<MainWindow> self(this);
+    // Фоновая задача строки состояния: отмена прерывает запись между страницами.
+    std::shared_ptr<DocumentSession> session = view->sessionPtr();
+    const quint64 task = BackgroundTasks::shared().start(
+        tr("Сохранение «%1» как PDF").arg(QFileInfo(file).fileName()), [session] { session->cancelAll(); });
     convert::saveAsPdf(view->session(), file)
         .then(this,
-              [self, file] {
+              [self, file, task] {
+                  BackgroundTasks::shared().finish(task);
                   if (self != nullptr) {
                       self->openFile(file);
                   }
               })
-        .onFailed(this, [self, file] {
+        .onFailed(this, [self, file, task] {
+            BackgroundTasks::shared().finish(task);
             if (self != nullptr) {
                 Toast::notify(self, tr("Не удалось сохранить «%1».").arg(QFileInfo(file).fileName()),
                               Tone::Danger);

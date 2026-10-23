@@ -23,6 +23,7 @@
 #include "services/document_session.h"
 #include "services/render_pool.h"
 #include "ui/shell/document_view.h"
+#include "ui/shell/status_bar.h"
 #include "ui/theme/theme.h"
 #include "ui/view/page_view.h"
 
@@ -280,6 +281,7 @@ void ThumbnailsPane::rebind() {
     connect(&session, &DocumentSession::structureChanged, this, [this] {
         resetAll();
         if (view_ != nullptr) {
+            labels_ = StatusBar::useLogicalNumbers() ? view_->session().summary().pageLabels : QStringList();
             model_->reset(view_->view().pageCount());
         }
     });
@@ -303,6 +305,7 @@ void ThumbnailsPane::rebind() {
     connect(&v, &PageView::layoutChanged, this, queueFrames);
     connect(v.verticalScrollBar(), &QScrollBar::valueChanged, this, queueFrames);
     connect(v.horizontalScrollBar(), &QScrollBar::valueChanged, this, queueFrames);
+    labels_ = StatusBar::useLogicalNumbers() ? session.summary().pageLabels : QStringList();
     model_->reset(v.pageCount());
     syncCurrent(v.currentPage());
     updateFrames();

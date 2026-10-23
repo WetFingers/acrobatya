@@ -65,7 +65,7 @@ private slots:
         QCOMPARE(w.tabs().height(), 36);
         QCOMPARE(topLeft, QPoint(0, 48));
         QCOMPARE(panel.width(), 320);
-        QCOMPARE(panel.height(), 900 - 48);
+        QCOMPARE(panel.height(), 900 - 48 - 32);  // строка состояния 32 — во всю ширину (2.4)
         QTest::keyClick(&w, Qt::Key_F4, Qt::ShiftModifier);
         QVERIFY(panel.isCollapsed());
         QTRY_COMPARE(panel.width(), 48);
