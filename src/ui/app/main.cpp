@@ -11,6 +11,7 @@
 #include <QTimer>
 
 #include <cstdio>
+#include <cstdlib>
 #include <memory>
 
 #include <windows.h>
@@ -120,12 +121,16 @@ int main(int argc, char** argv) {
         qputenv("OTTISK_DATA_DIR", QFileInfo(opts.dataDir).absoluteFilePath().toUtf8());
     }
     // --script без --data-dir и OTTISK_DATA_DIR — свой временный каталог данных: сценарий не пишет в
-    // недавние, сеанс и настройки человека (CLAUDE.md, правило 4).
-    std::unique_ptr<QTemporaryDir> scriptData;
+    // недавние, сеанс и настройки человека (CLAUDE.md, правило 4). Удаляется в atexit, зарегистрированном до
+    // первого обращения к state.sqlite: обработчик идёт после деструкторов статиков (StateDb держит файл
+    // открытым).
     if (!opts.script.isEmpty() && qEnvironmentVariableIsEmpty("OTTISK_DATA_DIR")) {
-        scriptData =
-            std::make_unique<QTemporaryDir>(QDir::tempPath() + QStringLiteral("/AcroBatya-script-XXXXXX"));
-        qputenv("OTTISK_DATA_DIR", scriptData->path().toLocal8Bit());
+        QTemporaryDir scriptData(QDir::tempPath() + QStringLiteral("/AcroBatya-script-XXXXXX"));
+        scriptData.setAutoRemove(false);
+        static QString scriptDataPath;
+        scriptDataPath = scriptData.path();
+        std::atexit([] { QDir(scriptDataPath).removeRecursively(); });
+        qputenv("OTTISK_DATA_DIR", scriptDataPath.toLocal8Bit());
     }
     // Настройки — только INI в каталоге данных (эталон 4.7): и QSettings() без формата, и диалоги Qt.
     ot::Settings::installDefaultFormat();

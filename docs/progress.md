@@ -8,6 +8,19 @@
 Новые пункты — сверху, с номером сессии или рубежа. Ничего из этого не блокирует очередь: она работает на
 `Fake*`-реализациях и фикстурах, живая часть ждёт здесь (эталон 8.1 «Человек отдельно», 9.7).
 
+- **Сессия 2.4b · Установки и палитра команд на настоящем экране (к Р1)**: Ctrl+K и ⚙ — «Установки» окном поверх
+  главного (окно-модальное, по центру, тянется за угол); «Общие» → тема «Тёмная» и «Крупные элементы управления» →
+  «ОК» — окно перекрашивается и крупнеет сразу, без мерцания и обрезанных подписей, после перезапуска остаётся
+  тёмным и крупным (в `%LOCALAPPDATA%\AcroBatya\settings.ini` — `[%General] theme=dark, largeElements=true`; в реестре
+  `HKCU\Software\AcroBatya` новых значений нет); «Язык интерфейса» → English — меню и диалог меняют язык на лету (до
+  перевода 9.2 часть строк останется русской); «Отмена» и Esc ничего не меняют. Ctrl+Shift+P — палитра у верхнего
+  края окна: фокус сразу в поле, печать «режим чт» → Enter включает режим чтения; щелчок мимо палитры закрывает её;
+  заглушки серые. `AcroBatya.exe --self-check` из консоли (cmd и PowerShell, `$env:QT_QPA_PLATFORM=''`) печатает строки
+  в ту же консоль, код 0. Очередь проверила это под offscreen (`ui.preferences`, `ui.palette`, `unit.self_check`,
+  сцены `preferences-general`, `preferences-page-display`, `palette` и тёмные). Наблюдение для 9.x: файловый диалог
+  Qt без нативного (`DontUseNativeDialog` в тестах) пишет историю в `HKCU\Software\QtProject\OrganizationDefaults` —
+  у человека он уже есть; программа берёт нативный диалог, проверить, что после «Открыть…» ключ не растёт.
+
 - **Сессия 2.4 · Навигация, режимы и оболочка Windows на настоящем экране (к Р1)**: открыть
   `tests/fixtures/view/nav.pdf` — панель «Вложения»: двойной щелчок по `report.docx` спрашивает «Открыть вложение
   внешней программой?» и после «Открыть» запускает Word (или программу, связанную с .docx) с копией из
@@ -984,3 +997,96 @@
   status-bar, message-bar-stack, read-mode) — сняты и просмотрены: полоса 44 у правого края, панель 280, строка
   состояния 32 во всю ширину, логические номера «i», «ii», «1» под миниатюрами, «(4 из 12)», полосы по важности и
   тонам, режим чтения — только страница и полоса внизу, полный экран — слайд на чёрном, тёмная тема — токены.
+
+### 2026-10-24 · Сессия 2.4b · Установки, палитра команд и служебные режимы exe
+- Сделано:
+  1. **Установки и палитра команд:** `services/settings_keys.h` (все ключи settings.ini с умолчаниями: `BoolKey`,
+     `IntKey` с пределами, `StringKey` с `choices`, `ListKey`; группы категорий Установок и состояния окна) и
+     `services/settings.h` (`Settings::get/set` — чужое значение → умолчание, `raw()`, `installDefaultFormat` — QSettings
+     без формата тоже INI в каталоге данных, `migrate` — `meta/version` 0 → 1); ключи 2.3–2.4 (restoreSession,
+     restoreLastView, tools/pinned, quickbar/order, hotkeys, navpane, window, fullScreen, trust, логические номера)
+     переехали туда, классовые константы — их псевдонимы. `ui/shell/preferences/` — «Установки» (Ctrl+K, ⚙): 16
+     категорий эталона 3.18 по-русски, живые «Общие» (язык, тема, «Крупные элементы управления», при запуске,
+     однобуквенные ускорители, «Очистить список недавних файлов»), «Просмотр страницы», «Документы», остальные —
+     заглушки с версией; «ОК» → `MainWindow::applyPreferences` (тема, масштаб, язык, клавиши, строка состояния без
+     перезапуска), «Отмена»/Esc — ничего; тема и «Крупные элементы» читаются при запуске (`--theme`/`--scale` важнее).
+     `ui/shell/command_palette` (Ctrl+Shift+P: фильтр по подстроке названия и id, ранги, ↑↓ PgUp PgDn, Enter, заглушки
+     серые с версией), `ui/widgets/row_delegate` (строка 32 по `rowColors`), токены `dialogWidth/Height/Nav`,
+     `paletteWidth/Rows`, `kLargeElementsScale`. Страж `unit.guard.no_registry` ловит `QSettings(организация…)`.
+     Сцены `preferences-general`, `preferences-page-display`, `palette`. `unit.settings` (6), `ui.preferences` (4),
+     `ui.palette` (3). `OT_FEATURE`: view-25, ocr-42.
+  2. **ScriptRunner и `--script`:** `services/script_runner.h` (шаги `{cmd, args, name}`, `registerAction(id, schema,
+     fn)` — подмножество JSON Schema, все шаги проверяются до выполнения, ошибка «step N cmd "name": …», `${VAR}`,
+     пути от сценария), `ui/app/script_actions` (doc.open{path,password,page}, doc.save/saveCopy{path,mode}, doc.close,
+     doc.undo/redo{n}, doc.setProperty{key,value}, view.zoom/zoomFit/zoomIn/zoomOut/page/layout/rotate, command.run{id},
+     shot{name}, wait{ms}; помощники `script::await/settle/document/tilesReady` для сессий-владельцев), режим
+     `AcroBatya.exe --script файл [--out] [--data-dir]` (временный каталог данных, `FakeShellLauncher`, код 0/1);
+     `Saver::saveCopy` + `DocumentSession::saveCopy`, `services/props_ops.h`, `MainWindow::openFile(…, password)`;
+     `tests/scripts/` (open_zoom_shot, property_undo, unknown_command), рецепт «Новое действие `--script`» в карте.
+     `unit.script_runner` (5), `unit.saver.save_copy_*`, `unit.autosave.properties_edit_with_xmp_stream_is_recovered`,
+     `ui.script_runner` (5: сценарий снимает PNG 1440 × 900, неизвестный cmd — имя шага, `doc.setProperty` →
+     `doc.undo` → копия = исходник по `qpdf --json`, exe — коды 0 и 1).
+  3. **`--open-all`, `--smoke`, `--self-check`:** `ui/app/cli` — `isConsoleMode` (`--version`, `--self-check`,
+     `--register-notify`, `--shots-list`, `--open-all` на QCoreApplication без QPA, журнал выключен без `--log`),
+     `runOpenAll` (все *.pdf с подпапками, код = число сбоев нашего кода, `OTTISK_OPEN_ALL_TRACE=1`),
+     `runRegisterNotify` — заглушка до 9.1; `services/open_probe.h` (открыть → стр. 1 в 32 × 32 → закрыть со сроком
+     20 с); `--self-check` целиком (`services/app_info`): каталог данных пишется и ASCII, плагины Qt по файлам в путях
+     поиска Qt, MuPDF, tessdata — загрузкой rus (`core/ocr/tessdata.h`), qpdf `--version`, переводы `:/i18n`,
+     ассоциация .pdf (сведения). `--smoke N` — как было (окно N секунд). `unit.self_check` (4: exe с
+     `QT_QPA_PLATFORM=bogus` → код 0), `ui.open_all` (3: свои мутанты и 100 мутантов engine — 0 сбоев, exe — код 0,
+     нет папки — 1).
+- Решения:
+  - **Ключи — структуры с умолчаниями, а не строки** (`settings_keys.h`): `Settings::get(settings::kTheme)` проверяет
+    тип, предел и `choices`; классовые `kOpenKey`, `kRestoreViewKey`… оставлены псевдонимами — тесты и код 2.3–2.4 не
+    переписывались. Ширина правой панели — `IntKey` без пределов: пределы дают токены (× 1,25 у «Крупных элементов»).
+  - **Установки: живые три категории**, у «Просмотра страницы» сейчас действуют логические номера; раскладка и масштаб
+    по умолчанию, сглаживание, тонкие линии, рамки пишутся в ini, действие — 2.5b (так в её пункте); автосохранение,
+    восстановление и PDF/A на странице «Документы» подключает 2.5. Стадии заглушек: Комментирование 5, Формы 6,
+    Редактирование содержимого 3, Подписи 4, Диспетчер доверия 7, Чтение и Сканирование и OCR 8, Конвертация 7, Поиск,
+    Печать, Горячие клавиши, Панель быстрых действий, О программе — 9 (9.2 «Установки целиком»). «ОК» применяет, а
+    не живой предпросмотр (как Acrobat). Диалог и палитра открываются `open()`: `--script` и тесты не стоят на `exec()`.
+  - **Палитра** скрывает команду самой палитры и команды режимов вне режима; «Enter» — первая выполнимая строка.
+    Окно без рамки — своя волосяная рамка `border`. Сцены встраивают окна верхнего уровня виджетом с фоном и тенью
+    (токены `shadow*`) — это то, что дорисовала бы система, а не правка вида в сцене.
+  - **`--script`:** движок — в services (только QtCore), базовые действия — в `ui/app/script_actions.cpp` (им нужно
+    окно); действия инструментов сессии-владельцы регистрируют строкой в конце `registerBaseActions`. Добавлены
+    `command.run{id}` (любая команда реестра окна — без своего действия на каждую) и `wait{ms}`. Сценарий без
+    `--data-dir` — во временном каталоге данных (не трогает недавние и настройки человека), удаляется в `atexit`.
+  - **`doc.saveCopy` — `Saver::saveCopy` в ядре:** запись открытого документа перестраивает его xref и сбрасывает
+    журнал, поэтому копия пишется вторым документом из снимка журнала (`Autosave` во временной папке без копии
+    исходника); документ остаётся на своём файле с правками и историей, копия в свой файл — `SameAsDocument`, без
+    файла — `NoPath`. «Сохранить как копию» в интерфейсе — 2.5 (save_flow) поверх этого.
+  - **`--open-all`: «сбой» — только ошибка нашего кода** (исключение не из MuPDF, ARGUMENT при открытии); битые,
+    зашифрованные, «неподдерживаемые» и ошибки страницы 1 открытого файла — отказ (так программа и должна отвечать),
+    падение процесса — его код выхода. Проба — `services/open_probe.cpp` (ui не держит MuPDF).
+  - **`--self-check`:** плагины ищутся в `QCoreApplication::libraryPaths()` (в дереве сборки `platforms/` лежит рядом с
+    exe, в установке — `plugins/` по qt.conf); tessdata — настоящей загрузкой через `ocr_init`/`ocr_fin` MuPDF
+    (внутренние функции с C-связыванием из libmupdf.lib, без патча; память Leptonica — через контекст MuPDF);
+    ассоциация — `AssocQueryStringW` (чтение, не реестр напрямую), в итог не входит.
+- Подводные камни:
+  - **Восстановление автосохранения теряло правку свойств** (`Document::setProperties` → поток XMP > 1 КБ):
+    `pdf_parse_journal_obj` MuPDF 1.28.5 читает поток журнала фильтром поиска endstream с длиной 0, и на потоке в
+    памяти тот отдаёт 1025 байт из 1371 → «expected 'endstream' keyword». Свой `parseJournalObject` в `document.cpp`:
+    поток по `/Length` фрагмента с проверкой «перевод строки + endstream», иначе поиском; `newobj` — сам. Тест
+    `unit.autosave.properties_edit_with_xmp_stream_is_recovered`. Нашёл сценарий `property_undo.json`.
+  - **Qt пишет группу `general` как `[%General]`** (`[General]` в INI Qt — ключи без группы); чтение через QSettings
+    работает, в файле — так.
+  - **`QSettings(организация, …)` всегда NativeFormat** — `setDefaultFormat` действует только на `QSettings()` и
+    `QSettings(scope)`; файловый диалог Qt без нативного пишет `HKCU\Software\QtProject\OrganizationDefaults`
+    (ключ у человека уже был — строка в «Нужна ручная проверка»).
+  - `qputenv` на Windows передаёт байты в ANSI: кириллический путь в `OTTISK_DATA_DIR` из UTF-8 читается
+    кракозябрами (каталоги данных и так только ASCII; тест берёт `QTemporaryDir`).
+  - Unity-сборка: одинаковые помощники в анонимных пространствах двух страниц — «шаблон уже определён»; общие —
+    в `PreferencesPage`. `QStringBuilder` в тернарном операторе с разными типами ветвей не компилируется — `QString(…)`.
+  - Heredoc Bash в этой среде съедает обратные слэши (`'\r'` в C++ стал настоящим CR) — скрипты правок только через
+    Write в `build/scratch/`.
+  - Статический `StateDb` держит `state.sqlite` открытым до конца процесса — `QTemporaryDir` в `main` не мог удалить
+    каталог данных сценария; удаление — `atexit`, зарегистрированный до первого обращения к базе.
+- Замеры: `verify.py` 30 с (307 тестов); `--self-check` 0,14 с (Debug, с загрузкой rus); `--open-all` по 100 мутантам —
+  3,8 с (83 открыто, 17 отказов, 0 сбоев); `--script open_zoom_shot.json` — 2,0 с; `ui.script_runner` 3,3 с,
+  `ui.open_all` 6,4 с, `unit.self_check` 0,2 с; инкремент `ui_tests` 10–33 с, `unit_tests` 6–16 с, `AcroBatya` 2–13 с.
+- Проверки: `verify.py` зелёный (307 тестов); стражи (no_registry с новым правилом, i18n, boundaries, fztry, format,
+  scope, hotkeys) зелёные; сцены: preferences-general, preferences-page-display, palette и тёмные preferences-general,
+  palette — сняты и просмотрены: диалог 880 × 600 по центру окна с тенью, категории 220 слева строками 32 (выбранная —
+  accentSoft), заголовок категории 13/600, разделы листа свойств, «ОК»/«Отмена»; палитра 560 у верхнего края, строки
+  с клавишами справа, заглушка серая «появится в версии 0.7»; тёмная тема — токены, кириллица в Segoe UI.
