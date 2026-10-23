@@ -7,6 +7,8 @@
 #include <thread>
 #include <vector>
 
+#include "core/doc/journal.h"
+
 extern "C" {
 #include <mupdf/fitz.h>
 }
@@ -62,8 +64,12 @@ public:
     PageHandle page(int index) const;
     // Display list страницы из кеша документа (строится с cookie задачи — отмена прерывает построение).
     std::shared_ptr<const DisplayList> displayList(int index, bool annotations = true) const;
-    // Правка затронула страницу: её display list сбрасывается, после задачи — сигнал pageChanged(index).
+    // Правка затронула страницу: её display list сбрасывается (и страница записывается в шаг истории), после
+    // задачи — сигнал pageChanged(index).
     void touchPage(int index);
+    // Структурная правка (страницы добавлены, удалены, переставлены): все display lists, шаг истории «все
+    // страницы», после задачи — пересчёт раскладки (summary()) и documentChanged.
+    void touchAllPages();
     DocumentSession& session() const noexcept { return session_; }
 
 private:
@@ -73,6 +79,8 @@ private:
     DocumentSession& session_;
     fz_cookie* cookie_;
     std::vector<int> touched_;
+    bool touchedAll_ = false;
+    std::unique_ptr<Journal::Operation> op_;  // операция правки (edit) — только в её задаче
 };
 
 }  // namespace ot

@@ -15,13 +15,16 @@
 #include <filesystem>
 #include <latch>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
 
 #include "core/doc/document.h"
+#include "core/mu/call.h"
 #include "core/mu/context.h"
 #include "core/mu/error.h"
+#include "core/mu/handles.h"
 #include "core/render/renderer.h"
 #include "core/util/features.h"
 #include "core/util/paths.h"
@@ -33,6 +36,7 @@
 
 extern "C" {
 #include <mupdf/fitz.h>
+#include <mupdf/pdf.h>
 }
 
 using ot::DocumentRegistry;
@@ -358,6 +362,113 @@ TEST(document_session, edit_bumps_revision_and_signals_pages) {
     const std::lock_guard lock(m);
     EXPECT_EQ(pages, (std::vector<int>{2, 0}));
     EXPECT_EQ(revisions, (std::vector<quint64>{1}));
+}
+
+namespace {
+
+// Правка /Rotate страницы внутри задачи edit (операция журнала уже открыта сессией).
+void rotatePage(TaskContext& tc, int page, int rotate) {
+    fz_context* ctx = tc.context();
+    pdf_document* pdf = pdf_document_from_fz_document(ctx, tc.document().handle());
+    ot::mu::call(
+        ctx, [&] { pdf_dict_put_int(ctx, pdf_lookup_page_obj(ctx, pdf, page), PDF_NAME(Rotate), rotate); });
+    tc.touchPage(page);
+}
+
+int rotationOf(DocumentSession& s, int page) {
+    return s.postSync([page](TaskContext& tc) { return tc.document().pageRotation(page); });
+}
+
+}  // namespace
+
+TEST(document_session, edit_goes_through_journal_and_undo_redo_restore) {
+    OT_FEATURE("edit-13");
+    ot::test::qtApp();
+    Files files;
+    DocumentSession s;
+    ASSERT_TRUE(s.open(qpath(files.pdf(3))));
+    std::mutex m;
+    std::vector<int> pages;
+    int undoSignals = 0;
+    QObject::connect(
+        &s, &DocumentSession::pageChanged, &s,
+        [&](int p) {
+            const std::lock_guard lock(m);
+            pages.push_back(p);
+        },
+        Qt::DirectConnection);
+    QObject::connect(
+        &s, &DocumentSession::undoStateChanged, &s,
+        [&] {
+            const std::lock_guard lock(m);
+            ++undoSignals;
+        },
+        Qt::DirectConnection);
+    EXPECT_FALSE(s.undoState().canUndo);
+    s.edit(QStringLiteral("Rotate page"), [](TaskContext& tc) { rotatePage(tc, 1, 90); }).waitForFinished();
+    EXPECT_EQ(rotationOf(s, 1), 90);
+    EXPECT_EQ(s.revision(), 1u);
+    ot::UndoState state = s.undoState();
+    EXPECT_TRUE(state.canUndo);
+    EXPECT_FALSE(state.canRedo);
+    EXPECT_EQ(state.undoName, QStringLiteral("Rotate page"));
+    {
+        const std::lock_guard lock(m);
+        pages.clear();
+    }
+    EXPECT_TRUE(s.undo().result());
+    EXPECT_EQ(rotationOf(s, 1), 0);
+    EXPECT_EQ(s.revision(), 2u);
+    state = s.undoState();
+    EXPECT_FALSE(state.canUndo);
+    EXPECT_TRUE(state.canRedo);
+    EXPECT_EQ(state.redoName, QStringLiteral("Rotate page"));
+    EXPECT_FALSE(s.undo().result());  // нечего отменять
+    EXPECT_TRUE(s.redo().result());
+    EXPECT_EQ(rotationOf(s, 1), 90);
+    EXPECT_EQ(s.undoState().undoName, QStringLiteral("Rotate page"));
+    const std::lock_guard lock(m);
+    EXPECT_EQ(pages, (std::vector<int>{1, 1}));  // страница шага — после undo и после redo
+    EXPECT_GE(undoSignals, 3);
+}
+
+TEST(document_session, failed_edit_leaves_document_untouched) {
+    ot::test::qtApp();
+    Files files;
+    DocumentSession s;
+    ASSERT_TRUE(s.open(qpath(files.pdf(2))));
+    QFuture<void> bad = s.edit(QStringLiteral("Broken"), [](TaskContext& tc) {
+        rotatePage(tc, 0, 180);
+        throw std::runtime_error("edit failed");
+    });
+    EXPECT_EQ(futureErrorKind(bad), ErrorKind::Other);
+    EXPECT_EQ(rotationOf(s, 0), 0);
+    EXPECT_FALSE(s.undoState().canUndo);
+    EXPECT_EQ(s.revision(), 0u);
+}
+
+TEST(document_session, structural_edit_and_its_undo_refresh_layout) {
+    ot::test::qtApp();
+    Files files;
+    DocumentSession s;
+    ASSERT_TRUE(s.open(qpath(files.pdf(3))));
+    s.edit(QStringLiteral("Insert page"), [](TaskContext& tc) {
+         fz_context* ctx = tc.context();
+         pdf_document* pdf = pdf_document_from_fz_document(ctx, tc.document().handle());
+         ot::mu::PdfObjHandle page(ctx);
+         ot::mu::call(ctx, [&] {
+             page.reset(pdf_add_page(ctx, pdf, fz_make_rect(0, 0, 300, 400), 0, nullptr, nullptr));
+             pdf_insert_page(ctx, pdf, 0, page);
+         });
+         tc.touchAllPages();
+     }).waitForFinished();
+    EXPECT_EQ(s.pageCount(), 4);
+    EXPECT_EQ(s.pageSizePoints(0), QSizeF(300, 400));
+    EXPECT_TRUE(s.undo().result());
+    EXPECT_EQ(s.pageCount(), 3);
+    EXPECT_EQ(s.pageSizePoints(0), QSizeF(595, 842));
+    EXPECT_TRUE(s.redo().result());
+    EXPECT_EQ(s.pageCount(), 4);
 }
 
 TEST(document_session, post_sync_inside_task_runs_inline) {

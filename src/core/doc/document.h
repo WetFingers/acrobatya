@@ -4,6 +4,8 @@
 // Документ живёт в своём контексте — клоне базового (по умолчанию MuContext::global()): общий store и
 // замки, свой стек ошибок. Поток: один документ — один поток одновременно (правило MuPDF); синхронный.
 // PDF правится и сохраняется; XPS/EPUB/CBZ/FB2/изображения/TXT/HTML — только просмотр (isPdf() == false).
+// У PDF журнал правок MuPDF включается сразу при открытии (эталон 4.3): правка — только внутри
+// Journal::Operation (core/doc/journal.h), история — undoStack().
 #pragma once
 
 #include <filesystem>
@@ -20,6 +22,7 @@ namespace ot {
 
 class MuContext;
 class Document;
+class UndoStack;
 
 struct PageSize {
     float width = 0;  // в пунктах (1/72 дюйма), с учётом /Rotate
@@ -100,6 +103,9 @@ public:
     bool authenticate(const std::string& password);
 
     bool isPdf() const noexcept;
+    // Журнал правок включён (PDF); история undo/redo — undoStack() (не PDF — std::logic_error).
+    bool journaled() const noexcept { return undo_ != nullptr; }
+    UndoStack& undoStack();
     bool repaired() const;  // pdf_was_repaired: файл чинили при открытии или позже
     bool isPdfA() const;
     bool isSigned() const;
@@ -116,8 +122,10 @@ public:
     PageSize pageSize(int index) const;
     Bitmap renderPage(int index, const RenderOptions& options = {}) const;
 
-    // Сериализация PDF (только для документов PDF) — для тестов и «Сохранить как» этапа 0.
-    std::string savePdfToMemory() const;
+    // Полная запись PDF в память (только PDF) — для тестов. Запись меняет xref документа (сплошная таблица,
+    // инкрементальные секции считаются сохранёнными), и прежний журнал отменять уже нельзя: история undo
+    // сбрасывается. Сохранение в файл — Saver (с переоткрытием).
+    std::string savePdfToMemory();
 
     const std::filesystem::path& path() const noexcept { return path_; }
     fz_document* handle() const noexcept { return doc_; }
@@ -132,6 +140,7 @@ private:
     std::string memory_;  // данные openMemory живут, пока жив документ
     std::filesystem::path path_;
     bool ownerAuthenticated_ = false;
+    std::unique_ptr<UndoStack> undo_;  // журнал PDF (pdf_enable_journal)
 };
 
 }  // namespace ot

@@ -2,7 +2,9 @@
 // с собственной очередью задач (std::deque + условная переменная, не QEventLoop в потоке — проще отмена и
 // приоритеты). Всё, что трогает fz_document, fz_page и pdf_*, идёт задачей в этом потоке:
 //   post(fn, priority) → QFuture<T> (через QPromise); fn(TaskContext&) выполняется в потоке документа;
-//   edit(name, fn)      → правка: после неё revision++ и сигналы documentChanged, pageChanged;
+//   edit(name, fn)      → правка: fn идёт внутри Journal::Operation(name) (эталон 4.3; исключение —
+//                         pdf_abandon_operation, документ как был), после неё revision++, documentChanged,
+//                         pageChanged по tc.touchPage(n); undo()/redo() — шаги истории той же очередью;
 //   postSync(fn)        → то же с ожиданием (тесты, простое окно этапа 0);
 //   cancelAll()         → задачи в очереди завершаются MuError(FZ_ERROR_ABORT), у выполняемой — abort = 1
 //                         в её fz_cookie (рендер прерывается между узлами display list).
@@ -29,6 +31,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <thread>
 #include <type_traits>
 #include <vector>
@@ -55,6 +58,16 @@ struct TaskFailed {
     ErrorKind kind = ErrorKind::Other;
     QString message;
     QString hint;
+};
+
+// Состояние истории правок для меню «Отменить: …» / «Вернуть: …» (имена — английские коды операций edit();
+// подпись по-русски выбирает ui).
+struct UndoState {
+    bool canUndo = false;
+    bool canRedo = false;
+    QString undoName;
+    QString redoName;
+    bool operator==(const UndoState&) const = default;
 };
 
 // Итог открытия (копия флагов OpenResult и размеры страниц — раскладка знает только их).
@@ -104,8 +117,10 @@ public:
     OpenSummary summary() const;
     int pageCount() const;
     QSizeF pageSizePoints(int index) const;
-    // Номер правки: растёт после каждой успешной edit() (поле revision ключа тайлов).
+    // Номер правки: растёт после каждой успешной edit(), undo() и redo() (поле revision ключа тайлов).
     quint64 revision() const noexcept { return revision_.load(); }
+    // История правок — из любого потока (обновляется после каждой правки, undo, redo, открытия).
+    UndoState undoState() const;
     // Задач в очереди и выполняется сейчас.
     int pendingTasks() const;
 
@@ -124,6 +139,11 @@ public:
 
     template <class F>
     auto edit(QString name, F&& fn) -> QFuture<std::invoke_result_t<std::decay_t<F>&, TaskContext&>>;
+
+    // Отменить / вернуть шаг истории (очередь правок): true — сделано, false — нечего. Страницы шага
+    // сбрасывают display lists и приходят pageChanged; структурный шаг пересчитывает раскладку (summary()).
+    QFuture<bool> undo();
+    QFuture<bool> redo();
 
     // С ожиданием: исключение задачи бросается здесь. Из потока документа (внутри задачи) выполняется сразу.
     template <class F>
@@ -144,10 +164,15 @@ signals:
     void pageChanged(int page);
     void documentChanged(quint64 revision);
     void taskFailed(const ot::TaskFailed& failure);
+    void undoStateChanged();
 
 private:
     friend class TaskContext;
+    // run — выполнить и положить результат или исключение в QPromise (без finish); finish — завершить QFuture
+    // после того, как цикл обновил revision, раскладку и историю (ждущий future видит их новыми);
+    // abandon — задача снята с очереди (MuError Aborted).
     using RunFn = std::function<std::exception_ptr(TaskContext&)>;
+    using FinishFn = std::function<void()>;
     using AbandonFn = std::function<void()>;
 
     struct Task {
@@ -155,18 +180,42 @@ private:
         TaskPriority priority = TaskPriority::Normal;
         bool isEdit = false;
         RunFn run;
+        FinishFn finish;
         AbandonFn abandon;
         std::shared_ptr<TaskCancel> cancel;
     };
 
-    void enqueue(QString name, TaskPriority priority, bool isEdit, RunFn run, AbandonFn abandon);
+    void enqueue(QString name, TaskPriority priority, bool isEdit, RunFn run, FinishFn finish,
+                 AbandonFn abandon);
     void loop();
     TaskContext* currentContext() const noexcept { return current_; }
 
-    template <class R, class F>
-    static RunFn wrap(const std::shared_ptr<QPromise<R>>& promise, F&& fn);
+    // Обещание задачи: результат ждёт finish — QFuture::result() возвращается, когда результат добавлен, а он
+    // добавляется только после того, как цикл обновил revision, раскладку и историю.
     template <class R>
-    static AbandonFn abandoner(const std::shared_ptr<QPromise<R>>& promise);
+    struct Pending {
+        QPromise<R> promise;
+        std::optional<std::conditional_t<std::is_void_v<R>, int, R>> value;
+    };
+    template <class R>
+    static std::shared_ptr<Pending<R>> makePending();
+
+    template <class R, class F>
+    static RunFn wrap(const std::shared_ptr<Pending<R>>& pending, F&& fn);
+    // Правка: fn внутри операции журнала (beginEdit → fn → commitEdit; исключение → abandonEdit).
+    template <class R, class F>
+    static RunFn wrapEdit(const std::shared_ptr<Pending<R>>& pending, QString name, F&& fn);
+    static void beginEdit(TaskContext& tc, const QString& name);
+    static void commitEdit(TaskContext& tc);
+    static void abandonEdit(TaskContext& tc) noexcept;
+    QFuture<bool> history(bool back);
+    // После задачи: раскладка (структурная правка) и состояние истории — в summary_/undoState_ с сигналами.
+    void refreshLayout();
+    void refreshUndoState();
+    template <class R>
+    static FinishFn finisher(const std::shared_ptr<Pending<R>>& pending);
+    template <class R>
+    static AbandonFn abandoner(const std::shared_ptr<Pending<R>>& pending);
 
     const quint64 id_;
     std::thread::id threadId_;
@@ -189,18 +238,25 @@ private:
     OpenSummary summary_;
     QString path_;
     QString error_;
+    UndoState undoState_;
     std::atomic<quint64> revision_{0};
 };
 
 // ---------------------------------------------------------------- шаблоны
 
+template <class R>
+std::shared_ptr<DocumentSession::Pending<R>> DocumentSession::makePending() {
+    auto pending = std::make_shared<Pending<R>>();
+    pending->promise.start();
+    return pending;
+}
+
 template <class R, class F>
-DocumentSession::RunFn DocumentSession::wrap(const std::shared_ptr<QPromise<R>>& promise, F&& fn) {
+DocumentSession::RunFn DocumentSession::wrap(const std::shared_ptr<Pending<R>>& pending, F&& fn) {
     // fn — в shared_ptr: std::function требует копируемого, а задача может держать move-only.
     auto body = std::make_shared<std::decay_t<F>>(std::forward<F>(fn));
-    return [promise, body](TaskContext& tc) -> std::exception_ptr {
-        if (promise->isCanceled()) {  // QFuture::cancel() до начала — не выполнять
-            promise->finish();
+    return [pending, body](TaskContext& tc) -> std::exception_ptr {
+        if (pending->promise.isCanceled()) {  // QFuture::cancel() до начала — не выполнять
             return {};
         }
         std::exception_ptr error;
@@ -208,22 +264,62 @@ DocumentSession::RunFn DocumentSession::wrap(const std::shared_ptr<QPromise<R>>&
             if constexpr (std::is_void_v<R>) {
                 (*body)(tc);
             } else {
-                promise->addResult((*body)(tc));
+                pending->value.emplace((*body)(tc));
             }
         } catch (...) {
             error = std::current_exception();
-            promise->setException(error);
+            pending->promise.setException(error);
         }
-        promise->finish();
+        return error;
+    };
+}
+
+template <class R, class F>
+DocumentSession::RunFn DocumentSession::wrapEdit(const std::shared_ptr<Pending<R>>& pending, QString name,
+                                                 F&& fn) {
+    auto body = std::make_shared<std::decay_t<F>>(std::forward<F>(fn));
+    return [pending, body, name = std::move(name)](TaskContext& tc) -> std::exception_ptr {
+        if (pending->promise.isCanceled()) {
+            return {};
+        }
+        std::exception_ptr error;
+        try {
+            beginEdit(tc, name);
+            if constexpr (std::is_void_v<R>) {
+                (*body)(tc);
+                commitEdit(tc);
+            } else {
+                R result = (*body)(tc);
+                commitEdit(tc);  // результат отдаётся только зафиксированной правки
+                pending->value.emplace(std::move(result));
+            }
+        } catch (...) {
+            abandonEdit(tc);
+            error = std::current_exception();
+            pending->promise.setException(error);
+        }
         return error;
     };
 }
 
 template <class R>
-DocumentSession::AbandonFn DocumentSession::abandoner(const std::shared_ptr<QPromise<R>>& promise) {
-    return [promise] {
-        promise->setException(abortedError());
-        promise->finish();
+DocumentSession::FinishFn DocumentSession::finisher(const std::shared_ptr<Pending<R>>& pending) {
+    return [pending] {
+        if constexpr (!std::is_void_v<R>) {
+            if (pending->value) {
+                pending->promise.addResult(std::move(*pending->value));
+                pending->value.reset();
+            }
+        }
+        pending->promise.finish();
+    };
+}
+
+template <class R>
+DocumentSession::AbandonFn DocumentSession::abandoner(const std::shared_ptr<Pending<R>>& pending) {
+    return [pending] {
+        pending->promise.setException(abortedError());
+        pending->promise.finish();
     };
 }
 
@@ -231,10 +327,10 @@ template <class F>
 auto DocumentSession::post(F&& fn, TaskPriority priority, QString name)
     -> QFuture<std::invoke_result_t<std::decay_t<F>&, TaskContext&>> {
     using R = std::invoke_result_t<std::decay_t<F>&, TaskContext&>;
-    auto promise = std::make_shared<QPromise<R>>();
-    QFuture<R> future = promise->future();
-    promise->start();
-    enqueue(std::move(name), priority, false, wrap<R>(promise, std::forward<F>(fn)), abandoner<R>(promise));
+    auto pending = makePending<R>();
+    QFuture<R> future = pending->promise.future();
+    enqueue(std::move(name), priority, false, wrap<R>(pending, std::forward<F>(fn)), finisher<R>(pending),
+            abandoner<R>(pending));
     return future;
 }
 
@@ -242,12 +338,13 @@ template <class F>
 auto DocumentSession::edit(QString name, F&& fn)
     -> QFuture<std::invoke_result_t<std::decay_t<F>&, TaskContext&>> {
     using R = std::invoke_result_t<std::decay_t<F>&, TaskContext&>;
-    auto promise = std::make_shared<QPromise<R>>();
-    QFuture<R> future = promise->future();
-    promise->start();
+    auto pending = makePending<R>();
+    QFuture<R> future = pending->promise.future();
     // Правки идут по порядку: обычный приоритет, FIFO среди равных.
-    enqueue(std::move(name), TaskPriority::Normal, true, wrap<R>(promise, std::forward<F>(fn)),
-            abandoner<R>(promise));
+    QString op = name;
+    enqueue(std::move(name), TaskPriority::Normal, true,
+            wrapEdit<R>(pending, std::move(op), std::forward<F>(fn)), finisher<R>(pending),
+            abandoner<R>(pending));
     return future;
 }
 

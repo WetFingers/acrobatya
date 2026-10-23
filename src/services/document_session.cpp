@@ -8,6 +8,7 @@
 #include <stdexcept>
 
 #include "core/doc/document.h"
+#include "core/doc/journal.h"
 #include "core/mu/call.h"
 #include "core/mu/context.h"
 #include "core/render/display_cache.h"
@@ -37,6 +38,18 @@ QString hintFor(ErrorKind kind) {
         default:
             return QStringLiteral("report");
     }
+}
+
+// Размеры страниц для раскладки: пустые — Letter, больше 200 дюймов — уменьшены (fit.h).
+QVector<QSizeF> layoutSizes(const Document& doc, int pageCount) {
+    QVector<QSizeF> sizes;
+    sizes.reserve(pageCount);
+    for (int i = 0; i < pageCount; ++i) {
+        const PageSize size = doc.pageSize(i);
+        const LayoutSize layout = layoutPageSize(size.width, size.height);
+        sizes.push_back(QSizeF(layout.width, layout.height));
+    }
+    return sizes;
 }
 
 }  // namespace
@@ -87,9 +100,20 @@ std::shared_ptr<const DisplayList> TaskContext::displayList(int index, bool anno
 
 void TaskContext::touchPage(int index) {
     session_.displayCache_->invalidate(index);
+    if (op_) {
+        op_->invalidate(index);
+    }
     if (std::find(touched_.begin(), touched_.end(), index) == touched_.end()) {
         touched_.push_back(index);
     }
+}
+
+void TaskContext::touchAllPages() {
+    session_.displayCache_->clear();
+    if (op_) {
+        op_->invalidateAll();
+    }
+    touchedAll_ = true;
 }
 
 // ---------------------------------------------------------------- DocumentSession
@@ -126,13 +150,14 @@ DocumentSession::~DocumentSession() {
     thread_->wait();
 }
 
-void DocumentSession::enqueue(QString name, TaskPriority priority, bool isEdit, RunFn run,
+void DocumentSession::enqueue(QString name, TaskPriority priority, bool isEdit, RunFn run, FinishFn finish,
                               AbandonFn abandon) {
     Task task;
     task.name = std::move(name);
     task.priority = priority;
     task.isEdit = isEdit;
     task.run = std::move(run);
+    task.finish = std::move(finish);
     task.abandon = std::move(abandon);
     task.cancel = std::make_shared<TaskCancel>();
     bool rejected = false;
@@ -181,6 +206,9 @@ void DocumentSession::loop() {
         current_ = &tc;
         const std::exception_ptr error = task.run(tc);
         current_ = nullptr;
+        if (tc.touchedAll_) {
+            refreshLayout();  // до сигналов: получатель documentChanged читает новую раскладку
+        }
         {
             const std::lock_guard lock(mutex_);
             running_.reset();
@@ -193,6 +221,10 @@ void DocumentSession::loop() {
         for (const int page : tc.touched_) {
             emit pageChanged(page);
         }
+        if (task.isEdit) {
+            refreshUndoState();
+        }
+        task.finish();  // QFuture — после revision, раскладки и истории
         if (error) {
             const TaskFailed failed = describe(error, task.name);
             if (failed.kind != ErrorKind::Aborted) {
@@ -248,6 +280,97 @@ std::exception_ptr DocumentSession::abortedError() {
     return std::make_exception_ptr(MuError(FZ_ERROR_ABORT, "task cancelled"));
 }
 
+// ---------------------------------------------------------------- правки и история
+
+void DocumentSession::beginEdit(TaskContext& tc, const QString& name) {
+    if (tc.hasDocument() && tc.document().journaled()) {
+        tc.op_ = std::make_unique<Journal::Operation>(tc.document(), name.toStdString());
+    }
+}
+
+void DocumentSession::commitEdit(TaskContext& tc) {
+    if (tc.op_) {
+        const std::unique_ptr<Journal::Operation> op = std::move(tc.op_);
+        op->commit();  // ошибка — операция откатана, исключение уходит в QFuture
+    }
+}
+
+void DocumentSession::abandonEdit(TaskContext& tc) noexcept { tc.op_.reset(); }
+
+QFuture<bool> DocumentSession::undo() { return history(true); }
+
+QFuture<bool> DocumentSession::redo() { return history(false); }
+
+QFuture<bool> DocumentSession::history(bool back) {
+    auto pending = makePending<bool>();
+    QFuture<bool> future = pending->promise.future();
+    auto step = [back](TaskContext& tc) {
+        if (!tc.hasDocument() || !tc.document().journaled()) {
+            return false;
+        }
+        UndoStack& history = tc.document().undoStack();
+        if (back ? !history.canUndo() : !history.canRedo()) {
+            return false;
+        }
+        // pdf_undo/pdf_redo пересобирают дерево страниц MuPDF; fz_page задачи не держат — сбросить списки.
+        const TouchedPages touched = back ? history.undo() : history.redo();
+        if (touched.all) {
+            tc.touchAllPages();
+        }
+        for (const int page : touched.pages) {
+            tc.touchPage(page);
+        }
+        return true;
+    };
+    enqueue(back ? QStringLiteral("undo") : QStringLiteral("redo"), TaskPriority::Normal, true,
+            wrap<bool>(pending, std::move(step)), finisher<bool>(pending), abandoner<bool>(pending));
+    return future;
+}
+
+void DocumentSession::refreshLayout() {
+    if (!doc_) {
+        return;
+    }
+    try {
+        const int count = doc_->pageCount();
+        QVector<QSizeF> sizes = layoutSizes(*doc_, count);
+        const std::lock_guard lock(mutex_);
+        summary_.pageCount = count;
+        summary_.pageSizes = std::move(sizes);
+    } catch (const MuError&) {  // NOLINT(bugprone-empty-catch): раскладка останется прежней, ошибку
+                                // страницы покажет её рендер
+    }
+}
+
+void DocumentSession::refreshUndoState() {
+    UndoState state;
+    if (doc_ && doc_->journaled()) {
+        try {
+            UndoStack& history = doc_->undoStack();
+            state.canUndo = history.canUndo();
+            state.canRedo = history.canRedo();
+            state.undoName = QString::fromStdString(history.undoName());
+            state.redoName = QString::fromStdString(history.redoName());
+        } catch (const std::exception&) {
+            state = UndoState{};
+        }
+    }
+    bool changed = false;
+    {
+        const std::lock_guard lock(mutex_);
+        changed = !(undoState_ == state);
+        undoState_ = state;
+    }
+    if (changed) {
+        emit undoStateChanged();
+    }
+}
+
+UndoState DocumentSession::undoState() const {
+    const std::lock_guard lock(mutex_);
+    return undoState_;
+}
+
 // ---------------------------------------------------------------- открытие и закрытие
 
 QFuture<OpenSummary> DocumentSession::openAsync(const QString& path, const QString& password) {
@@ -272,13 +395,7 @@ QFuture<OpenSummary> DocumentSession::openAsync(const QString& path, const QStri
                 try {
                     s.isPdf = r.document->isPdf();
                     s.pageCount = r.document->pageCount();
-                    s.pageSizes.reserve(s.pageCount);
-                    for (int i = 0; i < s.pageCount; ++i) {
-                        // Раскладка: пустые страницы — Letter, больше 200 дюймов — уменьшены (fit.h).
-                        const PageSize size = r.document->pageSize(i);
-                        const LayoutSize layout = layoutPageSize(size.width, size.height);
-                        s.pageSizes.push_back(QSizeF(layout.width, layout.height));
-                    }
+                    s.pageSizes = layoutSizes(*r.document, s.pageCount);
                     doc_ = std::shared_ptr<Document>(std::move(r.document));
                 } catch (const MuError& e) {
                     s = OpenSummary{};
@@ -296,6 +413,7 @@ QFuture<OpenSummary> DocumentSession::openAsync(const QString& path, const QStri
                 path_ = s.ok ? path : QString();
                 error_ = s.ok ? QString() : s.error.message;
             }
+            refreshUndoState();
             return s;
         },
         TaskPriority::Urgent, QStringLiteral("open"));
@@ -319,9 +437,12 @@ void DocumentSession::close() {
         [this](TaskContext&) {
             displayCache_->clear();
             doc_.reset();
-            const std::lock_guard lock(mutex_);
-            summary_ = OpenSummary{};
-            path_.clear();
+            {
+                const std::lock_guard lock(mutex_);
+                summary_ = OpenSummary{};
+                path_.clear();
+            }
+            refreshUndoState();
         },
         TaskPriority::Background, QStringLiteral("close"));
     try {

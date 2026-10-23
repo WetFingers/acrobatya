@@ -4,6 +4,7 @@
 #include <cwctype>
 #include <stdexcept>
 
+#include "core/doc/journal.h"
 #include "core/mu/call.h"
 #include "core/mu/context.h"
 #include "core/mu/handles.h"
@@ -202,6 +203,9 @@ OpenResult Document::openMemory(MuContext& base, std::string bytes, const std::s
 OpenResult Document::finishOpen(std::unique_ptr<Document> doc, const std::string& password) {
     OpenResult r;
     try {
+        if (doc->isPdf()) {
+            doc->undo_ = std::make_unique<UndoStack>(*doc);  // журнал — сразу после открытия
+        }
         if (doc->needsPassword()) {
             if (password.empty() || !doc->authenticate(password)) {
                 r.needsPassword = true;
@@ -261,6 +265,7 @@ std::unique_ptr<Document> Document::createBlank(MuContext& base, int pages) {
         }
     });
     doc->doc_ = &pdf.release()->super;
+    doc->undo_ = std::make_unique<UndoStack>(*doc);
     return doc;
 }
 
@@ -280,6 +285,13 @@ bool Document::authenticate(const std::string& password) {
 }
 
 bool Document::isPdf() const noexcept { return pdf_document_from_fz_document(mu_->get(), doc_) != nullptr; }
+
+UndoStack& Document::undoStack() {
+    if (!undo_) {
+        throw std::logic_error("document has no edit journal (not a PDF)");
+    }
+    return *undo_;
+}
 
 bool Document::repaired() const {
     pdf_document* pdf = pdf_document_from_fz_document(mu_->get(), doc_);
@@ -435,7 +447,7 @@ Bitmap Document::renderPage(int index, const RenderOptions& options) const {
     return Renderer(*this).renderPage(index, options.dpi, options.annotations);
 }
 
-std::string Document::savePdfToMemory() const {
+std::string Document::savePdfToMemory() {
     fz_context* ctx = mu_->get();
     mu::BufferHandle buf(ctx);
     mu::OutputHandle out(ctx);
@@ -450,6 +462,9 @@ std::string Document::savePdfToMemory() const {
         pdf_write_document(ctx, pdf, out, &opts);
         fz_close_output(ctx, out);
     });
+    if (undo_) {
+        undo_->clear();
+    }
     unsigned char* data = nullptr;
     const size_t len = fz_buffer_storage(ctx, buf, &data);
     return std::string(reinterpret_cast<const char*>(data), len);
