@@ -9,7 +9,10 @@
 //   --showcase                витрина компонентов (эталон 6.4) вместо главного окна
 //   --smoke <секунды>         окно на N секунд и выход с кодом 0
 //   --register-notify         SHChangeNotify(SHCNE_ASSOCCHANGED) после установщика
-//   <файлы…>                  открыть
+//   --page <N>                открыть файлы на странице N (с 1)
+//   --log trace|debug|info|warn|error|off   уровень журнала
+//   --data-dir <папка>        каталог данных вместо %LOCALAPPDATA%\AcroBatya (как OTTISK_DATA_DIR)
+//   <файлы…>                  открыть (второй экземпляр передаёт их первому — services/single_instance.h)
 #pragma once
 
 #include <QSize>
@@ -31,6 +34,9 @@ struct CliOptions {
     QString lang;        // пусто — из настройки
     bool showcase = false;
     int smokeSeconds = 0;
+    int page = 0;      // --page N (с 1); 0 — не задана
+    QString logLevel;  // пусто — по умолчанию
+    QString dataDir;   // --data-dir
     QStringList files;
     QString error;  // непустая — ошибка разбора
 };

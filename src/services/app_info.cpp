@@ -30,6 +30,8 @@ QString dataDir() {
     return QDir::cleanPath(dir);
 }
 
+QString settingsPath() { return QDir(dataDir()).filePath(QStringLiteral("settings.ini")); }
+
 QString instanceName() {
     const QString suffix = qEnvironmentVariable("OTTISK_INSTANCE");
     return suffix.isEmpty() ? QStringLiteral("AcroBatya") : QStringLiteral("AcroBatya-") + suffix;

@@ -66,6 +66,7 @@ using DeviceHandle = Handle<fz_device, fz_drop_device>;
 using BufferHandle = Handle<fz_buffer, fz_drop_buffer>;
 using StreamHandle = Handle<fz_stream, fz_drop_stream>;
 using OutputHandle = Handle<fz_output, fz_drop_output>;
+using DocumentWriterHandle = Handle<fz_document_writer, fz_drop_document_writer>;
 using ImageHandle = Handle<fz_image, fz_drop_image>;
 using StextPageHandle = Handle<fz_stext_page, fz_drop_stext_page>;
 using FontHandle = Handle<fz_font, fz_drop_font>;

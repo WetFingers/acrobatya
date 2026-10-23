@@ -1,95 +1,138 @@
 #include "ui/shell/main_window.h"
 
-#include <QAction>
 #include <QApplication>
-#include <QEvent>
+#include <QClipboard>
+#include <QCloseEvent>
+#include <QDir>
+#include <QDragEnterEvent>
+#include <QDropEvent>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFuture>
 #include <QHBoxLayout>
-#include <QKeySequence>
 #include <QLabel>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QMimeData>
 #include <QPushButton>
-#include <QScrollArea>
+#include <QSettings>
+#include <QSplitter>
 #include <QStackedWidget>
-#include <QStatusBar>
+#include <QStandardPaths>
+#include <QUrl>
 #include <QVBoxLayout>
-#include <algorithm>
+
+#include <exception>
 
 #include "services/app_info.h"
-#include "services/document_session.h"
+#include "services/convert_ops.h"
+#include "services/document_registry.h"
+#include "services/render_pool.h"
+#include "services/tile_cache.h"
+#include "ui/shell/document_tabs.h"
+#include "ui/shell/document_view.h"
+#include "ui/shell/global_bar.h"
+#include "ui/theme/theme.h"
+#include "ui/view/page_view.h"
+#include "ui/widgets/toast.h"
 
 namespace ot::ui {
 
-MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), session_(new ot::DocumentSession(this)) {
+namespace {
+
+// Фильтр «Открыть»: всё, что открывает fz_open_document (не-PDF — только просмотр).
+QString openFilter() {
+    return MainWindow::tr(
+        "Все поддерживаемые файлы (*.pdf *.xps *.oxps *.epub *.cbz *.fb2 *.png *.jpg *.jpeg "
+        "*.tif *.tiff *.bmp *.txt *.htm *.html);;Документы PDF (*.pdf);;Все файлы (*)");
+}
+
+QString startDir(const QString& current) {
+    if (!current.isEmpty()) {
+        return QFileInfo(current).absolutePath();
+    }
+    return QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+}
+
+}  // namespace
+
+MainWindow::MainWindow(QWidget* parent)
+    : QMainWindow(parent),
+      pool_(std::make_unique<RenderPool>()),
+      cache_(std::make_unique<TileCache>()),
+      registry_(std::make_unique<DocumentRegistry>()) {
     setObjectName(QStringLiteral("mainWindow"));
-    setWindowTitle(tr("АкроБатя"));
-    resize(1280, 800);
+    setAcceptDrops(true);
+    resize(1440, 900);
+    setMinimumSize(1024, 640);
 
-    stack_ = new QStackedWidget(this);
+    auto* shell = new QWidget(this);
+    shell->setObjectName(QStringLiteral("shell"));
+    auto* column = new QVBoxLayout(shell);
+    column->setContentsMargins(0, 0, 0, 0);
+    column->setSpacing(0);
+    globalBar_ = new GlobalBar(shell);
+    column->addWidget(globalBar_);
+    body_ = new QSplitter(Qt::Horizontal, shell);
+    body_->setObjectName(QStringLiteral("shellBody"));
+    body_->setChildrenCollapsible(false);
+    body_->setHandleWidth(1);
+    center_ = new QStackedWidget(body_);
+    center_->setObjectName(QStringLiteral("shellCenter"));
     home_ = buildHome();
-    stack_->addWidget(home_);
+    center_->addWidget(home_);
+    documents_ = new QStackedWidget(center_);
+    documents_->setObjectName(QStringLiteral("documents"));
+    center_->addWidget(documents_);
+    body_->addWidget(center_);
+    body_->setStretchFactor(body_->indexOf(center_), 1);
+    column->addWidget(body_, 1);
+    setCentralWidget(shell);
 
-    view_ = new QScrollArea(stack_);
-    view_->setObjectName(QStringLiteral("pageView"));
-    view_->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
-    view_->setBackgroundRole(QPalette::Dark);
-    pageLabel_ = new QLabel(view_);
-    pageLabel_->setObjectName(QStringLiteral("pageImage"));
-    view_->setWidget(pageLabel_);
-    stack_->addWidget(view_);
-    setCentralWidget(stack_);
+    DocumentTabs* bar = globalBar_->tabs();
+    connect(bar, &QTabBar::tabBarClicked, this, [this](int index) {
+        if (index >= 0) {
+            showDocument(index);
+        }
+    });
+    connect(bar, &QTabBar::currentChanged, this, &MainWindow::onCurrentTabChanged);
+    connect(bar, &QTabBar::tabCloseRequested, this, &MainWindow::closeDocument);
+    connect(globalBar_, &GlobalBar::homeClicked, this, &MainWindow::showHome);
+    connect(globalBar_, &GlobalBar::settingsClicked, this, [this] { notifyLater(tr("Установки"), 2); });
+    connect(globalBar_, &GlobalBar::searchRequested, this, [this] { notifyLater(tr("Поиск"), 2); });
 
     buildMenus();
-    pageStatus_ = new QLabel(this);
-    statusBar()->addPermanentWidget(pageStatus_);
-    statusBar()->showMessage(tr("Готово"));
+    menuBar()->hide();
+    showHome();
 }
 
-MainWindow::~MainWindow() = default;
-
-void MainWindow::buildMenus() {
-    QMenu* file = menuBar()->addMenu(tr("&Файл"));
-    QAction* open = file->addAction(tr("&Открыть…"), this, &MainWindow::openDialog);
-    open->setShortcut(QKeySequence::Open);
-    QAction* close = file->addAction(tr("&Закрыть"), this, [this] {
-        session_->close();
-        showHome();
-    });
-    close->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_W));
-    file->addSeparator();
-    QAction* quit = file->addAction(tr("В&ыход"), qApp, &QApplication::closeAllWindows);
-    quit->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q));
-
-    QMenu* view = menuBar()->addMenu(tr("&Вид"));
-    QAction* next = view->addAction(tr("Следующая страница"), this, [this] { showPage(page_ + 1); });
-    next->setShortcut(QKeySequence(Qt::Key_PageDown));
-    QAction* prev = view->addAction(tr("Предыдущая страница"), this, [this] { showPage(page_ - 1); });
-    prev->setShortcut(QKeySequence(Qt::Key_PageUp));
-    view->addSeparator();
-    view->addAction(tr("Главная"), this, &MainWindow::showHome);
-
-    QMenu* help = menuBar()->addMenu(tr("&Справка"));
-    help->addAction(tr("&О программе"), this, &MainWindow::about);
+// Вкладки уходят раньше пула и кеша: вид отменяет свои тайлы, сессия закрывается в своём потоке.
+MainWindow::~MainWindow() {
+    while (documentCount() > 0) {
+        DocumentView* view = document(0);
+        const quint64 id = view->id();
+        delete view;
+        tabs().removeTab(0);
+        registry_->close(id);
+    }
 }
+
+DocumentTabs& MainWindow::tabs() const { return *globalBar_->tabs(); }
 
 QWidget* MainWindow::buildHome() {
     auto* page = new QWidget(this);
     page->setObjectName(QStringLiteral("homePage"));
     auto* layout = new QVBoxLayout(page);
-    layout->setContentsMargins(48, 40, 48, 40);
-    layout->setSpacing(16);
+    const Metrics& m = Theme::sizes();
+    layout->setContentsMargins(m.grid * 12, m.grid * 10, m.grid * 12, m.grid * 10);
+    layout->setSpacing(m.grid * 4);
 
     auto* title = new QLabel(tr("Главная"), page);
     title->setObjectName(QStringLiteral("homeTitle"));
-    QFont f = title->font();
-    f.setPointSizeF(f.pointSizeF() * 2.2);
-    f.setWeight(QFont::DemiBold);
-    title->setFont(f);
+    title->setFont(homeTitleFont(m));
     layout->addWidget(title);
 
-    auto* hint = new QLabel(tr("Откройте PDF-файл, чтобы начать. Недавние файлы появятся здесь."), page);
+    auto* hint = new QLabel(tr("Откройте PDF (Ctrl+O) или перетащите файл сюда."), page);
     hint->setObjectName(QStringLiteral("homeHint"));
     hint->setWordWrap(true);
     layout->addWidget(hint);
@@ -97,69 +140,384 @@ QWidget* MainWindow::buildHome() {
     auto* row = new QHBoxLayout();
     auto* openButton = new QPushButton(tr("Открыть файл…"), page);
     openButton->setObjectName(QStringLiteral("homeOpen"));
+    openButton->setProperty("primary", true);
     connect(openButton, &QPushButton::clicked, this, &MainWindow::openDialog);
     row->addWidget(openButton);
     row->addStretch(1);
     layout->addLayout(row);
-
-    auto* recent = new QLabel(tr("Недавние: пока пусто"), page);
-    recent->setObjectName(QStringLiteral("homeRecent"));
-    recent->setEnabled(false);
-    layout->addWidget(recent);
     layout->addStretch(1);
     return page;
 }
 
-bool MainWindow::openFile(const QString& path) {
-    if (!session_->open(path)) {
-        statusBar()->showMessage(tr("Не удалось открыть файл: %1").arg(session_->errorString()));
+bool MainWindow::openFile(const QString& path, int page) {
+    error_.clear();
+    const QFileInfo info(path);
+    if (!info.isFile()) {
+        reportOpenError(path, tr("Файл не найден."));
         return false;
     }
-    documentName_ = QFileInfo(path).fileName();
-    retranslateTitle();
-    stack_->setCurrentWidget(view_);
-    showPage(0);
+    const DocumentRegistry::Opened opened = registry_->open(info.absoluteFilePath());
+    if (opened.id == 0) {
+        const OpenSummary& s = opened.summary;
+        QString reason;
+        if (s.needsPassword) {
+            reason = tr("Файл защищён паролем. Ввод пароля появится в версии 0.2.");
+        } else if (s.error.hint == QLatin1String("unsupported")) {
+            reason = tr("Формат файла не поддерживается.");
+        } else if (s.error.hint == QLatin1String("close-document")) {
+            reason = tr("Не хватило памяти или файл недоступен для чтения.");
+        } else {
+            reason = tr("Файл повреждён или не является документом.");
+        }
+        reportOpenError(path, reason);
+        return false;
+    }
+    if (opened.existing) {
+        const int index = tabs().indexOf(opened.id);
+        showDocument(index);
+        if (page >= 0) {
+            document(index)->view().goToPage(page);
+        }
+        return true;
+    }
+    auto* view = new DocumentView(registry_->session(opened.id), pool_.get(), cache_.get(), documents_);
+    documents_->addWidget(view);
+    connect(view, &DocumentView::modifiedChanged, this, [this, view](bool modified) {
+        tabs().setModified(tabs().indexOf(view->id()), modified);
+        updateActions();
+    });
+    connect(view, &DocumentView::saveAsPdfRequested, this, [this, view] { saveAsPdf(view); });
+    connect(&view->session(), &DocumentSession::undoStateChanged, this, &MainWindow::updateActions,
+            Qt::QueuedConnection);
+    if (page >= 0) {
+        view->setInitialPage(page);
+    }
+    const int index = tabs().addDocument(opened.id, view->title(), view->path());
+    showDocument(index);
+    emit documentOpened(view);
+    return true;
+}
+
+int MainWindow::openFiles(const QStringList& paths, int page) {
+    int opened = 0;
+    for (const QString& path : paths) {
+        opened += openFile(path, page) ? 1 : 0;
+    }
+    return opened;
+}
+
+bool MainWindow::closeDocument(int index) {
+    DocumentView* view = document(index);
+    if (view == nullptr) {
+        return false;
+    }
+    if (view->isModified() && !confirmClose(*view)) {
+        return false;
+    }
+    const quint64 id = view->id();
+    const bool wasHome = isHomeShown();
+    documents_->removeWidget(view);
+    delete view;
+    tabs().removeTab(tabs().indexOf(id));
+    registry_->close(id);
+    if (tabs().count() == 0 || wasHome) {
+        showHome();
+    } else {
+        showDocument(tabs().currentIndex());
+    }
+    return true;
+}
+
+bool MainWindow::closeAllDocuments() {
+    while (documentCount() > 0) {
+        if (!closeDocument(documentCount() - 1)) {
+            return false;
+        }
+    }
     return true;
 }
 
 void MainWindow::showHome() {
-    stack_->setCurrentWidget(home_);
-    documentName_.clear();
+    center_->setCurrentWidget(home_);
+    globalBar_->setHomeActive(true);
     retranslateTitle();
-    pageStatus_->clear();
+    updateActions();
+    emit currentDocumentChanged(nullptr);
 }
 
-void MainWindow::retranslateTitle() {
-    setWindowTitle(documentName_.isEmpty() ? tr("АкроБатя") : tr("%1 — АкроБатя").arg(documentName_));
+void MainWindow::showDocument(int index) {
+    DocumentView* view = document(index);
+    if (view == nullptr) {
+        showHome();
+        return;
+    }
+    const QSignalBlocker block(globalBar_->tabs());
+    tabs().setCurrentIndex(index);
+    documents_->setCurrentWidget(view);
+    center_->setCurrentWidget(documents_);
+    globalBar_->setHomeActive(false);
+    view->setFocus();
+    retranslateTitle();
+    updateActions();
+    emit currentDocumentChanged(view);
 }
 
-// Смена языка (i18n::install) — заголовок по новому переводчику; окно целиком пересоберёт оболочка 2.3.
+bool MainWindow::isHomeShown() const { return center_->currentWidget() == home_; }
+
+// Смена вкладки клавишами, перетаскиванием или после закрытия; на Главной она Главную не закрывает.
+void MainWindow::onCurrentTabChanged(int index) {
+    if (index < 0) {
+        showHome();
+    } else if (!isHomeShown()) {
+        showDocument(index);
+    }
+}
+
+int MainWindow::documentCount() const { return tabs().count(); }
+
+int MainWindow::currentIndex() const { return isHomeShown() ? -1 : tabs().currentIndex(); }
+
+DocumentView* MainWindow::currentDocument() const { return document(currentIndex()); }
+
+DocumentView* MainWindow::document(int index) const {
+    if (index < 0 || index >= tabs().count()) {
+        return nullptr;
+    }
+    const quint64 id = tabs().idAt(index);
+    for (int i = 0; i < documents_->count(); ++i) {
+        auto* view = qobject_cast<DocumentView*>(documents_->widget(i));
+        if (view != nullptr && view->id() == id) {
+            return view;
+        }
+    }
+    return nullptr;
+}
+
+DocumentSession* MainWindow::session() const {
+    DocumentView* view = currentDocument();
+    return view != nullptr ? &view->session() : nullptr;
+}
+
+int MainWindow::currentPage() const {
+    DocumentView* view = currentDocument();
+    return view != nullptr ? view->view().currentPage() : 0;
+}
+
+SessionState MainWindow::sessionState() const {
+    SessionState state;
+    for (int i = 0; i < documentCount(); ++i) {
+        DocumentView* view = document(i);
+        state.tabs << SessionTab{view->path(), view->view().currentPage()};
+    }
+    state.current = currentIndex();
+    return state;
+}
+
+void MainWindow::restoreSession(const SessionState& state) {
+    QString current;
+    for (int i = 0; i < state.tabs.size(); ++i) {
+        const SessionTab& tab = state.tabs[i];
+        if (!QFileInfo::exists(tab.path)) {
+            continue;  // файл удалили или переименовали — вкладки нет
+        }
+        if (openFile(tab.path, tab.page) && i == state.current) {
+            current = tab.path;
+        }
+    }
+    if (!current.isEmpty()) {
+        showDocument(tabs().indexOf(registry_->findByPath(current)));
+    } else {
+        showHome();
+    }
+}
+
+bool MainWindow::restoreSessionEnabled() {
+    QSettings settings(app::settingsPath(), QSettings::IniFormat);
+    return settings.value(QLatin1String(session::kRestoreKey), false).toBool();
+}
+
+void MainWindow::handleRequest(const SingleInstance::Request& request) {
+    if (isMinimized()) {
+        showNormal();
+    }
+    raise();
+    activateWindow();
+    openFiles(request.files, request.page > 0 ? request.page - 1 : -1);
+}
+
+void MainWindow::notifyLater(const QString& what, int stage) {
+    Toast::notify(this, tr("«%1» появится в версии 0.%2.").arg(what).arg(stage), Tone::Info);
+}
+
+bool MainWindow::confirmClose(DocumentView& view) {
+    CloseAnswer answer = CloseAnswer::Cancel;
+    if (confirm_) {
+        answer = confirm_(view);
+    } else {
+        QMessageBox box(QMessageBox::Question, tr("АкроБатя"),
+                        tr("Сохранить изменения в «%1» перед закрытием?").arg(view.title()),
+                        QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, this);
+        box.button(QMessageBox::Save)->setText(tr("&Сохранить"));
+        box.button(QMessageBox::Discard)->setText(tr("&Не сохранять"));
+        box.button(QMessageBox::Cancel)->setText(tr("Отмена"));
+        box.setDefaultButton(QMessageBox::Save);
+        box.setEscapeButton(QMessageBox::Cancel);
+        const int r = box.exec();
+        answer = r == QMessageBox::Save      ? CloseAnswer::Save
+                 : r == QMessageBox::Discard ? CloseAnswer::Discard
+                                             : CloseAnswer::Cancel;
+    }
+    if (answer == CloseAnswer::Save) {
+        if (!view.save()) {
+            Toast::notify(this, tr("Не удалось сохранить «%1».").arg(view.title()), Tone::Danger);
+            return false;
+        }
+        return true;
+    }
+    return answer == CloseAnswer::Discard;
+}
+
+void MainWindow::closeEvent(QCloseEvent* event) {
+    if (!closing_) {
+        const SessionState state = sessionState();
+        for (int i = 0; i < documentCount(); ++i) {
+            DocumentView* view = document(i);
+            if (view->isModified()) {
+                showDocument(i);
+                if (!confirmClose(*view)) {
+                    event->ignore();
+                    return;
+                }
+            }
+        }
+        session::save(state);
+        closing_ = true;
+    }
+    QMainWindow::closeEvent(event);
+}
+
 void MainWindow::changeEvent(QEvent* event) {
     if (event->type() == QEvent::LanguageChange) {
         retranslateTitle();
+        retranslateMenus();
     }
     QMainWindow::changeEvent(event);
 }
 
-void MainWindow::showPage(int index) {
-    const int count = session_->pageCount();
-    if (count <= 0) {
+void MainWindow::dragEnterEvent(QDragEnterEvent* event) {
+    const QMimeData* mime = event->mimeData();
+    if (mime->hasUrls()) {
+        for (const QUrl& url : mime->urls()) {
+            if (url.isLocalFile()) {
+                event->acceptProposedAction();
+                return;
+            }
+        }
+    }
+    QMainWindow::dragEnterEvent(event);
+}
+
+void MainWindow::dropEvent(QDropEvent* event) {
+    QStringList files;
+    for (const QUrl& url : event->mimeData()->urls()) {
+        if (url.isLocalFile()) {
+            files << url.toLocalFile();
+        }
+    }
+    if (files.isEmpty()) {
+        QMainWindow::dropEvent(event);
         return;
     }
-    page_ = std::clamp(index, 0, count - 1);
-    const qreal dpi = 96.0 * devicePixelRatioF();
-    QImage img = session_->renderPage(page_, dpi);
-    img.setDevicePixelRatio(devicePixelRatioF());
-    pageLabel_->setPixmap(QPixmap::fromImage(img));
-    pageLabel_->adjustSize();
-    pageStatus_->setText(tr("Страница %1 из %2").arg(page_ + 1).arg(count));
+    event->acceptProposedAction();
+    openFiles(files);
+}
+
+void MainWindow::retranslateTitle() {
+    DocumentView* view = currentDocument();
+    setWindowTitle(view == nullptr ? tr("АкроБатя") : tr("%1 — АкроБатя").arg(view->title()));
 }
 
 void MainWindow::openDialog() {
-    const QString path = QFileDialog::getOpenFileName(this, tr("Открыть PDF"), QString(),
-                                                      tr("Документы PDF (*.pdf);;Все файлы (*)"));
-    if (!path.isEmpty()) {
-        openFile(path);
+    DocumentView* view = currentDocument();
+    const QStringList files = QFileDialog::getOpenFileNames(
+        this, tr("Открыть"), startDir(view != nullptr ? view->path() : QString()), openFilter());
+    openFiles(files);
+}
+
+void MainWindow::saveCurrent() {
+    DocumentView* view = currentDocument();
+    if (view == nullptr) {
+        return;
+    }
+    if (view->isViewOnly()) {
+        saveAsPdf(view);
+        return;
+    }
+    if (!view->save()) {
+        Toast::notify(this, tr("Не удалось сохранить «%1».").arg(view->title()), Tone::Danger);
+    }
+}
+
+void MainWindow::saveCurrentAs() {
+    DocumentView* view = currentDocument();
+    if (view == nullptr) {
+        return;
+    }
+    if (view->isViewOnly()) {
+        saveAsPdf(view);
+        return;
+    }
+    const QString file =
+        QFileDialog::getSaveFileName(this, tr("Сохранить как"), view->path(), tr("Документы PDF (*.pdf)"));
+    if (file.isEmpty()) {
+        return;
+    }
+    bool ok = false;
+    try {
+        ok = view->session().saveAs(file).result().ok();
+    } catch (const std::exception&) {
+        ok = false;
+    }
+    if (!ok) {
+        Toast::notify(this, tr("Не удалось сохранить «%1».").arg(QFileInfo(file).fileName()), Tone::Danger);
+        return;
+    }
+    const int index = tabs().indexOf(view->id());
+    tabs().setTabText(index, view->title());
+    tabs().setTabToolTip(index, QDir::toNativeSeparators(view->path()));
+    retranslateTitle();
+}
+
+// Не-PDF → новый PDF рядом (страницы как есть), затем он открывается во вкладке (view-01).
+void MainWindow::saveAsPdf(DocumentView* view) {
+    const QFileInfo source(view->path());
+    const QString suggested =
+        source.absoluteDir().filePath(source.completeBaseName() + QStringLiteral(".pdf"));
+    const QString file =
+        QFileDialog::getSaveFileName(this, tr("Сохранить как PDF"), suggested, tr("Документы PDF (*.pdf)"));
+    if (file.isEmpty()) {
+        return;
+    }
+    QPointer<MainWindow> self(this);
+    convert::saveAsPdf(view->session(), file)
+        .then(this,
+              [self, file] {
+                  if (self != nullptr) {
+                      self->openFile(file);
+                  }
+              })
+        .onFailed(this, [self, file] {
+            if (self != nullptr) {
+                Toast::notify(self, tr("Не удалось сохранить «%1».").arg(QFileInfo(file).fileName()),
+                              Tone::Danger);
+            }
+        });
+}
+
+void MainWindow::copyPath() {
+    if (DocumentView* view = currentDocument()) {
+        QGuiApplication::clipboard()->setText(QDir::toNativeSeparators(view->path()));
+        Toast::notify(this, tr("Путь скопирован."), Tone::Ok);
     }
 }
 
@@ -167,6 +525,17 @@ void MainWindow::about() {
     QMessageBox::about(this, tr("О программе"),
                        tr("АкроБатя %1\nPDF-движок MuPDF %2 (AGPL-3.0)\nQt %3 (LGPL-3.0)")
                            .arg(ot::app::version(), ot::app::mupdfVersion(), ot::app::qtVersion()));
+}
+
+void MainWindow::reportOpenError(const QString& path, const QString& reason) {
+    error_ = reason;
+    auto* box = new QMessageBox(QMessageBox::Warning, tr("АкроБатя"),
+                                tr("Не удалось открыть «%1».").arg(QFileInfo(path).fileName()),
+                                QMessageBox::Ok, this);
+    box->setObjectName(QStringLiteral("openErrorBox"));
+    box->setInformativeText(reason);
+    box->setAttribute(Qt::WA_DeleteOnClose);
+    box->open();  // не блокирует: ошибка одного файла не останавливает остальные
 }
 
 }  // namespace ot::ui

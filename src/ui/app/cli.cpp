@@ -70,6 +70,24 @@ CliOptions parseCli(const QStringList& arguments) {
             if (o.smokeSeconds <= 0) {
                 o.error = QStringLiteral("bad --smoke ") + v;
             }
+        } else if (a == QLatin1String("--page")) {
+            QString v;
+            if (!next(v)) break;
+            o.page = v.toInt();
+            if (o.page <= 0) {
+                o.error = QStringLiteral("bad --page ") + v;
+            }
+        } else if (a == QLatin1String("--log")) {
+            if (!next(o.logLevel)) break;
+            static const QStringList levels = {QStringLiteral("trace"), QStringLiteral("debug"),
+                                               QStringLiteral("info"),  QStringLiteral("warn"),
+                                               QStringLiteral("error"), QStringLiteral("off")};
+            if (!levels.contains(o.logLevel)) {
+                o.error = QStringLiteral("bad --log ") + o.logLevel + QStringLiteral(" (") +
+                          levels.join(QLatin1Char('|')) + QLatin1Char(')');
+            }
+        } else if (a == QLatin1String("--data-dir")) {
+            if (!next(o.dataDir)) break;
         } else if (a.startsWith(QLatin1String("--"))) {
             o.error = QStringLiteral("unknown option ") + a;
         } else if (!a.startsWith(QLatin1Char('-'))) {

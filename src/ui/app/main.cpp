@@ -1,7 +1,10 @@
 // Точка входа AcroBatya.exe (эталон 3.18, 10.3). Служебные режимы без окна (--version, --self-check,
-// --register-notify) идут на QCoreApplication и не требуют платформенного плагина Qt.
+// --register-notify) идут на QCoreApplication и не требуют платформенного плагина Qt. Обычный запуск — один
+// экземпляр на пользователя (services/single_instance.h): второй передаёт файлы первому и выходит; без файлов
+// в командной строке окно открывает вкладки прошлого сеанса, если это включено (general/restoreSession).
 #include <QApplication>
 #include <QCoreApplication>
+#include <QFileInfo>
 #include <QTimer>
 
 #include <cstdio>
@@ -10,8 +13,12 @@
 #include <windows.h>
 #include <shlobj.h>
 
+#include <spdlog/spdlog.h>
+
 #include "services/app_info.h"
 #include "services/i18n.h"
+#include "services/session_store.h"
+#include "services/single_instance.h"
 #include "ui/app/cli.h"
 #include "ui/shell/main_window.h"
 #include "ui/shots/scenes.h"
@@ -96,10 +103,19 @@ int main(int argc, char** argv) {
         printUtf8(opts.error);
         return 2;
     }
+    if (!opts.dataDir.isEmpty()) {  // до первого обращения к каталогу данных (настройки, state.sqlite)
+        qputenv("OTTISK_DATA_DIR", QFileInfo(opts.dataDir).absoluteFilePath().toUtf8());
+    }
+    if (!opts.logLevel.isEmpty()) {
+        spdlog::set_level(spdlog::level::from_str(opts.logLevel.toStdString()));
+    }
     // Язык до первого окна: --lang, иначе настройка, иначе системный (эталон 5.7).
     ot::i18n::install(opts.lang.isEmpty() ? ot::i18n::fromSettings() : opts.lang);
     if (!opts.shots.isEmpty()) {
         attachParentConsole();
+        if (qEnvironmentVariableIsEmpty("OTTISK_INSTANCE")) {
+            qputenv("OTTISK_INSTANCE", "test");  // снимки никогда не говорят с окном человека
+        }
         ShotOptions shot;
         shot.outDir = opts.shotsOut;
         shot.size = opts.shotsSize;
@@ -120,10 +136,22 @@ int main(int argc, char** argv) {
         }
         return app.exec();
     }
+    // Второй экземпляр: файлы — первому (он поднимет окно), этот выходит.
+    AllowSetForegroundWindow(ASFW_ANY);
+    if (ot::SingleInstance::sendToRunning({opts.files, opts.page})) {
+        return 0;
+    }
     MainWindow window;
+    ot::SingleInstance instance;
+    if (instance.listen()) {
+        QObject::connect(&instance, &ot::SingleInstance::requestReceived, &window,
+                         &MainWindow::handleRequest);
+    }
     window.show();
     if (!opts.files.isEmpty()) {
-        window.openFile(opts.files.first());
+        window.openFiles(opts.files, opts.page - 1);
+    } else if (MainWindow::restoreSessionEnabled()) {
+        window.restoreSession(ot::session::load());
     }
     if (opts.smokeSeconds > 0) {
         QTimer::singleShot(opts.smokeSeconds * 1000, &app, &QApplication::quit);

@@ -4,6 +4,7 @@
 #pragma once
 
 #include <QString>
+#include <QStyle>
 #include <QWidget>
 
 #include "ui/theme/icons.h"

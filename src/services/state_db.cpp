@@ -8,6 +8,7 @@
 
 #include <functional>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include <spdlog/spdlog.h>
@@ -19,10 +20,26 @@ namespace ot {
 
 namespace {
 
+// Шаг миграции: ошибка — исключение (откат транзакции шага).
+void exec(sqlite3* db, const char* sql) {
+    char* message = nullptr;
+    if (sqlite3_exec(db, sql, nullptr, nullptr, &message) != SQLITE_OK) {
+        const std::string text = message != nullptr ? message : sqlite3_errmsg(db);
+        sqlite3_free(message);
+        throw std::runtime_error("state.sqlite: " + text);
+    }
+}
+
 // Шаги схемы: шаг i доводит user_version с i до i + 1.
 const std::vector<std::function<void(sqlite3*)>>& migrations() {
     static const std::vector<std::function<void(sqlite3*)>> steps = {
         [](sqlite3* db) { TextIndex::createSchema(db); },  // 1: индекс поиска по папкам (1.4)
+        // 2: вкладки прошлого сеанса (2.3, services/session_store.h)
+        [](sqlite3* db) {
+            exec(db,
+                 "CREATE TABLE IF NOT EXISTS session_tabs(position INTEGER PRIMARY KEY, path TEXT NOT NULL, "
+                 "page INTEGER NOT NULL DEFAULT 0, current INTEGER NOT NULL DEFAULT 0)");
+        },
     };
     return steps;
 }

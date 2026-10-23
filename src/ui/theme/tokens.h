@@ -134,6 +134,8 @@ struct Metrics {
     int globalBar = 48;           // глобальная панель
     int tabHeight = 36;           // вкладка документа
     int tabMaxWidth = 220;        //   и её наибольшая ширина
+    int tabMinWidth = 140;        //   и наименьшая (дальше — прокрутка ◀ ▶, 2.3)
+    int searchWidth = 240;        // поле поиска глобальной панели (2.3)
     int row = 32;                 // строка списка
     int cardRow = 64;             // карточка комментария (минимум)
     int navButton = 44;           // кнопка правой навигации
@@ -170,6 +172,8 @@ inline constexpr int Metrics::* kMetricSizes[] = {
     &Metrics::globalBar,
     &Metrics::tabHeight,
     &Metrics::tabMaxWidth,
+    &Metrics::tabMinWidth,
+    &Metrics::searchWidth,
     &Metrics::row,
     &Metrics::cardRow,
     &Metrics::navButton,

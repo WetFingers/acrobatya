@@ -418,6 +418,41 @@ std::vector<Rule> componentRules(const Palette& p, const Metrics& m) {
          {},
          {},
          QStringLiteral("image: none; width: 0;")},
+
+        // Оболочка (2.3): глобальная панель — surfaceAlt с нижней рамкой; вкладки документов — прозрачные,
+        // наведение — hover, текущая — surface с рамкой; разделители панелей — border.
+        {QStringLiteral("ot--ui--GlobalBar"),
+         QStringLiteral("GlobalBar"),
+         QStringLiteral("normal"),
+         T,
+         SA,
+         {},
+         QStringLiteral("border-bottom: 1px solid %1;").arg(css(B))},
+        {QStringLiteral("ot--ui--GlobalBar #globalSeparator"), {}, {}, {}, B, {}, none},
+        {QStringLiteral("ot--ui--DocumentTabs::tab"),
+         QStringLiteral("DocumentTabs"),
+         QStringLiteral("normal"),
+         T,
+         {},
+         SA,
+         QStringLiteral("background-color: transparent; border: 1px solid transparent; border-radius: %1; "
+                        "padding: 0 %2; margin: 0 1px;")
+             .arg(r, pxv(m.grid * 2))},
+        {QStringLiteral("ot--ui--DocumentTabs::tab:hover"),
+         QStringLiteral("DocumentTabs"),
+         QStringLiteral("hover"),
+         T,
+         H,
+         {},
+         none},
+        {QStringLiteral("ot--ui--DocumentTabs::tab:selected"),
+         QStringLiteral("DocumentTabs"),
+         QStringLiteral("selected"),
+         T,
+         S,
+         {},
+         QStringLiteral("border-color: %1;").arg(css(B))},
+        {QStringLiteral("#shellBody::handle"), {}, {}, {}, B, {}, none},
     };
     // Тоны: полосы сообщений, тосты и чипы.
     const std::pair<const char*, Rgba> tones[] = {

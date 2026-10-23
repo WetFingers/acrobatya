@@ -11,6 +11,7 @@
 #include <memory>
 
 #include "services/i18n.h"
+#include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
 #include "ui/widgets/showcase.h"
 
@@ -46,6 +47,8 @@ double sceneScale(const Scene& s, const ShotOptions& o) { return s.scale.value_o
 std::function<QWidget*()> withMainWindow(std::function<void(MainWindow&)> setup) {
     return [setup = std::move(setup)]() -> QWidget* {
         auto* w = new MainWindow();
+        // Сцена не спрашивает «Сохранить изменения?» при закрытии (модальный вопрос без экрана не закрыть).
+        w->setCloseConfirm([](DocumentView&) { return MainWindow::CloseAnswer::Discard; });
         setup(*w);
         return w;
     };
@@ -62,6 +65,9 @@ const std::vector<Scene>& sceneTable() {
             {QStringLiteral("showcase-large"), showcaseScene, {}, 1.25, {}},
         };
         for (Scene& s : viewScenes()) {  // 2.2b: view-single … view-loupe
+            table.push_back(std::move(s));
+        }
+        for (Scene& s : shellScenes()) {  // 2.3: shell-document, shell-two-tabs
             table.push_back(std::move(s));
         }
         return table;
