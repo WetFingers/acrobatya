@@ -1,0 +1,206 @@
+{
+  "generator": "tools/gen/make_text.py",
+  "coordinates": "points, origin top-left (MuPDF page space)",
+  "files": {
+    "search.pdf": {
+      "lines": [
+        {
+          "page": 0,
+          "name": "title",
+          "text": "Оттиск: поиск и выделение текста",
+          "size": 20,
+          "x0": 72,
+          "x1": 414.969,
+          "baseline": 81.89
+        },
+        {
+          "page": 0,
+          "name": "accent",
+          "text": "Слово отти́ск стоит здесь с ударением.",
+          "size": 12,
+          "x0": 72,
+          "x1": 292.09,
+          "baseline": 121.89
+        },
+        {
+          "page": 0,
+          "name": "plain",
+          "text": "Без ударения: оттиск, а в родительном падеже — оттиска.",
+          "size": 12,
+          "x0": 72,
+          "x1": 400.113,
+          "baseline": 141.89
+        },
+        {
+          "page": 0,
+          "name": "years",
+          "text": "Годы 1999 и 2026, номер 12345.",
+          "size": 12,
+          "x0": 72,
+          "x1": 252.498,
+          "baseline": 161.89
+        },
+        {
+          "page": 0,
+          "name": "ligatures",
+          "text": "Лигатуры: ﬁнал, ﬂаг и обычные fi, fl.",
+          "size": 12,
+          "x0": 72,
+          "x1": 270.17,
+          "baseline": 181.89
+        },
+        {
+          "page": 0,
+          "name": "bold",
+          "text": "Жирная строка",
+          "size": 14,
+          "x0": 72,
+          "x1": 176.651,
+          "baseline": 211.89
+        },
+        {
+          "page": 0,
+          "name": "italic",
+          "text": "Курсивная строка",
+          "size": 14,
+          "x0": 72,
+          "x1": 192.62,
+          "baseline": 231.89
+        },
+        {
+          "page": 0,
+          "name": "select1",
+          "text": "Первая строка для выделения.",
+          "size": 12,
+          "x0": 72,
+          "x1": 246.305,
+          "baseline": 261.89
+        },
+        {
+          "page": 0,
+          "name": "select2",
+          "text": "Вторая строка для выделения.",
+          "size": 12,
+          "x0": 72,
+          "x1": 244.805,
+          "baseline": 277.89
+        },
+        {
+          "page": 0,
+          "name": "red",
+          "text": "Красная строка",
+          "size": 12,
+          "x0": 72,
+          "x1": 158.238,
+          "baseline": 311.89
+        },
+        {
+          "page": 1,
+          "name": "page2",
+          "text": "Вторая страница: оттиск, ОТТИСК и Оттиск.",
+          "size": 12,
+          "x0": 72,
+          "x1": 319.289,
+          "baseline": 81.89
+        },
+        {
+          "page": 1,
+          "name": "page2year",
+          "text": "Год 2027.",
+          "size": 12,
+          "x0": 72,
+          "x1": 125.537,
+          "baseline": 101.89
+        },
+        {
+          "page": 2,
+          "name": "page3",
+          "text": "Третья страница без искомого слова.",
+          "size": 12,
+          "x0": 72,
+          "x1": 281.689,
+          "baseline": 81.89
+        }
+      ],
+      "pages": 3
+    },
+    "vectors.pdf": {
+      "lines": [
+        {
+          "page": 0,
+          "name": "label",
+          "text": "Фамилия:",
+          "size": 12,
+          "x0": 72,
+          "x1": 126.287,
+          "baseline": 101.89
+        },
+        {
+          "page": 0,
+          "name": "label",
+          "text": "Имя:",
+          "size": 12,
+          "x0": 72,
+          "x1": 98.707,
+          "baseline": 131.89
+        },
+        {
+          "page": 0,
+          "name": "label",
+          "text": "Подпись:",
+          "size": 12,
+          "x0": 72,
+          "x1": 123.088,
+          "baseline": 161.89
+        },
+        {
+          "page": 0,
+          "name": "framed",
+          "text": "Текст в рамке",
+          "size": 12,
+          "x0": 80,
+          "x1": 157.314,
+          "baseline": 246.89
+        }
+      ],
+      "vectors": {
+        "underlines": 3,
+        "stroked_rects": 1,
+        "filled_rects": 1,
+        "underline_width": 0.75
+      }
+    },
+    "truetype-nonembedded.pdf": {
+      "lines": [
+        {
+          "page": 0,
+          "name": "truetype",
+          "text": "Невстроенный TrueType: Arial",
+          "size": 18,
+          "x0": 72,
+          "x1": 322.761,
+          "baseline": 101.89
+        },
+        {
+          "page": 0,
+          "name": "truetype",
+          "text": "Привет, мир — Ёлка, ёж, щука.",
+          "size": 14,
+          "x0": 72,
+          "x1": 274.549,
+          "baseline": 137.89
+        },
+        {
+          "page": 0,
+          "name": "truetype",
+          "text": "Hello, world! 2026",
+          "size": 14,
+          "x0": 72,
+          "x1": 184.062,
+          "baseline": 173.89
+        }
+      ],
+      "font": "TrueType /Arial не встроен, WinAnsi + /Differences cp1251"
+    }
+  }
+}

@@ -78,6 +78,16 @@ openpyxl, python-pptx, odfpy), `mutool` из `C:\src\mupdf\platform\win32\x64\Re
 | `enc-r6.pdf` | AES-256 V5/R6 (PDF 2.0), пользователь `user`, владелец `owner` | пароли 1.3 |
 | `truncated.pdf` | 3 страницы, срезаны xref/trailer/startxref и конец последнего объекта; MuPDF: «cannot find startxref → repairing», все 3 страницы читаются | ремонт 1.1 |
 
+### `tests/fixtures/text/` — `make_text.py` + `stext_expected.py` (сессия 1.4; ожидания — `text.json`, `stext_expected.json`)
+
+| Файл | Что внутри | Кто пользуется |
+|---|---|---|
+| `search.pdf` | 3 страницы, Type0 Identity-H + ToUnicode (Arial, Arial Bold, Arial Italic): «Оттиск», «отти́ск» с U+0301, «оттиск», «оттиска», годы 1999/2026 и 12345, лигатуры U+FB01/U+FB02, жирная/курсивная/красная строки, две строки для выделения; стр. 2 — «оттиск, ОТТИСК и Оттиск», 2027; стр. 3 — без искомого | текстовый слой, поиск, выделение, экспорт |
+| `vectors.pdf` | подписи с подчёркиваниями-отрезками (`m l S`, 0,75 pt) ×3, рамка `re S`, заливка `re f` | `TextPage::Options{collectVectors}` |
+| `truetype-nonembedded.pdf` | простой TrueType `/Arial` **без программы шрифта**, WinAnsi + `/Differences` (cp1251 → `afii100xx`), без ToUnicode | кириллица при подмене шрифта |
+| `text.json` | строки генератора (страница, текст, кегль, базовая линия и x0/x1 в пунктах MuPDF — y вниз), число векторов `vectors.pdf` | |
+| `stext_expected.json` | слова и координаты PDFium (pypdfium2 5.14.0): точка пера, чернильная рамка, кегль — для `cyr-cid`, `type1-diff`, `truetype-nonembedded`, `search`; `embedded` — можно ли сравнивать чернила | `unit.stext.words_match_pdfium_reference` |
+
 ### `tests/fixtures/annots/` — `make_annots.py` (+ `tools/gen/annots.js`)
 
 `annots-all.pdf` — байт в байт копия `matrix-28.pdf` под именем из плана (сессии 5.1, 5.2).

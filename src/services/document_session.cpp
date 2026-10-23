@@ -14,6 +14,7 @@
 #include "core/render/display_cache.h"
 #include "core/render/fit.h"
 #include "core/render/renderer.h"
+#include "core/text/stext.h"
 #include "services/task_context.h"
 
 namespace ot {
@@ -98,8 +99,13 @@ std::shared_ptr<const DisplayList> TaskContext::displayList(int index, bool anno
     return session_.displayCache_->get(document(), index, annotations, cookie_);
 }
 
+std::shared_ptr<const TextPage> TaskContext::textPage(int index, const TextOptions& options) const {
+    return session_.textCache_->get(document(), index, options, cookie_);
+}
+
 void TaskContext::touchPage(int index) {
     session_.displayCache_->invalidate(index);
+    session_.textCache_->invalidate(index);
     if (op_) {
         op_->invalidate(index);
     }
@@ -116,6 +122,7 @@ void TaskContext::markHeavyEdit() {
 
 void TaskContext::touchAllPages() {
     session_.displayCache_->clear();
+    session_.textCache_->clear();
     if (op_) {
         op_->invalidateAll();
     }
@@ -136,7 +143,10 @@ private:
 };
 
 DocumentSession::DocumentSession(QObject* parent)
-    : QObject(parent), id_(nextSessionId.fetch_add(1)), displayCache_(std::make_unique<DisplayCache>()) {
+    : QObject(parent),
+      id_(nextSessionId.fetch_add(1)),
+      displayCache_(std::make_unique<DisplayCache>()),
+      textCache_(std::make_unique<TextCache>()) {
     qRegisterMetaType<ot::TaskFailed>();
     thread_ = std::make_unique<Thread>(*this);
     thread_->setObjectName(QStringLiteral("DocumentSession-%1").arg(id_));
@@ -240,6 +250,7 @@ void DocumentSession::loop() {
     }
     // Остановка: документ закрывается в своём потоке (его контекст — только этого потока).
     displayCache_->clear();
+    textCache_->clear();
     doc_.reset();
 }
 
@@ -354,6 +365,7 @@ QFuture<SaveReport> DocumentSession::saveTo(const QString& path, const SaveOptio
 
 void DocumentSession::afterSave(const SaveReport& report) {
     displayCache_->clear();
+    textCache_->clear();
     if (report.error == SaveError::ReopenFailed || doc_->handle() == nullptr) {
         // Записанный файл не открылся — документа больше нет.
         doc_.reset();
@@ -443,6 +455,7 @@ QFuture<OpenSummary> DocumentSession::openAsync(const QString& path, const QStri
     return post(
         [this, path, password](TaskContext&) {
             displayCache_->clear();
+            textCache_->clear();
             doc_.reset();
             OpenSummary s;
             OpenResult r = Document::open(std::filesystem::path(path.toStdWString()), password.toStdString());
@@ -471,6 +484,7 @@ QFuture<OpenSummary> DocumentSession::recoverAsync(const QString& autosaveDir, c
     return post(
         [this, autosaveDir, entry, password](TaskContext&) {
             displayCache_->clear();
+            textCache_->clear();
             doc_.reset();
             OpenSummary s;
             RecoverResult r = Autosave(std::filesystem::path(autosaveDir.toStdWString()))
@@ -536,6 +550,7 @@ void DocumentSession::close() {
     QFuture<void> done = post(
         [this](TaskContext&) {
             displayCache_->clear();
+            textCache_->clear();
             doc_.reset();
             {
                 const std::lock_guard lock(mutex_);
@@ -592,6 +607,12 @@ QFuture<std::shared_ptr<const DisplayList>> DocumentSession::displayList(int pag
                                                                          TaskPriority priority) {
     return post([page, annotations](TaskContext& tc) { return tc.displayList(page, annotations); }, priority,
                 QStringLiteral("display-list"));
+}
+
+QFuture<std::shared_ptr<const TextPage>> DocumentSession::textPage(int page, const TextOptions& options,
+                                                                   TaskPriority priority) {
+    return post([page, options](TaskContext& tc) { return tc.textPage(page, options); }, priority,
+                QStringLiteral("text-page"));
 }
 
 QImage DocumentSession::renderPage(int index, qreal dpi) {

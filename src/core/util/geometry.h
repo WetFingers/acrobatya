@@ -15,7 +15,68 @@ struct RectF {
     float width() const noexcept { return x1 - x0; }
     float height() const noexcept { return y1 - y0; }
     bool empty() const noexcept { return x1 <= x0 || y1 <= y0; }
+    // «Ещё ничего» для накопления объединением (как fz_empty_rect): x0 > x1.
+    static constexpr RectF none() noexcept { return {1, 1, -1, -1}; }
+    bool valid() const noexcept { return x0 <= x1 && y0 <= y1; }
 };
+
+struct PointF {
+    float x = 0;
+    float y = 0;
+    bool operator==(const PointF&) const = default;
+};
+
+// Четырёхугольник как fz_quad: углы ul, ur, ll, lr (у повёрнутого текста — не осевой прямоугольник).
+struct QuadF {
+    PointF ul, ur, ll, lr;
+
+    RectF bounds() const noexcept {
+        return {std::fmin(std::fmin(ul.x, ur.x), std::fmin(ll.x, lr.x)),
+                std::fmin(std::fmin(ul.y, ur.y), std::fmin(ll.y, lr.y)),
+                std::fmax(std::fmax(ul.x, ur.x), std::fmax(ll.x, lr.x)),
+                std::fmax(std::fmax(ul.y, ur.y), std::fmax(ll.y, lr.y))};
+    }
+    // Точка внутри выпуклого четырёхугольника (обход ul → ur → lr → ll, граница — внутри); вырожденный
+    // (нулевой высоты) не содержит ничего.
+    bool contains(PointF p) const noexcept {
+        const PointF v[4] = {ul, ur, lr, ll};
+        int sign = 0;
+        for (int i = 0; i < 4; ++i) {
+            const PointF a = v[i], b = v[(i + 1) % 4];
+            const float cross = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+            if (cross == 0) {
+                continue;
+            }
+            const int s = cross > 0 ? 1 : -1;
+            if (sign != 0 && s != sign) {
+                return false;
+            }
+            sign = s;
+        }
+        return sign != 0;
+    }
+};
+
+inline bool rectContains(const RectF& r, PointF p) noexcept {
+    return p.x >= r.x0 && p.x <= r.x1 && p.y >= r.y0 && p.y <= r.y1;
+}
+
+// Расстояние от точки до прямоугольника (0 — внутри или на границе).
+inline float rectDistance(const RectF& r, PointF p) noexcept {
+    const float dx = std::fmax(std::fmax(r.x0 - p.x, 0.0f), p.x - r.x1);
+    const float dy = std::fmax(std::fmax(r.y0 - p.y, 0.0f), p.y - r.y1);
+    return std::sqrt(dx * dx + dy * dy);
+}
+
+inline RectF rectUnion(const RectF& a, const RectF& b) noexcept {
+    if (!a.valid()) {
+        return b;
+    }
+    if (!b.valid()) {
+        return a;
+    }
+    return {std::fmin(a.x0, b.x0), std::fmin(a.y0, b.y0), std::fmax(a.x1, b.x1), std::fmax(a.y1, b.y1)};
+}
 
 // Прямоугольник в пикселях устройства: [x0, x1) × [y0, y1).
 struct IRect {

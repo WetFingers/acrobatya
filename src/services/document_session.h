@@ -39,12 +39,15 @@
 #include "core/doc/autosave.h"
 #include "core/doc/saver.h"
 #include "core/mu/error.h"
+#include "core/text/text_types.h"
 
 namespace ot {
 
 class Document;
 class DisplayCache;
 class DisplayList;
+class TextCache;
+class TextPage;
 class TaskContext;
 struct TaskCancel;  // fz_cookie задачи (task_context.h)
 
@@ -135,6 +138,12 @@ public:
     // RenderPool: единственное, что уходит из потока документа.
     QFuture<std::shared_ptr<const DisplayList>> displayList(int page, bool annotations = true,
                                                             TaskPriority priority = TaskPriority::High);
+
+    // Текстовый слой страницы из кеша документа (TextCache, LRU 16; правка страницы его сбрасывает) — для
+    // поиска, выделения и экспорта. TextPage неизменяем: значения читаются в любом потоке
+    // (core/text/stext.h).
+    QFuture<std::shared_ptr<const TextPage>> textPage(int page, const TextOptions& options = {},
+                                                      TaskPriority priority = TaskPriority::Normal);
 
     // Растр страницы при dpi (BGRA → QImage ARGB32_Premultiplied) с ожиданием; пустой — ошибка
     // (errorString()). Для окна этапа 0 — до тайлов PageView (сессия 2.2).
@@ -252,6 +261,7 @@ private:
     // Только в потоке документа.
     std::shared_ptr<Document> doc_;
     std::unique_ptr<DisplayCache> displayCache_;
+    std::unique_ptr<TextCache> textCache_;
     TaskContext* current_ = nullptr;
 
     // Итог открытия — читается из любого потока (под mutex_).

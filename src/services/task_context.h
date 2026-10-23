@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "core/doc/journal.h"
+#include "core/text/text_types.h"
 
 extern "C" {
 #include <mupdf/fitz.h>
@@ -18,6 +19,7 @@ namespace ot {
 class Document;
 class DocumentSession;
 class DisplayList;
+class TextPage;
 
 // fz_cookie задачи: abort = 1 ставит DocumentSession::cancelAll() из другого потока.
 struct TaskCancel {
@@ -64,11 +66,13 @@ public:
     PageHandle page(int index) const;
     // Display list страницы из кеша документа (строится с cookie задачи — отмена прерывает построение).
     std::shared_ptr<const DisplayList> displayList(int index, bool annotations = true) const;
-    // Правка затронула страницу: её display list сбрасывается (и страница записывается в шаг истории), после
-    // задачи — сигнал pageChanged(index).
+    // Текстовый слой страницы из кеша документа (LRU 16; строится с cookie задачи).
+    std::shared_ptr<const TextPage> textPage(int index, const TextOptions& options = {}) const;
+    // Правка затронула страницу: её display list и текстовый слой сбрасываются (и страница записывается в шаг
+    // истории), после задачи — сигнал pageChanged(index).
     void touchPage(int index);
-    // Структурная правка (страницы добавлены, удалены, переставлены): все display lists, шаг истории «все
-    // страницы», после задачи — пересчёт раскладки (summary()) и documentChanged.
+    // Структурная правка (страницы добавлены, удалены, переставлены): все display lists и текстовые слои, шаг
+    // истории «все страницы», после задачи — пересчёт раскладки (summary()) и documentChanged.
     void touchAllPages();
     // Тяжёлая правка (страницы, картинки, редактор, уменьшение размера): Saver запишет файл целиком.
     void markHeavyEdit();
