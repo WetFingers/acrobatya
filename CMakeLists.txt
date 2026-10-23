@@ -41,6 +41,16 @@ endif()
 file(TO_CMAKE_PATH "${_py}" _py)
 set(OTTISK_PYTHON "${_py}" CACHE FILEPATH "venv тестов (C:/Tools/venv-test)" FORCE)
 
+# /showIncludes: у Build Tools здесь только русские ресурсы, и строка «Примечание: включение файла:» приходит в разных
+# кодировках (консоль 65001 — UTF-8, без консоли — «?»): с префиксом, найденным при configure, Ninja терял зависимости
+# от заголовков (правка .h не пересобирала .cpp). tools/cl_launcher.py приводит префикс к английскому — Ninja ждёт его.
+if(MSVC AND CMAKE_GENERATOR MATCHES "Ninja" AND EXISTS "${OTTISK_PYTHON}")
+  set(_cl_launcher "${OTTISK_PYTHON};-I;-S;${CMAKE_SOURCE_DIR}/tools/cl_launcher.py")
+  set(CMAKE_C_COMPILER_LAUNCHER "${_cl_launcher}")
+  set(CMAKE_CXX_COMPILER_LAUNCHER "${_cl_launcher}")
+  set(CMAKE_CL_SHOWINCLUDES_PREFIX "Note: including file:")
+endif()
+
 include(cmake/asan.cmake)
 include(cmake/warnings.cmake)
 include(cmake/pch.cmake)
