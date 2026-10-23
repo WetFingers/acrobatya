@@ -36,6 +36,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "core/doc/autosave.h"
 #include "core/doc/saver.h"
 #include "core/mu/error.h"
 
@@ -109,6 +110,11 @@ public:
     // То же с ожиданием (окно этапа 0, тесты); false — ошибка, текст — errorString(). Сигнал opened —
     // из вызывающего потока до возврата.
     bool open(const QString& path, const QString& password = {});
+    // Открыть документ с правками, восстановленными автосохранением (Autosave::recover в потоке документа):
+    // путь — путь записи, история undo/redo — из журнала, файл не сохранён. Ошибка — в OpenSummary::error
+    // (hint "recover-source-changed", "recover-mismatch", "recover-failed").
+    QFuture<OpenSummary> recoverAsync(const QString& autosaveDir, const AutosaveEntry& entry,
+                                      const QString& password = {});
     // Закрыть документ после уже поставленных задач (приоритет Background) и дождаться; сигнал closed.
     void close();
 
@@ -224,6 +230,8 @@ private:
     // После задачи: раскладка (структурная правка) и состояние истории — в summary_/undoState_ с сигналами.
     void refreshLayout();
     void refreshUndoState();
+    // Поставить открытый документ (или ошибку) в сессию: сводка, путь, история (в потоке документа).
+    void install(std::unique_ptr<Document> doc, OpenSummary& s, const QString& path);
     template <class R>
     static FinishFn finisher(const std::shared_ptr<Pending<R>>& pending);
     template <class R>

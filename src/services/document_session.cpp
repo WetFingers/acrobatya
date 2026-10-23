@@ -457,32 +457,66 @@ QFuture<OpenSummary> DocumentSession::openAsync(const QString& path, const QStri
             s.error.kind = r.error.kind;
             s.error.message = QString::fromStdString(r.error.message);
             s.error.hint = hintFor(r.error.kind);
-            if (r.ok) {
-                try {
-                    s.isPdf = r.document->isPdf();
-                    s.pageCount = r.document->pageCount();
-                    s.pageSizes = layoutSizes(*r.document, s.pageCount);
-                    doc_ = std::shared_ptr<Document>(std::move(r.document));
-                } catch (const MuError& e) {
-                    s = OpenSummary{};
-                    s.error.code = e.code();
-                    s.error.kind = e.kind();
-                    s.error.message = QString::fromUtf8(e.what());
-                    s.error.hint = hintFor(e.kind());
-                }
-            } else if (r.needsPassword) {
+            if (r.needsPassword) {
                 s.error.message = QStringLiteral("password required");
             }
-            {
-                const std::lock_guard lock(mutex_);
-                summary_ = s;
-                path_ = s.ok ? path : QString();
-                error_ = s.ok ? QString() : s.error.message;
-            }
-            refreshUndoState();
+            install(r.ok ? std::move(r.document) : nullptr, s, path);
             return s;
         },
         TaskPriority::Urgent, QStringLiteral("open"));
+}
+
+QFuture<OpenSummary> DocumentSession::recoverAsync(const QString& autosaveDir, const AutosaveEntry& entry,
+                                                   const QString& password) {
+    return post(
+        [this, autosaveDir, entry, password](TaskContext&) {
+            displayCache_->clear();
+            doc_.reset();
+            OpenSummary s;
+            RecoverResult r = Autosave(std::filesystem::path(autosaveDir.toStdWString()))
+                                  .recover(entry, password.toStdString());
+            s.ok = r.ok();
+            if (s.ok) {
+                s.repaired = r.document->repaired();
+                s.pdfa = r.document->isPdfA();
+                s.isSigned = r.document->isSigned();
+                s.hasForm = r.document->hasForm();
+                s.hasXfa = r.document->hasXfa();
+            } else {
+                s.error.message = QString::fromStdString(r.message);
+                s.error.hint = r.error == RecoverError::SourceChanged
+                                   ? QStringLiteral("recover-source-changed")
+                               : r.error == RecoverError::JournalMismatch ? QStringLiteral("recover-mismatch")
+                                                                          : QStringLiteral("recover-failed");
+            }
+            install(std::move(r.document), s, QString::fromStdWString(entry.path.wstring()));
+            return s;
+        },
+        TaskPriority::Urgent, QStringLiteral("recover"));
+}
+
+void DocumentSession::install(std::unique_ptr<Document> doc, OpenSummary& s, const QString& path) {
+    if (doc) {
+        try {
+            s.isPdf = doc->isPdf();
+            s.pageCount = doc->pageCount();
+            s.pageSizes = layoutSizes(*doc, s.pageCount);
+            doc_ = std::shared_ptr<Document>(std::move(doc));
+        } catch (const MuError& e) {
+            s = OpenSummary{};
+            s.error.code = e.code();
+            s.error.kind = e.kind();
+            s.error.message = QString::fromUtf8(e.what());
+            s.error.hint = hintFor(e.kind());
+        }
+    }
+    {
+        const std::lock_guard lock(mutex_);
+        summary_ = s;
+        path_ = s.ok ? path : QString();
+        error_ = s.ok ? QString() : s.error.message;
+    }
+    refreshUndoState();
 }
 
 bool DocumentSession::open(const QString& path, const QString& password) {

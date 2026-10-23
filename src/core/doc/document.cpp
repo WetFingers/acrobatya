@@ -119,6 +119,150 @@ std::string pdfaOf(fz_context* ctx, pdf_document* pdf) {
     return "PDF/A-" + part + conformance;
 }
 
+// Отпечаток xref как у MuPDF (pdf_fingerprint_file с секции 0): журнал подходит только к тому же файлу.
+void xrefFingerprint(const pdf_document* pdf, unsigned char digest[16]) {
+    fz_md5 state;
+    fz_md5_init(&state);
+    fz_md5_update_int64(&state, pdf->num_xref_sections);
+    for (int i = 0; i < pdf->num_xref_sections; ++i) {
+        fz_md5_update_int64(&state, pdf->xref_sections[i].num_objects);
+        for (const pdf_xref_subsec* sub = pdf->xref_sections[i].subsec; sub != nullptr; sub = sub->next) {
+            fz_md5_update_int64(&state, sub->start);
+            fz_md5_update_int64(&state, sub->len);
+        }
+    }
+    fz_md5_final(&state, digest);
+}
+
+// Журнал автосохранения (pdf_write_journal с позицией 0: у фрагментов — значения «после шага») на только что
+// открытый исходник. pdf_read_journal в MuPDF 1.28.5 не годится: pdf_deserialise_journal добавляет фрагменты
+// в pending_tail, которого при загрузке нет (assert в Debug, «Can't add a journal fragment absent an
+// operation» в Release). Поэтому каждый шаг переигрывается операцией, как pdf_redo: запись xref получает
+// значение фрагмента, а прежнее значение уходит фрагментом в журнал (pdf_add_journal_fragment). После всех
+// шагов — undo до позиции.
+void replayJournal(fz_context* ctx, pdf_document* pdf, const std::string& journal, int position) {
+    const auto* data = reinterpret_cast<const unsigned char*>(journal.data());
+    const size_t size = journal.size();
+    pdf_lexbuf* lex = &pdf->lexbuf.base;
+    mu::StreamHandle stm(ctx);
+    mu::PdfObjHandle header(ctx);
+    int version = 0;
+    int badFormat = 0;
+    mu::call(ctx, [&] {
+        pdf_enable_journal(ctx, pdf);
+        stm.reset(fz_open_memory(ctx, data, size));
+        if (fz_skip_string(ctx, stm, "%!MuPDF-Journal-") != 0) {
+            badFormat = 1;
+        } else {
+            for (;;) {
+                const int c = fz_peek_byte(ctx, stm);
+                if (c < '0' || c > '9') {
+                    break;
+                }
+                version = version * 10 + c - '0';
+                (void)fz_read_byte(ctx, stm);
+            }
+            fz_skip_space(ctx, stm);
+            if (version != 100 || fz_skip_string(ctx, stm, "journal\n") != 0 ||
+                pdf_lex(ctx, stm, lex) != PDF_TOK_OPEN_DICT) {
+                badFormat = 1;
+            } else {
+                header.reset(pdf_parse_dict(ctx, pdf, stm, lex));
+            }
+        }
+    });
+    if (badFormat != 0) {
+        throw JournalMismatch("not a MuPDF journal");
+    }
+    int64_t fileSize = 0;
+    int historyPos = 0;
+    const char* fingerprint = nullptr;
+    size_t fingerprintLen = 0;
+    mu::call(ctx, [&] {
+        fileSize = pdf_dict_get_int64(ctx, header, PDF_NAME(FileSize));
+        historyPos = pdf_dict_get_int(ctx, header, PDF_NAME(HistoryPos));
+        pdf_obj* fp = pdf_dict_get(ctx, header, PDF_NAME(Fingerprint));
+        fingerprint = pdf_to_str_buf(ctx, fp);
+        fingerprintLen = pdf_to_str_len(ctx, fp);
+    });
+    unsigned char digest[16];
+    xrefFingerprint(pdf, digest);
+    if (fingerprintLen != sizeof(digest) || std::memcmp(fingerprint, digest, sizeof(digest)) != 0 ||
+        pdf->file_size < fileSize) {
+        throw JournalMismatch("journal was written for another file");
+    }
+    if (historyPos != 0) {
+        throw JournalMismatch("journal is not written from the start of history");
+    }
+
+    int steps = 0;
+    int open = 0;  // шаг (операция) открыт
+    for (;;) {
+        int kind = 0;  // 1 — новый шаг, 2 — конец журнала, 3 — фрагмент
+        const char* title = nullptr;
+        size_t titleLen = 0;
+        mu::call(ctx, [&] {
+            fz_skip_space(ctx, stm);
+            if (fz_skip_string(ctx, stm, "entry\n") == 0) {
+                if (pdf_lex(ctx, stm, lex) != PDF_TOK_STRING) {
+                    fz_throw(ctx, FZ_ERROR_FORMAT, "bad step title in journal");
+                }
+                title = lex->buffer;
+                titleLen = lex->len;
+                kind = 1;
+            } else if (fz_skip_string(ctx, stm, /* en */ "djournal") == 0) {  // «en» съел «entry\n»
+                kind = 2;
+            } else {
+                kind = 3;
+            }
+        });
+        if (kind == 2) {
+            break;
+        }
+        if (kind == 1) {
+            const std::string name(title, titleLen);
+            const char* op = name.c_str();
+            mu::call(ctx, [&] {
+                if (open != 0) {
+                    pdf_end_operation(ctx, pdf);
+                }
+                pdf_begin_operation(ctx, pdf, op);
+            });
+            open = 1;
+            ++steps;
+            continue;
+        }
+        if (open == 0) {
+            throw JournalMismatch("badly formed journal: object before the first step");
+        }
+        mu::call(ctx, [&] {
+            int num = 0;
+            int newobj = 0;
+            fz_buffer* buf = nullptr;
+            pdf_obj* value = pdf_parse_journal_obj(ctx, pdf, stm, &num, &buf, &newobj);
+            // Как swap_fragments при redo: запись получает значение фрагмента, фрагмент — прежнее значение.
+            pdf_xref_entry* x = pdf_get_incremental_xref_entry(ctx, pdf, num);
+            pdf_obj* oldObj = x->obj;
+            fz_buffer* oldBuf = x->stm_buf;
+            const int oldEmpty = x->type == 0;
+            x->obj = value;
+            x->stm_buf = buf;
+            x->type = newobj != 0 ? 0 : 'n';
+            pdf_add_journal_fragment(ctx, pdf, num, oldObj, oldBuf, oldEmpty);
+            pdf_purge_object_from_store(ctx, pdf, num);
+        });
+    }
+    if (open != 0) {
+        mu::call(ctx, [&] { pdf_end_operation(ctx, pdf); });
+    }
+    if (steps < position) {
+        throw JournalMismatch("journal has fewer steps than the saved position");
+    }
+    for (int i = steps; i > position; --i) {
+        mu::call(ctx, [&] { pdf_undo(ctx, pdf); });
+    }
+}
+
 std::unique_ptr<Document> requireOk(OpenResult r, const std::string& what) {
     if (r.ok) {
         return std::move(r.document);
@@ -135,7 +279,7 @@ std::unique_ptr<Document> requireOk(OpenResult r, const std::string& what) {
 }  // namespace
 
 Document::Document(std::unique_ptr<MuContext> mu, fz_document* doc, std::string bytes, fs::path path)
-    : mu_(std::move(mu)), doc_(doc), memory_(std::move(bytes)), path_(std::move(path)) {}
+    : mu_(std::move(mu)), doc_(doc), memory_(std::move(bytes)), path_(std::move(path)), file_(path_) {}
 
 Document::~Document() {
     release();
@@ -169,6 +313,7 @@ void Document::reopen(const fs::path& file, const std::string& password, const f
     doc_ = opened;
     path_ = documentPath;
     backing_ = backing;
+    file_ = file;
     if (needsPassword() && !authenticate(password)) {
         release();
         throw std::runtime_error("saved file does not open with the document password: " +
@@ -288,6 +433,31 @@ std::unique_ptr<Document> Document::openOrThrow(MuContext& base, const fs::path&
 
 std::unique_ptr<Document> Document::openOrThrowMemory(std::string bytes, const std::string& magic) {
     return requireOk(openMemory(std::move(bytes), magic), "memory");
+}
+
+std::unique_ptr<Document> Document::recoverFrom(const fs::path& source, const std::string& journal,
+                                                int position, const fs::path& documentPath,
+                                                const std::string& password) {
+    std::unique_ptr<Document> doc(new Document(MuContext::global().clone(), nullptr, {}, documentPath));
+    doc->file_ = source;
+    fz_context* ctx = doc->mu_->get();
+    const std::wstring wide = source.native();
+    mu::StreamHandle stm(ctx);
+    mu::call(ctx, [&] {
+        stm.reset(fz_open_file_w(ctx, wide.c_str()));
+        doc->doc_ = fz_open_document_with_stream(ctx, ".pdf", stm);
+    });
+    pdf_document* pdf = doc->pdf();
+    if (pdf == nullptr) {
+        throw std::runtime_error("autosave source is not a PDF: " + paths::toUtf8(source));
+    }
+    if (doc->needsPassword() && !doc->authenticate(password)) {
+        throw std::runtime_error("password required: " + paths::toUtf8(source));
+    }
+    (void)doc->pageCount();  // как при открытии: ремонт (если нужен) — до журнала
+    replayJournal(ctx, pdf, journal, position);
+    doc->undo_ = std::make_unique<UndoStack>(*doc);
+    return doc;
 }
 
 std::unique_ptr<Document> Document::createBlank(int pages) { return createBlank(MuContext::global(), pages); }

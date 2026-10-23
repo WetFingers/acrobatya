@@ -10,6 +10,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 #include "core/mu/error.h"
@@ -57,6 +58,12 @@ struct OpenResult {
     DocError error;
 };
 
+// Журнал автосохранения не подходит к файлу (другой исходник: MuPDF сверяет отпечаток xref).
+class JournalMismatch : public std::runtime_error {
+public:
+    using std::runtime_error::runtime_error;
+};
+
 struct DocProperties {
     // /Info в UTF-8; даты — как в файле ("D:20260101120000+03'00'")
     std::string title, author, subject, keywords, creator, producer, creationDate, modDate;
@@ -96,6 +103,16 @@ public:
     static std::unique_ptr<Document> openOrThrow(MuContext& base, const std::filesystem::path& path,
                                                  const std::string& password = {});
     static std::unique_ptr<Document> openOrThrowMemory(std::string bytes, const std::string& magic = ".pdf");
+    // Восстановить несохранённые правки после падения (эталон 4.5; Autosave::recover): открыть source
+    // (исходный файл или его копию из автосохранения) без журнала, загрузить журнал MuPDF (байты
+    // pdf_write_journal с позицией 0) и вернуть position шагов — правки на месте, история undo/redo та же,
+    // файл не сохранён. Путь документа — documentPath. Журнал от другого файла — JournalMismatch; прочее —
+    // MuError / std::runtime_error.
+    static std::unique_ptr<Document> recoverFrom(const std::filesystem::path& source,
+                                                 const std::string& journal, int position,
+                                                 const std::filesystem::path& documentPath,
+                                                 const std::string& password = {});
+
     // Новый PDF в памяти: pages пустых страниц A4 (595 × 842 pt).
     static std::unique_ptr<Document> createBlank(int pages = 1);
     static std::unique_ptr<Document> createBlank(MuContext& base, int pages = 1);
@@ -134,6 +151,9 @@ public:
     // закрытие документа.
     const std::filesystem::path& path() const noexcept { return path_; }
     const std::filesystem::path& backingFile() const noexcept { return backing_; }
+    // Файл, открытый на самом деле: путь документа, временный файл неудачной замены или копия исходника из
+    // автосохранения (восстановление); пусто — документ из памяти или новый.
+    const std::filesystem::path& filePath() const noexcept { return file_; }
     // Пароль, которым документ открыт (UTF-8) — для переоткрытия после сохранения.
     const std::string& password() const noexcept { return password_; }
     fz_document* handle() const noexcept { return doc_; }
@@ -159,6 +179,7 @@ private:
     std::string memory_;  // данные openMemory живут, пока жив документ
     std::filesystem::path path_;
     std::filesystem::path backing_;  // временный файл неудачной замены, удаляется деструктором
+    std::filesystem::path file_;
     std::string password_;
     bool ownerAuthenticated_ = false;
     std::unique_ptr<UndoStack> undo_;  // журнал PDF (pdf_enable_journal)
