@@ -67,7 +67,7 @@ def qpdf_path() -> str:
 def corpus_gen_dir() -> Path:
     base = os.environ.get("OTTISK_CORPUS")
     if not base:
-        base = str(Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "ottisk" / "corpus")
+        base = r"C:\Tools\ottisk\corpus"  # не %LOCALAPPDATA%: её перенаправляет приложение Claude
     return Path(base) / "gen"
 
 

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "root": "%LOCALAPPDATA%/ottisk/corpus",
+  "root": "C:/Tools/ottisk/corpus",
   "snapshot": "2026-10-23",
   "about": "Внешние корпуса тестовых PDF (эталон design.md 9.2). Файлы — вне репозитория, в <root>/<id>/; качает и сверяет tools/fetch_corpus.py; gen/ — каталог генераторов tools/gen/. Теги — только из списка 9.2.",
   "tags": {
@@ -30,7 +30,7 @@
   "expect_values": {
     "open": "открывается без пароля",
     "password:<p>": "нужен пароль <p> (пусто — пустой пароль пользователя)",
-    "broken-ok": "может не открыться или потребовать ремонта; процесс жив, ошибка — FORMAT/SYNTAX/LIMIT/UNSUPPORTED",
+    "broken-ok": "может не открыться или потребовать ремонта; процесс жив, ошибка — FORMAT/SYNTAX/LIMIT/UNSUPPORTED/LIBRARY/GENERIC, ARGUMENT из MuPDF или нехватка памяти под пределом engine_tests",
     "sig:<СТАТУС>[|<СТАТУС>]": "вердикт проверки подписи без доверия (INTACT, INVALID, …)",
     "data": "не PDF — данные (списки доверия, Office)"
   },

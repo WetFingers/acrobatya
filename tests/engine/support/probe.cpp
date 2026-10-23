@@ -2,8 +2,11 @@
 
 #include <algorithm>
 #include <chrono>
+#include <condition_variable>
 #include <cstdlib>
 #include <exception>
+#include <mutex>
+#include <thread>
 #include <vector>
 
 #include "core/mu/error.h"
@@ -15,6 +18,69 @@ extern "C" {
 }
 
 namespace ot::test {
+
+namespace {
+
+std::chrono::seconds renderTimeout() {
+#if defined(__SANITIZE_ADDRESS__)
+    long long seconds = 45;
+#else
+    long long seconds = 15;
+#endif
+    if (const char* v = std::getenv("OTTISK_PROBE_RENDER_TIMEOUT_S"); v != nullptr && *v != '\0') {
+        seconds = std::strtoll(v, nullptr, 10);
+    }
+    return std::chrono::seconds(seconds);
+}
+
+// Срок рендера: сторожевой поток ставит cookie.abort, если рендер не уложился (MuPDF проверяет флаг между
+// операторами содержимого и узлами display list).
+class RenderDeadline {
+public:
+    explicit RenderDeadline(std::chrono::seconds limit) {
+        if (limit.count() > 0) {
+            watchdog_ = std::thread([this, limit] {
+                std::unique_lock lock(mutex_);
+                if (!cv_.wait_for(lock, limit, [this] { return done_; })) {
+                    fired_ = true;
+                    cookie_.abort = 1;
+                }
+            });
+        }
+    }
+    ~RenderDeadline() { finish(); }
+    RenderDeadline(const RenderDeadline&) = delete;
+    RenderDeadline& operator=(const RenderDeadline&) = delete;
+
+    fz_cookie* cookie() noexcept { return &cookie_; }
+
+    // Сработал ли срок (после завершения сторожа).
+    bool fired() {
+        finish();
+        return fired_;
+    }
+
+private:
+    void finish() {
+        {
+            const std::lock_guard lock(mutex_);
+            done_ = true;
+        }
+        cv_.notify_one();
+        if (watchdog_.joinable()) {
+            watchdog_.join();
+        }
+    }
+
+    fz_cookie cookie_{};
+    std::mutex mutex_;
+    std::condition_variable cv_;
+    bool done_ = false;
+    bool fired_ = false;
+    std::thread watchdog_;
+};
+
+}  // namespace
 
 ProbeResult probeFile(const std::filesystem::path& path, const std::string& password) {
     ProbeResult p;
@@ -38,7 +104,14 @@ ProbeResult probeFile(const std::filesystem::path& path, const std::string& pass
                     if (!req.scissor.empty()) {
                         std::vector<std::uint8_t> buf(static_cast<size_t>(req.scissor.width()) *
                                                       static_cast<size_t>(req.scissor.height()) * 3);
-                        renderer.render(req, buf.data(), req.scissor.width() * 3, PixelFormat::Rgb24);
+                        RenderDeadline deadline(renderTimeout());
+                        try {
+                            renderer.render(req, buf.data(), req.scissor.width() * 3, PixelFormat::Rgb24,
+                                            deadline.cookie());
+                        } catch (const MuError&) {
+                            p.timedOut = deadline.fired();
+                            throw;
+                        }
                     }
                 }
                 p.rendered = true;
@@ -56,15 +129,25 @@ ProbeResult probeFile(const std::filesystem::path& path, const std::string& pass
 
 bool isBrokenFileCode(int fzCode) noexcept {
     return fzCode == FZ_ERROR_FORMAT || fzCode == FZ_ERROR_SYNTAX || fzCode == FZ_ERROR_LIMIT ||
-           fzCode == FZ_ERROR_UNSUPPORTED;
+           fzCode == FZ_ERROR_UNSUPPORTED || fzCode == FZ_ERROR_LIBRARY || fzCode == FZ_ERROR_GENERIC;
+}
+
+bool isMemoryFailure(const DocError& e) noexcept {
+    return e.code == FZ_ERROR_SYSTEM &&
+           (e.message.find("malloc") != std::string::npos || e.message.find("memory") != std::string::npos);
+}
+
+bool envFlag(const char* name) {
+    const char* v = std::getenv(name);
+    return v != nullptr && *v != '\0' && !(v[0] == '0' && v[1] == '\0');
 }
 
 std::filesystem::path corpusRoot() {
     if (const char* c = std::getenv("OTTISK_CORPUS"); c != nullptr && *c != '\0') {
         return paths::fromUtf8(c);
     }
-    const char* local = std::getenv("LOCALAPPDATA");
-    return paths::fromUtf8(local != nullptr ? local : "") / L"ottisk" / L"corpus";
+    // Не %LOCALAPPDATA%: приложение Claude перенаправляет туда записи своих процессов (docs/progress.md).
+    return std::filesystem::path(L"C:\\Tools\\ottisk\\corpus");
 }
 
 std::filesystem::path corpusFile(const std::string& path, const std::string& rel) {

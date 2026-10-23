@@ -15,7 +15,7 @@
 **Что есть на старте (этап 0, Claude в интерактивной сессии с человеком).** Qt 6.12.0 в `C:\Qt` и MuPDF
 1.28.5 с Debug/Release в `C:\src\mupdf` (перенесены из scratchpad, не поставлены заново), vcpkg с манифестом
 (openssl, qpdf-portable отдельно, tiff, fmt, spdlog, nlohmann-json, sqlite3[fts5], gtest), `C:\Tools`
-(qpdf, pdfcpu, veraPDF, tessdata rus/eng/deu, venv-test), корпуса по манифесту в `%LOCALAPPDATA%\ottisk\corpus`,
+(qpdf, pdfcpu, veraPDF, tessdata rus/eng/deu, venv-test), корпуса по манифесту в `C:\Tools\ottisk\corpus`,
 60 рендер-эталонов от Release-сборки, каркас CMake с пустым окном и первым зелёным `ctest`, `tools/verify.py`,
 установщик 0.0.1, проба LibreOffice без прав (`msiexec /a`), очередь без Docker, которая распознаёт «session limit»/«weekly
 limit» и ждёт «resets HH:MM», `docs/scope.json` (186 + 8 + 28 + 30 ID), копии `features.json`/`tech-facts.md` в `docs/`.

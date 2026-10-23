@@ -10,7 +10,7 @@ C++20 · Qt 6.12 Widgets · MuPDF 1.28.5 (с Tesseract) · OpenSSL 3.5 · CMake 
 ## Что нужно на машине
 
 Build Tools 2022 17.14 (MSVC 14.44, CMake, Ninja, clang-format 19.1.5), Qt 6.12.0 в `C:\Qt\6.12.0\msvc2022_64`,
-MuPDF 1.28.5, собранный в `C:\src\mupdf` (`tools\mupdf-build.ps1`), vcpkg в `%LOCALAPPDATA%\vcpkg`, Python 3.14
+MuPDF 1.28.5, собранный в `C:\src\mupdf` (`tools\mupdf-build.ps1`), vcpkg в `C:\Tools\vcpkg`, Python 3.14
 (`py -3.14`) и venv тестов `C:\Tools\venv-test` (`tools\requirements-test.txt`), инструменты `C:\Tools\{qpdf,pdfcpu,
 verapdf,tessdata}`, Inno Setup 6 (per-user). Проверить всё разом: `.\run-queue.ps1 -Setup` (ничего не ставит).
 

@@ -11,7 +11,7 @@
 //       сверить рендер с эталонами expected.json (метрики imgcmp по каждому растру, итог); --out — текущие и
 //       diff-растры расходящихся (для tools/review_refs.py --actual <каталог>); Debug-сборкой — замер
 //       Debug ↔ Release; код 1 — есть ошибки или растры за порогом
-// Источник "corpus:<путь>" — относительно %LOCALAPPDATA%\ottisk\corpus (или OTTISK_CORPUS).
+// Источник "corpus:<путь>" — относительно C:\Tools\ottisk\corpus (или OTTISK_CORPUS).
 // Код: 0 — успех, 1 — ошибки рендера, 2 — неверные аргументы.
 #include <algorithm>
 #include <chrono>
@@ -45,8 +45,8 @@ fs::path corpusRoot() {
     if (const char* c = std::getenv("OTTISK_CORPUS"); c != nullptr && *c != '\0') {
         return ot::paths::fromUtf8(c);
     }
-    const char* local = std::getenv("LOCALAPPDATA");
-    return ot::paths::fromUtf8(local != nullptr ? local : "") / L"ottisk" / L"corpus";
+    // Не %LOCALAPPDATA%: приложение Claude перенаправляет туда записи своих процессов (docs/progress.md).
+    return std::filesystem::path(L"C:\\Tools\\ottisk\\corpus");
 }
 
 fs::path resolveSource(const std::string& source) {

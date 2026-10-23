@@ -359,7 +359,6 @@ function Install-ClaudeConfig {
 # он обязателен: без env очереди сборка и тесты идут не в том окружении. Нет файла — создаётся по шаблону
 # эталона 10.6; OTTISK_SOFFICE сюда дописывает проба LibreOffice (этап 0), шаблон его не ставит.
 function Get-LocalSettingsText {
-    $la = $env:LOCALAPPDATA.Replace('\', '\\')
     $tools = $ToolsRoot.Replace('\', '\\')
     return @"
 {
@@ -368,7 +367,9 @@ function Get-LocalSettingsText {
     "BASH_MAX_TIMEOUT_MS": "7200000",
     "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS": "7200000",
     "VCPKG_MAX_CONCURRENCY": "10",
-    "VCPKG_ROOT": "$la\\vcpkg",
+    "VCPKG_ROOT": "$tools\\vcpkg",
+    "OTTISK_VCPKG_ROOT": "$tools\\vcpkg",
+    "VCPKG_DEFAULT_BINARY_CACHE": "$tools\\vcpkg\\archives",
     "QT_ROOT": "C:\\Qt\\6.12.0\\msvc2022_64",
     "MUPDF_ROOT": "C:\\src\\mupdf",
     "QT_QPA_PLATFORM": "offscreen",
@@ -378,7 +379,7 @@ function Get-LocalSettingsText {
     "PYTHONIOENCODING": "utf-8",
     "TESSDATA_PREFIX": "$tools\\tessdata",
     "OTTISK_TOOLS": "$tools",
-    "OTTISK_CORPUS": "$la\\ottisk\\corpus",
+    "OTTISK_CORPUS": "$tools\\ottisk\\corpus",
     "OTTISK_PYTHON": "$tools\\venv-test\\Scripts\\python.exe",
     "OTTISK_INSTANCE": "test"
   },
@@ -432,11 +433,20 @@ function Ensure-LocalSettings {
     }
     try {
         $j = Read-QueueText $f | ConvertFrom-Json
-        $need = @('BASH_DEFAULT_TIMEOUT_MS', 'CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS', 'VCPKG_ROOT', 'QT_ROOT', 'MUPDF_ROOT',
-                  'QT_QPA_PLATFORM', 'TESSDATA_PREFIX', 'OTTISK_PYTHON', 'OTTISK_CORPUS', 'OTTISK_INSTANCE')
+        $need = @('BASH_DEFAULT_TIMEOUT_MS', 'CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS', 'VCPKG_ROOT', 'OTTISK_VCPKG_ROOT',
+                  'VCPKG_DEFAULT_BINARY_CACHE', 'QT_ROOT', 'MUPDF_ROOT', 'QT_QPA_PLATFORM', 'TESSDATA_PREFIX', 'OTTISK_PYTHON',
+                  'OTTISK_CORPUS', 'OTTISK_INSTANCE')
         $miss = @($need | Where-Object { -not ($j.env.PSObject.Properties.Name -contains $_) })
         if ($miss.Count -gt 0) { Say ("  ! .claude\settings.local.json: нет env {0}" -f ($miss -join ', ')) 'Yellow' }
         else { Say '  [+] .claude\settings.local.json — env очереди на месте' 'Green' }
+        # Старый шаблон держал vcpkg и корпус в %LOCALAPPDATA%: приложение Claude перенаправляет туда записи своих
+        # процессов в папку пакета, и очередь из вкладки «Терминал» их не видит (docs/progress.md, 23.10.2026).
+        $stale = @($j.env.PSObject.Properties | Where-Object { [string]$_.Value -match '(?i)\\AppData\\Local\\(vcpkg|ottisk)' } |
+                   ForEach-Object { $_.Name })
+        if ($stale.Count -gt 0) {
+            Say ("  [-] .claude\settings.local.json: {0} указывают в %LOCALAPPDATA% — перенести в $ToolsRoot (vcpkg, ottisk\corpus)" -f ($stale -join ', ')) 'Red'
+            $script:SetupOk = $false
+        }
         if (-not ($j.env.PSObject.Properties.Name -contains 'OTTISK_SOFFICE')) {
             Say '  [!] OTTISK_SOFFICE не задан — LibreOffice нет; 7.3 пойдёт на FakeOfficeBackend (не BLOCKED)' 'DarkYellow'
         }
@@ -492,7 +502,7 @@ function Invoke-Setup {
     $muMiss = @($muLibs | Where-Object { -not (Test-Path (Join-Path $mu $_)) })
     Add-Check 'MuPDF 1.28.5' ($muMiss.Count -eq 0) $(if ($muMiss.Count -eq 0) { "$mu (Debug и Release libmupdf.lib, Release libresources.lib, mutool.exe)" } else { 'нет: ' + ($muMiss -join ', ') })
 
-    $vcpkg = if ($env:VCPKG_ROOT) { $env:VCPKG_ROOT } else { Join-Path $env:LOCALAPPDATA 'vcpkg' }
+    $vcpkg = if ($env:VCPKG_ROOT) { $env:VCPKG_ROOT } else { Join-Path $ToolsRoot 'vcpkg' }
     Add-Check 'vcpkg' (Test-Path (Join-Path $vcpkg 'vcpkg.exe')) "$vcpkg\vcpkg.exe"
 
     $toolFiles = @('qpdf\bin\qpdf.exe', 'pdfcpu\pdfcpu.exe', 'tessdata\rus.traineddata', 'tessdata\eng.traineddata', 'tessdata\deu.traineddata', 'venv-test\Scripts\python.exe')

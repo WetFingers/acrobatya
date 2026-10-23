@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "Исходные файлы эталонов рендера (эталон 9.3): render_refs рисует каждую страницу из pages при 72 и 150 dpi (RGB, AA 8, без ICC) в tests/render/expected/<id>.<страница>.<dpi>.png. source — путь от корня репозитория или corpus:<запись>/<путь> (каталог корпусов: %OTTISK_CORPUS% или %LOCALAPPDATA%/ottisk/corpus; нет файла — тест пропускается). Все файлы открываются без пароля (шифрованные — с пустым паролем пользователя): поля password в формате нет. Список составлен по tests/corpus/manifest.json и tests/fixtures/pick (лицензии — tests/fixtures/LICENSES.md).",
+  "about": "Исходные файлы эталонов рендера (эталон 9.3): render_refs рисует каждую страницу из pages при 72 и 150 dpi (RGB, AA 8, без ICC) в tests/render/expected/<id>.<страница>.<dpi>.png. source — путь от корня репозитория или corpus:<запись>/<путь> (каталог корпусов: %OTTISK_CORPUS% или C:/Tools/ottisk/corpus; нет файла — тест пропускается). Все файлы открываются без пароля (шифрованные — с пустым паролем пользователя): поля password в формате нет. Список составлен по tests/corpus/manifest.json и tests/fixtures/pick (лицензии — tests/fixtures/LICENSES.md).",
   "mupdf": "1.28.5",
   "files": [
     {

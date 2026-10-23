@@ -7,7 +7,7 @@
   images-200.pdf — 200 страниц, на каждой картинка: JPEG RGB 2000×1500 (большинство), JPEG в
                    оттенках серого (каждая 7-я), Flate RGB с маской SMask (каждая 10-я), подпись;
   big.json       — число страниц, размеры, sha256 (для манифеста корпуса и рубежа Р1).
-Каталог по умолчанию — %OTTISK_CORPUS%\\gen или %LOCALAPPDATA%\\ottisk\\corpus\\gen (--corpus).
+Каталог по умолчанию — %OTTISK_CORPUS%\\gen или C:\\Tools\\ottisk\\corpus\\gen (--corpus).
 Откуда: _genlib (pikepdf), тексты _texts.py, картинки — процедурные (numpy + Pillow).
 Детерминизм: random.Random / numpy.default_rng с seed=1, сохранение через _genlib.save_pdf.
 Запуск: "C:\\Tools\\venv-test\\Scripts\\python.exe" -X utf8 -I tools/gen/make_big.py [--corpus <каталог>] [--skip-existing]

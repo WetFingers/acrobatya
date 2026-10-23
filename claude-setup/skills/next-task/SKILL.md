@@ -169,7 +169,7 @@ disable-model-invocation: true
   `tools/shots.ps1`, `tools/build.ps1` — в `build/debug` один Ninja за раз (замок `.queue/build.lock`);
   **не правят** `CMakeLists.txt`, `cmake/*.cmake`, `CMakePresets.json`, PCH (`src/core/pch.h`, `src/services/pch.h`, `src/ui/pch.h`), `docs/plan.md`,
   `docs/progress.md`, `CHANGELOG.md`, `tests/render/expected/`; **не коммитят**, не трогают `.queue/`,
-  теги, `%LOCALAPPDATA%\AcroBatya` человека и `C:\Qt`, `C:\src\mupdf`, `%LOCALAPPDATA%\vcpkg`, `C:\Tools`.
+  теги, `%LOCALAPPDATA%\AcroBatya` человека и `C:\Qt`, `C:\src\mupdf`, `C:\Tools` (с `vcpkg` и корпусом `ottisk\corpus`).
 - **Цикл сборки для C++-исполнителей** (иначе ни один агент не может скомпилировать свой код, а главная
   сессия чинит чужие ошибки сама):
   1. главная сессия после workflow запускает `tools\build_lock.ps1 -Target <цели пункта>`

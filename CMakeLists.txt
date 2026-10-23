@@ -8,7 +8,7 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
   if(OTTISK_VCPKG_ROOT)
     set(_vcpkg "${OTTISK_VCPKG_ROOT}")
   else()
-    set(_vcpkg "$ENV{LOCALAPPDATA}/vcpkg")
+    set(_vcpkg "C:/Tools/vcpkg")  # не %LOCALAPPDATA%: её перенаправляет приложение Claude
   endif()
   file(TO_CMAKE_PATH "${_vcpkg}" _vcpkg)
   set(CMAKE_TOOLCHAIN_FILE "${_vcpkg}/scripts/buildsystems/vcpkg.cmake" CACHE FILEPATH "vcpkg toolchain")
@@ -142,9 +142,10 @@ include(cmake/tests.cmake)
 ottisk_gtest_exe(unit_tests tests/unit unit "unit" 60 ottisk_services)
 # Корпус и мутанты (план 1.1): фикстура corpus — сверка скачанного без записи индекса (нет корпуса — код 77,
 # пропуск; тесты сами дают SKIP), mutants — 100 своих битых PDF в build/<пресет>/gen; после первой строки
-# «progress:» у теста 120 с на остаток.
+# «progress:» у теста 120 с на остаток. Процесс engine_tests ограничен по памяти (tests/engine/support/
+# memory_cap.cpp) и занимает 2 слота ctest -j: десять шардов fuzz без предела уронили Windows (23.10.2026).
 ottisk_gtest_exe(engine_tests tests/engine engine "engine;slow" 600 ottisk_services
-  PROPERTIES FIXTURES_REQUIRED "corpus\;mutants" TIMEOUT_AFTER_MATCH "120\;^progress:")
+  PROPERTIES FIXTURES_REQUIRED "corpus\;mutants" TIMEOUT_AFTER_MATCH "120\;^progress:" PROCESSORS 2)
 if(TARGET engine_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_test(NAME engine.corpus.verify
     COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/fetch_corpus.py" --verify --dry-run --missing-code 77

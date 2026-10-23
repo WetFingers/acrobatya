@@ -15,7 +15,7 @@
   xref ×6        — порча таблицы xref (мусор, сдвиг смещений, неверный подраздел).
 Ожидание для всех: процесс жив, нет ASan-ошибок; MuPDF открывает с ремонтом или бросает
 FZ_ERROR_FORMAT/SYNTAX/LIMIT/UNSUPPORTED (index.json: "expect").
-Каталог по умолчанию — %OTTISK_CORPUS%\\gen или %LOCALAPPDATA%\\ottisk\\corpus\\gen (--corpus).
+Каталог по умолчанию — %OTTISK_CORPUS%\\gen или C:\\Tools\\ottisk\\corpus\\gen (--corpus).
 Откуда: pikepdf (QDF-копии источников), C:\\Tools\\qpdf\\bin\\fix-qdf.exe (пересчёт xref после правки
 структуры), random.Random(seed=1).
 Детерминизм: только seed=1 и детерминированные источники (сначала make_mini/annots/forms/demo/sig/enc).

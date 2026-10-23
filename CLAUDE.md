@@ -33,7 +33,7 @@ C++20 без модулей; MSVC 14.44 (`cl` 19.44, Build Tools 2022 17.14, SDK
 по пресетам `CMakePresets.json`; **Qt 6.12.0 LTS** (Widgets, PrintSupport, Svg, Concurrent, Network, Test,
 LinguistTools) в `C:\Qt\6.12.0\msvc2022_64`; **MuPDF 1.28.5** (с Tesseract 5.5.2 и Leptonica из её состава) —
 статические `.lib` из `C:\src\mupdf\platform\win32\x64\{Debug,Release}` (`libresources.lib` — всегда Release);
-vcpkg (`%LOCALAPPDATA%\vcpkg`, манифест `vcpkg.json`, триплет `x64-windows-static-md-release`): OpenSSL 3.5.4,
+vcpkg (`C:\Tools\vcpkg`, манифест `vcpkg.json`, триплет `x64-windows-static-md-release`): OpenSSL 3.5.4,
 libtiff, fmt, spdlog, nlohmann-json, sqlite3[fts5], gtest; qpdf 12.4.2 — portable `qpdf.exe`, не библиотека.
 Все цели `/MD`; Debug = Debug-библиотеки MuPDF + release-DLL Qt. Тесты — gtest и QTest (offscreen);
 скрипты над PDF — Python 3.14 в venv `C:\Tools\venv-test` (pypdfium2, pikepdf, pyHanko, scikit-image, …);
@@ -105,7 +105,7 @@ Tools; в `PATH` машины их нет). Команды ниже — для P
    `FakeHttpFetcher`, `FakeOfficeBackend`, `FakeOcrBackend`, `FakeShellLauncher`…), локальные TSA/OCSP,
    `PFXImportCertStore(NO_PERSIST_KEY)` и строку «Нужна ручная проверка». LibreOffice нет к 7.3 — не `BLOCKED`,
    а `FakeOfficeBackend` + `SKIP 77`.
-4. **Только чтение:** `C:\Qt`, `C:\src\mupdf`, `%LOCALAPPDATA%\vcpkg`, `C:\Tools` (писать можно в `C:\Tools\logs`),
+4. **Только чтение:** `C:\Qt`, `C:\src\mupdf`, `C:\Tools` (с `vcpkg` и корпусом `ottisk\corpus`; писать можно в `C:\Tools\logs`),
    эталон и справочники; данные человека (`%LOCALAPPDATA%\AcroBatya`, профиль Acrobat, хранилище сертификатов)
    не трогать — у тестов `OTTISK_DATA_DIR` в `build`, у очереди `OTTISK_INSTANCE=test`. Хук `guard.ps1` это держит.
 5. **Задание — сессия, шаг — пункт.** Пункты по очереди: одна законченная правка, один коммит, отметка `[x]`

@@ -8,32 +8,25 @@
 Новые пункты — сверху, с номером сессии или рубежа. Ничего из этого не блокирует очередь: она работает на
 `Fake*`-реализациях и фикстурах, живая часть ждёт здесь (эталон 8.1 «Человек отдельно», 9.7).
 
-- **Сессия 1.2 · Корпус живёт в `C:\Tools\ottisk\corpus`** (`OTTISK_CORPUS` в `.claude/settings.local.json`; обнаружено
-  23.10.2026): все теги на месте (1,8 ГБ), но `index.json` хранит абсолютные пути под `%LOCALAPPDATA%\ottisk\corpus`
-  (старое место). Тесты теперь берут файл по `rel` от `OTTISK_CORPUS` (`tests/engine/support/probe.h` `corpusFile`),
-  шарды `big`, `cyr` и `engine.stress.render` проходят. Человеку: решить, где корпус живёт постоянно, и один раз
-  `"$env:OTTISK_PYTHON" -X utf8 -I tools/fetch_corpus.py --verify` (переписывает `index.json` с верными путями);
-  строку 1.1 про «нет корпуса» после этого можно убрать.
+- **Между 1.2 и 1.3 · Решить: предел памяти MuPDF в самой программе** (23.10.2026). Битые и «злые» PDF заставляют
+  MuPDF выделять гигабайты (FZ_STORE ограничивает только кеш): прогон корпуса фаззов без предела уронил Windows.
+  Тесты теперь ограничены Job Object (2 ГБ на процесс), а программа — нет: такой файл может съесть всю память.
+  Варианты: (а) оставить как есть; (б) свой аллокатор MuPDF с пределом (например, 4 ГБ или половина ОЗУ) —
+  открытие или рендер такого файла заканчивается ошибкой «файл слишком сложный». Решение — строкой сюда; без него
+  очередь эталон не меняет.
 - **Сессия 1.2 · «Мало памяти» вживую** — `MemoryGuard` сжимает store MuPDF и кеш тайлов при уходе программы в фон и
   после 60 с простоя; проверено событиями без экрана. Когда окно (2.2–2.3) подключит его, проверить на экране: Alt+Tab
   из большого документа → в журнале `low memory: MuPDF store shrunk to 50%`, страница перерисовывается без ошибок.
-
-- **Сессия 1.1 · Нет клона vcpkg и корпуса** (обнаружено 23.10.2026 в начале сессии): каталогов
-  `%LOCALAPPDATA%\vcpkg` и `%LOCALAPPDATA%\ottisk\corpus` на диске нет (этап 0 их ставил), `build/debug` перестал
-  конфигурироваться (`vcpkg.cmake` не найден). Обход сессии — без загрузок и правок репозитория: `build/{debug,release,
-  asan,fuzz}` сконфигурированы `cmake --preset … --fresh` с `-DCMAKE_TOOLCHAIN_FILE=<Build Tools>\VC\vcpkg\scripts\
-  buildsystems\vcpkg.cmake -DVCPKG_MANIFEST_INSTALL=OFF -DVCPKG_INSTALLED_DIR=<build>/vcpkg_installed` (asan и fuzz —
-  на пакетах `build/debug/vcpkg_installed`). Человеку: вернуть свой клон vcpkg в `%LOCALAPPDATA%\vcpkg` (baseline
-  `8570362` из `vcpkg.json`) и корпус (`tools/fetch_corpus.py`, затем `--verify`), после этого один раз
-  `cmake --preset msvc-debug --fresh` и `--preset msvc-release --fresh` без ключей. До этого не удалять
-  `build/*/vcpkg_installed` и не делать `--fresh` без ключей выше.
-- **Сессия 1.1 · Корпус после восстановления** — `ctest --test-dir build/debug -L engine --output-on-failure`
-  (`engine.corpus.open` и части `engine.corpus/CorpusOpen.files/<тег>_<n>` по тегам annots, forms, enc-r2…r6, big,
-  pdfa-pass/fail, cyr, fuzz; части по 200 файлов должны укладываться в 120 с после первой строки `progress:` — иначе
-  уменьшить `kShard` в `tests/engine/open_corpus_test.cpp`), три эталона из корпуса в `ctest -L render` (commons-ru ×2,
-  adobe-spec — сейчас SKIP) в Debug и Release, и `engine` под `msvc-asan`. Сейчас эти тесты дают SKIP.
+- **Между 1.2 и 1.3 · vcpkg и корпус — решено 23.10.2026** (пункты сессий 1.1 «Нет клона vcpkg и корпуса» и 1.2
+  «Корпус живёт в `C:\Tools\ottisk\corpus`» закрыты): оба были на месте, но в папке пакета приложения Claude, а не
+  в настоящей `%LOCALAPPDATA%` (журнал ниже). Теперь `C:\Tools\vcpkg` и `C:\Tools\ottisk\corpus`, `index.json`
+  переписан, `build/*` переконфигурированы своим vcpkg. Человеку ничего не нужно.
+- **Сессия 1.1 · Корпус после восстановления — частично, 23.10.2026**: `ctest -L render` 130/130 в Debug и Release
+  (эталоны из корпуса — commons-ru ×2, adobe-spec — больше не SKIP); `-L engine` в Debug — 113 из 138 зелёные, все
+  теги, кроме части `fuzz`: 25 шардов `fuzz` упираются в 600 с на файлах, которые сам MuPDF рисует минутами
+  (`tests/corpus/slow.json` собирает оператор очереди); `engine` под `msvc-asan` — после списка. До Р1 закрыть.
 - **Этап 0 · Загрузки и LibreOffice — сделано 23.10.2026** (разрешение — поручение человека «начинай этап 0 по
-  docs/plan.md»): tessdata rus/eng/deu, корпуса всех тегов плана (1,8 ГБ в `%LOCALAPPDATA%\ottisk\corpus`),
+  docs/plan.md»): tessdata rus/eng/deu, корпуса всех тегов плана (1,8 ГБ, теперь в `C:\Tools\ottisk\corpus`),
   LibreOffice 26.8.1 распакован `msiexec /a` без прав в `C:\Tools\libreoffice` (`OTTISK_SOFFICE` записан) —
   `winget`/UAC к 7.3 не нужен. Человеку только посмотреть: при желании поставить LibreOffice штатно (тогда
   обновить `OTTISK_SOFFICE`).
@@ -326,3 +319,43 @@
 - Проверки: `verify.py` зелёный (105 тестов); `ctest -L render` 130/130 в Debug и Release; `ctest -L bench` (Release) 6/6;
   `engine.stress.render` и `unit_tests` (сессия, пул, кеши, рендер — трижды) под `msvc-asan` — чисто; шарды
   `engine.corpus` `big_0`, `cyr_0` — зелёные; экранов сессия не строила — сцен нет.
+
+### 2026-10-23 · Между сессиями 1.2 и 1.3 · vcpkg и корпус в `C:\Tools`, корпус без падения Windows
+- Сделано (оператор очереди, вне пунктов плана):
+  1. **Перенос из `%LOCALAPPDATA%`.** Причина «пропажи» клона vcpkg и корпуса в сессиях 1.1–1.2: десктопное
+     приложение Claude — MSIX-пакет, записи процессов оператора в `%LOCALAPPDATA%` ложатся в папку пакета
+     (`%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local`), а очередь из вкладки «Терминал» видит
+     настоящую AppData. Клон vcpkg (с `archives` и `registries`) и корпус перенесены в `C:\Tools\vcpkg` и
+     `C:\Tools\ottisk\corpus`; значения по умолчанию — туда же: `corpusRoot()` тестов, `render_refs`, `bench`,
+     `vcenv.cmd` (+ `VCPKG_DEFAULT_BINARY_CACHE` и `X_VCPKG_REGISTRIES_CACHE` рядом с клоном), `CMakeLists.txt`,
+     `verify.py`, `fetch_corpus.py`, генераторы, манифест, шаблон `settings.local.json` в `run-queue.ps1` (`-Setup`
+     ругается на пути в `%LOCALAPPDATA%`), документы. `fetch_corpus.py --verify` переписал `index.json` (все теги
+     сошлись). `build/{debug,release,asan,fuzz,analyze}` — `--fresh` со своим vcpkg без ключей сессии 1.1 (asan и
+     fuzz — свои `vcpkg_installed` из двоичного кеша за 1 с).
+  2. **Корпус уронил Windows.** Первый прогон `ctest -L engine -j 10` (21 621 файл `fuzz`) исчерпал выделяемую
+     память — у тестов `0xc000012d`, `0xc0000142`, «file not found» на существующих файлах; Windows упала (bugcheck
+     0x51) и перезагрузилась, у соседней очереди bny-studio обнулилась ветка Git. Теперь у `engine_tests` предел
+     памяти процесса (`tests/engine/support/memory_cap.cpp`, Job Object, `OTTISK_TEST_MEMORY_LIMIT_MB`: 2048, под
+     ASan 4096, 0 — выкл.) и `PROCESSORS 2` — `verify.py --full` (`-j 6`) держит не больше трёх шардов.
+  3. **broken-ok по ответам MuPDF.** Ожидание этапа 0 «FORMAT/SYNTAX/LIMIT/UNSUPPORTED» уже, чем отвечает сам MuPDF:
+     LIBRARY (декодеры JPEG/JPX/JBIG2), GENERIC («CTM CHANGE IN CLIP TEXT!!!»), ARGUMENT («not a dict» при ремонте) —
+     все воспроизводит `mutool draw`. `isBrokenFileCode` += LIBRARY, GENERIC; в корпусе для broken-ok допустимы ещё
+     ARGUMENT, нехватка памяти под пределом и рендер дольше срока (счётчики в строке шарда); ввод-вывод, исключения
+     нашего кода и падение процесса — провал.
+  4. **Медленные файлы.** Срок рендера в зонде (`OTTISK_PROBE_RENDER_TIMEOUT_S`: 15 с, под ASan 45 с; сторож ставит
+     `fz_cookie.abort`), `OTTISK_CORPUS_TRACE=1` — печать файла перед зондом, `tests/corpus/slow.json` — пропуск
+     файлов, которые MuPDF рисует минутами внутри одной операции (cookie не прерывает): `mupdf-fuzz/…/02af972f…`
+     (888 байт) — `mutool draw` больше 90 с в FreeType на гигантских глифах.
+- Решения:
+  - Предел памяти — только у тестов; для программы — вопрос человеку («Нужна ручная проверка»).
+  - Список медленных — по Debug-MuPDF (тесты корпуса идут в Debug и ASan): Release-`mutool` под пределом 2 ГБ
+    сдаётся быстро, Debug на тех же файлах считает минуты.
+- Подводные камни:
+  - Каталоги, которые оператор ставит из приложения Claude, — только вне AppData (`C:\Tools`).
+  - Коды `0xc000012d`/`0xc0000142` и «file not found» у существующего файла — исчерпание памяти машины, не дефект.
+  - Git Bash превращает `/c` в `C:/` в аргументах родных программ (`cmd /c` из Python под Bash открывает пустой
+    `cmd`) — `cmd //c` или PowerShell.
+- Проверки: `verify.py` зелёный (105 тестов); `ctest -L render` 130/130 в Debug и Release; `-L engine` в Debug —
+  113/138 (25 шардов `fuzz` — таймаут 600 с на медленных в MuPDF файлах, до `slow.json`); проверка правки — 3
+  независимых агента + по 2 скептика на находку (16 находок, учтены все, кроме давнего расхождения эталона 10.x
+  про фикстуру `corpus.fetch`: реальная фикстура — `fetch_corpus.py --verify --dry-run`).

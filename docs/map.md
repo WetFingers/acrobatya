@@ -100,10 +100,12 @@
 |---|---|
 | `tests/unit/` | gtest, метка `unit`, < 1 с, данные — `tests/data/mini/*.pdf` (свои, ≤ 50 КБ); `support/test_pdf.h` — PDF в памяти (`makePdf`, `makeHeavyPdf` — секунды рендера на 600 dpi, `makeMixedPdf` — текст/кривые/картинки, `makeImagePagesPdf` — 200 страниц с картинками), `support/qt_app.h` — `QCoreApplication` и `waitUntil` для сигналов из потоков |
 | `tests/ui/` | QTest offscreen, метка `ui` (ctest `ui.main_window`), снимки виджетов → `build/ui-shots/` |
-| `tests/engine/` | gtest на корпусе по `<корпус>/index.json` (`open_corpus_test.cpp`: тег → части по 200 файлов, `progress:`), `mutants_test.cpp`; зонд `support/probe.h` (открыть → 32 × 32 → закрыть, `QuietLog`); метки `engine;slow`, `FIXTURES_REQUIRED corpus;mutants` (`engine.corpus.verify` — `fetch_corpus.py --verify --dry-run`, 77 — пропуск; `engine.mutants.generate` — `make_mutants.py` в `build/<пресет>/gen`), `TIMEOUT_AFTER_MATCH 120;^progress:` |
+| `tests/engine/` | gtest на корпусе по `<корпус>/index.json` (`open_corpus_test.cpp`: тег → части по 200 файлов, `progress:`), `mutants_test.cpp`; зонд `support/probe.h` (открыть → 32 × 32 → закрыть, `QuietLog`, `isBrokenFileCode`, `isMemoryFailure`); предел памяти
+процесса `support/memory_cap.cpp` (Job Object, `OTTISK_TEST_MEMORY_LIMIT_MB`, 2048 / ASan 4096, 0 — выкл.),
+`PROCESSORS 2`; `OTTISK_CORPUS_TRACE=1` — печать каждого файла перед зондом (найти файл падения); метки `engine;slow`, `FIXTURES_REQUIRED corpus;mutants` (`engine.corpus.verify` — `fetch_corpus.py --verify --dry-run`, 77 — пропуск; `engine.mutants.generate` — `make_mutants.py` в `build/<пресет>/gen`), `TIMEOUT_AFTER_MATCH 120;^progress:` |
 | `tests/render/` | `render_test.cpp` по `expected/expected.json`, эталоны `expected/<корпус>/<файл>.<стр>.<dpi>.png`, `files.json` — источники |
 | `tests/e2e/`, `tests/compat/`, `tests/bench/`, `tests/build/` | сценарии эталона 2 без UI; `compat_check.py` (SKIP 77); `bench.cpp` → `bench.exe <файл\|hello\|pdf32000\|big-1200\|images-200\|enc-r6>` (только Release: ctest `bench.engine.*`, JSON в `build/bench/`, сравнение — `tools/bench_compare.py docs/bench/baseline-<прошлый>.json "build/bench/*.json"`: +25 % медианы, шум < 5 мс, цели 5.8); `install_test.py` (метка `build`) |
-| `tests/corpus/manifest.json` | корпуса `{id, url\|git, sha256, license, tags[], expect}` → `%LOCALAPPDATA%\ottisk\corpus` (`OTTISK_CORPUS`) |
+| `tests/corpus/manifest.json` | корпуса `{id, url\|git, sha256, license, tags[], expect}` → `C:\Tools\ottisk\corpus` (`OTTISK_CORPUS`) |
 | `tests/fixtures/` | свои фикстуры ≤ 50 КБ и пермиссивные (`LICENSES.md`): `annots/ forms/ enc/ sig/ images/ scans/ office/ scenes/ demo/ imgcmp/ (метрики imgcmp) regress/ (падения фаззера → unit.regress.load) pki/ (4.1)` |
 | `tools/` | `vcenv.cmd`, `verify.py`, `build.ps1`, `build_lock.ps1`, `fuzz.ps1` (фаззер 60 с / 10 мин), `shots.ps1`, `lint.ps1`, стражи `*_guard.py` и `scope_check.py`, `scope_report.py`, `imgcmp/`, `render_refs.cpp`, `review_refs.py`, `fetch_corpus.py`, `compat_check.py`, `bench_compare.py`, `analyze_summary.py`, `copy_icons.py`, `gen/` (генераторы фикстур), `get-tessdata.ps1`, `install-qt.ps1`, `mupdf-build.ps1` + `ottisk-md.props`, очередь: `queue-lib.ps1`, `test_reset_parse.ps1`, `test_guard.ps1` |
 | `installer/` | `ottisk.iss` (UTF-8 BOM, per-user), `app.ico`, `app.rc`, `AcroBatya.manifest` (UTF-8 ACP, longPathAware), `licenses/` |
@@ -187,9 +189,12 @@ PowerShell-стражи очереди `tools/test_reset_parse.ps1` и `tools/te
 1. Файл `tests/engine/<тема>_test.cpp` (цель `engine_tests`, метки `engine;slow`, фикстура `corpus`);
    файлы — по тегу из `tests/corpus/manifest.json` (теги эталона 9.2: `annots`, `forms`, `xfa`, `enc-r2..r6`,
    `sig-b/t/lt/lta`, `pdfa-pass/fail`, `big`, `cyr`, `fuzz`, `office`, `scan`, `text-edit`, `tagged`, `trust`)
-   из `OTTISK_CORPUS` (`%LOCALAPPDATA%\ottisk\corpus`).
+   из `OTTISK_CORPUS` (`C:\Tools\ottisk\corpus`).
 2. Сессии и рубежи корпуса **не качают**: нет тега на диске — `GTEST_SKIP()` и строка в «Нужна ручная проверка»;
    новый тег — только этап 0 / человек (`fetch_corpus.py --verify` сверяет теги плана).
+   **Память:** файлы-фаззы заставляют MuPDF выделять гигабайты — тест корпуса живёт в `engine_tests` (предел памяти
+   процесса) или ставит свой; `ctest -L engine` — не больше `-j 6` (под ASan `-j 4`): 23.10.2026 десять шардов
+   `fuzz` без предела исчерпали память и уронили Windows.
 3. Ожидания — JSON рядом с тестом или в `tests/fixtures/` (для XL — до кода); каждый записанный тестом файл
    проходит минимум `qpdf --check` (`tools/compat_check.py`).
 4. Маленький пермиссивный файл, нужный быстрому тесту, — копией в `tests/fixtures/` с записью в `LICENSES.md`.

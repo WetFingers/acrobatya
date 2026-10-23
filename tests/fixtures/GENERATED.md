@@ -15,7 +15,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\gen\check_determinism.
 
 Один генератор: `"$env:OTTISK_PYTHON" -X utf8 -I tools/gen/make_<что>.py [--out <корень>] [--corpus <каталог>]`.
 `--out` — корень, под которым создаются `tests/…` (по умолчанию репозиторий), `--corpus` — каталог больших
-файлов (по умолчанию `%OTTISK_CORPUS%\gen` или `%LOCALAPPDATA%\ottisk\corpus\gen`), временные файлы —
+файлов (по умолчанию `%OTTISK_CORPUS%\gen` или `C:\Tools\ottisk\corpus\gen`; корпус для очереди — только чтение,
+поэтому из сессий — `--corpus build\gen`, `make_all.ps1 -Corpus build\gen` или `-SkipBig`; `corpus\gen` пересоздаёт
+человек или оператор очереди), временные файлы —
 `%TEMP%\ottisk-gen`. Нужны: venv `C:\Tools\venv-test` (pikepdf, pypdfium2, pyHanko, Pillow, numpy,
 openpyxl, python-pptx, odfpy), `mutool` из `C:\src\mupdf\platform\win32\x64\Release` (`MUPDF_ROOT`),
 `C:\Tools\qpdf\bin\{qpdf,fix-qdf}.exe` (`OTTISK_TOOLS`), шрифты Arial/Times New Roman из `C:\Windows\Fonts`;
@@ -168,7 +170,7 @@ PNG с альфой, колонтитулы, закладки 7 + 10, метки
 `photo.jpg` (1200×800), `logo.png` (512×512 RGBA), `chart.png`, `page-gray.png` (A4 150 dpi), `cmyk.jpg`
 (CMYK, маркер Adobe), `multipage-g4.tif` (2 страницы CCITT G4, 200 dpi).
 
-### Вне Git: `%LOCALAPPDATA%\ottisk\corpus\gen\` (или `%OTTISK_CORPUS%\gen`)
+### Вне Git: `C:\Tools\ottisk\corpus\gen\` (или `%OTTISK_CORPUS%\gen`)
 
 - `make_big.py`: `big-1200.pdf` (1 200 страниц, закладки 12 × 10, объектные потоки, ~2,2 МБ),
   `images-200.pdf` (200 страниц: JPEG RGB 2000×1500, JPEG серый каждая 7-я, Flate + SMask каждая 10-я, ~17 МБ),

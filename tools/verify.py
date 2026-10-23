@@ -21,7 +21,7 @@
       без -LE slow: у render_tests метки «render;slow», и рубежный --labels "render|bench" иначе
       не запустил бы ни одного теста рендера.
 Логи configure.log и build.log пишутся по ходу (хвост виден во время сборки, обрыв оставляет лог).
-Окружение cmake: VCPKG_ROOT — OTTISK_VCPKG_ROOT или %LOCALAPPDATA%\\vcpkg, если он пуст или указывает
+Окружение cmake: VCPKG_ROOT — OTTISK_VCPKG_ROOT или C:\\Tools\\vcpkg, если он пуст или указывает
 на vcpkg из Visual Studio (как в tools\\vcenv.cmd); QT_ROOT, MUPDF_ROOT, OTTISK_PYTHON — по умолчанию.
 Печатает строку на каждый шаг (ok/FAIL/skip, секунды) и вывод ТОЛЬКО упавших: для сборки — строки
 «error C», «error LNK», «FAILED» и хвост 60 строк build.log. Код 0 — всё зелёное, 1 — что-то упало,
@@ -437,7 +437,7 @@ def tool_env() -> dict[str, str]:
     vcpkg = env.get("VCPKG_ROOT", "")
     if not vcpkg or "microsoft visual studio" in vcpkg.lower():
         # vcvars64 «Developer Prompt» ставит VCPKG_ROOT на vcpkg из Build Tools — у «АкроБати» свой клон.
-        own = env.get("OTTISK_VCPKG_ROOT") or str(Path(env.get("LOCALAPPDATA", "")) / "vcpkg")
+        own = env.get("OTTISK_VCPKG_ROOT") or r"C:\Tools\vcpkg"
         if Path(own).is_dir():
             env["VCPKG_ROOT"] = own
     if not env.get("QT_ROOT") and Path(DEFAULT_QT_ROOT).is_dir():

@@ -1,6 +1,6 @@
 // render.refs.* — сверка рендера с эталонами tests/render/expected (эталон 9.3). Каждая запись
 // expected.json → отдельный тест (параметризация); порог — fuzzy записи или defaults. Источник
-// "corpus:<путь>" ищется в %LOCALAPPDATA%\ottisk\corpus (или OTTISK_CORPUS); нет файла — SKIP.
+// "corpus:<путь>" ищется в C:\Tools\ottisk\corpus (или OTTISK_CORPUS); нет файла — SKIP.
 // release_only=true и Debug-сборка — SKIP (расхождение Debug ↔ Release помечает только render_refs).
 // Release (те же библиотеки MuPDF, что у эталонов) — совпадение бит в бит (pixels == 0); Debug — в порогах.
 // Рендер — Document::renderPage → Renderer (display list, scissor), AA 8, ICC выкл.
@@ -41,8 +41,8 @@ fs::path corpusRoot() {
     if (const char* c = std::getenv("OTTISK_CORPUS"); c != nullptr && *c != '\0') {
         return ot::paths::fromUtf8(c);
     }
-    const char* local = std::getenv("LOCALAPPDATA");
-    return ot::paths::fromUtf8(local != nullptr ? local : "") / L"ottisk" / L"corpus";
+    // Не %LOCALAPPDATA%: приложение Claude перенаправляет туда записи своих процессов (docs/progress.md).
+    return std::filesystem::path(L"C:\\Tools\\ottisk\\corpus");
 }
 
 fs::path resolveSource(const std::string& source) {

@@ -6,7 +6,7 @@
                                                         [--files tag:x] [--repin] [--strict]
 
 Каталог корпусов: --root, иначе %OTTISK_CORPUS%, иначе поле "root" манифеста
-(%LOCALAPPDATA%/ottisk/corpus). Каждая запись манифеста живёт в своём подкаталоге <root>/<id>/;
+(C:/Tools/ottisk/corpus; не %LOCALAPPDATA% — её перенаправляет приложение Claude). Каждая запись манифеста живёт в своём подкаталоге <root>/<id>/;
 подкаталог gen/ принадлежит генераторам tools/gen/ и этим скриптом не трогается.
 
 Виды записей манифеста (эталон 9.2):
@@ -218,7 +218,7 @@ def resolve_root(arg_root: str | None, m: dict) -> str:
     env = os.environ.get("OTTISK_CORPUS")
     if env:
         return os.path.abspath(env)
-    raw = m.get("root", "%LOCALAPPDATA%/ottisk/corpus")
+    raw = m.get("root", "C:/Tools/ottisk/corpus")
     expanded = os.path.expandvars(raw)
     if "%" in expanded or "$" in expanded:
         raise SystemExit(f"fetch_corpus: не раскрыть root {raw!r}")

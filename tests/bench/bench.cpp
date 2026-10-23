@@ -2,7 +2,7 @@
 // MuPDF в разы медленнее, цели 5.8 на нём не выполнимы.
 //   bench <файл | имя> [--name id] [--password p] [--runs 5] [--pages 50] [--threads N] [--json out.json]
 // Имена: hello, pdf32000, big-1200, images-200, enc-r6 — ищутся в tests/data/mini, <корпус>/gen, <сборка>/gen
-// (make_big.py), tests/fixtures и корпусе (%OTTISK_CORPUS% или %LOCALAPPDATA%\ottisk\corpus); нет — код 77
+// (make_big.py), tests/fixtures и корпусе (%OTTISK_CORPUS% или C:\Tools\ottisk\corpus); нет — код 77
 // (SKIP). Каждый прогон начинается с пустого store и кеша глифов. Метрики (samples — по прогону, сравнивает
 // медиану tools/bench_compare.py; «падение» — +25 %):
 //   open_first_ms      открыть → display list стр. 1 → растр стр. 1 при 100 % (96 dpi, BGRA)   цель ≤ 300 мс
@@ -67,10 +67,8 @@ fs::path corpusDir() {
     if (const wchar_t* env = _wgetenv(L"OTTISK_CORPUS"); env != nullptr && *env != 0) {
         return env;
     }
-    if (const wchar_t* local = _wgetenv(L"LOCALAPPDATA"); local != nullptr) {
-        return fs::path(local) / L"ottisk" / L"corpus";
-    }
-    return {};
+    // Не %LOCALAPPDATA%: приложение Claude перенаправляет туда записи своих процессов (docs/progress.md).
+    return fs::path(L"C:\\Tools\\ottisk\\corpus");
 }
 
 fs::path findFile(const std::string& fileName) {

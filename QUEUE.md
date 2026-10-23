@@ -174,7 +174,7 @@ powershell -ExecutionPolicy Bypass -File .\run-queue.ps1           # очере�
   команда хука находит `guard.ps1` через `CLAUDE_PROJECT_DIR` (работает из любого каталога сессии) и явно
   возвращает его код: `powershell -Command` сам превратил бы запрет (2) в 1, а 1 Claude Code считает
   нестрашной ошибкой хука и команду пропускает;
-* `C:\Qt`, `C:\src\mupdf`, `%LOCALAPPDATA%\vcpkg`, `C:\Tools` — только чтение (кроме `C:\Tools\logs`);
+* `C:\Qt`, `C:\src\mupdf`, `C:\Tools` (с `vcpkg` и корпусом `ottisk\corpus`) — только чтение (кроме `C:\Tools\logs`);
   установщики системы (VS Installer, `vs_*.exe`, `msiexec /i|/x`, `winget --scope machine`, `vc_redist /install`)
   запрещены; наш `dist\AcroBatya-*-setup.exe /VERYSILENT` и `unins000.exe /VERYSILENT` — разрешены;
 * всё под Git, каждый пункт — отдельный коммит, откат — `git revert`; удалённого репозитория нет, `git push` запрещён;

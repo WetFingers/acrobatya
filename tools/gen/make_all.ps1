@@ -13,7 +13,7 @@
     -Out     — корень, под которым создаются tests\data\mini и tests\fixtures\… (по умолчанию — репозиторий;
                check_determinism.ps1 передаёт сюда временные каталоги).
     -Corpus  — каталог больших файлов и мутантов (по умолчанию %OTTISK_CORPUS%\gen или
-               %LOCALAPPDATA%\ottisk\corpus\gen; в Git не попадают).
+               C:\Tools\ottisk\corpus\gen; в Git не попадают).
     -SkipWord — без шагов Word (если Word не зарегистрирован в COM, пропускаются сами, с предупреждением).
     -SkipBig  — без big-1200/images-200 и мутантов.
     -WordTimeout — предел одного шага Word в секундах (по умолчанию 300): скрытый Word может повиснуть
@@ -42,7 +42,7 @@ New-Item -ItemType Directory -Force -Path $Out | Out-Null
 $Out = (Get-Item -LiteralPath $Out).FullName
 if (-not $Corpus) {
     if ($env:OTTISK_CORPUS) { $Corpus = Join-Path $env:OTTISK_CORPUS 'gen' }
-    else { $Corpus = Join-Path $env:LOCALAPPDATA 'ottisk\corpus\gen' }
+    else { $Corpus = 'C:\Tools\ottisk\corpus\gen' }
 }
 New-Item -ItemType Directory -Force -Path $Corpus | Out-Null
 $Corpus = (Get-Item -LiteralPath $Corpus).FullName

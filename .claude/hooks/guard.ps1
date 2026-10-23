@@ -10,7 +10,7 @@
 #     machine, vc_redist*.exe /install; разрешены dist\AcroBatya-*-setup.exe /VERYSILENT, unins000.exe /VERYSILENT,
 #     msiexec /a (административная распаковка LibreOffice в C:\Tools\libreoffice), tools\build_lock.ps1 -Target;
 #   * запись и удаление — только в проекте, C:\Tools\logs и %TEMP% (кроме %TEMP%\claude — scratchpad человека);
-#     C:\Qt, C:\src\mupdf, %LOCALAPPDATA%\vcpkg, C:\Tools, профиль Acrobat — только чтение; в проекте только
+#     C:\Qt, C:\src\mupdf, C:\Tools (с vcpkg и корпусом ottisk\corpus), профиль Acrobat — только чтение; в проекте только
 #     чтение у .git, эталона, справочников и tests/render/expected (их правит лишь render_refs);
 #   * реестр — только HKCU\Software\Classes\AcroBatya* и значение AcroBatya в HKCU\Software\RegisteredApplications;
 #   * новые зависимости (pip/winget/choco/scoop/npm -g install) — только через QUEUE: BLOCKED.
@@ -37,7 +37,6 @@ $ScratchRoots = @($TempRoots | ForEach-Object { "$_\claude" })
 $ReadOnlyRoots = @(
     @{ P = 'C:\Qt'; R = 'C:\Qt — только чтение (эталон 8.3)' },
     @{ P = 'C:\src\mupdf'; R = 'C:\src\mupdf — только чтение (патчи MuPDF только через tools/mupdf-patches и человека)' },
-    @{ P = (Join-Path $env:LOCALAPPDATA 'vcpkg'); R = '%LOCALAPPDATA%\vcpkg — только чтение' },
     @{ P = $ToolsRoot; R = 'C:\Tools — только чтение, писать можно только в C:\Tools\logs' },
     @{ P = 'C:\Tools'; R = 'C:\Tools — только чтение, писать можно только в C:\Tools\logs' },
     @{ P = (Join-Path $env:APPDATA 'Adobe'); R = 'профиль Acrobat человека' },
