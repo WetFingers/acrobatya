@@ -202,7 +202,7 @@
 
 - [x] **Панели навигации:** `src/ui/shell/nav_pane.cpp`, `src/ui/panes/{thumbnails,bookmarks,layers,attachments,destinations}_pane.cpp`, `src/core/links/{outlines.h,attachments.h,layers.h,destinations.h}` (чтение), `src/services/shell_launcher.{h,cpp}` + `FakeShellLauncher`, чёрный список типов вложений с подтверждением. Закрывает view-10 (просмотр), view-11, view-15, view-17 (просмотр), view-50 (просмотр), view-30, security-43 (вложения). Тесты: `tests/ui/panes_test.cpp`, `tests/unit/shell_launcher_test.cpp`; сцены `pane-thumbnails`, `pane-bookmarks`, `pane-layers`, `pane-attachments`, `pane-destinations`.
 - [x] **Строка состояния и полоса сообщений:** `src/ui/shell/{status_bar.cpp,message_bar.cpp}`, логические номера страниц, `ZoomBox`, индикаторы и фоновые задачи, стек полос с приоритетами. Закрывает view-08 (поле страницы), view-47 (чтение `/PageMode`, `/OpenAction`, `/ViewerPreferences` при открытии). Тесты: `tests/ui/status_bar_test.cpp`, `tests/ui/message_bar_test.cpp`; сцены `status-bar`, `message-bar-stack`.
-- [ ] **Режим чтения и полный экран:** `src/ui/shell/{read_mode.cpp,full_screen.cpp}`, переходы `/Trans`, настройки полного экрана, `F8`/`F4`/`Shift+F4` состояние панелей. Закрывает view-21, view-22. Тесты: `tests/ui/modes_test.cpp`; сцены `read-mode`, `full-screen`.
+- [x] **Режим чтения и полный экран:** `src/ui/shell/{read_mode.cpp,full_screen.cpp}`, переходы `/Trans`, настройки полного экрана, `F8`/`F4`/`Shift+F4` состояние панелей. Закрывает view-21, view-22. Тесты: `tests/ui/modes_test.cpp`; сцены `read-mode`, `full-screen`.
 
 ### Сессия 2.4b · Установки, палитра команд и служебные режимы exe · усилие xhigh · ходов 280
 

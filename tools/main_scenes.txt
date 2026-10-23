@@ -25,3 +25,11 @@ home-recent
 home-recent-dark
 home-files
 menu-open
+
+# 2.4 — правая навигация, строка состояния, полосы, режимы
+pane-thumbnails
+pane-bookmarks-dark
+status-bar
+message-bar-stack
+read-mode
+full-screen
