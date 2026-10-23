@@ -15,6 +15,7 @@
 #include "core/render/fit.h"
 #include "core/render/renderer.h"
 #include "core/text/stext.h"
+#include "core/util/paths.h"
 #include "services/task_context.h"
 
 namespace ot {
@@ -613,6 +614,15 @@ QFuture<std::shared_ptr<const TextPage>> DocumentSession::textPage(int page, con
                                                                    TaskPriority priority) {
     return post([page, options](TaskContext& tc) { return tc.textPage(page, options); }, priority,
                 QStringLiteral("text-page"));
+}
+
+QFuture<void> DocumentSession::exportText(const QString& path, const TextExportOptions& options) {
+    return post(
+        [path, options](TaskContext& tc) {
+            const std::string bytes = ot::exportText(tc.document(), options, [&tc] { return tc.aborted(); });
+            paths::writeFile(std::filesystem::path(path.toStdWString()), bytes);
+        },
+        TaskPriority::Normal, QStringLiteral("export-text"));
 }
 
 QImage DocumentSession::renderPage(int index, qreal dpi) {

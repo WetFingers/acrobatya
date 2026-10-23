@@ -3,7 +3,13 @@
 Где что лежит и как добавляется типовая вещь. Сессия читает этот файл **первым**, до поиска по коду.
 Дерево и состав — эталон `docs/design.md` 5.1–5.3; здесь — короткий путеводитель и рецепты.
 
-> **Состояние: сессия 1.3 — сохранение, журнал undo/redo, автосохранение, ревизии и XMP.** Журнал MuPDF включён с
+> **Состояние: сессия 1.4 — текст: слой, поиск, выделение, индекс FTS5 и экспорт; версия 0.1.0.** `TextPage`
+> (`core/text/stext.h`: блоки/строки/символы с рамками и стилем, слова, попадание в символ/строку/слово, векторы,
+> структура) и `TextCache` (LRU 16) в `DocumentSession::textPage`; поиск `searchPage`/`SearchSession` (`fz_new_search`,
+> «целое слово», счётчик «N из M»); своё выделение (`selection.h`) и `ClipboardIo` (текст + HTML, снимок PNG);
+> `TextIndex` (FTS5) + `StateDb` (`state.sqlite`, миграции) + `FolderSearch`; экспорт TXT/HTML/XHTML/XML/RTF
+> (`core/create/text_export.h`, `rtf_writer.h`, `DocumentSession::exportText`), ctest `compat.rtf` (Word COM).
+> Из 1.3: сохранение, журнал undo/redo, автосохранение, ревизии и XMP. Журнал MuPDF включён с
 > открытия (`Journal::Operation`, `UndoStack`; `DocumentSession::edit` идёт в операции, `undo`/`redo`, `undoState`),
 > `Saver` (правила эталона 4.4, временный файл и замена, переоткрытие в том же `Document`), `QpdfTool`, `Autosave` +
 > `AutosaveRunner` (свой загрузчик журнала), `revisions` (версии, подписанная ревизия), `props` + `xmp` (/Info ↔ XMP,
@@ -53,21 +59,21 @@
 | `mu/` | `context.h` (`MuContext::global()` — один корень на процесс, `clone()` на документ и поток, `forThisThread()` — thread_local клон для потоков пула, `family()` — корень и клоны с общим store: объекты MuPDF ходят только внутри семьи, `shrinkStore`/`emptyStore`, замки, журнал MuPDF → spdlog), `error.h` (`MuError`, `ErrorKind`: Damaged/Unsupported/Limit/System/Aborted…), `call.h` (`mu::call` — `fz_try` в одном месте, `#pragma warning(disable: 4611)`), `handles.h` (RAII `mu::PageHandle`, `PixmapHandle`, `BufferHandle`… — объявлять снаружи `mu::call`, внутри только `reset`), `stream.h` | 0, 1.1 |
 | `doc/` | `document.h` (`Document::open(path, password) → OpenResult`, `openOrThrow` для инструментов, свойства, `allowed(Perm)`, `pageBox`/`pageRotation`, `pdf()`, `undoStack()`, `setProperties`, `recoverFrom` (автосохранение), `path()`/`filePath()`/`backingFile()`; документ живёт в клоне базового контекста), `journal.h` (`Journal::Operation` RAII — вложенная присоединяется к внешней, `invalidate`/`invalidateAll`/`markHeavy`; `UndoStack` — шаги с именами поверх шагов MuPDF, группировка одноимённых за 1 с, `TouchedPages`, `hasHeavyChanges`, `clear`, слушатель), `saver.h` (`Saver::decide/save`, `SaveMode`, `SaveError`, `SaveOptions` — шифрование, `allowBreakingSignatures`, `linearize`), `autosave.h` (`Autosave`: журнал с позиции 0, копия исходника, `index.json`, `recover`), `revisions.h` (`versionCount`, `changeHistoryValid`, `signatures`, `signedRevisionBytes`), `props.h` (`readInfo`/`writeInfo`, `xmpPacket`, `lang`/`setLang`, `tagged`, `fonts` + `FontCache`, `advanced`), `xmp.h` (`Packet` — свой разбор и сериализатор XMP, даты PDF ↔ ISO); дальше `page.h`, `permissions.h` | 0, 1.1–1.3 |
 | `render/` | `renderer.h` (`RenderRequest{page, matrix, scissor, aa, recolor}`, `render(buffer, stride, Bgra32Premultiplied\|Rgb24, cookie)`, `renderPage`, `renderDisplayList(ctx, list, matrix, area, …)` — готовый список своим контекстом), `display_cache.h` (`DisplayList` — `shared_ptr`, свой клон контекста для отдачи в любом потоке, `contentBounds()`; `DisplayCache` — LRU 40, `invalidate(page)`, построение с cookie), `tiles.h` (`TileKey`, `pageMatrix` = scale(zoom·dpr) × rotate × translate, `pageDeviceRect`, `tileRectsFor`/`tilesIntersecting` 512 px, `makeTileKey`, превью 1/8 — `previewZoom`/`makePreviewKey`), `fit.h` (`fitZoom` по режимам, `percentToZoom`/`zoomToPercent` — 100 % = dpi/72, `clampZoom` 1–6400 %, `layoutPageSize` — 0 × 0 → Letter, > 14 400 pt — уменьшить), `bitmap.h`, `image_compare.h` (метрики `imgcmp`, `crossCompare`); дальше `recolor_device.h` | 0, 1.1, 1.2, 2.5b |
-| `text/` | `stext.h`, `search.h`, `selection.h`, `index.h` (FTS5), `reflow.h` | 1.4, 8.3 |
+| `text/` | `text_types.h` (значения без MuPDF: `TextOptions` — по умолчанию SEGMENT + PARAGRAPH_BREAK, `readingOrder = false` — слои поиска без сегментации, `collectVectors`/`tableHunt`/`collectStructure`/`dehyphenate`/`images`; `TextChar`/`TextLine`/`TextBlock`/`TextVector`/`TextFont`/`TextStructNode`/`TextWord`), `stext.h` (`TextPage::build(doc, page, options, cookie)` — значения в порядке чтения (struct-блоки обходятся в глубину), `text()`, `words()`, `charIndexAt`/`lineAt`/`wordAt`/`wordBounds`, `vectors()`, `structure()`, `fonts()`, `stext()` + `contextForThisThread` для функций MuPDF, `charIndexOf(fz_stext_char*)`; `TextCache` LRU 16 по {страница, флаги}), `search.h` (`SearchOptions`, `searchPage` → `SearchHit{page, firstChar, lastChar, quads}`, `SearchSession::run(pageCount, source, progress, cancel)`, `next/previous/selectFrom/counter`, `textOptions()`), `selection.h` (своё выделение: `selectStream` + `SnapMode`, `selectRectangle`, `selectAll`, `selectRange`, `toPlainText`, `toHtml`), `index.h` (`TextIndex` на FTS5: `upsert`, `markEncrypted`, `isFresh`, `query` фразой в папке, `createSchema` — миграция 1); дальше `reflow.h` | 1.4, 8.3 |
 | `print/` | `imposition.h` (вписать, n-up, буклет, постер), `page_set.h`, `band_renderer.h` | 2.6 |
 | `edit/` | `content_model.h`, `text_blocks.h`, `font_resolver.h`, `reflow.h`, `rewriter.h`, `images.h`, `replace.h` | 3.1–3.4 |
 | `sign/` | `cms.h`, `pkcs12.h`, `cng_signer.h`, `tsa.h`, `signer.h`, `verifier.h`, `chain.h`, `revocation.h`, `ltv.h`, `docmdp.h`, `trust_store.h`, `eutl.h`, `aatl.h`, `appearance.h`, `warnings_scan.h` | 4.1–4.6 |
 | `annot/` | `annots.h` (минимум в 2.2: `AnnotRef`, `listAnnots`, `setRect`, `remove`; 28 типов — 5.1), `appearance.h`, `popups.h`, `fdf.h`, `xfdf.h`, `stamps.h`, `measure.h`, `summary.h`, `fillsign.h` | 2.2, 5.1–5.5 |
 | `forms/` | `fields.h`, `field_factory.h`, `js_bridge.h`, `data_io.h`, `submit.h`, `detect.h`, `tab_order.h` | 6.1–6.4 |
 | `pages/` | `organizer.h`, `graft.h`, `split.h`, `labels.h`, `boxes.h`, `insert.h` | 7.1 |
-| `create/` | `dispatcher.h`, `image_to_pdf.h`, `pdf_to_images.h`, `tiff_writer.h`, `text_export.h`, `rtf_writer.h`, `combine.h`, `html_to_pdf.h`, `presets.h` | 7.2 |
+| `create/` | `text_export.h` (`exportText(doc, TextExportOptions{format, encoding, bom, firstPage, lastPage}, cancelled)`: TXT UTF-8/UTF-16/CP1251 с CRLF и «\f» между страницами, HTML/XHTML/XML через `fz_print_stext_page_as_*`, RTF), `rtf_writer.h` (`RtfWriter`, `rtfText`, `rtfFontFamily`) — 1.4; дальше `dispatcher.h`, `image_to_pdf.h`, `pdf_to_images.h`, `tiff_writer.h`, `combine.h`, `html_to_pdf.h`, `presets.h` | 1.4, 7.2 |
 | `decor/` | `header_footer.h`, `watermark.h`, `background.h`, `artifact.h` | 7.4 |
 | `links/` | `outlines.h`, `destinations.h`, `links.h`, `links_auto.h`, `attachments.h`, `layers.h`, `initial_view.h` | 2.4, 2.5, 7.5 |
 | `crypt/` | `password.h`, `permissions_write.h`, `policies.h`, `strength.h` | 7.6 |
 | `ocr/` | `engine.h` (`TessBaseAPI`), `text_layer.h`, `orientation.h`, `enhance.h`, `suspects.h`, `scan_to_pdf.h` | 8.1–8.2 |
 | `a11y/` | `autotag.h`, `struct_tree.h`, `reading_order.h`, `lang.h` | 8.3–8.4 |
 | `optimize/` | `qpdf_tool.h` (`QpdfTool`: поиск qpdf.exe — `OTTISK_TOOLS`, рядом с exe, `C:\Tools\qpdf\bin`; `check`, `linearize`, `checkLinearization`, `json`; процесс без окна), дальше `optimizer.h` | 1.3, 9.3 |
-| `util/` | `paths.h` (единственная точка UTF-8/wchar и `toShortPath()`), `geometry.h` (`RectF`, `IRect`, `Matrix` как у MuPDF), `features.h` (`OT_FEATURE`), `hash.h` (SHA-256 через OpenSSL); дальше `log.h`, `fs.h`, `ids.h` | 0, 1.1, 1.3 и далее |
+| `util/` | `paths.h` (единственная точка UTF-8/wchar и `toShortPath()`), `geometry.h` (`RectF`, `IRect`, `Matrix` как у MuPDF), `features.h` (`OT_FEATURE`), `hash.h` (SHA-256 через OpenSSL), `utf8.h` (`utf8::append/encode/decode` — char32_t ↔ UTF-8), в `geometry.h` с 1.4 — `PointF`, `QuadF` (`bounds`, `contains`), `rectDistance`, `rectUnion`, `RectF::none()`; дальше `log.h`, `fs.h`, `ids.h` | 0, 1.1, 1.3, 1.4 и далее |
 
 ### `src/services/` — Qt без Widgets (страж: ни одного `QtWidgets`)
 
@@ -81,10 +87,15 @@
 `render_pool.h` (`RenderPool`: `QThreadPool` idealThreadCount − 2, `submit(TileRequest)` → `tileReady`/колбэк, `cancel`,
 `cancelDocument`, `retarget`, `setPriority`), `tile_cache.h` (`TileCache`: `QCache` тайлов 7/8 и превью 1/8 лимита,
 384 МБ, `limitFromMegabytes`, `shrink`), `memory_guard.h` (фон и простой 60 с → `fz_shrink_store` 50 % и `lowMemory`),
-`app_info.h` (версия, пути для `--self-check`), дальше — `settings.h` + `settings_keys.h`,
-`state_db.h` (sqlite), `recent.h`, `http_fetcher.h` (+Fake), `office_converter.h` (+`FakeOfficeBackend`),
+`app_info.h` (версия, пути для `--self-check`), `state_db.h` (`StateDb::shared()` — одно подключение
+`state.sqlite` в каталоге данных, WAL, миграции по `PRAGMA user_version` — шаги в `state_db.cpp`, испорченный файл →
+`.bad`; `handle()` только под `mutex()`), `folder_search.h` (`FolderSearch::run/start` — обход, извлечение в своём пуле,
+индекс, результаты по файлам, `encrypted`/`failed`, сигналы `progress`/`fileFound`/`finished`), `clipboard_io.h`
+(`ClipboardIo::textMime` — text/plain + text/html, `imageMime` — PNG, `put` — нужен QGuiApplication, `snapshot` —
+область страницы при dpi), в `DocumentSession` с 1.4 — `textPage(page, options)` и `exportText(path, options)`; дальше —
+`settings.h` + `settings_keys.h`, `recent.h`, `http_fetcher.h` (+Fake), `office_converter.h` (+`FakeOfficeBackend`),
 `word_converter.h`, `print_job.h`, `scan/{iscansource,wia,fake}.h`, `tts.h` (+Fake), `mail.h` (+Fake),
-`shell_register.h`, `help.h`, `i18n.h`, `clipboard_io.h`, `trust_updater.h`, `crypto_worker.h`,
+`shell_register.h`, `help.h`, `i18n.h`, `trust_updater.h`, `crypto_worker.h`,
 `ocr_service.h`, `commands.h` (реестр команд и клавиш), `script_runner.h` (`--script`, 2.4b), `shell_launcher.h` (2.4).
 
 ### `src/ui/` — Qt Widgets (страж: ни одного `mupdf/`)
@@ -109,9 +120,9 @@
 | `tests/ui/` | QTest offscreen, метка `ui` (ctest `ui.main_window`), снимки виджетов → `build/ui-shots/` |
 | `tests/engine/` | gtest на корпусе по `<корпус>/index.json` (`open_corpus_test.cpp`: тег → части по 200 файлов, `progress:`), `mutants_test.cpp`; зонд `support/probe.h` (открыть → 32 × 32 → закрыть, `QuietLog`, `isBrokenFileCode`, `isMemoryFailure`); предел памяти процесса `support/memory_cap.cpp` (Job Object, `OTTISK_TEST_MEMORY_LIMIT_MB`, 2048 / ASan 6144, 0 — выкл.), `PROCESSORS 2` (ASan — 4); `OTTISK_CORPUS_TRACE=1` — печать каждого файла перед зондом (найти файл падения); срок рендера зонда `OTTISK_PROBE_RENDER_TIMEOUT_S` (15 / ASan 45 с); пропуск `tests/corpus/slow.json` — файлы, которые сам MuPDF рисует минутами (`tools/scan_slow_corpus.py --write`), раздел `asan` — только под ASan (процесс упирается в предел памяти); падение процесса — код и стек в stderr (`support/crash_report.cpp`); метки `engine;slow`, `FIXTURES_REQUIRED corpus;mutants` (`engine.corpus.verify` — `fetch_corpus.py --verify --dry-run`, 77 — пропуск; `engine.mutants.generate` — `make_mutants.py` в `build/<пресет>/gen`), `TIMEOUT_AFTER_MATCH 120;^progress:` |
 | `tests/render/` | `render_test.cpp` по `expected/expected.json`, эталоны `expected/<корпус>/<файл>.<стр>.<dpi>.png`, `files.json` — источники |
-| `tests/e2e/`, `tests/compat/`, `tests/bench/`, `tests/build/` | сценарии эталона 2 без UI; `compat_check.py` (SKIP 77; файлы или каталоги); ctest `compat.save.generate` → `compat.save` / `.signed` (pyHanko INTACT) / `.encrypted` по `build/<пресет>/compat/save` (метки `compat;slow`); `bench.cpp` → `bench.exe <файл\|hello\|pdf32000\|big-1200\|images-200\|enc-r6>` (только Release: ctest `bench.engine.*`, JSON в `build/bench/`, сравнение — `tools/bench_compare.py docs/bench/baseline-<прошлый>.json "build/bench/*.json"`: +25 % медианы, шум < 5 мс, цели 5.8); `install_test.py` (метка `build`) |
+| `tests/e2e/`, `tests/compat/`, `tests/bench/`, `tests/build/` | сценарии эталона 2 без UI; `compat_check.py` (SKIP 77; файлы или каталоги); ctest `compat.save.generate` → `compat.save` / `.signed` (pyHanko INTACT) / `.encrypted` по `build/<пресет>/compat/save` (метки `compat;slow`); `compat.rtf.generate` → `compat.rtf` (`tests/compat/rtf_word_check.ps1`: Word COM открывает RTF из `build/<пресет>/compat/rtf`, «Привет» в `Content.Text`; нет Word — 77); `bench.cpp` → `bench.exe <файл\|hello\|pdf32000\|big-1200\|images-200\|enc-r6\|search>` (`search` / `--search <образец>` — `search_all_ms`, порог 3 с только в Release) (только Release: ctest `bench.engine.*`, JSON в `build/bench/`, сравнение — `tools/bench_compare.py docs/bench/baseline-<прошлый>.json "build/bench/*.json"`: +25 % медианы, шум < 5 мс, цели 5.8); `install_test.py` (метка `build`) |
 | `tests/corpus/manifest.json` | корпуса `{id, url\|git, sha256, license, tags[], expect}` → `C:\Tools\ottisk\corpus` (`OTTISK_CORPUS`) |
-| `tests/fixtures/` | свои фикстуры ≤ 50 КБ и пермиссивные (`LICENSES.md`): `annots/ forms/ enc/ sig/ images/ scans/ office/ scenes/ demo/ imgcmp/ (метрики imgcmp) regress/ (падения фаззера → unit.regress.load) pki/ (4.1)` |
+| `tests/fixtures/` | свои фикстуры ≤ 50 КБ и пермиссивные (`LICENSES.md`): `annots/ forms/ enc/ sig/ images/ scans/ office/ scenes/ demo/ imgcmp/ (метрики imgcmp) regress/ (падения фаззера → unit.regress.load) pki/ (4.1) text/ (1.4: search.pdf, vectors.pdf, truetype-nonembedded.pdf, text.json — строки генератора, stext_expected.json — слова PDFium)` |
 | `tools/` | `vcenv.cmd`, `verify.py`, `build.ps1`, `build_lock.ps1`, `fuzz.ps1` (фаззер 60 с / 10 мин), `shots.ps1`, `lint.ps1`, стражи `*_guard.py` и `scope_check.py`, `scope_report.py`, `imgcmp/`, `render_refs.cpp`, `review_refs.py`, `fetch_corpus.py`, `scan_slow_corpus.py`, `cl_launcher.py` (обёртка компилятора: русский префикс `/showIncludes` → «Note: including file:», иначе Ninja не видит зависимостей от заголовков), `compat_check.py`, `bench_compare.py`, `analyze_summary.py`, `copy_icons.py`, `gen/` (генераторы фикстур), `get-tessdata.ps1`, `install-qt.ps1`, `mupdf-build.ps1` + `ottisk-md.props`, очередь: `queue-lib.ps1`, `test_reset_parse.ps1`, `test_guard.ps1` |
 | `installer/` | `ottisk.iss` (UTF-8 BOM, per-user), `app.ico`, `app.rc`, `AcroBatya.manifest` (UTF-8 ACP, longPathAware), `licenses/` |
 | `assets/` | `icons/` (только нужные Lucide + `LICENSE`, список `icons.txt`), `stamps/`, `help/ru`, `help/en` |
@@ -222,6 +233,20 @@ PowerShell-стражи очереди `tools/test_reset_parse.ps1` и `tools/te
    пул отвергает ошибкой. Мозаика тайлов совпадает с целым рендером бит в бит для текста и прямоугольников; у кривых и
    растянутых картинок MuPDF даёт отличия в доли пикселя на рёбрах (GEL режет рёбра по scissor) — швов нет, тесты
    `unit.render.tiles_mosaic_*` держат границы.
+
+### Текст страницы, поиск и выделение (с 1.4)
+
+1. Слой — только задачей документа: `tc.textPage(n, options)` (кеш LRU 16, правка страницы сбрасывает) или
+   `session.textPage(n)` → `shared_ptr<const TextPage>`; значения (`chars()`, `lines()`, `words()`…) читаются в любом
+   потоке, `stext()` — только контекстом семьи (`contextForThisThread`). Порядок чтения — опции по умолчанию; поиску
+   и индексу хватает `SearchSession::textOptions()` (без SEGMENT — в разы быстрее).
+2. Функции выделения MuPDF (`fz_highlight_selection`, `fz_copy_selection`, `fz_snap_selection`, `fz_copy_rectangle`)
+   не заходят в struct-блоки — на слое с SEGMENT они пусты; выделять — `core/text/selection.h`. Вывод stext
+   (`fz_print_stext_page_as_*`) и `fz_new_search` struct-блоки обходят.
+3. Новые данные `state.sqlite` — шаг миграции в конце списка `state_db.cpp` и `kSchemaVersion + 1`; запросы — под
+   `StateDb::mutex()`.
+4. Фикстура текста — `tools/gen/make_text.py`, эталон слов — `tools/gen/stext_expected.py` (pypdfium2, независимый
+   источник; лигатуры PDFium раскладывает на буквы).
 
 ### Правка с undo и сохранение (с 1.3)
 

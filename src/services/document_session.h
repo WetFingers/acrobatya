@@ -36,6 +36,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "core/create/text_export.h"
 #include "core/doc/autosave.h"
 #include "core/doc/saver.h"
 #include "core/mu/error.h"
@@ -144,6 +145,10 @@ public:
     // (core/text/stext.h).
     QFuture<std::shared_ptr<const TextPage>> textPage(int page, const TextOptions& options = {},
                                                       TaskPriority priority = TaskPriority::Normal);
+
+    // Экспорт текста в файл (эталон 3.12; TXT в UTF-8/UTF-16/CP1251, HTML, XHTML, XML, RTF) — задача
+    // документа, файл пишется целиком. Ошибка — исключение в QFuture; cancelAll() прерывает между страницами.
+    QFuture<void> exportText(const QString& path, const TextExportOptions& options);
 
     // Растр страницы при dpi (BGRA → QImage ARGB32_Premultiplied) с ожиданием; пустой — ошибка
     // (errorString()). Для окна этапа 0 — до тайлов PageView (сессия 2.2).

@@ -190,6 +190,19 @@ if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   set_tests_properties(compat.save compat.save.signed compat.save.encrypted PROPERTIES LABELS "compat;slow"
     FIXTURES_REQUIRED compat_save SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endif()
+# Совместимость RTF (план 1.4): text_export_compat.DISABLED_write_rtf пишет <сборка>/compat/rtf/*.rtf, Word COM
+# открывает их и находит «Привет» (tests/compat/rtf_word_check.ps1; нет Word — 77, пропуск).
+if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_test(NAME compat.rtf.generate
+    COMMAND unit_tests --gtest_also_run_disabled_tests --gtest_filter=text_export_compat.* --gtest_brief=1)
+  set_tests_properties(compat.rtf.generate PROPERTIES LABELS "compat;slow" FIXTURES_SETUP compat_rtf
+    ENVIRONMENT "OTTISK_COMPAT_OUT=${CMAKE_BINARY_DIR}/compat" TIMEOUT 120)
+  add_test(NAME compat.rtf
+    COMMAND powershell -NoProfile -ExecutionPolicy Bypass -File "${CMAKE_SOURCE_DIR}/tests/compat/rtf_word_check.ps1"
+      "${CMAKE_BINARY_DIR}/compat/rtf")
+  set_tests_properties(compat.rtf PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_rtf SKIP_RETURN_CODE 77
+    TIMEOUT 300)
+endif()
 ottisk_gtest_exe(render_tests tests/render render "render;slow" 900 ottisk_core)
 # Замеры движка (план 1.2): только Release — числа Debug с целями 5.8 не сравнимы. big-1200 и images-200 —
 # make_big.py в <сборка>/gen (фикстура, пропускает готовые), PDF32000_2008 — только из корпуса (нет — SKIP 77);

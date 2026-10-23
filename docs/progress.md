@@ -8,6 +8,10 @@
 Новые пункты — сверху, с номером сессии или рубежа. Ничего из этого не блокирует очередь: она работает на
 `Fake*`-реализациях и фикстурах, живая часть ждёт здесь (эталон 8.1 «Человек отдельно», 9.7).
 
+- **Сессия 1.4 · Экспорт текста и буфер обмена вживую (к Р1)**: после `ctest -R compat.rtf` открыть
+  `build/debug/compat/rtf/*.rtf` в Word и WordPad — кириллица, абзацы, жирный заголовок, курсив; Word очередь уже
+  проверила через COM («Привет» в тексте), глазами — вид. Буфер обмена и «Снимок» на экране — когда окно 2.2b
+  подключит выделение: Ctrl+C из PDF → вставка в Word сохраняет жирный и курсив, снимок вставляется картинкой.
 - **Сессия 1.3 · Сохранённое — в Acrobat Reader (к Р1)**: открыть `build/debug/compat/save/**` (после `ctest -L
   compat`) в Acrobat Reader и Edge — без предупреждений и ремонта; `signed/signed-incremental.pdf` — в панели подписей
   подпись действительна, «документ изменён после подписи: добавлен комментарий» (pyHanko и MuPDF строже — считают
@@ -490,3 +494,72 @@
 - Проверки: `verify.py` зелёный (162 теста); `ctest -L render` (Release) 130/130; `engine` Debug 136/136 (4 мин, было 94
   мин и 25 таймаутов); `engine` под ASan — 126/136 до раздела `asan`; память — сторож, минимум свободной выделяемой
   11 ГБ.
+
+### 2026-10-23 · Сессия 1.4 · Текст: извлечение, поиск, выделение и индекс FTS5
+- Сделано:
+  1. **Текстовый слой:** `core/text/text_types.h` (значения без MuPDF) и `core/text/stext.{h,cpp}` — `TextPage`
+     (`fz_new_stext_device_for_page` по содержимому страницы с cookie; блоки, строки, символы с квадом, точкой пера,
+     кеглем, цветом `argb`, флагами и шрифтом — в порядке чтения, struct-блоки обходятся в глубину; слова, `text()`,
+     `charIndexAt`/`lineAt`/`wordAt`/`wordBounds`, векторы `collectVectors`, дерево `collectStructure`, шрифты с
+     жирным/курсивом по имени и флагам, страница блока из `fz_stext_page_details`), `TextCache` (LRU 16 по {страница,
+     флаги}) в `DocumentSession` — `textPage()`, `TaskContext::textPage`, сброс правкой страницы, undo/redo, открытием.
+     Фикстуры `tools/gen/make_text.py` → `tests/fixtures/text/` (поиск, векторы, невстроенный TrueType, `text.json`),
+     эталон слов `tools/gen/stext_expected.py` (pypdfium2) — слова и точки пера четырёх файлов совпадают с PDFium.
+  2. **Поиск:** `core/text/search.{h,cpp}` — `fz_new_search` (регистр, диакритика, regexp), свой фильтр «целое
+     слово», `searchPage` → квады, `SearchSession` (страницы по `FZ_SEARCH_MORE_INPUT`, совпадение через границу
+     страниц, прогресс раз в 100 мс, отмена, пропуск страниц без слоя, «N из M», `next`/`previous`/`selectFrom`);
+     `bench search` (+ ctest `bench.engine.search` в Release, порог 3 с — код 1 при превышении).
+  3. **Выделение и копирование:** `core/text/selection.{h,cpp}` — свой перенос алгоритмов MuPDF (ближайшая граница
+     символа, привязка к словам и строкам, прямоугольник), квады высотой в строку, `toPlainText`, `toHtml` (`<b>`/`<i>`);
+     `services/clipboard_io.{h,cpp}` — text/plain + text/html, снимок области при dpi (PNG + изображение), `put`.
+  4. **Индекс и поиск по папкам:** `core/text/index.{h,cpp}` (`TextIndex` на FTS5), `services/state_db.{h,cpp}`
+     (`StateDb`: одно подключение, WAL, миграции по `user_version`, испорченный файл → `.bad`),
+     `services/folder_search.{h,cpp}` (обход, извлечение в своём пуле, прогресс, отмена, результаты по файлам,
+     зашифрованные и битые — отдельно, удалённые уходят из индекса); `engine.folder_search.*` — 30 файлов.
+  5. **Экспорт и 0.1.0:** `core/create/text_export.{h,cpp}` (TXT UTF-8/UTF-16/CP1251, HTML/XHTML с картинками base64,
+     XML), `core/create/rtf_writer.{h,cpp}`, `DocumentSession::exportText`; ctest `compat.rtf.generate` → `compat.rtf`
+     (Word COM открыл оба RTF, «Привет» найден); `cmake/product.cmake` 0.1.0, тег `v0.1.0`.
+- Решения:
+  - **SEGMENT стоит почти всё время извлечения:** весь PDF32000 (756 стр.) в Release `mutool draw -F txt` — 23,7 с с
+    SEGMENT и 3,3 с без (2,5 с без всех флагов). Поиск и индекс строят слои без сегментации и абзацев
+    (`TextOptions::readingOrder = false`, `SearchSession::textOptions()`) — совпадения те же (1241 «annotation» в обоих
+    случаях), Debug-поиск по PDF32000: 91 → 10,7 с. Эталон 3.2 требует SEGMENT для извлечения — он остаётся по
+    умолчанию (выделение, экспорт, порядок чтения); `readingOrder` — добавленное поле опций (план называет четыре).
+  - **Выделение MuPDF 1.28.5 не заходит в struct-блоки:** `fz_highlight_selection`, `fz_copy_selection`,
+    `fz_snap_selection` и `fz_copy_rectangle` перебирают только верхний уровень блоков, а SEGMENT (и разбивка списков
+    PARAGRAPH_BREAK) кладут весь текст в struct-узлы «Split»/LI — на таком слое выделять нечего. Выделение — свой перенос
+    тех же алгоритмов на значения `TextPage`; канарейка `unit.selection.mupdf_selection_ignores_struct_blocks`
+    покраснеет, когда MuPDF это починит. Вывод stext (`fz_print_stext_page_as_*`) и `fz_new_search` struct-блоки обходят.
+  - Поиск — новый `fz_new_search` и для страницы, и для документа (`fz_search_stext_page_cb` — та же функция с
+    `ignore-case`, без опций); квады — из совпадения. «Целое слово» — по `TextPage::isWordChar` (буквы, цифры, метки, `_`).
+  - Квады выделения — высотой в строку: у ACCURATE_BBOXES рамка символа — чернила глифа (у «р» ниже, у пробела высота
+    нулевая), по ним подсветка рваная, а прямоугольник не задевал пробелы.
+  - Карта `fz_stext_char* → индекс` строится лениво (`std::call_once`) — поиск спрашивает только у страниц с совпадениями.
+  - Индекс: отдельная `fts_files` (путь UNIQUE, mtime, пометка «зашифрован») + `fts_pages` (FTS5), rowid = id · 2^20 +
+    страница — удаление файла диапазоном, без полного прохода; запрос — фразой, папка — буквальный префикс
+    (`substr`, не LIKE); контекст — `snippet` с метками U+0002/U+0003. Таблица `recent` эталона 4.7 — следующим шагом
+    миграции в сессии недавних файлов, не сейчас.
+  - Снимок рисуется своей матрицей ровно dpi/72: `pageMatrix` тайлов округляет зум до тысячных (216 pt при 300 dpi
+    давали 901 px вместо 900).
+  - TXT: страницы через «\f» (как у pdftotext и MuPDF), CRLF; CP1251 — `WideCharToMultiByte` с
+    `WC_NO_BEST_FIT_CHARS` («ﬁ» и ударение — «?», не «похожие» буквы). HTML MuPDF пишет кириллицу ссылками `&#x…;`, но
+    заголовок без кодировки — добавлен `<meta charset="utf-8">`.
+  - RTF — чистый ASCII: всё вне ASCII — `\uN?` (знаковое 16-битное, вне BMP — суррогатная пара), `\fcharset204`,
+    семейство шрифта из имени PDF («TimesNewRomanPS-BoldMT» → «Times New Roman»).
+- Подводные камни:
+  - Unity-сборка `ottisk_core`: одноимённые функции в безымянных пространствах разных `.cpp` (`toQuad`) — ошибка C2084;
+    имена помощников делать уникальными.
+  - Пустой `std::string_view` с `data() == nullptr` → `sqlite3_bind_text` привязывает NULL, а не '' (`?2 = ''` ложно).
+  - `fz_stext_page_details_for_block` бросает, если id вне списка: длина проверяется заранее.
+  - Без COLLECT_STRUCTURE у тегированного файла Word всё равно есть узлы: «Split» от SEGMENT и LI от поиска списков.
+  - `mutool grep` в нашей сборке 1.28.5 падает сразу (segfault) — замер поиска только своим `bench`.
+  - Оператор параллельно правил и закоммитил `tests/corpus/slow.json` (раздел `asan`, 1935e03) — в коммит пункта 1 его
+    правка не попала (`git update-index --assume-unchanged` на время `done.mjs`).
+  - `unit.document_session.cookie_cancel_stops_long_render_within_200ms` один раз упал в `verify.py` под нагрузкой
+    (параллельно шёл ASan-прогон корпуса оператора); отдельно — 3 из 3. Нестабилен по времени, не правился.
+- Замеры: Debug `bench search` (PDF32000, 756 стр., «annotation» — 1241 совпадение): 91 с со слоями SEGMENT, 10,7 с без;
+  Release — проверит Р1 (по `mutool draw` извлечение всего документа без SEGMENT ~3 с: порог 3 с на грани, запас —
+  параллельное извлечение вторым открытием документа); поиск по папке из 30 файлов — 0,2 с; инкремент `unit_tests`
+  10–50 с; `verify.py` 49 с (214 тестов).
+- Проверки: `verify.py` зелёный (214 тестов); `engine.folder_search.*` 3/3; `compat.rtf` (Word COM) зелёный; экранов
+  сессия не строила — сцен нет.

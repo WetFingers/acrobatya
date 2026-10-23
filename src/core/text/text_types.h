@@ -25,6 +25,7 @@ struct TextOptions {
     bool collectStructure = false;
     bool dehyphenate = false;
     bool readingOrder = true;
+    bool images = false;  // PRESERVE_IMAGES: блоки картинок (экспорт HTML/XHTML — картинки base64)
 
     bool operator==(const TextOptions&) const = default;
 };

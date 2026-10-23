@@ -53,6 +53,9 @@ int TextPage::flagsFor(const Options& options) noexcept {
     if (options.readingOrder) {
         flags |= kReadingOrderFlags;
     }
+    if (options.images) {
+        flags |= FZ_STEXT_PRESERVE_IMAGES;
+    }
     if (options.collectVectors) {
         flags |= FZ_STEXT_COLLECT_VECTORS;
     }
