@@ -129,4 +129,16 @@ TileKey makeTileKey(std::uint64_t doc, int page, float zoom, float dpr, int rota
     return k;
 }
 
+float previewZoom(float zoom) noexcept {
+    return bucketZoom(zoomBucket(zoom)) / static_cast<float>(kPreviewDivisor);
+}
+
+TileKey makePreviewKey(std::uint64_t doc, int page, float zoom, float dpr, int rotation,
+                       std::uint64_t revision, std::uint64_t layersHash, int recolor) noexcept {
+    TileKey k = makeTileKey(doc, page, previewZoom(zoom), dpr, rotation, TileRect{-1, -1, {}}, revision,
+                            layersHash, recolor);
+    k.zoomBucket = zoomBucket(zoom);
+    return k;
+}
+
 }  // namespace ot

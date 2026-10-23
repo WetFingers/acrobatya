@@ -91,6 +91,10 @@ MuContext& MuContext::forThisThread() {
     return *local;
 }
 
+bool MuContext::shrinkStore(unsigned int percent) const noexcept {
+    return fz_shrink_store(ctx_, percent) != 0;
+}
+
 std::string MuContext::version() { return FZ_VERSION; }
 
 }  // namespace ot

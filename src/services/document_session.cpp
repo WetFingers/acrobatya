@@ -11,6 +11,7 @@
 #include "core/mu/call.h"
 #include "core/mu/context.h"
 #include "core/render/display_cache.h"
+#include "core/render/fit.h"
 #include "core/render/renderer.h"
 #include "services/task_context.h"
 
@@ -273,8 +274,10 @@ QFuture<OpenSummary> DocumentSession::openAsync(const QString& path, const QStri
                     s.pageCount = r.document->pageCount();
                     s.pageSizes.reserve(s.pageCount);
                     for (int i = 0; i < s.pageCount; ++i) {
+                        // Раскладка: пустые страницы — Letter, больше 200 дюймов — уменьшены (fit.h).
                         const PageSize size = r.document->pageSize(i);
-                        s.pageSizes.push_back(QSizeF(size.width, size.height));
+                        const LayoutSize layout = layoutPageSize(size.width, size.height);
+                        s.pageSizes.push_back(QSizeF(layout.width, layout.height));
                     }
                     doc_ = std::shared_ptr<Document>(std::move(r.document));
                 } catch (const MuError& e) {

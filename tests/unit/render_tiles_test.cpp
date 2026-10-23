@@ -552,7 +552,7 @@ TEST(render, lru_display_cache_invalidate_page) {
 
 TEST(render, lru_tile_cache_respects_byte_limit) {
     OT_FEATURE("view-03");
-    ot::TileCache cache(4LL * 1024 * 1024);  // 4 МБ = 4 тайла 512 × 512 BGRA
+    ot::TileCache cache(8LL * 1024 * 1024);  // 8 МБ: тайлам 7/8 = 7 тайлов 512 × 512 BGRA, превью 1/8
     QImage tile(512, 512, QImage::Format_ARGB32_Premultiplied);
     tile.fill(Qt::white);
     for (int i = 0; i < 10; ++i) {
@@ -563,8 +563,8 @@ TEST(render, lru_tile_cache_respects_byte_limit) {
         EXPECT_TRUE(cache.insert(k, copy));
         EXPECT_LE(cache.totalBytes(), cache.maxBytes());
     }
-    EXPECT_EQ(cache.count(), 4);
-    EXPECT_EQ(cache.totalBytes(), 4LL * 1024 * 1024);
+    EXPECT_EQ(cache.count(), 7);
+    EXPECT_EQ(cache.totalBytes(), 7LL * 1024 * 1024);
     TileKey k;
     k.tx = 0;
     EXPECT_FALSE(cache.find(k).has_value());  // вытеснен
@@ -580,7 +580,7 @@ TEST(render, lru_tile_cache_respects_byte_limit) {
     other.page = 3;
     EXPECT_TRUE(cache.insert(other, tile));
     EXPECT_EQ(cache.removePage(2, 3), 1);
-    EXPECT_EQ(cache.removeDocument(0), 3);
+    EXPECT_EQ(cache.removeDocument(0), 6);
     EXPECT_EQ(cache.count(), 0);
     EXPECT_EQ(cache.totalBytes(), 0);
     EXPECT_EQ(ot::TileCache().maxBytes(), 384LL * 1024 * 1024);

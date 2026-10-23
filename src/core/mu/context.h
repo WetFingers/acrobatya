@@ -41,6 +41,11 @@ public:
     // общие объекты там, где разрушается последняя ссылка.
     static MuContext& forThisThread();
 
+    // «Мало памяти»: сжать общий store MuPDF (картинки, шрифты, тайлы MuPDF) до percent % его предела
+    // (fz_shrink_store; то, что сейчас держат задачи, не трогается). true — уложились. Любой поток: store
+    // общий, под замком.
+    bool shrinkStore(unsigned int percent) const noexcept;
+
     // Версия MuPDF, с которой собрана программа (FZ_VERSION).
     static std::string version();
 

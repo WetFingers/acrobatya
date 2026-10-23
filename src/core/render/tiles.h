@@ -66,6 +66,14 @@ std::vector<TileRect> tileRectsFor(const RectF& pageRect, float zoom, float dpr,
 // Тайлы рамки device (pageDeviceRect), пересекающие видимую область visible (те же device px).
 std::vector<TileRect> tilesIntersecting(const IRect& device, const IRect& visible, int tileSize = kTileSize);
 
+// Превью страницы (эталон 4.2): вся страница на 1/8 масштаба корзины zoomBucket — пока тайлов нет, его
+// растягивают. Одно превью на 1/8 октавы: плавный зум не рисует новое на каждом шаге. Ключ — TileKey с
+// tx = ty = −1 и zoomMilli превью; кеш — отдельный (TileCache::insertPreview).
+inline constexpr int kPreviewDivisor = 8;
+float previewZoom(float zoom) noexcept;
+TileKey makePreviewKey(std::uint64_t doc, int page, float zoom, float dpr, int rotation,
+                       std::uint64_t revision = 0, std::uint64_t layersHash = 0, int recolor = 0) noexcept;
+
 // Ключ тайла: масштаб и dpr — в тысячных, поворот — нормализован.
 TileKey makeTileKey(std::uint64_t doc, int page, float zoom, float dpr, int rotation, const TileRect& tile,
                     std::uint64_t revision = 0, std::uint64_t layersHash = 0, int recolor = 0) noexcept;

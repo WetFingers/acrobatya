@@ -214,6 +214,68 @@ std::string makeMixedPdf(MuContext& mu, MixedContent content) {
     return bytes;
 }
 
+std::string makeImagePagesPdf(MuContext& mu, int pages, int w, int h) {
+    fz_context* ctx = mu.get();
+    pdf_document* pdf = nullptr;
+    pdf_obj* page = nullptr;
+    pdf_obj* resources = nullptr;
+    fz_buffer* contents = nullptr;
+    fz_buffer* out = nullptr;
+    fz_output* stream = nullptr;
+    fz_font* font = nullptr;
+    fz_image* image = nullptr;
+    fz_pixmap* pix = nullptr;
+    std::string bytes;
+    mu::call(ctx, [&] {
+        pdf = pdf_create_document(ctx);
+        font = fz_new_base14_font(ctx, "Helvetica");
+    });
+    for (int i = 0; i < pages; ++i) {
+        pix = gradientPixmap(ctx, w, h, i);
+        mu::call(ctx, [&] {
+            resources = pdf_new_dict(ctx, pdf, 2);
+            pdf_obj* fonts = pdf_dict_put_dict(ctx, resources, PDF_NAME(Font), 1);
+            pdf_dict_puts_drop(ctx, fonts, "F1",
+                               pdf_add_simple_font(ctx, pdf, font, PDF_SIMPLE_ENCODING_LATIN));
+            pdf_obj* xobj = pdf_dict_put_dict(ctx, resources, PDF_NAME(XObject), 1);
+            image = fz_new_image_from_pixmap(ctx, pix, nullptr);
+            pdf_dict_puts_drop(ctx, xobj, "Im1", pdf_add_image(ctx, pdf, image));
+            contents = fz_new_buffer(ctx, 128);
+            fz_append_printf(ctx, contents,
+                             "q 595 0 0 842 0 0 cm /Im1 Do Q BT /F1 24 Tf 60 60 Td (Image page %d) Tj ET\n",
+                             i + 1);
+            page = pdf_add_page(ctx, pdf, fz_make_rect(0, 0, 595, 842), 0, resources, contents);
+            pdf_insert_page(ctx, pdf, -1, page);
+        });
+        pdf_drop_obj(ctx, page);
+        page = nullptr;
+        pdf_drop_obj(ctx, resources);
+        resources = nullptr;
+        fz_drop_buffer(ctx, contents);
+        contents = nullptr;
+        fz_drop_image(ctx, image);
+        image = nullptr;
+        fz_drop_pixmap(ctx, pix);
+        pix = nullptr;
+    }
+    mu::call(ctx, [&] {
+        out = fz_new_buffer(ctx, 1 << 20);
+        stream = fz_new_output_with_buffer(ctx, out);
+        pdf_write_options opts = pdf_default_write_options;
+        opts.do_compress = 1;
+        pdf_write_document(ctx, pdf, stream, &opts);
+        fz_close_output(ctx, stream);
+    });
+    unsigned char* data = nullptr;
+    const size_t len = fz_buffer_storage(ctx, out, &data);
+    bytes.assign(reinterpret_cast<const char*>(data), len);
+    fz_drop_output(ctx, stream);
+    fz_drop_buffer(ctx, out);
+    fz_drop_font(ctx, font);
+    pdf_drop_document(ctx, pdf);
+    return bytes;
+}
+
 TempDir::TempDir() {
     static std::atomic<int> counter{0};
     const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();

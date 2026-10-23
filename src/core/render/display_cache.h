@@ -35,6 +35,9 @@ public:
     const RectF& bounds() const noexcept { return bounds_; }
     int page() const noexcept { return page_; }
     bool annotations() const noexcept { return annotations_; }
+    // Рамка нарисованного (bbox-устройство по списку) в пунктах ∩ рамка страницы — для «По видимому»;
+    // пустая страница — пустой прямоугольник. Любой поток (свой клон контекста).
+    RectF contentBounds() const;
 
     // Построить список страницы в контексте документа (поток документа). cookie: abort = 1 прерывает
     // интерпретацию (MuError, ErrorKind::Aborted) — недостроенный список не возвращается.

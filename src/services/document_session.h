@@ -68,7 +68,9 @@ struct OpenSummary {
     bool hasXfa = false;
     bool isPdf = false;
     int pageCount = 0;
-    QVector<QSizeF> pageSizes;  // пункты, с учётом /CropBox и /Rotate
+    // Размеры для раскладки, пункты, с учётом /CropBox и /Rotate (fit.h layoutPageSize: 0 × 0 — Letter,
+    // больше 14 400 pt — уменьшено; масштаб такой страницы — размер раскладки / DisplayList::bounds()).
+    QVector<QSizeF> pageSizes;
     TaskFailed error;
 };
 

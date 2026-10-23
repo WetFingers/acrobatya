@@ -16,6 +16,24 @@ DisplayList::~DisplayList() {
     }
 }
 
+RectF DisplayList::contentBounds() const {
+    fz_context* ctx = MuContext::forThisThread().get();
+    mu::DeviceHandle dev(ctx);
+    fz_rect box = fz_empty_rect;
+    mu::call(ctx, [&] {
+        dev.reset(fz_new_bbox_device(ctx, &box));
+        fz_run_display_list(ctx, list_, dev, fz_identity, fz_infinite_rect, nullptr);
+        fz_close_device(ctx, dev);
+    });
+    dev.reset();
+    const fz_rect page = fz_make_rect(bounds_.x0, bounds_.y0, bounds_.x1, bounds_.y1);
+    box = fz_intersect_rect(box, page);
+    if (fz_is_empty_rect(box)) {
+        return {};
+    }
+    return {box.x0, box.y0, box.x1, box.y1};
+}
+
 std::shared_ptr<const DisplayList> DisplayList::build(const Document& doc, int page, bool annotations,
                                                       fz_cookie* cookie) {
     fz_context* ctx = doc.context().get();
