@@ -5,6 +5,7 @@
 #include <QScrollBar>
 #include <QStyle>
 #include <QWheelEvent>
+#include <QWindow>
 
 #include <algorithm>
 #include <cmath>
@@ -12,6 +13,7 @@
 #include "core/render/tiles.h"
 #include "services/document_session.h"
 #include "ui/theme/theme.h"
+#include "ui/view/tile_painter.h"
 
 namespace ot::ui {
 
@@ -39,7 +41,26 @@ const QVector<float>& PageView::zoomPresets() {
     return presets;
 }
 
-PageView::PageView(QWidget* parent) : QAbstractScrollArea(parent) {
+namespace {
+
+// Слои вида: выделение и поиск — заливка выделения (поиск — текущее совпадение обводкой accent), рамки
+// аннотаций — accent.
+constexpr int kSearchZ = 10;
+constexpr int kSelectionZ = 20;
+constexpr int kAnnotFramesZ = 30;
+
+}  // namespace
+
+PageView::PageView(QWidget* parent)
+    : QAbstractScrollArea(parent),
+      selection_([] { return Theme::colors().selection.color(); }),
+      search_([] { return Theme::colors().selection.color(); },
+              [] { return Theme::colors().accent.color(); }),
+      annotFrames_([] { return Theme::colors().accent.color(); }) {
+    tiles_ = new TilePainter(*this);
+    overlays_.add(&search_, kSearchZ);
+    overlays_.add(&selection_, kSelectionZ);
+    overlays_.add(&annotFrames_, kAnnotFramesZ);
     setFrameShape(QFrame::NoFrame);
     setFocusPolicy(Qt::StrongFocus);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
@@ -70,6 +91,10 @@ void PageView::setDocument(DocumentSession* session, RenderPool* pool, TileCache
     session_ = session;
     pool_ = pool;
     cache_ = cache;
+    tiles_->setDocument(session, pool, cache);
+    selection_.clear();
+    search_.clear();
+    annotFrames_.clear();
     history_.clear();
     fit_.reset();
     currentPage_ = 0;
@@ -83,7 +108,10 @@ void PageView::setDocument(DocumentSession* session, RenderPool* pool, TileCache
             }
             viewport()->update();
         });
-        connect(session_, &DocumentSession::pageChanged, this, [this] { viewport()->update(); });
+        connect(session_, &DocumentSession::pageChanged, this,
+                [this](int page) { tiles_->invalidatePage(page); });
+        connect(session_, &DocumentSession::structureChanged, this, [this] { tiles_->invalidateAll(); });
+        connect(session_, &DocumentSession::closed, this, [this] { tiles_->invalidateAll(); });
         const OpenSummary s = session_->summary();
         if (respectLayout_) {
             if (const auto l = pageModeFromPdf(s.pageLayout)) {
@@ -123,6 +151,7 @@ void PageView::setPageSizes(const QVector<QSizeF>& pointSizes) {
         disconnect(session_, nullptr, this, nullptr);
         session_ = nullptr;
     }
+    tiles_->setDocument(nullptr, pool_, cache_);
     sizes_ = pointSizes;
     history_.clear();
     fit_.reset();
@@ -708,15 +737,34 @@ void PageView::paintEvent(QPaintEvent* /*event*/) {
     const int border = Theme::sizes().pageBorder;
     for (const int page : visiblePages()) {
         QRectF r = pageViewportRect(page);
-        // Страница — на целых пикселях устройства.
+        // Страница — на целых пикселях устройства (иначе швы между тайлами).
         r = QRectF(std::round(r.left() * dpr) / dpr, std::round(r.top() * dpr) / dpr,
                    std::round(r.width() * dpr) / dpr, std::round(r.height() * dpr) / dpr);
-        p.fillRect(r, kPaperColor.color());
+        tiles_->paintPage(p, page, r);
         if (border > 0) {
             p.setPen(QPen(colors.border.color(), border));
             p.setBrush(Qt::NoBrush);
             p.drawRect(r.adjusted(-border / 2.0, -border / 2.0, border / 2.0, border / 2.0));
         }
+        p.save();
+        p.setClipRect(r);
+        overlays_.paintPage(p, *this, page);
+        p.restore();
+    }
+    overlays_.paintViewport(p, *this);
+    p.end();
+    tiles_->schedule();
+}
+
+void PageView::showEvent(QShowEvent* event) {
+    QAbstractScrollArea::showEvent(event);
+    // HiDPI: другой экран — другой dpr, растры документа — заново.
+    if (QWindow* w = window()->windowHandle()) {
+        disconnect(screenConnection_);
+        screenConnection_ = connect(w, &QWindow::screenChanged, this, [this] {
+            tiles_->resetDevice();
+            viewport()->update();
+        });
     }
 }
 

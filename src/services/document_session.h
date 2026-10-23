@@ -191,6 +191,9 @@ signals:
     void opened(const QString& path);
     void closed();
     void pageChanged(int page);
+    // Структурная правка (tc.touchAllPages: страницы добавлены, удалены, переставлены; undo такой правки) —
+    // все страницы другие, раскладка (summary()) уже пересчитана; приходит до documentChanged.
+    void structureChanged();
     void documentChanged(quint64 revision);
     void taskFailed(const ot::TaskFailed& failure);
     void undoStateChanged();

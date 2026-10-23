@@ -2,6 +2,8 @@
 
 #include <QThread>
 
+#include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <cassert>
 #include <filesystem>
@@ -48,7 +50,14 @@ QVector<QSizeF> layoutSizes(const Document& doc, int pageCount) {
     QVector<QSizeF> sizes;
     sizes.reserve(pageCount);
     for (int i = 0; i < pageCount; ++i) {
-        const PageSize size = doc.pageSize(i);
+        // Повреждённая страница не роняет открытие: в раскладке — Letter, при рендере — заглушка
+        // «Страница не отрисована» (эталон 3.1, «Граничные случаи»).
+        PageSize size{0, 0};
+        try {
+            size = doc.pageSize(i);
+        } catch (const MuError& e) {
+            spdlog::warn("page {}: cannot measure for layout: {}", i + 1, e.what());
+        }
         const LayoutSize layout = layoutPageSize(size.width, size.height);
         sizes.push_back(QSizeF(layout.width, layout.height));
     }
@@ -234,7 +243,11 @@ void DocumentSession::loop() {
         }
         wake_.notify_all();
         if (task.isEdit && !error) {
-            emit documentChanged(revision_.fetch_add(1) + 1);
+            const quint64 revision = revision_.fetch_add(1) + 1;
+            if (tc.touchedAll_) {
+                emit structureChanged();
+            }
+            emit documentChanged(revision);
         }
         for (const int page : tc.touched_) {
             emit pageChanged(page);

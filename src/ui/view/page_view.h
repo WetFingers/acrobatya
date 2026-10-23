@@ -29,6 +29,7 @@
 #include "core/render/fit.h"
 #include "services/document_session.h"
 #include "ui/view/layout.h"
+#include "ui/view/overlay.h"
 #include "ui/view/view_history.h"
 
 namespace ot {
@@ -37,6 +38,8 @@ class TileCache;
 }  // namespace ot
 
 namespace ot::ui {
+
+class TilePainter;
 
 class PageView : public QAbstractScrollArea {
     Q_OBJECT
@@ -129,6 +132,14 @@ public:
     // Страницы, видимые во вьюпорте (с запасом margin логических px по вертикали).
     std::vector<int> visiblePages(double margin = 0) const;
 
+    // Растр страниц (ui/view/tile_painter.h) и слои поверх них (ui/view/overlay.h): выделение текста,
+    // совпадения поиска, рамки аннотаций — встроенные; инструменты добавляют свои.
+    TilePainter& tilePainter() const noexcept { return *tiles_; }
+    OverlayStack& overlays() noexcept { return overlays_; }
+    QuadOverlay& selectionOverlay() noexcept { return selection_; }
+    QuadOverlay& searchOverlay() noexcept { return search_; }
+    RectOverlay& annotationOverlay() noexcept { return annotFrames_; }
+
 signals:
     void zoomChanged(float zoom);
     void currentPageChanged(int page);
@@ -142,6 +153,7 @@ protected:
     void scrollContentsBy(int dx, int dy) override;
     void wheelEvent(QWheelEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
+    void showEvent(QShowEvent* event) override;
     bool event(QEvent* event) override;
 
 private:
@@ -187,6 +199,12 @@ private:
     QElapsedTimer autoClock_;
     double autoSpeed_ = kDefaultAutoScrollSpeed;
     double autoCarry_ = 0;
+    TilePainter* tiles_ = nullptr;  // ребёнок вида
+    OverlayStack overlays_;
+    QuadOverlay selection_;
+    QuadOverlay search_;
+    RectOverlay annotFrames_;
+    QMetaObject::Connection screenConnection_;
 };
 
 }  // namespace ot::ui
