@@ -3,7 +3,11 @@
 Где что лежит и как добавляется типовая вещь. Сессия читает этот файл **первым**, до поиска по коду.
 Дерево и состав — эталон `docs/design.md` 5.1–5.3; здесь — короткий путеводитель и рецепты.
 
-> **Состояние: сессия 1.2 — поток документа, кеш, рендер-пул и тайлы.** Есть `MuContext::global()` (клоны на
+> **Состояние: сессия 1.3 — сохранение, журнал undo/redo, автосохранение, ревизии и XMP.** Журнал MuPDF включён с
+> открытия (`Journal::Operation`, `UndoStack`; `DocumentSession::edit` идёт в операции, `undo`/`redo`, `undoState`),
+> `Saver` (правила эталона 4.4, временный файл и замена, переоткрытие в том же `Document`), `QpdfTool`, `Autosave` +
+> `AutosaveRunner` (свой загрузчик журнала), `revisions` (версии, подписанная ревизия), `props` + `xmp` (/Info ↔ XMP,
+> /Lang, шрифты, «Дополнительно»), ctest `compat.save*`. Из 1.2: `MuContext::global()` (клоны на
 > документ и поток, `forThisThread()`, `family()`), `MuError` с `ErrorKind`, `mu::call`, RAII `mu::*Handle`,
 > `Document::open → OpenResult` (пароли, ремонт, PDF/A, подписи, форма, XFA, свойства, права), `Renderer` и
 > `renderDisplayList`, `DisplayList`/`DisplayCache` (LRU 40), `tiles.h` (`TileKey`, одна матрица, тайлы 512, превью
@@ -47,7 +51,7 @@
 | Каталог | Что | Сессия |
 |---|---|---|
 | `mu/` | `context.h` (`MuContext::global()` — один корень на процесс, `clone()` на документ и поток, `forThisThread()` — thread_local клон для потоков пула, `family()` — корень и клоны с общим store: объекты MuPDF ходят только внутри семьи, `shrinkStore`/`emptyStore`, замки, журнал MuPDF → spdlog), `error.h` (`MuError`, `ErrorKind`: Damaged/Unsupported/Limit/System/Aborted…), `call.h` (`mu::call` — `fz_try` в одном месте, `#pragma warning(disable: 4611)`), `handles.h` (RAII `mu::PageHandle`, `PixmapHandle`, `BufferHandle`… — объявлять снаружи `mu::call`, внутри только `reset`), `stream.h` | 0, 1.1 |
-| `doc/` | `document.h` (`Document::open(path, password) → OpenResult`, `openOrThrow` для инструментов, свойства, `allowed(Perm)`, `pageBox`/`pageRotation`; документ живёт в клоне базового контекста), `page.h`, `saver.h`, `journal.h`, `undo_stack.h`, `autosave.h`, `revisions.h`, `props.h`, `permissions.h`, `xmp.h` | 0, 1.1–1.3 |
+| `doc/` | `document.h` (`Document::open(path, password) → OpenResult`, `openOrThrow` для инструментов, свойства, `allowed(Perm)`, `pageBox`/`pageRotation`, `pdf()`, `undoStack()`, `setProperties`, `recoverFrom` (автосохранение), `path()`/`filePath()`/`backingFile()`; документ живёт в клоне базового контекста), `journal.h` (`Journal::Operation` RAII — вложенная присоединяется к внешней, `invalidate`/`invalidateAll`/`markHeavy`; `UndoStack` — шаги с именами поверх шагов MuPDF, группировка одноимённых за 1 с, `TouchedPages`, `hasHeavyChanges`, `clear`, слушатель), `saver.h` (`Saver::decide/save`, `SaveMode`, `SaveError`, `SaveOptions` — шифрование, `allowBreakingSignatures`, `linearize`), `autosave.h` (`Autosave`: журнал с позиции 0, копия исходника, `index.json`, `recover`), `revisions.h` (`versionCount`, `changeHistoryValid`, `signatures`, `signedRevisionBytes`), `props.h` (`readInfo`/`writeInfo`, `xmpPacket`, `lang`/`setLang`, `tagged`, `fonts` + `FontCache`, `advanced`), `xmp.h` (`Packet` — свой разбор и сериализатор XMP, даты PDF ↔ ISO); дальше `page.h`, `permissions.h` | 0, 1.1–1.3 |
 | `render/` | `renderer.h` (`RenderRequest{page, matrix, scissor, aa, recolor}`, `render(buffer, stride, Bgra32Premultiplied\|Rgb24, cookie)`, `renderPage`, `renderDisplayList(ctx, list, matrix, area, …)` — готовый список своим контекстом), `display_cache.h` (`DisplayList` — `shared_ptr`, свой клон контекста для отдачи в любом потоке, `contentBounds()`; `DisplayCache` — LRU 40, `invalidate(page)`, построение с cookie), `tiles.h` (`TileKey`, `pageMatrix` = scale(zoom·dpr) × rotate × translate, `pageDeviceRect`, `tileRectsFor`/`tilesIntersecting` 512 px, `makeTileKey`, превью 1/8 — `previewZoom`/`makePreviewKey`), `fit.h` (`fitZoom` по режимам, `percentToZoom`/`zoomToPercent` — 100 % = dpi/72, `clampZoom` 1–6400 %, `layoutPageSize` — 0 × 0 → Letter, > 14 400 pt — уменьшить), `bitmap.h`, `image_compare.h` (метрики `imgcmp`, `crossCompare`); дальше `recolor_device.h` | 0, 1.1, 1.2, 2.5b |
 | `text/` | `stext.h`, `search.h`, `selection.h`, `index.h` (FTS5), `reflow.h` | 1.4, 8.3 |
 | `print/` | `imposition.h` (вписать, n-up, буклет, постер), `page_set.h`, `band_renderer.h` | 2.6 |
@@ -62,22 +66,25 @@
 | `crypt/` | `password.h`, `permissions_write.h`, `policies.h`, `strength.h` | 7.6 |
 | `ocr/` | `engine.h` (`TessBaseAPI`), `text_layer.h`, `orientation.h`, `enhance.h`, `suspects.h`, `scan_to_pdf.h` | 8.1–8.2 |
 | `a11y/` | `autotag.h`, `struct_tree.h`, `reading_order.h`, `lang.h` | 8.3–8.4 |
-| `optimize/` | `optimizer.h`, `qpdf_tool.h` | 9.3 |
-| `util/` | `paths.h` (единственная точка UTF-8/wchar и `toShortPath()`), `geometry.h` (`RectF`, `IRect`, `Matrix` как у MuPDF), `features.h` (`OT_FEATURE`); дальше `log.h`, `fs.h`, `hash.h`, `ids.h` | 0, 1.1 и далее |
+| `optimize/` | `qpdf_tool.h` (`QpdfTool`: поиск qpdf.exe — `OTTISK_TOOLS`, рядом с exe, `C:\Tools\qpdf\bin`; `check`, `linearize`, `checkLinearization`, `json`; процесс без окна), дальше `optimizer.h` | 1.3, 9.3 |
+| `util/` | `paths.h` (единственная точка UTF-8/wchar и `toShortPath()`), `geometry.h` (`RectF`, `IRect`, `Matrix` как у MuPDF), `features.h` (`OT_FEATURE`), `hash.h` (SHA-256 через OpenSSL); дальше `log.h`, `fs.h`, `ids.h` | 0, 1.1, 1.3 и далее |
 
 ### `src/services/` — Qt без Widgets (страж: ни одного `QtWidgets`)
 
 `document_session.h` (поток документа: очередь задач с приоритетами, `post`/`edit`/`postSync` → `QFuture`, `cancelAll`,
-`displayList(page)`, сигналы `pageChanged`/`documentChanged`/`taskFailed`, `OpenSummary` с размерами раскладки; журнал —
-1.3), `task_context.h` (что видит задача: `document()`, `context()`, `cookie()`, `page()` → `PageHandle`, `displayList()`,
-`touchPage()`; с MuPDF — ui его не включает), `document_registry.h` (сессии по id вкладки, один файл — одна вкладка),
+`displayList(page)`, сигналы `pageChanged`/`documentChanged`/`taskFailed`/`undoStateChanged`/`saved`, `OpenSummary` с
+размерами раскладки; `edit` — в операции журнала, `undo`/`redo`/`undoState`, `save`/`saveAs` через `Saver`,
+`recoverAsync`; QFuture завершается после revision, раскладки и истории), `task_context.h` (что видит задача:
+`document()`, `context()`, `cookie()`, `page()` → `PageHandle`, `displayList()`, `touchPage()`, `touchAllPages()`,
+`markHeavyEdit()`; с MuPDF — ui его не включает), `autosave_runner.h` (`AutosaveRunner`: таймер 1–30 мин, `watch`,
+`tick`, `saveNow`, `discard`, `recoverable`, `recover`), `document_registry.h` (сессии по id вкладки, один файл — одна вкладка),
 `render_pool.h` (`RenderPool`: `QThreadPool` idealThreadCount − 2, `submit(TileRequest)` → `tileReady`/колбэк, `cancel`,
 `cancelDocument`, `retarget`, `setPriority`), `tile_cache.h` (`TileCache`: `QCache` тайлов 7/8 и превью 1/8 лимита,
 384 МБ, `limitFromMegabytes`, `shrink`), `memory_guard.h` (фон и простой 60 с → `fz_shrink_store` 50 % и `lowMemory`),
 `app_info.h` (версия, пути для `--self-check`), дальше — `settings.h` + `settings_keys.h`,
 `state_db.h` (sqlite), `recent.h`, `http_fetcher.h` (+Fake), `office_converter.h` (+`FakeOfficeBackend`),
 `word_converter.h`, `print_job.h`, `scan/{iscansource,wia,fake}.h`, `tts.h` (+Fake), `mail.h` (+Fake),
-`shell_register.h`, `help.h`, `i18n.h`, `clipboard_io.h`, `autosave_runner.h`, `trust_updater.h`, `crypto_worker.h`,
+`shell_register.h`, `help.h`, `i18n.h`, `clipboard_io.h`, `trust_updater.h`, `crypto_worker.h`,
 `ocr_service.h`, `commands.h` (реестр команд и клавиш), `script_runner.h` (`--script`, 2.4b), `shell_launcher.h` (2.4).
 
 ### `src/ui/` — Qt Widgets (страж: ни одного `mupdf/`)
@@ -98,7 +105,7 @@
 
 | Где | Что |
 |---|---|
-| `tests/unit/` | gtest, метка `unit`, < 1 с, данные — `tests/data/mini/*.pdf` (свои, ≤ 50 КБ); `support/test_pdf.h` — PDF в памяти (`makePdf`, `makeHeavyPdf` — секунды рендера на 600 dpi, `makeMixedPdf` — текст/кривые/картинки, `makeImagePagesPdf` — 200 страниц с картинками), `support/qt_app.h` — `QCoreApplication` и `waitUntil` для сигналов из потоков |
+| `tests/unit/` | gtest, метка `unit`, < 1 с, данные — `tests/data/mini/*.pdf` (свои, ≤ 50 КБ); `support/test_pdf.h` — PDF в памяти (`makePdf`, `makeHeavyPdf` — секунды рендера на 600 dpi, `makeMixedPdf` — текст/кривые/картинки, `makeImagePagesPdf` — 200 страниц с картинками), `support/qt_app.h` — `QCoreApplication` и `waitUntil` для сигналов из потоков, `support/pdf_objects.h` — объекты PDF текстом («qpdf --json в миниатюре»: сравнение после undo и записи), `support/test_edits.h` — правки в операциях (`tenEdits`, `deletePage` — тяжёлая, `addNote`, `setRotate`, `putRootName`); отключённые тесты-помощники `saver_compat.DISABLED_*` (файлы для `compat.save`) и `autosave_child.DISABLED_*` (дочерний процесс для `taskkill`) |
 | `tests/ui/` | QTest offscreen, метка `ui` (ctest `ui.main_window`), снимки виджетов → `build/ui-shots/` |
 | `tests/engine/` | gtest на корпусе по `<корпус>/index.json` (`open_corpus_test.cpp`: тег → части по 200 файлов, `progress:`), `mutants_test.cpp`; зонд `support/probe.h` (открыть → 32 × 32 → закрыть, `QuietLog`, `isBrokenFileCode`, `isMemoryFailure`); предел памяти
 процесса `support/memory_cap.cpp` (Job Object, `OTTISK_TEST_MEMORY_LIMIT_MB`, 2048 / ASan 4096, 0 — выкл.),
@@ -106,7 +113,7 @@
 `OTTISK_PROBE_RENDER_TIMEOUT_S` (15 / ASan 45 с); пропуск `tests/corpus/slow.json` — файлы, которые сам MuPDF
 рисует минутами (`tools/scan_slow_corpus.py --write`); метки `engine;slow`, `FIXTURES_REQUIRED corpus;mutants` (`engine.corpus.verify` — `fetch_corpus.py --verify --dry-run`, 77 — пропуск; `engine.mutants.generate` — `make_mutants.py` в `build/<пресет>/gen`), `TIMEOUT_AFTER_MATCH 120;^progress:` |
 | `tests/render/` | `render_test.cpp` по `expected/expected.json`, эталоны `expected/<корпус>/<файл>.<стр>.<dpi>.png`, `files.json` — источники |
-| `tests/e2e/`, `tests/compat/`, `tests/bench/`, `tests/build/` | сценарии эталона 2 без UI; `compat_check.py` (SKIP 77); `bench.cpp` → `bench.exe <файл\|hello\|pdf32000\|big-1200\|images-200\|enc-r6>` (только Release: ctest `bench.engine.*`, JSON в `build/bench/`, сравнение — `tools/bench_compare.py docs/bench/baseline-<прошлый>.json "build/bench/*.json"`: +25 % медианы, шум < 5 мс, цели 5.8); `install_test.py` (метка `build`) |
+| `tests/e2e/`, `tests/compat/`, `tests/bench/`, `tests/build/` | сценарии эталона 2 без UI; `compat_check.py` (SKIP 77; файлы или каталоги); ctest `compat.save.generate` → `compat.save` / `.signed` (pyHanko INTACT) / `.encrypted` по `build/<пресет>/compat/save` (метки `compat;slow`); `bench.cpp` → `bench.exe <файл\|hello\|pdf32000\|big-1200\|images-200\|enc-r6>` (только Release: ctest `bench.engine.*`, JSON в `build/bench/`, сравнение — `tools/bench_compare.py docs/bench/baseline-<прошлый>.json "build/bench/*.json"`: +25 % медианы, шум < 5 мс, цели 5.8); `install_test.py` (метка `build`) |
 | `tests/corpus/manifest.json` | корпуса `{id, url\|git, sha256, license, tags[], expect}` → `C:\Tools\ottisk\corpus` (`OTTISK_CORPUS`) |
 | `tests/fixtures/` | свои фикстуры ≤ 50 КБ и пермиссивные (`LICENSES.md`): `annots/ forms/ enc/ sig/ images/ scans/ office/ scenes/ demo/ imgcmp/ (метрики imgcmp) regress/ (падения фаззера → unit.regress.load) pki/ (4.1)` |
 | `tools/` | `vcenv.cmd`, `verify.py`, `build.ps1`, `build_lock.ps1`, `fuzz.ps1` (фаззер 60 с / 10 мин), `shots.ps1`, `lint.ps1`, стражи `*_guard.py` и `scope_check.py`, `scope_report.py`, `imgcmp/`, `render_refs.cpp`, `review_refs.py`, `fetch_corpus.py`, `scan_slow_corpus.py`, `compat_check.py`, `bench_compare.py`, `analyze_summary.py`, `copy_icons.py`, `gen/` (генераторы фикстур), `get-tessdata.ps1`, `install-qt.ps1`, `mupdf-build.ps1` + `ottisk-md.props`, очередь: `queue-lib.ps1`, `test_reset_parse.ps1`, `test_guard.ps1` |
@@ -204,8 +211,9 @@ PowerShell-стражи очереди `tools/test_reset_parse.ps1` и `tools/te
 ### Задача документа и рендер тайлов (с 1.2)
 
 1. Всё, что трогает `fz_document`/`fz_page`/`pdf_*`, — задачей `DocumentSession`: `post([](TaskContext& tc) { … },
-   TaskPriority::…)` → `QFuture<T>`; правка — `edit(QStringLiteral("<операция по-английски>"), fn)` (после неё `revision++`,
-   `documentChanged`, `pageChanged` для `tc.touchPage(n)`); в тестах — `postSync`. Задача использует `tc.cookie()` в
+   TaskPriority::…)` → `QFuture<T>`; правка — `edit(QStringLiteral("<операция по-английски>"), fn)` (fn идёт внутри
+   `Journal::Operation` — рецепт «Правка с undo» ниже; после неё `revision++`, `documentChanged`, `pageChanged` для
+   `tc.touchPage(n)`); в тестах — `postSync`. Задача использует `tc.cookie()` в
    `fz_run_*`/`Renderer::render` — тогда `cancelAll()` её прерывает. Ошибка — исключение в `QFuture` (`MuError`) и
    `taskFailed(TaskFailed{code, kind, message, hint})`; отмена — `MuError` с `ErrorKind::Aborted` и без сигнала.
 2. ui не держит указатели MuPDF: только номер страницы, `TileKey`, `shared_ptr<const DisplayList>` (непрозрачен для ui) и
@@ -218,6 +226,21 @@ PowerShell-стражи очереди `tools/test_reset_parse.ps1` и `tools/te
    пул отвергает ошибкой. Мозаика тайлов совпадает с целым рендером бит в бит для текста и прямоугольников; у кривых и
    растянутых картинок MuPDF даёт отличия в доли пикселя на рёбрах (GEL режет рёбра по scissor) — швов нет, тесты
    `unit.render.tiles_mosaic_*` держат границы.
+
+### Правка с undo и сохранение (с 1.3)
+
+1. Журнал MuPDF включён с открытия: правка PDF вне операции — ошибка `FZ_ERROR_ARGUMENT`. Функция ядра, которая
+   правит, сама открывает `Journal::Operation op(doc, "Add note")` (английский код — имя шага; подпись «Отменить: …»
+   по-русски выбирает ui), правит через `mu::call`, отмечает `op.invalidate(page)` / `op.invalidateAll()`
+   (структура страниц) / `op.markHeavy()` (страницы, картинки, редактор, уменьшение — `Saver` пишет файл целиком)
+   и `op.commit()`; без `commit` (исключение) — откат. Внутри `DocumentSession::edit` она вложенная: шаг один, имя
+   внешнее; из задачи — `tc.touchPage`, `tc.touchAllPages`, `tc.markHeavyEdit`.
+2. `fz_page` через undo не держать; `pdf_update_object` в журнал не попадает (журналируются `pdf_dict_put*`,
+   `pdf_update_stream`, `pdf_add_*`); трейлер — тоже не в журнале.
+3. Запись — только `Saver`/`DocumentSession::save`: после записи документ переоткрыт, история пуста
+   (`savePdfToMemory` — для тестов, тоже сбрасывает историю). Автосохранение — `AutosaveRunner::watch(session)`.
+4. Тест: правка → `undo` → объекты как были (`support/pdf_objects.h`) → `redo`; запись → `compat.save` (артефакт в
+   `saver_compat.DISABLED_write_artifacts`) — `qpdf --check`, `pdfcpu validate -m strict`, pypdfium2.
 
 ### Новая команда и клавиша (с 2.3–2.4)
 

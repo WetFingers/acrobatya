@@ -8,6 +8,12 @@
 Новые пункты — сверху, с номером сессии или рубежа. Ничего из этого не блокирует очередь: она работает на
 `Fake*`-реализациях и фикстурах, живая часть ждёт здесь (эталон 8.1 «Человек отдельно», 9.7).
 
+- **Сессия 1.3 · Сохранённое — в Acrobat Reader (к Р1)**: открыть `build/debug/compat/save/**` (после `ctest -L
+  compat`) в Acrobat Reader и Edge — без предупреждений и ремонта; `signed/signed-incremental.pdf` — в панели подписей
+  подпись действительна, «документ изменён после подписи: добавлен комментарий» (pyHanko и MuPDF строже — считают
+  записку на странице подписи изменением); `properties-xmp.pdf` — «Свойства → Описание» и «Дополнительные метаданные»
+  показывают новый заголовок и ключевые слова. Автосохранение после настоящего падения окна (снять задачу в
+  диспетчере) — когда окно 2.3 подключит `AutosaveRunner`.
 - **Между 1.2 и 1.3 · Решить: предел памяти MuPDF в самой программе** (23.10.2026). Битые и «злые» PDF заставляют
   MuPDF выделять гигабайты (FZ_STORE ограничивает только кеш): прогон корпуса фаззов без предела уронил Windows.
   Тесты теперь ограничены Job Object (2 ГБ на процесс), а программа — нет: такой файл может съесть всю память.
@@ -371,3 +377,80 @@
   записью; (2) полная запись (`pdf_write_document`/`pdf_save_document`) меняет xref документа в памяти (сплошная
   таблица, инкрементальные секции «сохранены», сборка мусора перенумеровывает) — прежний журнал после неё не отменяет
   объекты, перенесённые вперёд из старой секции: `savePdfToMemory` сбрасывает историю, `Saver` переоткрывает файл.
+- Сделано:
+  1. **Журнал и undo/redo:** `core/doc/journal.{h,cpp}` — `Journal::Operation` (RAII: `pdf_begin_operation`, `commit` →
+     `pdf_end_operation`, без `commit` → `pdf_abandon_operation`; вложенная присоединяется к внешней, её неудача
+     откатывает внешнюю при `commit`; незакрытую операцию самого MuPDF откатывает), `UndoStack` (шаги с именами поверх
+     шагов MuPDF, группировка одноимённых за 1 с, страницы шага `TouchedPages`, «тяжёлые» шаги, перестройка по MuPDF
+     при чужой операции или сбросе журнала, слушатель). Журнал включает `Document` при открытии PDF и в `createBlank`.
+     `DocumentSession::edit` — в операции; `undo()`/`redo()` очередью правок, `undoState()` + `undoStateChanged`,
+     `TaskContext::touchAllPages` (пересчёт раскладки) и `markHeavyEdit`. Тесты `unit.journal.*`,
+     `unit.journal_coverage.*`, `unit.document_session.*` (правка, откат, структурная правка, undo/redo).
+  2. **Сохранение:** `core/doc/saver.{h,cpp}` — `Saver::decide/save` по правилам 4.4, временный файл `.~<имя>.<hex>.tmp`
+     в папке цели (`_wfopen` «w+b» → `fz_output`, `_commit`), `MoveFileExW(REPLACE_EXISTING | WRITE_THROUGH)`,
+     переоткрытие в том же `Document` (`release`/`reopen`, пароль помнится), висячий `/Info` трейлера убирается;
+     `core/optimize/qpdf_tool.{h,cpp}` (поиск, `check`, `linearize`, `checkLinearization`, `json`; процесс без окна, вывод
+     каналом с опросом, срок); `DocumentSession::save/saveAs` + сигнал `saved`. ctest `compat.save.generate` →
+     `compat.save`, `compat.save.signed` (pyHanko INTACT), `compat.save.encrypted` — 10 файлов: инкремент, полная с
+     оптимизацией, ремонт, новый, линеаризованный, подписанный ×2, AES-256, свойства ×2; `compat_check.py` принимает
+     каталоги.
+  3. **Автосохранение:** `core/util/hash.{h,cpp}` (SHA-256), `core/doc/autosave.{h,cpp}` (журнал с позиции 0, копия
+     исходника ≤ 500 МБ, `index.json` {path, key, sha256, mtime, size, copy, position, steps, savedAt}, `recover`:
+     исходник по sha256, иначе копия, иначе отказ), `Document::recoverFrom` (свой загрузчик журнала), `services/
+     autosave_runner.{h,cpp}` (таймер 1–30 мин, `watch`/`tick`/`saveNow`, «Сохранить» и «Не сохранять» удаляют запись,
+     `recoverable`/`recover` → `DocumentSession::recoverAsync`). Тест `unit.autosave.taskkill_*`: дочерний процесс
+     (`unit_tests` с отключённым тестом) правит, автосохраняет и ждёт `taskkill /F`.
+  4. **Ревизии:** `core/doc/revisions.{h,cpp}` — `versionCount`, `lastValidVersion`/`changeHistoryValid`, `signatures`
+     (поле, конец `/ByteRange`, версия, `pdf_validate_signature`), `signedRevision`/`signedRevisionBytes` (байты из потока
+     документа во временный файл); тест на B-B pyHanko, после инкремента и на DSS `modified_after_signature.pdf`.
+  5. **Свойства и метаданные:** `core/doc/xmp.{h,cpp}` (свой разбор и сериализатор XMP: дерево узлов, свойства по URI
+     пространства, простые/Alt/Seq/Bag, правка Alt x-default на месте, даты PDF ↔ ISO), `core/doc/props.{h,cpp}`
+     (`readInfo`/`writeInfo` с пользовательскими ключами и синхронизацией XMP, `xmpPacket`, `lang`/`setLang`, `tagged`,
+     `fonts` + `FontCache`, `advanced` с предупреждениями `pdf_check_document`), `Document::setProperties`.
+- Решения:
+  - **MuPDF 1.28.5 не загружает журнал с правками:** `pdf_deserialise_journal` добавляет фрагменты в `pending_tail`,
+    которого при загрузке нет (Debug — assert `entry != NULL`, Release — «Can't add a journal fragment absent an
+    operation»). Патч MuPDF не нужен: свой загрузчик в `Document::recoverFrom` разбирает формат `%!MuPDF-Journal-100`
+    публичными `pdf_lex`/`pdf_parse_dict`/`pdf_parse_journal_obj`, сверяет отпечаток xref как MuPDF и переигрывает
+    шаги, как `pdf_redo` (`pdf_get_incremental_xref_entry` + `pdf_add_journal_fragment` в своей операции).
+  - **Автосохранение — журнал с позиции 0, а не снимок:** фрагменты сделанного шага MuPDF хранят прежние значения, новые
+    живут в несохранённой секции xref; `pdf_write_snapshot` (как и любая запись) обнуляет `num_incremental_sections` —
+    undo и «есть несохранённое» ломаются. Запись: отменить все шаги → `pdf_write_journal` → вернуть все шаги; документ в
+    памяти не меняется. Новый документ и документ из памяти (нет пути) не автосохраняются — до 7.2 («Без имени»).
+  - **Любая запись сбрасывает историю:** `pdf_write_document` меняет xref документа (сплошная таблица, секции
+    «сохранены», перенумерация) — после неё журнал не отменяет перенесённые вперёд объекты. `Saver` всегда переоткрывает
+    файл (история пуста, как и в эталоне 4.4), `savePdfToMemory` — `UndoStack::clear`.
+  - Подписанный — это подписанное поле (`/V`), а не `pdf_count_signatures` (тот считает и пустые поля подписи: им
+    полная запись не вредит).
+  - Вложенная `Journal::Operation` begin в MuPDF не делает (план: «begin внутрь begin не вкладывать»); откатить её
+    отдельно нельзя — внешняя при `commit` откатывается и бросает `MuError`.
+  - Занятый файл цели («Сохранить» в свой путь): документ открывается из временного файла с прежним путём
+    (`backingFile`), правки не теряются, следующее сохранение заменяет файл и удаляет временный.
+  - QFuture задачи завершается после `revision++`, пересчёта раскладки и истории (результат держится до `finish`):
+    иначе `undo().result()` возвращался раньше, чем сводка видела новую раскладку.
+  - XMP — свой разборщик (библиотек XML в стеке нет): правятся только свои свойства; `dc:subject` (Bag), `dc:language`,
+    `pdfaid`, чужие схемы и обёртка xpacket — как были; не разобрать — /Info пишется, XMP не трогается (с предупреждением).
+    Автор → `dc:creator` одним элементом Seq; пользовательские ключи → `pdfx:<ключ>`.
+  - Ревизии: `changeHistoryValid` (`pdf_validate_change_history`) смотрит только права DocMDP и `/Lock` — у утверждающей
+    подписи без них допустимо всё (и у DSS `modified_after_signature.pdf`); строгий ответ на подпись —
+    `SignatureInfo::changedSince` (`pdf_validate_signature`): записка на странице с виджетом подписи — уже изменение
+    (как у pyHanko: `ILLEGAL_MODIFICATIONS`, подпись `INTACT`; правка метаданных — `ACCEPTABLE_MODIFICATIONS`). «Разрешено
+    ли как в Acrobat» решает валидатор 4.4.
+  - План называет `qpdf --json --json-key=trailer` — в qpdf 12 (JSON v2) такого ключа нет: трейлер — запись `trailer`
+    среди объектов `--json-key=qpdf`.
+- Подводные камни:
+  - Правка через `Get-Content`/`Set-Content` PowerShell 5.1 портит UTF-8 без BOM (читается как ANSI, двойное
+    кодирование кириллицы) — только Edit/Write или Python.
+  - Узкий `getenv` отдаёт пути с кириллицей в ANSI — в дочернем процессе только `_wgetenv`.
+  - `OpenResult` с `needsPassword` держит документ (и файл) открытым — замена файла в тесте падала с «Access is denied».
+  - При инкременте MuPDF читает вывод обратно (`fz_stream_from_output`) — файл записи открывать «w+b», иначе «read
+    error: Bad file descriptor» (для подписи этапа 4 — обязательно).
+  - Трейлер не в журнале: `/Info`, созданный правкой, после undo висит ссылкой на свободный объект (MuPDF пишет «cannot
+    find object in xref» при чтении).
+  - `pdf_update_object` в журнал не попадает; `PDF_NAME(MarkInfo)` нет в таблице имён MuPDF — `pdf_dict_puts`.
+  - У записки (`pdf_create_annot` Text) есть Popup — в `/Annots` две записи.
+- Замеры: инкремент `unit_tests` 6–23 с; `verify.py` 33 с (162 теста); `compat.save*` 4 теста — 4,6 с; автосохранение
+  трёх правок и восстановление — миллисекунды, тест с `taskkill` — 0,2 с; ASan `unit_tests` — 23 с сборки.
+- Проверки: `verify.py` зелёный (162 теста); `ctest -L compat` 4/4; `engine.stress.render` зелёный; новые тесты
+  (журнал, сохранение, автосохранение, ревизии, свойства, сессия — 70) под `msvc-asan` — чисто; экранов сессия не
+  строила — сцен нет.
