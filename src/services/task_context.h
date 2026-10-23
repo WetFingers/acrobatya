@@ -70,6 +70,8 @@ public:
     // Структурная правка (страницы добавлены, удалены, переставлены): все display lists, шаг истории «все
     // страницы», после задачи — пересчёт раскладки (summary()) и documentChanged.
     void touchAllPages();
+    // Тяжёлая правка (страницы, картинки, редактор, уменьшение размера): Saver запишет файл целиком.
+    void markHeavyEdit();
     DocumentSession& session() const noexcept { return session_; }
 
 private:

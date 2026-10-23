@@ -108,6 +108,12 @@ void TaskContext::touchPage(int index) {
     }
 }
 
+void TaskContext::markHeavyEdit() {
+    if (op_) {
+        op_->markHeavy();
+    }
+}
+
 void TaskContext::touchAllPages() {
     session_.displayCache_->clear();
     if (op_) {
@@ -325,6 +331,66 @@ QFuture<bool> DocumentSession::history(bool back) {
     enqueue(back ? QStringLiteral("undo") : QStringLiteral("redo"), TaskPriority::Normal, true,
             wrap<bool>(pending, std::move(step)), finisher<bool>(pending), abandoner<bool>(pending));
     return future;
+}
+
+QFuture<SaveReport> DocumentSession::save(const SaveOptions& options) { return saveTo(QString(), options); }
+
+QFuture<SaveReport> DocumentSession::saveAs(const QString& path, const SaveOptions& options) {
+    return saveTo(path, options);
+}
+
+QFuture<SaveReport> DocumentSession::saveTo(const QString& path, const SaveOptions& options) {
+    return post(
+        [this, path, options](TaskContext& tc) {
+            Document& doc = tc.document();
+            const SaveReport report =
+                path.isEmpty() ? Saver::save(doc, options)
+                               : Saver::save(doc, std::filesystem::path(path.toStdWString()), options);
+            afterSave(report);
+            return report;
+        },
+        TaskPriority::Normal, QStringLiteral("save"));
+}
+
+void DocumentSession::afterSave(const SaveReport& report) {
+    displayCache_->clear();
+    if (report.error == SaveError::ReopenFailed || doc_->handle() == nullptr) {
+        // Записанный файл не открылся — документа больше нет.
+        doc_.reset();
+        {
+            const std::lock_guard lock(mutex_);
+            summary_ = OpenSummary{};
+            path_.clear();
+            error_ = QString::fromStdString(report.message);
+        }
+        refreshUndoState();
+        emit closed();
+        return;
+    }
+    const bool reopened = report.ok() || report.error == SaveError::ReplaceFailed;
+    if (reopened) {
+        OpenSummary s;
+        try {
+            s.ok = true;
+            s.isPdf = doc_->isPdf();
+            s.repaired = doc_->repaired();
+            s.pdfa = doc_->isPdfA();
+            s.isSigned = doc_->isSigned();
+            s.hasForm = doc_->hasForm();
+            s.hasXfa = doc_->hasXfa();
+            s.pageCount = doc_->pageCount();
+            s.pageSizes = layoutSizes(*doc_, s.pageCount);
+            const QString docPath = QString::fromStdWString(doc_->path().wstring());
+            const std::lock_guard lock(mutex_);
+            summary_ = s;
+            path_ = docPath;
+        } catch (const MuError&) {  // NOLINT(bugprone-empty-catch): сводка останется прежней
+        }
+    }
+    refreshUndoState();
+    if (report.ok()) {
+        emit saved(path());
+    }
 }
 
 void DocumentSession::refreshLayout() {

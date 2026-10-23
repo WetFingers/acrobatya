@@ -471,6 +471,41 @@ TEST(document_session, structural_edit_and_its_undo_refresh_layout) {
     EXPECT_EQ(s.pageCount(), 4);
 }
 
+TEST(document_session, save_and_save_as_reopen_document_in_same_session) {
+    ot::test::qtApp();
+    Files files;
+    DocumentSession s;
+    const fs::path path = files.pdf(2);
+    ASSERT_TRUE(s.open(qpath(path)));
+    std::mutex m;
+    QStringList savedPaths;
+    QObject::connect(
+        &s, &DocumentSession::saved, &s,
+        [&](const QString& p) {
+            const std::lock_guard lock(m);
+            savedPaths << p;
+        },
+        Qt::DirectConnection);
+    s.edit(QStringLiteral("Rotate page"), [](TaskContext& tc) { rotatePage(tc, 0, 90); }).waitForFinished();
+    ot::SaveReport r = s.save().result();
+    ASSERT_TRUE(r.ok()) << r.message;
+    EXPECT_EQ(r.mode, ot::SaveMode::Incremental);
+    EXPECT_FALSE(s.undoState().canUndo);  // документ переоткрыт — история с нуля
+    EXPECT_EQ(rotationOf(s, 0), 90);
+    EXPECT_EQ(s.pageCount(), 2);
+    EXPECT_TRUE(s.isOpen());
+    EXPECT_EQ(ot::Document::openOrThrow(path)->pageRotation(0), 90);
+    const fs::path other = path.parent_path() / L"копия сохранения.pdf";
+    r = s.saveAs(qpath(other)).result();
+    ASSERT_TRUE(r.ok()) << r.message;
+    EXPECT_EQ(s.path(), qpath(other));
+    // Правки после сохранения идут обычным порядком.
+    s.edit(QStringLiteral("Rotate page"), [](TaskContext& tc) { rotatePage(tc, 1, 180); }).waitForFinished();
+    EXPECT_TRUE(s.undoState().canUndo);
+    const std::lock_guard lock(m);
+    EXPECT_EQ(savedPaths, (QStringList{qpath(path), qpath(other)}));
+}
+
 TEST(document_session, post_sync_inside_task_runs_inline) {
     ot::test::qtApp();
     DocumentSession s;

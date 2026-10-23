@@ -58,6 +58,9 @@ public:
     // Шагов всего и сделано (позиция курсора: 0 — исходный документ).
     int size();
     int position();
+    // Среди сделанных шагов есть тяжёлая правка (страницы, картинки, редактор, уменьшение размера) — Saver
+    // пишет файл целиком (эталон 4.4); отменённая не считается.
+    bool hasHeavyChanges();
 
     // Отменить / вернуть шаг; страницы шага. Нечего — MuError(FZ_ERROR_ARGUMENT).
     TouchedPages undo();
@@ -82,6 +85,7 @@ private:
         std::string name;
         int operations = 1;  // шагов MuPDF в группе
         TouchedPages touched;
+        bool heavy = false;
         Clock::time_point last{};
         bool sealed = false;  // после undo/redo к шагу не присоединяется набор
     };
@@ -95,6 +99,7 @@ private:
     bool begin(const std::string& name);  // true — внешняя (begin в MuPDF), false — вложенная
     void touch(int page) { pending_.add(page); }
     void touchAll() noexcept { pending_.addAll(); }
+    void markHeavy() noexcept { pendingHeavy_ = true; }
     void commit(bool outer);
     void abandon(bool outer) noexcept;
 
@@ -115,6 +120,7 @@ private:
     int depth_ = 0;
     std::string name_;
     TouchedPages pending_;
+    bool pendingHeavy_ = false;
     MuState before_;
     bool failed_ = false;
 };
@@ -132,6 +138,8 @@ public:
         // Правка затронула страницу / структуру (все страницы).
         void invalidate(int page);
         void invalidateAll();
+        // Тяжёлая правка (страницы, картинки, редактор текста, уменьшение размера): файл пишется целиком.
+        void markHeavy();
         // Зафиксировать: pdf_end_operation (у внешней). Ошибка — MuError; операция тогда откатана.
         void commit();
 

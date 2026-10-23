@@ -1,9 +1,9 @@
 """Совместимость PDF без Acrobat (эталон 9.4): косвенный критерий «Acrobat откроет без ремонта».
 
-    "%OTTISK_PYTHON%" -X utf8 -I tools/compat_check.py <файл.pdf> [<файл.pdf> …] [--json out.json]
+    "%OTTISK_PYTHON%" -X utf8 -I tools/compat_check.py <файл.pdf | каталог> […] [--json out.json]
         [--password PWD] [--forms] [--expect-sig INTACT|TRUSTED|…] [--trust cert.pem] [--pdfa] [--tagged]
 
-Проверки по каждому файлу:
+Каталог — все *.pdf в нём (по имени; пустой каталог — ошибка). Проверки по каждому файлу:
   * qpdf --check                  — код 0 (3 = предупреждения — тоже красный);
   * pdfcpu validate -m strict     — код 0;
   * mutool clean <файл> <tmp>     — без «repair» в выводе и с кодом 0 (во временный файл);
@@ -245,7 +245,7 @@ def main(argv: list[str]) -> int:
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="qpdf/pdfcpu/mutool/pdfium/pyHanko/veraPDF по PDF")
-    ap.add_argument("files", nargs="+", type=Path)
+    ap.add_argument("files", nargs="+", type=Path, help="PDF или каталог с PDF")
     ap.add_argument("--json", type=Path, help="записать результат в JSON")
     ap.add_argument("--password", help="пароль (пользователя или владельца) зашифрованного файла")
     ap.add_argument("--forms", action="store_true", help="pypdfium2 рендерит с полями форм (--draw-forms)")
@@ -256,6 +256,17 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--tagged", action="store_true", help="файл тегирован — tools/structcheck.py")
     ap.add_argument("--quiet", action="store_true", help="печатать только итог и упавшее")
     args = ap.parse_args(argv)
+    files: list[Path] = []
+    for p in args.files:
+        if p.is_dir():
+            found = sorted(p.glob("*.pdf"))
+            if not found:
+                print(f"compat: в каталоге {p} нет PDF")
+                return 1
+            files.extend(found)
+        else:
+            files.append(p)
+    args.files = files
 
     t = tools_dir()
     qpdf = find_tool(None, [t / "qpdf" / "bin" / "qpdf.exe"], ["qpdf"])

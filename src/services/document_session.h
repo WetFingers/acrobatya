@@ -36,6 +36,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "core/doc/saver.h"
 #include "core/mu/error.h"
 
 namespace ot {
@@ -145,6 +146,13 @@ public:
     QFuture<bool> undo();
     QFuture<bool> redo();
 
+    // Сохранить по правилам Saver (эталон 4.4) — очередью правок: «Сохранить» в свой путь, «Сохранить как» —
+    // документ переходит на новый файл. Записанный файл переоткрывается в этом же потоке (тот же Document):
+    // display lists сброшены, флаги и раскладка — заново, история пуста; успех — сигнал saved(path). Отказ и
+    // ошибка — в SaveReport, не исключение (нет документа — исключение в QFuture).
+    QFuture<SaveReport> save(const SaveOptions& options = {});
+    QFuture<SaveReport> saveAs(const QString& path, const SaveOptions& options = {});
+
     // С ожиданием: исключение задачи бросается здесь. Из потока документа (внутри задачи) выполняется сразу.
     template <class F>
     auto postSync(F&& fn, TaskPriority priority = TaskPriority::Urgent)
@@ -165,6 +173,7 @@ signals:
     void documentChanged(quint64 revision);
     void taskFailed(const ot::TaskFailed& failure);
     void undoStateChanged();
+    void saved(const QString& path);
 
 private:
     friend class TaskContext;
@@ -209,6 +218,9 @@ private:
     static void commitEdit(TaskContext& tc);
     static void abandonEdit(TaskContext& tc) noexcept;
     QFuture<bool> history(bool back);
+    QFuture<SaveReport> saveTo(const QString& path, const SaveOptions& options);
+    // После Saver::save: документ переоткрыт — сводка, списки и история заново (в потоке документа).
+    void afterSave(const SaveReport& report);
     // После задачи: раскладка (структурная правка) и состояние истории — в summary_/undoState_ с сигналами.
     void refreshLayout();
     void refreshUndoState();

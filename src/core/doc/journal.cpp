@@ -14,8 +14,8 @@ namespace ot {
 
 namespace {
 
-pdf_document* pdfOf(Document& doc) {
-    pdf_document* pdf = pdf_document_from_fz_document(doc.context().get(), doc.handle());
+pdf_document* journalPdf(const Document& doc) {
+    pdf_document* pdf = doc.pdf();
     if (pdf == nullptr) {
         throw std::logic_error("journal: not a PDF document");
     }
@@ -44,13 +44,13 @@ void TouchedPages::merge(const TouchedPages& other) {
 
 UndoStack::UndoStack(Document& doc) : doc_(doc), now_([] { return Clock::now(); }) {
     fz_context* ctx = doc.context().get();
-    pdf_document* pdf = pdfOf(doc);
+    pdf_document* pdf = journalPdf(doc);
     mu::call(ctx, [&] { pdf_enable_journal(ctx, pdf); });
 }
 
 UndoStack::MuState UndoStack::muState() {
     fz_context* ctx = doc_.context().get();
-    pdf_document* pdf = pdfOf(doc_);
+    pdf_document* pdf = journalPdf(doc_);
     MuState s;
     // Операция самого MuPDF могла не закрыться при ошибке (begin до fz_try) — тогда история «во время
     // операции» недоступна: откатить незакрытую и спросить снова.
@@ -85,7 +85,7 @@ bool UndoStack::sync() {
         return false;
     }
     fz_context* ctx = doc_.context().get();
-    pdf_document* pdf = pdfOf(doc_);
+    pdf_document* pdf = journalPdf(doc_);
     auto foreign = [&](int index) {
         const char* title = nullptr;
         mu::call(ctx, [&] { title = pdf_undoredo_step(ctx, pdf, index); });
@@ -150,6 +150,16 @@ int UndoStack::position() {
     return cursor_;
 }
 
+bool UndoStack::hasHeavyChanges() {
+    (void)sync();
+    for (int i = 0; i < cursor_; ++i) {
+        if (steps_[static_cast<std::size_t>(i)].heavy) {
+            return true;
+        }
+    }
+    return false;
+}
+
 TouchedPages UndoStack::undo() {
     if (depth_ > 0) {
         throw MuError(FZ_ERROR_ARGUMENT, "cannot undo during an operation");
@@ -159,7 +169,7 @@ TouchedPages UndoStack::undo() {
         throw MuError(FZ_ERROR_ARGUMENT, "nothing to undo");
     }
     fz_context* ctx = doc_.context().get();
-    pdf_document* pdf = pdfOf(doc_);
+    pdf_document* pdf = journalPdf(doc_);
     const Step& step = steps_[static_cast<std::size_t>(cursor_ - 1)];
     const TouchedPages touched = step.touched;
     try {
@@ -188,7 +198,7 @@ TouchedPages UndoStack::redo() {
         throw MuError(FZ_ERROR_ARGUMENT, "nothing to redo");
     }
     fz_context* ctx = doc_.context().get();
-    pdf_document* pdf = pdfOf(doc_);
+    pdf_document* pdf = journalPdf(doc_);
     Step& step = steps_[static_cast<std::size_t>(cursor_)];
     try {
         for (int i = 0; i < step.operations; ++i) {
@@ -210,7 +220,7 @@ void UndoStack::clear() {
         throw MuError(FZ_ERROR_ARGUMENT, "cannot clear history during an operation");
     }
     fz_context* ctx = doc_.context().get();
-    pdf_document* pdf = pdfOf(doc_);
+    pdf_document* pdf = journalPdf(doc_);
     mu::call(ctx, [&] { pdf_discard_journal(ctx, pdf->journal); });
     const bool had = !steps_.empty();
     steps_.clear();
@@ -230,12 +240,13 @@ bool UndoStack::begin(const std::string& name) {
     }
     before_ = muState();
     fz_context* ctx = doc_.context().get();
-    pdf_document* pdf = pdfOf(doc_);
+    pdf_document* pdf = journalPdf(doc_);
     const char* title = name.c_str();
     mu::call(ctx, [&] { pdf_begin_operation(ctx, pdf, title); });
     depth_ = 1;
     name_ = name;
     pending_ = {};
+    pendingHeavy_ = false;
     failed_ = false;
     return true;
 }
@@ -251,12 +262,13 @@ void UndoStack::commit(bool outer) {
         throw MuError(FZ_ERROR_ARGUMENT, "operation '" + name + "' abandoned: a nested operation failed");
     }
     fz_context* ctx = doc_.context().get();
-    pdf_document* pdf = pdfOf(doc_);
+    pdf_document* pdf = journalPdf(doc_);
     depth_ = 0;
     try {
         mu::call(ctx, [&] { pdf_end_operation(ctx, pdf); });
     } catch (...) {
         pending_ = {};
+        pendingHeavy_ = false;
         try {
             if (sync()) {
                 notify();
@@ -277,11 +289,13 @@ void UndoStack::commit(bool outer) {
             now - top->last <= window_) {
             ++top->operations;
             top->touched.merge(pending_);
+            top->heavy = top->heavy || pendingHeavy_;
             top->last = now;
         } else {
             Step step;
             step.name = name_;
             step.touched = pending_;
+            step.heavy = pendingHeavy_;
             step.last = now;
             steps_.push_back(std::move(step));
         }
@@ -292,6 +306,7 @@ void UndoStack::commit(bool outer) {
     }
     // Иначе правка ничего не изменила: MuPDF выбросил пустую операцию.
     pending_ = {};
+    pendingHeavy_ = false;
     if (changed) {
         notify();
     }
@@ -305,10 +320,11 @@ void UndoStack::abandon(bool outer) noexcept {
     }
     depth_ = 0;
     pending_ = {};
+    pendingHeavy_ = false;
     failed_ = false;
     try {
         fz_context* ctx = doc_.context().get();
-        pdf_document* pdf = pdfOf(doc_);
+        pdf_document* pdf = journalPdf(doc_);
         mu::call(ctx, [&] { pdf_abandon_operation(ctx, pdf); });
         if (sync()) {
             notify();
@@ -334,6 +350,8 @@ Journal::Operation::~Operation() {
 void Journal::Operation::invalidate(int page) { stack_.touch(page); }
 
 void Journal::Operation::invalidateAll() { stack_.touchAll(); }
+
+void Journal::Operation::markHeavy() { stack_.markHeavy(); }
 
 void Journal::Operation::commit() {
     if (done_) {

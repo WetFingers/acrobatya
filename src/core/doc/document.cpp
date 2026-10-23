@@ -138,8 +138,48 @@ Document::Document(std::unique_ptr<MuContext> mu, fz_document* doc, std::string 
     : mu_(std::move(mu)), doc_(doc), memory_(std::move(bytes)), path_(std::move(path)) {}
 
 Document::~Document() {
+    release();
+    if (!backing_.empty()) {
+        std::error_code ec;
+        fs::remove(backing_, ec);  // несохранённое во временном файле неудачной замены
+    }
+}
+
+void Document::release() noexcept {
+    undo_.reset();
     if (doc_ != nullptr) {
         fz_drop_document(mu_->get(), doc_);
+        doc_ = nullptr;
+    }
+}
+
+void Document::reopen(const fs::path& file, const std::string& password, const fs::path& documentPath,
+                      const fs::path& backing) {
+    release();
+    memory_.clear();
+    ownerAuthenticated_ = false;
+    fz_context* ctx = mu_->get();
+    const std::wstring wide = file.native();
+    fz_document* opened = nullptr;
+    mu::StreamHandle stm(ctx);
+    mu::call(ctx, [&] {
+        stm.reset(fz_open_file_w(ctx, wide.c_str()));
+        opened = fz_open_document_with_stream(ctx, ".pdf", stm);
+    });
+    doc_ = opened;
+    path_ = documentPath;
+    backing_ = backing;
+    if (needsPassword() && !authenticate(password)) {
+        release();
+        throw std::runtime_error("saved file does not open with the document password: " +
+                                 paths::toUtf8(file));
+    }
+    if (!password.empty() && !ownerAuthenticated_ && pdf() != nullptr && pdf()->crypt != nullptr) {
+        (void)authenticate(password);  // пароль владельца у файла без пароля пользователя
+    }
+    (void)pageCount();
+    if (isPdf()) {
+        undo_ = std::make_unique<UndoStack>(*this);
     }
 }
 
@@ -281,10 +321,17 @@ bool Document::authenticate(const std::string& password) {
     if ((ok & 4) != 0) {  // бит 2 — подошёл пароль владельца (pdf_authenticate_password)
         ownerAuthenticated_ = true;
     }
+    if (ok != 0 && !password.empty()) {
+        password_ = password;
+    }
     return ok != 0;
 }
 
-bool Document::isPdf() const noexcept { return pdf_document_from_fz_document(mu_->get(), doc_) != nullptr; }
+bool Document::isPdf() const noexcept { return pdf() != nullptr; }
+
+pdf_document* Document::pdf() const noexcept {
+    return doc_ != nullptr ? pdf_document_from_fz_document(mu_->get(), doc_) : nullptr;
+}
 
 UndoStack& Document::undoStack() {
     if (!undo_) {

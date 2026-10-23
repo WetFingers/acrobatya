@@ -17,11 +17,13 @@
 #include "core/util/geometry.h"
 
 struct fz_document;
+struct pdf_document;
 
 namespace ot {
 
 class MuContext;
 class Document;
+class Saver;
 class UndoStack;
 
 struct PageSize {
@@ -127,18 +129,37 @@ public:
     // сбрасывается. Сохранение в файл — Saver (с переоткрытием).
     std::string savePdfToMemory();
 
+    // Путь документа (пусто — новый или из памяти). Файл, открытый на самом деле, может быть временным файлом
+    // неудачной замены (Saver: файл цели был занят) — backingFile(); его удаляет следующее сохранение или
+    // закрытие документа.
     const std::filesystem::path& path() const noexcept { return path_; }
+    const std::filesystem::path& backingFile() const noexcept { return backing_; }
+    // Пароль, которым документ открыт (UTF-8) — для переоткрытия после сохранения.
+    const std::string& password() const noexcept { return password_; }
     fz_document* handle() const noexcept { return doc_; }
+    // pdf_document того же документа; nullptr — не PDF.
+    pdf_document* pdf() const noexcept;
     MuContext& context() const noexcept { return *mu_; }
 
 private:
+    friend class Saver;
+
     Document(std::unique_ptr<MuContext> mu, fz_document* doc, std::string bytes, std::filesystem::path path);
     static OpenResult finishOpen(std::unique_ptr<Document> doc, const std::string& password);
+
+    // Saver: отпустить файл (fz_document и журнал) перед заменой и открыть сохранённый в том же объекте.
+    void release() noexcept;
+    // Открыть file (PDF) с паролем; путь документа — documentPath, временный файл — backing (или пусто).
+    // Ошибка — исключение, документ тогда закрыт.
+    void reopen(const std::filesystem::path& file, const std::string& password,
+                const std::filesystem::path& documentPath, const std::filesystem::path& backing = {});
 
     std::unique_ptr<MuContext> mu_;  // клон базового контекста — только этого документа
     fz_document* doc_ = nullptr;
     std::string memory_;  // данные openMemory живут, пока жив документ
     std::filesystem::path path_;
+    std::filesystem::path backing_;  // временный файл неудачной замены, удаляется деструктором
+    std::string password_;
     bool ownerAuthenticated_ = false;
     std::unique_ptr<UndoStack> undo_;  // журнал PDF (pdf_enable_journal)
 };

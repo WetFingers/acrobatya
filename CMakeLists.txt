@@ -168,6 +168,22 @@ if(TARGET engine_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
   set_tests_properties(engine.mutants.generate PROPERTIES LABELS "engine;slow" FIXTURES_SETUP mutants TIMEOUT 300)
 endif()
+# Совместимость записанного Saver (эталон 9.4, план 1.3): файлы пишет unit_tests saver_compat.* (отключённый
+# тест, запуск с --gtest_also_run_disabled_tests и OTTISK_COMPAT_OUT), проверяет tools/compat_check.py — qpdf --check,
+# pdfcpu validate -m strict, mutool clean, pypdfium2; подписанные — ещё pyHanko INTACT; нет qpdf — 77, пропуск.
+if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(_compat_save "${CMAKE_BINARY_DIR}/compat/save")
+  add_test(NAME compat.save.generate
+    COMMAND unit_tests --gtest_also_run_disabled_tests --gtest_filter=saver_compat.* --gtest_brief=1)
+  set_tests_properties(compat.save.generate PROPERTIES LABELS "compat;slow" FIXTURES_SETUP compat_save
+    ENVIRONMENT "OTTISK_COMPAT_OUT=${_compat_save}" TIMEOUT 300)
+  set(_compat_check "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/compat_check.py" --quiet)
+  add_test(NAME compat.save COMMAND ${_compat_check} "${_compat_save}/plain")
+  add_test(NAME compat.save.signed COMMAND ${_compat_check} "${_compat_save}/signed" --expect-sig INTACT)
+  add_test(NAME compat.save.encrypted COMMAND ${_compat_check} "${_compat_save}/encrypted" --password owner)
+  set_tests_properties(compat.save compat.save.signed compat.save.encrypted PROPERTIES LABELS "compat;slow"
+    FIXTURES_REQUIRED compat_save SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+endif()
 ottisk_gtest_exe(render_tests tests/render render "render;slow" 900 ottisk_core)
 # Замеры движка (план 1.2): только Release — числа Debug с целями 5.8 не сравнимы. big-1200 и images-200 —
 # make_big.py в <сборка>/gen (фикстура, пропускает готовые), PDF32000_2008 — только из корпуса (нет — SKIP 77).
