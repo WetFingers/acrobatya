@@ -3,7 +3,10 @@
 Где что лежит и как добавляется типовая вещь. Сессия читает этот файл **первым**, до поиска по коду.
 Дерево и состав — эталон `docs/design.md` 5.1–5.3; здесь — короткий путеводитель и рецепты.
 
-> **Состояние: этап 0 — только каркас.** Есть цели CMake, `MuContext`/`mu::call`, `Document::open/pageCount/renderPage`,
+> **Состояние: сессия 1.1 — ядро открытия и рендера.** Есть `MuContext::global()` (клоны на документ и поток),
+> `MuError` с `ErrorKind`, `mu::call`, RAII `mu::*Handle`, `Document::open → OpenResult` (пароли, ремонт, PDF/A,
+> подписи, форма, XFA, свойства, права), `Renderer` (display list, scissor, BGRA/RGB в буфер), `imgcmp --cross`,
+> эталоны рендера бит в бит, `engine.corpus.*`/`engine.mutants.*`, фаззер через ядро. Из каркаса этапа 0:
 > синхронный `DocumentSession`, пустое окно `MainWindow` (Главная-заглушка, меню, строка состояния), режимы
 > `--version`, `--self-check`, `--shots`, `--smoke`, `--register-notify`, первые unit/ui/render-тесты, `imgcmp`,
 > `render_refs`, стражи, фаззер, установщик 0.0.1. Всё остальное в таблицах ниже появляется в указанной сессии —
@@ -22,7 +25,7 @@
 | `ui_tests` | `tests/ui/**` | — | QTest, `ottisk_ui_lib`; метка `ui` |
 | `engine_tests`, `render_tests`, `e2e_tests` | `tests/engine/**`, `tests/render/**`, `tests/e2e/**` | — | gtest; метки `engine;slow`, `render;slow`, `e2e;slow` |
 | `imgcmp`, `render_refs`, `bench` | `tools/imgcmp/**`, `tools/render_refs.cpp`, `tests/bench/**` | — | `ottisk_core` |
-| `pdf_open_fuzzer` | `fuzz/pdf_open_fuzzer.cpp` | — | только пресет `msvc-fuzz` |
+| `pdf_open_fuzzer` | `fuzz/pdf_open_fuzzer.cpp` | — | `ottisk_core` (с `/fsanitize-coverage`); только пресет `msvc-fuzz`, запуск — `tools\fuzz.ps1` |
 
 Все exe — в `build/<пресет>/bin/`. Qt DLL в `build` не копируются: кто запускает exe из `build`, добавляет
 `C:\Qt\6.12.0\msvc2022_64\bin` в `PATH` (ctest делает это сам через `ottisk_test_env.cmake`). Версия — одна строка
@@ -39,9 +42,9 @@
 
 | Каталог | Что | Сессия |
 |---|---|---|
-| `mu/` | `context.h` (`MuContext`, клон контекста на поток, замки), `error.h` (`MuError`), `call.h` (`mu::call` — `fz_try` в одном месте, `#pragma warning(disable: 4611)`), `stream.h`, `handles.h` (RAII) | 0, 1.1 |
-| `doc/` | `document.h` (открытие, страницы), `page.h`, `saver.h`, `journal.h`, `undo_stack.h`, `autosave.h`, `revisions.h`, `props.h`, `permissions.h`, `xmp.h` | 0, 1.1–1.3 |
-| `render/` | `renderer.h` (`RenderRequest/Result`), `display_cache.h`, `tiles.h`, `recolor_device.h`; сейчас `bitmap.h`, `image_compare.h` (метрики `imgcmp`) | 0, 1.2, 2.5b |
+| `mu/` | `context.h` (`MuContext::global()` — один корень на процесс, `clone()` на документ и поток, замки, журнал MuPDF → spdlog), `error.h` (`MuError`, `ErrorKind`: Damaged/Unsupported/Limit/System/Aborted…), `call.h` (`mu::call` — `fz_try` в одном месте, `#pragma warning(disable: 4611)`), `handles.h` (RAII `mu::PageHandle`, `PixmapHandle`, `BufferHandle`… — объявлять снаружи `mu::call`, внутри только `reset`), `stream.h` | 0, 1.1 |
+| `doc/` | `document.h` (`Document::open(path, password) → OpenResult`, `openOrThrow` для инструментов, свойства, `allowed(Perm)`, `pageBox`/`pageRotation`; документ живёт в клоне базового контекста), `page.h`, `saver.h`, `journal.h`, `undo_stack.h`, `autosave.h`, `revisions.h`, `props.h`, `permissions.h`, `xmp.h` | 0, 1.1–1.3 |
+| `render/` | `renderer.h` (`RenderRequest{page, matrix, scissor, aa, recolor}`, `render(buffer, stride, Bgra32Premultiplied\|Rgb24, cookie)`, `renderPage`), `bitmap.h`, `image_compare.h` (метрики `imgcmp`, `crossCompare`); дальше `display_cache.h`, `tiles.h`, `recolor_device.h` | 0, 1.1, 1.2, 2.5b |
 | `text/` | `stext.h`, `search.h`, `selection.h`, `index.h` (FTS5), `reflow.h` | 1.4, 8.3 |
 | `print/` | `imposition.h` (вписать, n-up, буклет, постер), `page_set.h`, `band_renderer.h` | 2.6 |
 | `edit/` | `content_model.h`, `text_blocks.h`, `font_resolver.h`, `reflow.h`, `rewriter.h`, `images.h`, `replace.h` | 3.1–3.4 |
@@ -56,7 +59,7 @@
 | `ocr/` | `engine.h` (`TessBaseAPI`), `text_layer.h`, `orientation.h`, `enhance.h`, `suspects.h`, `scan_to_pdf.h` | 8.1–8.2 |
 | `a11y/` | `autotag.h`, `struct_tree.h`, `reading_order.h`, `lang.h` | 8.3–8.4 |
 | `optimize/` | `optimizer.h`, `qpdf_tool.h` | 9.3 |
-| `util/` | `paths.h` (единственная точка UTF-8/wchar и `toShortPath()`), `log.h`, `fs.h`, `hash.h`, `geometry.h`, `ids.h`, `features.h` (`OT_FEATURE`) | 0 и далее |
+| `util/` | `paths.h` (единственная точка UTF-8/wchar и `toShortPath()`), `geometry.h` (`RectF`, `IRect`, `Matrix` как у MuPDF), `features.h` (`OT_FEATURE`); дальше `log.h`, `fs.h`, `hash.h`, `ids.h` | 0, 1.1 и далее |
 
 ### `src/services/` — Qt без Widgets (страж: ни одного `QtWidgets`)
 
@@ -87,12 +90,12 @@
 |---|---|
 | `tests/unit/` | gtest, метка `unit`, < 1 с, данные — `tests/data/mini/*.pdf` (свои, ≤ 50 КБ); `support/test_pdf.h` — помощники |
 | `tests/ui/` | QTest offscreen, метка `ui` (ctest `ui.main_window`), снимки виджетов → `build/ui-shots/` |
-| `tests/engine/` | gtest на корпусе по манифесту, метки `engine;slow`, `FIXTURES_REQUIRED corpus` |
+| `tests/engine/` | gtest на корпусе по `<корпус>/index.json` (`open_corpus_test.cpp`: тег → части по 200 файлов, `progress:`), `mutants_test.cpp`; зонд `support/probe.h` (открыть → 32 × 32 → закрыть, `QuietLog`); метки `engine;slow`, `FIXTURES_REQUIRED corpus;mutants` (`engine.corpus.verify` — `fetch_corpus.py --verify --dry-run`, 77 — пропуск; `engine.mutants.generate` — `make_mutants.py` в `build/<пресет>/gen`), `TIMEOUT_AFTER_MATCH 120;^progress:` |
 | `tests/render/` | `render_test.cpp` по `expected/expected.json`, эталоны `expected/<корпус>/<файл>.<стр>.<dpi>.png`, `files.json` — источники |
 | `tests/e2e/`, `tests/compat/`, `tests/bench/`, `tests/build/` | сценарии эталона 2 без UI; `compat_check.py` (SKIP 77); `bench`; `install_test.py` (метка `build`) |
 | `tests/corpus/manifest.json` | корпуса `{id, url\|git, sha256, license, tags[], expect}` → `%LOCALAPPDATA%\ottisk\corpus` (`OTTISK_CORPUS`) |
-| `tests/fixtures/` | свои фикстуры ≤ 50 КБ и пермиссивные (`LICENSES.md`): `annots/ forms/ enc/ sig/ images/ scans/ office/ scenes/ demo/ regress/ pki/ (4.1)` |
-| `tools/` | `vcenv.cmd`, `verify.py`, `build.ps1`, `build_lock.ps1`, `shots.ps1`, `lint.ps1`, стражи `*_guard.py` и `scope_check.py`, `scope_report.py`, `imgcmp/`, `render_refs.cpp`, `review_refs.py`, `fetch_corpus.py`, `compat_check.py`, `bench_compare.py`, `analyze_summary.py`, `copy_icons.py`, `gen/` (генераторы фикстур), `get-tessdata.ps1`, `install-qt.ps1`, `mupdf-build.ps1` + `ottisk-md.props`, очередь: `queue-lib.ps1`, `test_reset_parse.ps1`, `test_guard.ps1` |
+| `tests/fixtures/` | свои фикстуры ≤ 50 КБ и пермиссивные (`LICENSES.md`): `annots/ forms/ enc/ sig/ images/ scans/ office/ scenes/ demo/ imgcmp/ (метрики imgcmp) regress/ (падения фаззера → unit.regress.load) pki/ (4.1)` |
+| `tools/` | `vcenv.cmd`, `verify.py`, `build.ps1`, `build_lock.ps1`, `fuzz.ps1` (фаззер 60 с / 10 мин), `shots.ps1`, `lint.ps1`, стражи `*_guard.py` и `scope_check.py`, `scope_report.py`, `imgcmp/`, `render_refs.cpp`, `review_refs.py`, `fetch_corpus.py`, `compat_check.py`, `bench_compare.py`, `analyze_summary.py`, `copy_icons.py`, `gen/` (генераторы фикстур), `get-tessdata.ps1`, `install-qt.ps1`, `mupdf-build.ps1` + `ottisk-md.props`, очередь: `queue-lib.ps1`, `test_reset_parse.ps1`, `test_guard.ps1` |
 | `installer/` | `ottisk.iss` (UTF-8 BOM, per-user), `app.ico`, `app.rc`, `AcroBatya.manifest` (UTF-8 ACP, longPathAware), `licenses/` |
 | `assets/` | `icons/` (только нужные Lucide + `LICENSE`, список `icons.txt`), `stamps/`, `help/ru`, `help/en` |
 | `i18n/` | `ottisk_ru.ts`, `ottisk_en.ts`, части `en-parts/` для перевода агентами (9.2) |

@@ -96,15 +96,19 @@ $TmpBase = Join-Path $env:TEMP ('ottisk-queue-test-' + [guid]::NewGuid().ToStrin
 New-Item -ItemType Directory -Force -Path $TmpBase | Out-Null
 
 # Отметки этапа 0 в тексте плана: 'all' — все [x]; 'one-open' — все [x], кроме последнего пункта.
+# Пункты этапов 1+ в копии всегда [ ] — сценарий «этап 0 закрыт, очередь впереди» не зависит от того,
+# сколько сессий уже пройдено в настоящем плане (иначе после сессии 1.1 копия ведёт к 1.2).
 function Set-Stage0Marks([string]$text, [string]$mode) {
     $eol = if ($text.Contains("`r`n")) { "`r`n" } else { "`n" }
     $lines = $text -split "`r?`n"
     $idx = @()
     $in = $false
+    $later = $false
     for ($i = 0; $i -lt $lines.Count; $i++) {
-        if ($lines[$i] -match '^## Этап (\d+)\.') { $in = ([int]$Matches[1] -eq 0); continue }
-        if ($lines[$i] -match '^## ') { $in = $false; continue }
+        if ($lines[$i] -match '^## Этап (\d+)\.') { $in = ([int]$Matches[1] -eq 0); $later = -not $in; continue }
+        if ($lines[$i] -match '^## ') { $in = $false; $later = $false; continue }
         if ($in -and $lines[$i] -match '^- \[[ xX~]\] ') { $lines[$i] = '- [x] ' + $lines[$i].Substring(6); $idx += $i }
+        elseif ($later -and $lines[$i] -match '^- \[[xX~]\] ') { $lines[$i] = '- [ ] ' + $lines[$i].Substring(6) }
     }
     if ($mode -eq 'one-open' -and $idx.Count -gt 0) { $j = $idx[-1]; $lines[$j] = '- [ ] ' + $lines[$j].Substring(6) }
     return ($lines -join $eol)

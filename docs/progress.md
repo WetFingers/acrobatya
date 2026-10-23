@@ -8,6 +8,20 @@
 Новые пункты — сверху, с номером сессии или рубежа. Ничего из этого не блокирует очередь: она работает на
 `Fake*`-реализациях и фикстурах, живая часть ждёт здесь (эталон 8.1 «Человек отдельно», 9.7).
 
+- **Сессия 1.1 · Нет клона vcpkg и корпуса** (обнаружено 23.10.2026 в начале сессии): каталогов
+  `%LOCALAPPDATA%\vcpkg` и `%LOCALAPPDATA%\ottisk\corpus` на диске нет (этап 0 их ставил), `build/debug` перестал
+  конфигурироваться (`vcpkg.cmake` не найден). Обход сессии — без загрузок и правок репозитория: `build/{debug,release,
+  asan,fuzz}` сконфигурированы `cmake --preset … --fresh` с `-DCMAKE_TOOLCHAIN_FILE=<Build Tools>\VC\vcpkg\scripts\
+  buildsystems\vcpkg.cmake -DVCPKG_MANIFEST_INSTALL=OFF -DVCPKG_INSTALLED_DIR=<build>/vcpkg_installed` (asan и fuzz —
+  на пакетах `build/debug/vcpkg_installed`). Человеку: вернуть свой клон vcpkg в `%LOCALAPPDATA%\vcpkg` (baseline
+  `8570362` из `vcpkg.json`) и корпус (`tools/fetch_corpus.py`, затем `--verify`), после этого один раз
+  `cmake --preset msvc-debug --fresh` и `--preset msvc-release --fresh` без ключей. До этого не удалять
+  `build/*/vcpkg_installed` и не делать `--fresh` без ключей выше.
+- **Сессия 1.1 · Корпус после восстановления** — `ctest --test-dir build/debug -L engine --output-on-failure`
+  (`engine.corpus.open` и части `engine.corpus/CorpusOpen.files/<тег>_<n>` по тегам annots, forms, enc-r2…r6, big,
+  pdfa-pass/fail, cyr, fuzz; части по 200 файлов должны укладываться в 120 с после первой строки `progress:` — иначе
+  уменьшить `kShard` в `tests/engine/open_corpus_test.cpp`), три эталона из корпуса в `ctest -L render` (commons-ru ×2,
+  adobe-spec — сейчас SKIP) в Debug и Release, и `engine` под `msvc-asan`. Сейчас эти тесты дают SKIP.
 - **Этап 0 · Загрузки и LibreOffice — сделано 23.10.2026** (разрешение — поручение человека «начинай этап 0 по
   docs/plan.md»): tessdata rus/eng/deu, корпуса всех тегов плана (1,8 ГБ в `%LOCALAPPDATA%\ottisk\corpus`),
   LibreOffice 26.8.1 распакован `msiexec /a` без прав в `C:\Tools\libreoffice` (`OTTISK_SOFFICE` записан) —
@@ -157,3 +171,70 @@
   изменений (правило в «Правилах работы» плана). Исправлена ошибка плана и эталона: `fz_locks_context` — три поля, не пять.
 - Проверки: те же команды, что в записи «Окружение и очередь», — `verify.py`, рендер Debug и Release, `build.ps1` → `AcroBatya-0.0.1-setup.exe`,
   `install_test.py`, `test_reset_parse.ps1`, `test_guard.ps1`, `-DryRun` → 1.1.
+
+### 2026-10-23 · Сессия 1.1 · Контекст, ошибки, открытие, рендер и эталоны
+- Сделано:
+  1. **Контекст и ошибки:** `MuContext::global()` (один корень на процесс, клоны с общим store и замками из трёх
+     полей), предупреждения и ошибки MuPDF → spdlog (`mupdf: …`, клоны наследуют, колбэки не бросают и снимаются до
+     `fz_drop_context`), `MuError::kind()` → `ErrorKind` (Damaged/Unsupported/Limit/System/Argument/Aborted/Other) и
+     `codeName()`, `mu::call` с `fz_ignore_error` для ABORT/TRYLATER, RAII `mu::*Handle` (`handles.h`); страж
+     `fztry_guard.py` дополнен (лексер не тронут): `fz_var` для локалов, меняемых в `fz_try`, тело `mu::call` без
+     `return`/`throw`/вложенного `mu::call` и объектов с деструкторами, проверка `src tests tools fuzz`, самопроверка на
+     14 примерах; `features_test.cpp` → `features_macro_test.cpp` (+ проверка `RecordProperty`).
+  2. **Открытие:** `Document::open(path, password) → OpenResult{document, ok, needsPassword, repaired, pdfa, isSigned,
+     hasForm, hasXfa, error}` (не бросает), `openOrThrow` для инструментов, `authenticate` (владелец — бит 2),
+     `isPdf`, `repaired`, `properties()` (`/Info`, формат, версия, линеаризация, шифрование, `/R`, `/P`, PDF/A из XMP),
+     `allowed(Perm)`, `pageBox`/`pageRotation`; документ живёт в клоне базового контекста; `DocumentSession` — на
+     клоне `global()`. Тесты на JSON фикстур (`mini.json`, `passwords.json` — R2…R6, пустой и кириллический пароль,
+     `demo.json` — рамки и `/Rotate`).
+  3. **Рендер и эталоны:** `Renderer` (`RenderRequest{page, matrix, scissor, aa, recolor}`, `render(buffer, stride)`
+     BGRA premultiplied или RGB, `fz_new_pixmap_with_data` + display list + `fz_close_device` до drop, отмена через
+     `fz_cookie`, AA на запрос), `geometry.h` (`IRect`, `Matrix` как у MuPDF); `crossCompare` в ядре и `imgcmp --cross
+     --region …`; фикстуры `tests/fixtures/imgcmp` (3 пары, оракул numpy); `render_refs --check` сверяет с эталонами
+     (метрики, `--out` для `review_refs.py --actual`, `--json`), `--update --only id`, записи без источника — KEEP;
+     `render_test`: Release — `pixels == 0`, Debug — пороги, отдельный тест `hello_world` 72 dpi.
+  4. **Корпус и мутанты:** `engine.corpus.open` + части по тегам из `<корпус>/index.json`, `engine.mutants` на 100
+     мутантах, зонд `tests/engine/support/probe.h`, ctest-фикстуры `engine.corpus.verify` и `engine.mutants.generate`,
+     `TIMEOUT_AFTER_MATCH 120;^progress:` (в `ottisk_gtest_exe` — `PROPERTIES`).
+  5. **Фаззер и регресс:** харнес через ядро (до 4 страниц: рамка, рендер 32 × 32, stext, свойства), `ottisk_core` в
+     пресете `msvc-fuzz` с `/fsanitize-coverage`, `tools\fuzz.ps1` (семена safedocs, pdf-differences, мутанты, regress),
+     `tests/fixtures/regress/README.md`, `unit.regress.load`.
+- Решения:
+  - **Обход пропавшего vcpkg** — toolchain из Build Tools с `VCPKG_MANIFEST_INSTALL=OFF` поверх уже собранных пакетов
+    (см. «Нужна ручная проверка»); не `BLOCKED`: пакеты те же, сеть и установка не нужны.
+  - Поле `signed` из плана — `isSigned` (`signed` — ключевое слово C++). `hasForm` — есть поля, кроме подписей
+    (документ только с подписью — не «форма для заполнения»); `isSigned` — поле `/FT /Sig` с `/V`.
+  - Пароль при открытии пробуется и для документа с пустым паролем пользователя (MuPDF открывает сам) — иначе пароль
+    владельца не повышает права.
+  - **Эталоны:** рендер теперь через display list (как будут тайлы 1.2); `pdf-differences/OverlappingGlyphClipping`
+    отличался от `fz_new_pixmap_from_page` на 4–5 пикселей (Δ ≤ 4, отсечение перекрывающихся глифов) — переснят
+    `render_refs --update --only … --reason …` на Release, контакт-лист просмотрен; `release_only` не понадобился.
+    Полный `--update` без корпуса выкинул бы 3 записи — поэтому `--only` и KEEP.
+  - `pdfium_diff` на машине нет: метрики фикстур imgcmp считает независимый оракул на numpy с теми же определениями
+    (эталон 9.3); C++ совпал до 1e-9.
+  - `tools/gen/mutate.py` из плана не заведён: `make_mutants.py` этапа 0 уже делает 100 мутантов (seed 1) из 12 своих
+    фикстур; в тестах он пишет в `build/<пресет>/gen` (фикстура ctest), корпус для этого не нужен.
+  - Фикстура `corpus` — `fetch_corpus.py --verify --dry-run --missing-code 77`: без `--dry-run` сверка пишет
+    `<корпус>/index.json`. Пропущенная (77) фикстура не мешает зависимым тестам — они дают SKIP сами.
+  - ASan: `_DISABLE_VECTOR_ANNOTATION` и `_DISABLE_STRING_ANNOTATION` (`cmake/asan.cmake`) — MuPDF, gtest, spdlog, fmt
+    собраны без ASan, иначе LNK2038 `annotate_string/vector`.
+  - Фаззер: MuPDF не инструментирован (патчей и пересборки нет) — покрытие libFuzzer видит только наш код; ASan в
+    пресете ловит ошибки кучи через перехват malloc/free, но не выход за границы внутри кода MuPDF.
+  - `tools/test_reset_parse.ps1`: копия плана для сценария очереди теперь сбрасывает пункты этапов 1+ в `[ ]` — тест
+    ждал «Сессия 1.1» и краснел после закрытия любой сессии.
+- Подводные камни:
+  - `fetch_corpus.py --verify` без `--dry-run` создал отсутствующий `%LOCALAPPDATA%\ottisk\corpus\index.json` (только
+    файлы из репозитория) — удалён тем же ходом.
+  - `TIMEOUT_AFTER_MATCH` срабатывает один раз (на первой строке `progress:`), отсюда части по 200 файлов.
+  - `fz_pixmap` — открытая структура: начало координат буфера-тайла — `pix->x/y`, матрица не сдвигается.
+  - `MuContext` до `fz_new_context` трогает реестр spdlog: так он разрушается после `global()` при выходе.
+  - В PowerShell 5.1 `Set-Content -Encoding utf8` пишет BOM; heredoc Git Bash ломает кавычки, а хук очереди читает
+    текст heredoc как команду — правки длинных текстов через файл-скрипт.
+- Замеры: configure `--fresh` Debug 9 с, Release 8 с, ASan 6 с, fuzz 6 с; сборка `unit_tests` инкрементально 7–15 с,
+  Release (4 цели, без LTCG) 20 с, ASan `unit_tests engine_tests` 12 с; `render_refs --check` 118 растров: Release 4,5 с,
+  Debug 20,6 с; **Debug ↔ Release по 57 из 60 эталонов (118 растров; 3 — корпус): 118 одинаковых, max delta 0**;
+  `engine.mutants`: генерация 6,5 с, тест 7 с (FORMAT 11, SYNTAX 4, открыто 44, с ремонтом 31, пароль 10; дольше всех
+  m060-bomb 0,48 с); ASan `unit|engine` — 67 тестов за 16 с, чисто; фаззер 60 с — 2857 прогонов (46/с), 2372 признака
+  покрытия, падений нет, RSS 595 МБ.
+- Проверки: `verify.py` зелёный; `ctest -L render` 130/130 в Debug и Release; `ctest -L "^(unit|engine)$"` под
+  `msvc-asan` зелёный; `tools\fuzz.ps1 -Seconds 60` — 0 падений; экранов сессия не строила — сцен нет.
