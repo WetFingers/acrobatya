@@ -2,6 +2,7 @@
 
 #include <QAction>
 #include <QApplication>
+#include <QEvent>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHBoxLayout>
@@ -114,7 +115,8 @@ bool MainWindow::openFile(const QString& path) {
         statusBar()->showMessage(tr("Не удалось открыть файл: %1").arg(session_->errorString()));
         return false;
     }
-    setWindowTitle(tr("%1 — АкроБатя").arg(QFileInfo(path).fileName()));
+    documentName_ = QFileInfo(path).fileName();
+    retranslateTitle();
     stack_->setCurrentWidget(view_);
     showPage(0);
     return true;
@@ -122,8 +124,21 @@ bool MainWindow::openFile(const QString& path) {
 
 void MainWindow::showHome() {
     stack_->setCurrentWidget(home_);
-    setWindowTitle(tr("АкроБатя"));
+    documentName_.clear();
+    retranslateTitle();
     pageStatus_->clear();
+}
+
+void MainWindow::retranslateTitle() {
+    setWindowTitle(documentName_.isEmpty() ? tr("АкроБатя") : tr("%1 — АкроБатя").arg(documentName_));
+}
+
+// Смена языка (i18n::install) — заголовок по новому переводчику; окно целиком пересоберёт оболочка 2.3.
+void MainWindow::changeEvent(QEvent* event) {
+    if (event->type() == QEvent::LanguageChange) {
+        retranslateTitle();
+    }
+    QMainWindow::changeEvent(event);
 }
 
 void MainWindow::showPage(int index) {

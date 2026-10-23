@@ -122,7 +122,9 @@ Tools; в `PATH` машины их нет). Команды ниже — для P
    MuPDF); расхождение Debug ↔ Release — `--mark-release-only`, а не правка порогов.
 10. **Интерфейс — эталон 6 закон.** Цвета и размеры — только токены `src/ui/theme/tokens.h`; строки интерфейса —
     только в `ui` внутри `tr()` (страж `unit.guard.i18n`), `core`/`services` возвращают коды и английский журнал;
-    тексты — по-русски, коротко, термины Acrobat; претензия к виду решается в токенах и компонентах, не в сцене.
+    **кириллица в `src` — только в `tr()`/`QT_TR_NOOP()`/`QCoreApplication::translate()` и комментариях** (контекст
+    `translate` — ASCII, имя класса; в `core`/`services` — только комментарии); тексты — по-русски, коротко,
+    термины Acrobat; претензия к виду решается в токенах и компонентах, не в сцене.
 11. **Кодировки и пути:** `/utf-8`; пути `QString::toStdWString` → `fz_open_file_w`/`_wfopen`/`TIFFOpenW`
     (`core/util/paths.h`); каталоги данных — только ASCII; настройки — `settings.ini`, не реестр
     (`unit.guard.no_registry`); `.ps1`/`.iss` — UTF-8 с BOM (`unit.guard.encoding`); Python над PDF —

@@ -11,7 +11,7 @@ file(TO_CMAKE_PATH "${QT_ROOT}" QT_ROOT)
 set(QT_ROOT "${QT_ROOT}" CACHE PATH "Qt kit" FORCE)
 list(PREPEND CMAKE_PREFIX_PATH "${QT_ROOT}")
 find_package(Qt6 6.12 REQUIRED COMPONENTS Core Gui Widgets PrintSupport Svg Concurrent Network Test)
-find_package(Qt6 6.12 QUIET COMPONENTS LinguistTools)
+find_package(Qt6 6.12 REQUIRED COMPONENTS LinguistTools)  # qt_add_translations (эталон 5.7)
 
 # Общие настройки Qt-целей: moc, строгие QString.
 function(ottisk_qt target)

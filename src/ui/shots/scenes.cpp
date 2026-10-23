@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <memory>
 
+#include "services/i18n.h"
 #include "ui/shell/main_window.h"
 #include "ui/widgets/showcase.h"
 
@@ -109,6 +110,8 @@ int runShots(const QStringList& names, const ShotOptions& options) {
     if (wanted.contains(QStringLiteral("all"))) {
         wanted = sceneNames();
     }
+    // Снимки — на языке варианта, а не системы и не настройки (сцены детерминированы).
+    ot::i18n::install(options.lang);
     const bool variant = options.theme != ThemeChoice::Light || options.scale > 1.0;
     int failures = 0;
     for (const QString& name : wanted) {

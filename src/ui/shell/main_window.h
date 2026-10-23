@@ -25,7 +25,11 @@ public:
     int currentPage() const { return page_; }
     ot::DocumentSession* session() const { return session_; }
 
+protected:
+    void changeEvent(QEvent* event) override;
+
 private:
+    void retranslateTitle();
     void buildMenus();
     QWidget* buildHome();
     void showPage(int index);
@@ -39,6 +43,7 @@ private:
     QLabel* pageLabel_ = nullptr;
     QLabel* pageStatus_ = nullptr;
     int page_ = 0;
+    QString documentName_;  // имя открытого файла для заголовка; пусто — Главная
 };
 
 }  // namespace ot::ui

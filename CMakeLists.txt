@@ -247,7 +247,21 @@ foreach(_suite_src IN LISTS OTTISK_UI_SUITES)
   set_tests_properties(ui.${_suite} PROPERTIES LABELS "ui" TIMEOUT 120)
 endforeach()
 
+# Переводы (эталон 5.7): .ts в репозитории, .qm (с qtbase_<язык> через MERGE_QT_TRANSLATIONS) — ресурс :/i18n у
+# AcroBatya и ui_tests (ui.i18n переключает язык); lupdate — только явно: cmake --build build/debug --target
+# update_translations (сессия 9.2), lrelease — в обычной сборке. lupdate читает исходники ui (SOURCE_TARGETS).
+qt_add_translations(TARGETS AcroBatya ui_tests
+  SOURCE_TARGETS ottisk_ui_lib AcroBatya
+  TS_FILES "${CMAKE_SOURCE_DIR}/i18n/ottisk_ru.ts" "${CMAKE_SOURCE_DIR}/i18n/ottisk_en.ts"
+  MERGE_QT_TRANSLATIONS
+  LUPDATE_OPTIONS -no-obsolete)
+
 ottisk_guard(i18n i18n_guard.py)
+# Самопроверка стража: подложенные нарушения (кириллица вне tr(), в services, в контексте translate) — красные.
+add_test(NAME unit.guard.i18n_selftest
+  COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/i18n_guard.py" --self-test
+  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+set_tests_properties(unit.guard.i18n_selftest PROPERTIES LABELS "unit;guard" TIMEOUT 120)
 ottisk_guard(fztry fztry_guard.py)
 ottisk_guard(boundaries boundaries_guard.py)
 ottisk_guard(scope scope_check.py)

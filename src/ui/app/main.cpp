@@ -11,6 +11,7 @@
 #include <shlobj.h>
 
 #include "services/app_info.h"
+#include "services/i18n.h"
 #include "ui/app/cli.h"
 #include "ui/shell/main_window.h"
 #include "ui/shots/scenes.h"
@@ -95,6 +96,8 @@ int main(int argc, char** argv) {
         printUtf8(opts.error);
         return 2;
     }
+    // Язык до первого окна: --lang, иначе настройка, иначе системный (эталон 5.7).
+    ot::i18n::install(opts.lang.isEmpty() ? ot::i18n::fromSettings() : opts.lang);
     if (!opts.shots.isEmpty()) {
         attachParentConsole();
         ShotOptions shot;
