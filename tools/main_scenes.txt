@@ -15,3 +15,13 @@ showcase-large
 view-continuous
 view-dark
 view-selection
+
+# 2.3 — оболочка: окно с документом, «Все инструменты», вкладки, Главная, меню
+shell-document
+shell-document-dark
+shell-two-tabs
+all-tools
+home-recent
+home-recent-dark
+home-files
+menu-open
