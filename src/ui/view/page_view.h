@@ -40,6 +40,7 @@ class TileCache;
 namespace ot::ui {
 
 class TilePainter;
+class ToolController;
 
 class PageView : public QAbstractScrollArea {
     Q_OBJECT
@@ -139,6 +140,8 @@ public:
     QuadOverlay& selectionOverlay() noexcept { return selection_; }
     QuadOverlay& searchOverlay() noexcept { return search_; }
     RectOverlay& annotationOverlay() noexcept { return annotFrames_; }
+    // Инструменты просмотра (ui/view/tool_controller.h): мышь и клавиши вида идут текущему инструменту.
+    ToolController& tools() const noexcept { return *controller_; }
 
 signals:
     void zoomChanged(float zoom);
@@ -153,6 +156,11 @@ protected:
     void scrollContentsBy(int dx, int dy) override;
     void wheelEvent(QWheelEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
+    void keyReleaseEvent(QKeyEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
     void showEvent(QShowEvent* event) override;
     bool event(QEvent* event) override;
 
@@ -199,7 +207,8 @@ private:
     QElapsedTimer autoClock_;
     double autoSpeed_ = kDefaultAutoScrollSpeed;
     double autoCarry_ = 0;
-    TilePainter* tiles_ = nullptr;  // ребёнок вида
+    TilePainter* tiles_ = nullptr;          // ребёнок вида
+    ToolController* controller_ = nullptr;  // ребёнок вида
     OverlayStack overlays_;
     QuadOverlay selection_;
     QuadOverlay search_;

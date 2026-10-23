@@ -14,6 +14,7 @@
 #include "services/document_session.h"
 #include "ui/theme/theme.h"
 #include "ui/view/tile_painter.h"
+#include "ui/view/tool_controller.h"
 
 namespace ot::ui {
 
@@ -48,6 +49,7 @@ namespace {
 constexpr int kSearchZ = 10;
 constexpr int kSelectionZ = 20;
 constexpr int kAnnotFramesZ = 30;
+constexpr int kToolZ = 100;
 
 }  // namespace
 
@@ -61,6 +63,8 @@ PageView::PageView(QWidget* parent)
     overlays_.add(&search_, kSearchZ);
     overlays_.add(&selection_, kSelectionZ);
     overlays_.add(&annotFrames_, kAnnotFramesZ);
+    controller_ = new ToolController(*this);
+    overlays_.add(controller_, kToolZ);
     setFrameShape(QFrame::NoFrame);
     setFocusPolicy(Qt::StrongFocus);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
@@ -108,9 +112,14 @@ void PageView::setDocument(DocumentSession* session, RenderPool* pool, TileCache
             }
             viewport()->update();
         });
-        connect(session_, &DocumentSession::pageChanged, this,
-                [this](int page) { tiles_->invalidatePage(page); });
-        connect(session_, &DocumentSession::structureChanged, this, [this] { tiles_->invalidateAll(); });
+        connect(session_, &DocumentSession::pageChanged, this, [this](int page) {
+            tiles_->invalidatePage(page);
+            controller_->pageChanged(page);
+        });
+        connect(session_, &DocumentSession::structureChanged, this, [this] {
+            tiles_->invalidateAll();
+            controller_->documentChanged();
+        });
         connect(session_, &DocumentSession::closed, this, [this] { tiles_->invalidateAll(); });
         const OpenSummary s = session_->summary();
         if (respectLayout_) {
@@ -122,6 +131,7 @@ void PageView::setDocument(DocumentSession* session, RenderPool* pool, TileCache
     }
     reloadSizes();
     setScrollPosition({0, 0});
+    controller_->documentChanged();
     emit historyChanged();
 }
 
@@ -159,6 +169,7 @@ void PageView::setPageSizes(const QVector<QSizeF>& pointSizes) {
     currentPage_ = 0;
     relayout();
     setScrollPosition({0, 0});
+    controller_->documentChanged();
     viewport()->update();
 }
 
@@ -832,6 +843,10 @@ void PageView::keyPressEvent(QKeyEvent* event) {
         }
     }
 
+    if (controller_->keyPress(event)) {
+        event->accept();
+        return;
+    }
     if (mods == (Qt::ControlModifier | Qt::ShiftModifier)) {
         // Повернуть вид: Ctrl+Shift+= (на английской раскладке — «+») и Ctrl+Shift+− («_»).
         if (key == Qt::Key_Equal || key == Qt::Key_Plus) {
@@ -923,6 +938,39 @@ void PageView::keyPressEvent(QKeyEvent* event) {
     QAbstractScrollArea::keyPressEvent(event);
 }
 
+void PageView::keyReleaseEvent(QKeyEvent* event) {
+    if (controller_->keyRelease(event)) {
+        event->accept();
+        return;
+    }
+    QAbstractScrollArea::keyReleaseEvent(event);
+}
+
+void PageView::mousePressEvent(QMouseEvent* event) {
+    setFocus(Qt::MouseFocusReason);
+    if (!controller_->mousePress(event)) {
+        QAbstractScrollArea::mousePressEvent(event);
+    }
+}
+
+void PageView::mouseMoveEvent(QMouseEvent* event) {
+    if (!controller_->mouseMove(event)) {
+        QAbstractScrollArea::mouseMoveEvent(event);
+    }
+}
+
+void PageView::mouseReleaseEvent(QMouseEvent* event) {
+    if (!controller_->mouseRelease(event)) {
+        QAbstractScrollArea::mouseReleaseEvent(event);
+    }
+}
+
+void PageView::mouseDoubleClickEvent(QMouseEvent* event) {
+    if (!controller_->mouseDoubleClick(event)) {
+        QAbstractScrollArea::mouseDoubleClickEvent(event);
+    }
+}
+
 bool PageView::event(QEvent* event) {
     // Клавиши вида не отдаются ярлыкам окна, пока фокус у вида (Ctrl+0…3, Alt+←/→, Home/End…).
     if (event->type() == QEvent::ShortcutOverride) {
@@ -936,7 +984,14 @@ bool PageView::event(QEvent* event) {
             mods == (Qt::ControlModifier | Qt::ShiftModifier) &&
             (k == Qt::Key_Equal || k == Qt::Key_Plus || k == Qt::Key_Minus || k == Qt::Key_Underscore);
         const bool history = mods == Qt::AltModifier && (k == Qt::Key_Left || k == Qt::Key_Right);
-        if (ctrlZoom || rotate || history || (isAutoScrolling() && k == Qt::Key_Escape)) {
+        // Инструменты: Esc (сброс), пробел (временная «Рука»), Ctrl+A (выделить всё), однобуквенные — если
+        // включены.
+        const bool tool =
+            (mods == Qt::NoModifier && (k == Qt::Key_Escape || k == Qt::Key_Space)) ||
+            key->matches(QKeySequence::SelectAll) ||
+            (controller_->singleKeyShortcuts() && (mods == Qt::NoModifier || mods == Qt::ShiftModifier) &&
+             (k == Qt::Key_H || k == Qt::Key_V || k == Qt::Key_Z || k == Qt::Key_X));
+        if (ctrlZoom || rotate || history || tool) {
             event->accept();
             return true;
         }

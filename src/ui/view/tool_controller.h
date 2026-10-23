@@ -1,0 +1,87 @@
+// ToolController — инструменты просмотра PageView (план 2.2; view-05, view-33, comment-42): один текущий
+// ViewTool (ui/view/tools/view_tool.h) получает мышь и клавиши вида и рисует свой слой поверх страниц
+// (OverlayStack). «Закрепить» (comment-42): однократный инструмент (Снимок; инструменты комментариев 5.x)
+// после действия возвращает прежний, если не закреплён. Однобуквенные клавиши (H, V, Z, Shift+Z, X; эталон
+// 6.8) выключены по умолчанию — включает настройка. Пробел держит «Руку» временно, Esc бросает действие и
+// возвращает «Выделение».
+#pragma once
+
+#include <QImage>
+#include <QObject>
+
+#include <array>
+#include <memory>
+#include <optional>
+
+#include "ui/view/overlay.h"
+#include "ui/view/tools/view_tool.h"
+
+namespace ot::ui {
+
+class PageView;
+
+class ToolController : public QObject, public Overlay {
+    Q_OBJECT
+public:
+    explicit ToolController(PageView& view);
+    ~ToolController() override;
+
+    ViewToolId tool() const noexcept { return current_; }
+    ViewTool& current() const { return *tools_[static_cast<std::size_t>(current_)]; }
+    ViewTool& toolFor(ViewToolId id) const { return *tools_[static_cast<std::size_t>(id)]; }
+    SelectTool& select() const { return static_cast<SelectTool&>(toolFor(ViewToolId::Select)); }
+    LoupeTool& loupe() const { return static_cast<LoupeTool&>(toolFor(ViewToolId::Loupe)); }
+    PanZoomTool& panZoom() const { return static_cast<PanZoomTool&>(toolFor(ViewToolId::PanZoom)); }
+    static constexpr ViewToolId defaultTool() noexcept { return ViewToolId::Select; }
+
+    void setTool(ViewToolId id);
+    // Shift+Z: Увеличение области → Лупа → Панорамирование и масштаб → Увеличение области.
+    void cycleZoomTools();
+    // Esc: бросить действие; не «Выделение» — вернуть его, иначе снять выделение.
+    void reset();
+    // Однократный инструмент сделал своё: назад к прежнему, если не закреплён.
+    void finished();
+
+    bool pinned() const noexcept { return pinned_; }
+    void setPinned(bool pinned);
+    bool singleKeyShortcuts() const noexcept { return singleKeys_; }
+    void setSingleKeyShortcuts(bool on) noexcept { singleKeys_ = on; }
+
+    // Документ вида сменился / страница изменена правкой: слои текста, области лупы и миниатюры — заново.
+    void documentChanged();
+    void pageChanged(int page);
+
+    // События вида (координаты вьюпорта). true — обработано.
+    bool mousePress(QMouseEvent* event);
+    bool mouseMove(QMouseEvent* event);
+    bool mouseRelease(QMouseEvent* event);
+    bool mouseDoubleClick(QMouseEvent* event);
+    bool keyPress(QKeyEvent* event);
+    bool keyRelease(QKeyEvent* event);
+    void updateCursor(QPointF point, Qt::KeyboardModifiers modifiers);
+
+    void paintViewport(QPainter& painter, const PageView& view) override;
+
+    // Для инструментов.
+    void emitSnapshot(const QImage& image) { emit snapshotTaken(image); }
+    void emitSelectionChanged() { emit selectionChanged(); }
+
+signals:
+    void toolChanged(ot::ui::ViewToolId id);
+    void pinnedChanged(bool pinned);
+    void snapshotTaken(const QImage& image);
+    void selectionChanged();
+
+private:
+    void switchTo(ViewToolId id, bool remember);
+
+    PageView& view_;
+    std::array<std::unique_ptr<ViewTool>, kViewToolCount> tools_;
+    ViewToolId current_ = defaultTool();
+    ViewToolId previous_ = defaultTool();
+    std::optional<ViewToolId> beforeSpace_;  // пробел — временная «Рука»
+    bool pinned_ = false;
+    bool singleKeys_ = false;
+};
+
+}  // namespace ot::ui

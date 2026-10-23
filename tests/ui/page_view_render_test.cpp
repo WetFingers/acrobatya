@@ -335,7 +335,7 @@ private slots:
             }
         }
         QVERIFY(stroked);
-        QCOMPARE(v.overlays().size(), 3);
+        QCOMPARE(v.overlays().size(), 4);  // поиск, выделение, рамки аннотаций, слой инструмента
     }
 };
 
