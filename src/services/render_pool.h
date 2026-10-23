@@ -6,7 +6,8 @@
 // колбэк в потоке объекта context (QMetaObject::invokeMethod, Qt::QueuedConnection). Отмена: fz_cookie
 // задачи (abort = 1 ставит GUI-поток), ещё не начатая задача снимается с очереди сразу; результат отменённой
 // приходит с aborted = true и пустым растром. Приоритет: QThreadPool::start(job, priority), видимым — выше
-// (retarget при смене зума: невидимым abort = 1, видимым — приоритет).
+// (retarget при смене зума: невидимым abort = 1, видимым — приоритет). Списки — только документов, открытых
+// на клонах MuContext::global() (DocumentSession так и открывает): иначе результат — ошибка.
 #pragma once
 
 #include <QImage>

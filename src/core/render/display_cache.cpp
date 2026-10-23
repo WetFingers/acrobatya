@@ -8,16 +8,32 @@
 
 namespace ot {
 
+DisplayList::DisplayList(std::unique_ptr<MuContext> owner, fz_display_list* list, const RectF& bounds,
+                         int page, bool annotations) noexcept
+    : owner_(std::move(owner)),
+      family_(owner_ ? owner_->family() : nullptr),
+      list_(list),
+      bounds_(bounds),
+      page_(page),
+      annotations_(annotations) {}
+
 DisplayList::~DisplayList() {
-    if (list_ != nullptr) {
-        // Последняя ссылка может умереть в любом потоке (пул, GUI): отдаём клоном этого потока — store,
-        // аллокатор и замки у клонов общие.
-        fz_drop_display_list(MuContext::forThisThread().get(), list_);
+    if (list_ != nullptr && owner_) {
+        // Последняя ссылка умирает в каком-то одном потоке (пул, GUI, поток документа): свой клон — только
+        // здесь, store и замки — общие с семьёй документа.
+        fz_drop_display_list(owner_->get(), list_);
     }
 }
 
 RectF DisplayList::contentBounds() const {
-    fz_context* ctx = MuContext::forThisThread().get();
+    // Клон этого потока, если он той же семьи; иначе — временный клон семьи документа.
+    std::unique_ptr<MuContext> temporary;
+    MuContext* local = &MuContext::forThisThread();
+    if (local->family() != family_) {
+        temporary = owner_->clone();
+        local = temporary.get();
+    }
+    fz_context* ctx = local->get();
     mu::DeviceHandle dev(ctx);
     fz_rect box = fz_empty_rect;
     mu::call(ctx, [&] {
@@ -58,8 +74,10 @@ std::shared_ptr<const DisplayList> DisplayList::build(const Document& doc, int p
         throw MuError(FZ_ERROR_ABORT, "display list aborted");
     }
     dev.reset();
-    return std::make_shared<const DisplayList>(
-        list.release(), RectF{bounds.x0, bounds.y0, bounds.x1, bounds.y1}, page, annotations);
+    auto owner = doc.context().clone();
+    return std::make_shared<const DisplayList>(std::move(owner), list.release(),
+                                               RectF{bounds.x0, bounds.y0, bounds.x1, bounds.y1}, page,
+                                               annotations);
 }
 
 std::shared_ptr<const DisplayList> DisplayCache::get(const Document& doc, int page, bool annotations,

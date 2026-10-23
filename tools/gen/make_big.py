@@ -10,7 +10,7 @@
 Каталог по умолчанию — %OTTISK_CORPUS%\\gen или %LOCALAPPDATA%\\ottisk\\corpus\\gen (--corpus).
 Откуда: _genlib (pikepdf), тексты _texts.py, картинки — процедурные (numpy + Pillow).
 Детерминизм: random.Random / numpy.default_rng с seed=1, сохранение через _genlib.save_pdf.
-Запуск: "C:\\Tools\\venv-test\\Scripts\\python.exe" -X utf8 -I tools/gen/make_big.py [--corpus <каталог>]
+Запуск: "C:\\Tools\\venv-test\\Scripts\\python.exe" -X utf8 -I tools/gen/make_big.py [--corpus <каталог>] [--skip-existing]
 """
 import random
 import sys
@@ -116,9 +116,18 @@ def big_images(out: Path, pages: int = 200):
 
 
 def main():
-    args = g.common_args(__doc__, corpus=True)
+    def extra(ap):
+        ap.add_argument("--skip-existing", action="store_true",
+                        help="файлы уже есть здесь или в корпусе — ничего не делать (фикстура bench.engine.generate)")
+    args = g.common_args(__doc__, corpus=True, extra=extra)
     dst = Path(args.corpus)
     dst.mkdir(parents=True, exist_ok=True)
+    if args.skip_existing:
+        # Готовые — в каталоге вывода или в корпусе (%OTTISK_CORPUS%\gen): файлы детерминированы, те же байты.
+        for have in (dst, g.corpus_gen_dir()):
+            if all((have / n).exists() for n in ("big.json", "big-1200.pdf", "images-200.pdf")):
+                g.say("big: уже есть в %s — пропуск" % have)
+                return
     t0 = time.time()
     big_text(dst / "big-1200.pdf")
     t1 = time.time()

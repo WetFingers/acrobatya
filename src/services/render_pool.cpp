@@ -44,14 +44,19 @@ public:
             if (!request_.list) {
                 throw std::invalid_argument("RenderPool: tile request without display list");
             }
+            MuContext& local = MuContext::forThisThread();
+            if (request_.list->family() != local.family()) {
+                // Документ открыт не на клоне MuContext::global(): чужие store и замки.
+                throw std::invalid_argument("RenderPool: display list from another MuContext root");
+            }
             QImage image(request_.rect.width(), request_.rect.height(), QImage::Format_ARGB32_Premultiplied);
             if (image.isNull()) {
                 throw MuError(FZ_ERROR_LIMIT, "tile raster does not fit in memory");
             }
             // Свой клон контекста у каждого потока пула; пиксели — прямо в память QImage.
-            renderDisplayList(MuContext::forThisThread().get(), *request_.list, request_.matrix,
-                              request_.rect, image.bits(), static_cast<int>(image.bytesPerLine()),
-                              PixelFormat::Bgra32Premultiplied, &cancel_.cookie, request_.aa);
+            renderDisplayList(local.get(), *request_.list, request_.matrix, request_.rect, image.bits(),
+                              static_cast<int>(image.bytesPerLine()), PixelFormat::Bgra32Premultiplied,
+                              &cancel_.cookie, request_.aa);
             image.setDevicePixelRatio(request_.dpr);
             result.image = std::move(image);
         } catch (...) {

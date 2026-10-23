@@ -1,7 +1,8 @@
 // DisplayList и DisplayCache (эталон 4.1–4.2). Display list страницы — единственное, что уходит из потока
-// документа в другие потоки: его рисуют потоки RenderPool каждый своим клоном контекста
-// (fz_run_display_list со scissor = тайл). DisplayList держит одну ссылку на fz_display_list и отдаёт её
-// клоном контекста того потока, где разрушается последняя копия shared_ptr (общие store и замки).
+// документа в другие потоки: его рисуют потоки RenderPool каждый своим клоном контекста той же семьи
+// (MuContext::family(): общие store и замки; fz_run_display_list со scissor = тайл). DisplayList держит одну
+// ссылку на fz_display_list и свой клон контекста документа — им список отдаётся там, где разрушается
+// последняя копия shared_ptr (в любом потоке).
 // DisplayCache — LRU списков страниц документа (по умолчанию 40; эталон 4.1), ключ — {страница, с пометками};
 // правка страницы сбрасывает её списки (invalidate). Строится и читается только в потоке документа.
 #pragma once
@@ -21,12 +22,14 @@ extern "C" {
 namespace ot {
 
 class Document;
+class MuContext;
 
 class DisplayList {
 public:
-    // Принимает ссылку list (из fz_new_display_list…). bounds — рамка страницы (fz_bound_page).
-    DisplayList(fz_display_list* list, const RectF& bounds, int page, bool annotations) noexcept
-        : list_(list), bounds_(bounds), page_(page), annotations_(annotations) {}
+    // Принимает ссылку list (из fz_new_display_list…) и owner — клон контекста документа (только для отдачи
+    // списка и для contentBounds в чужом потоке). bounds — рамка страницы (fz_bound_page).
+    DisplayList(std::unique_ptr<MuContext> owner, fz_display_list* list, const RectF& bounds, int page,
+                bool annotations) noexcept;
     ~DisplayList();
     DisplayList(const DisplayList&) = delete;
     DisplayList& operator=(const DisplayList&) = delete;
@@ -35,6 +38,8 @@ public:
     const RectF& bounds() const noexcept { return bounds_; }
     int page() const noexcept { return page_; }
     bool annotations() const noexcept { return annotations_; }
+    // Семья контекстов документа: рисовать список можно только её контекстами (RenderPool проверяет).
+    const void* family() const noexcept { return family_; }
     // Рамка нарисованного (bbox-устройство по списку) в пунктах ∩ рамка страницы — для «По видимому»;
     // пустая страница — пустой прямоугольник. Любой поток (свой клон контекста).
     RectF contentBounds() const;
@@ -45,6 +50,8 @@ public:
                                                     fz_cookie* cookie = nullptr);
 
 private:
+    std::unique_ptr<MuContext> owner_;
+    const void* family_;
     fz_display_list* list_;
     RectF bounds_;
     int page_;

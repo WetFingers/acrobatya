@@ -115,10 +115,15 @@ target_link_libraries(render_refs PRIVATE ottisk_core)
 target_compile_definitions(render_refs PRIVATE OTTISK_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 ottisk_warnings(render_refs)
 
+# bench (план 1.2, эталон 5.8) — тайлы идут через RenderPool, поэтому services; файлы ищет в исходниках,
+# корпусе и <сборка>/gen.
 file(GLOB_RECURSE OTTISK_BENCH_SRC CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/tests/bench/*.cpp")
 add_executable(bench ${OTTISK_BENCH_SRC})
-target_link_libraries(bench PRIVATE ottisk_core)
+target_link_libraries(bench PRIVATE ottisk_services)
+target_compile_definitions(bench PRIVATE OTTISK_SOURCE_DIR="${CMAKE_SOURCE_DIR}" OTTISK_BINARY_DIR="${CMAKE_BINARY_DIR}")
+ottisk_qt(bench)
 ottisk_warnings(bench)
+add_dependencies(bench qt_runtime)
 
 if(OTTISK_FUZZ)
   # Харнес идёт через ottisk_core; MuPDF не инструментирован — покрытие для libFuzzer даёт наш код.
@@ -153,6 +158,21 @@ if(TARGET engine_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   set_tests_properties(engine.mutants.generate PROPERTIES LABELS "engine;slow" FIXTURES_SETUP mutants TIMEOUT 300)
 endif()
 ottisk_gtest_exe(render_tests tests/render render "render;slow" 900 ottisk_core)
+# Замеры движка (план 1.2): только Release — числа Debug с целями 5.8 не сравнимы. big-1200 и images-200 —
+# make_big.py в <сборка>/gen (фикстура, пропускает готовые), PDF32000_2008 — только из корпуса (нет — SKIP 77).
+# JSON — в build/bench/<имя>.json; сравнение с базой — tools/bench_compare.py docs/bench/baseline-*.json.
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  add_test(NAME bench.engine.generate
+    COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/gen/make_big.py"
+      --corpus "${CMAKE_BINARY_DIR}/gen" --skip-existing
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+  set_tests_properties(bench.engine.generate PROPERTIES LABELS "bench;slow" FIXTURES_SETUP bench_files TIMEOUT 900)
+  foreach(_b hello pdf32000 big-1200 images-200 enc-r6)
+    add_test(NAME bench.engine.${_b} COMMAND bench ${_b} --json "${CMAKE_SOURCE_DIR}/build/bench/${_b}.json")
+    set_tests_properties(bench.engine.${_b} PROPERTIES LABELS "bench;slow" FIXTURES_REQUIRED bench_files
+      SKIP_RETURN_CODE 77 TIMEOUT 900 RUN_SERIAL TRUE)
+  endforeach()
+endif()
 ottisk_gtest_exe(e2e_tests tests/e2e e2e "e2e;slow" 900 ottisk_services)
 
 file(GLOB_RECURSE OTTISK_UI_TEST_SRC CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/tests/ui/*.cpp" "${CMAKE_SOURCE_DIR}/tests/ui/*.h")

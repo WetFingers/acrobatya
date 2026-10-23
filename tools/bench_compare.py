@@ -15,7 +15,16 @@
   * Google Benchmark JSON ({"benchmarks": [{"name", "real_time", "time_unit", "aggregate_name"}]});
   * XML QTest (-o file.xml,xml): <TestFunction name><BenchmarkResult metric value iterations/>.
 Меньше — лучше (кроме higher_is_better). Код 0 — падений нет (или базы нет), 1 — есть падение
-(с --strict ещё: метрика из базы пропала), 2 — текущих замеров нет / не читаются.
+(с --strict ещё: метрика из базы пропала; с --strict-targets — промах мимо цели 5.8), 2 — текущих замеров нет /
+не читаются.
+
+Шум: ухудшение меньше абсолютного порога (--floor-ms 5 мс, --floor-mb 5 МБ) падением не считается — у метрик
+в единицы миллисекунд (первый тайл, смена страницы, тайлы одностраничного файла) +25 % — дрожание планировщика,
+а не регресс; от 20 мс действует относительный порог.
+
+Цели эталона 5.8 (Release, i7-13650HX) печатаются всегда для метрик bench.exe, которые есть в замерах
+(TARGETS ниже: открытие → первый растр ≤ 300 мс, PDF32000 ≤ 500 мс и раскладка ≤ 200 мс, смена страницы из кеша
+списков / без кеша ≤ 50 / 150 мс, первый тайл зума ≤ 120 мс, пиковая память big-1200 ≤ 800 МБ).
 """
 
 from __future__ import annotations
@@ -31,6 +40,41 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 METRIC_SUFFIX_RE = re.compile(r"_(ms|s|sec|us|ns|mb|kb|bytes)$")
+
+# Цели эталона 5.8: (метрика bench.exe, предел, что это). Обычные файлы ≤ 5 МБ — hello, enc-r6, big-1200 (2 МБ);
+# смена страницы — «A4, текст» (big-1200, PDF32000).
+TARGETS = [
+    (re.compile(r"^(hello|enc-r6|big-1200)/open_first_ms$"), 300.0, "открытие → первый растр, обычный файл"),
+    (re.compile(r"^pdf32000/open_first_ms$"), 500.0, "PDF32000: открытие → первый растр"),
+    (re.compile(r"^pdf32000/layout_ms$"), 200.0, "PDF32000: раскладка всех страниц"),
+    (re.compile(r"^(big-1200|pdf32000)/page_cached_ms$"), 50.0, "смена страницы при 100 % из кеша"),
+    (re.compile(r"^(big-1200|pdf32000)/page_uncached_ms$"), 150.0, "смена страницы при 100 % без кеша"),
+    (re.compile(r"/zoom_first_tile_ms$"), 120.0, "зум: первый видимый тайл"),
+    (re.compile(r"^big-1200/peak_working_set_mb$"), 800.0, "big-1200: пиковая память в просмотре"),
+]
+
+
+def check_targets(current: dict) -> tuple[list[dict], int]:
+    """Сверка с целями 5.8: строки отчёта и число промахов."""
+    rows: list[dict] = []
+    misses = 0
+    for name in sorted(current):
+        for rx, limit, what in TARGETS:
+            if rx.search(name):
+                ok = current[name].value <= limit
+                misses += 0 if ok else 1
+                rows.append({"name": name, "value": current[name].value, "limit": limit, "what": what, "ok": ok})
+    return rows, misses
+
+
+def print_targets(rows: list[dict]) -> None:
+    if not rows:
+        return
+    width = max(len(r["name"]) for r in rows)
+    print("цели эталона 5.8:")
+    for r in rows:
+        mark = "ok" if r["ok"] else "МИМО"
+        print(f"  {r['name']:<{width}}  {r['value']:>9.2f} ≤ {r['limit']:<6g} {mark}  ({r['what']})")
 
 
 class Metric:
@@ -180,6 +224,9 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--json", type=Path, help="записать сравнение в JSON")
     ap.add_argument("--write-base", type=Path, help="записать текущие замеры как новую базу")
     ap.add_argument("--strict", action="store_true", help="красный и тогда, когда метрика базы пропала")
+    ap.add_argument("--strict-targets", action="store_true", help="красный и при промахе мимо цели эталона 5.8")
+    ap.add_argument("--floor-ms", type=float, default=5.0, help="ухудшение меньше стольких мс — шум (по умолчанию 5)")
+    ap.add_argument("--floor-mb", type=float, default=5.0, help="ухудшение меньше стольких МБ — шум (по умолчанию 5)")
     args = ap.parse_args(argv)
     sources = list(args.sources)
     if args.base is None and sources:
@@ -194,14 +241,17 @@ def main(argv: list[str]) -> int:
     if args.write_base:
         write_base(args.write_base, current, shown_current)
         print(f"база записана: {args.write_base} ({len(current)} метрик)")
+    target_rows, target_misses = check_targets(current)
+    print_targets(target_rows)
+    target_failed = args.strict_targets and target_misses > 0
 
     if not args.base:
-        print(f"bench_compare: база не задана — текущих метрик {len(current)}")
-        return 0
+        print(f"bench_compare: база не задана — текущих метрик {len(current)}, мимо целей 5.8: {target_misses}")
+        return 1 if target_failed else 0
     base = load(args.base)
     if not base:
         print(f"bench_compare: базы {args.base} нет — сравнивать не с чем (первую базу пишет --write-base)")
-        return 0
+        return 1 if target_failed else 0
 
     rows = []
     regressions = 0
@@ -222,6 +272,10 @@ def main(argv: list[str]) -> int:
             ratio = c.value / b.value
         worse = (1.0 / ratio if ratio > 0 else float("inf")) if b.higher_is_better else ratio
         status = "REGRESSION" if worse > limit else ("better" if worse < 1.0 / limit else "ok")
+        unit = (c.unit or b.unit or "").lower()
+        floor = args.floor_ms if unit == "ms" else args.floor_mb if unit == "mb" else 0.0
+        if status == "REGRESSION" and abs(c.value - b.value) < floor:
+            status = "noise"
         if status == "REGRESSION":
             regressions += 1
         rows.append({"name": name, "base": b.value, "current": c.value, "unit": c.unit or b.unit,
@@ -237,13 +291,14 @@ def main(argv: list[str]) -> int:
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(
-            json.dumps({"threshold_pct": args.threshold, "rows": rows}, ensure_ascii=False, indent=1) + "\n",
+            json.dumps({"threshold_pct": args.threshold, "rows": rows, "targets": target_rows}, ensure_ascii=False,
+                       indent=1) + "\n",
             encoding="utf-8",
         )
-    failed = regressions > 0 or (args.strict and missing)
+    failed = regressions > 0 or (args.strict and missing) or target_failed
     print(
         f"bench_compare: {'красный' if failed else 'зелёный'} — падений {regressions} (порог +{args.threshold:g} %), "
-        f"пропало метрик {len(missing)}, всего {len(rows)}"
+        f"пропало метрик {len(missing)}, всего {len(rows)}, мимо целей 5.8: {target_misses}"
     )
     return 1 if failed else 0
 

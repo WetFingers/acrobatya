@@ -1,0 +1,187 @@
+{
+ "version": 1,
+ "created": "2026-10-23",
+ "source": "build\\bench",
+ "benchmarks": [
+  {
+   "name": "big-1200/layout_ms",
+   "value": 1.2049,
+   "unit": "ms"
+  },
+  {
+   "name": "big-1200/open_first_ms",
+   "value": 7.1352,
+   "unit": "ms"
+  },
+  {
+   "name": "big-1200/page_cached_ms",
+   "value": 0.7615,
+   "unit": "ms"
+  },
+  {
+   "name": "big-1200/page_uncached_ms",
+   "value": 1.3128,
+   "unit": "ms"
+  },
+  {
+   "name": "big-1200/peak_working_set_mb",
+   "value": 53.918,
+   "unit": "mb"
+  },
+  {
+   "name": "big-1200/tiles_100_ms",
+   "value": 342.2672,
+   "unit": "ms"
+  },
+  {
+   "name": "big-1200/tiles_200_ms",
+   "value": 536.9318,
+   "unit": "ms"
+  },
+  {
+   "name": "big-1200/zoom_first_tile_ms",
+   "value": 0.5388,
+   "unit": "ms"
+  },
+  {
+   "name": "enc-r6/layout_ms",
+   "value": 0.0031,
+   "unit": "ms"
+  },
+  {
+   "name": "enc-r6/open_first_ms",
+   "value": 22.7739,
+   "unit": "ms"
+  },
+  {
+   "name": "enc-r6/peak_working_set_mb",
+   "value": 24.5625,
+   "unit": "mb"
+  },
+  {
+   "name": "enc-r6/tiles_100_ms",
+   "value": 4.9858,
+   "unit": "ms"
+  },
+  {
+   "name": "enc-r6/tiles_200_ms",
+   "value": 10.9361,
+   "unit": "ms"
+  },
+  {
+   "name": "enc-r6/zoom_first_tile_ms",
+   "value": 0.3354,
+   "unit": "ms"
+  },
+  {
+   "name": "hello/layout_ms",
+   "value": 0.0025,
+   "unit": "ms"
+  },
+  {
+   "name": "hello/open_first_ms",
+   "value": 3.149,
+   "unit": "ms"
+  },
+  {
+   "name": "hello/peak_working_set_mb",
+   "value": 17.793,
+   "unit": "mb"
+  },
+  {
+   "name": "hello/tiles_100_ms",
+   "value": 0.8526,
+   "unit": "ms"
+  },
+  {
+   "name": "hello/tiles_200_ms",
+   "value": 2.417,
+   "unit": "ms"
+  },
+  {
+   "name": "hello/zoom_first_tile_ms",
+   "value": 0.1955,
+   "unit": "ms"
+  },
+  {
+   "name": "images-200/layout_ms",
+   "value": 1.4643,
+   "unit": "ms"
+  },
+  {
+   "name": "images-200/open_first_ms",
+   "value": 9.5045,
+   "unit": "ms"
+  },
+  {
+   "name": "images-200/page_cached_ms",
+   "value": 4.003,
+   "unit": "ms"
+  },
+  {
+   "name": "images-200/page_uncached_ms",
+   "value": 7.596,
+   "unit": "ms"
+  },
+  {
+   "name": "images-200/peak_working_set_mb",
+   "value": 335.0938,
+   "unit": "mb"
+  },
+  {
+   "name": "images-200/tiles_100_ms",
+   "value": 85.5359,
+   "unit": "ms"
+  },
+  {
+   "name": "images-200/tiles_200_ms",
+   "value": 436.7249,
+   "unit": "ms"
+  },
+  {
+   "name": "images-200/zoom_first_tile_ms",
+   "value": 5.0332,
+   "unit": "ms"
+  },
+  {
+   "name": "pdf32000/layout_ms",
+   "value": 27.9585,
+   "unit": "ms"
+  },
+  {
+   "name": "pdf32000/open_first_ms",
+   "value": 19.4413,
+   "unit": "ms"
+  },
+  {
+   "name": "pdf32000/page_cached_ms",
+   "value": 0.7994,
+   "unit": "ms"
+  },
+  {
+   "name": "pdf32000/page_uncached_ms",
+   "value": 3.2284,
+   "unit": "ms"
+  },
+  {
+   "name": "pdf32000/peak_working_set_mb",
+   "value": 73.1367,
+   "unit": "mb"
+  },
+  {
+   "name": "pdf32000/tiles_100_ms",
+   "value": 434.9551,
+   "unit": "ms"
+  },
+  {
+   "name": "pdf32000/tiles_200_ms",
+   "value": 656.8038,
+   "unit": "ms"
+  },
+  {
+   "name": "pdf32000/zoom_first_tile_ms",
+   "value": 0.3216,
+   "unit": "ms"
+  }
+ ]
+}

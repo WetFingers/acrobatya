@@ -91,6 +91,11 @@ MuContext& MuContext::forThisThread() {
     return *local;
 }
 
+void MuContext::emptyStore() const noexcept {
+    fz_empty_store(ctx_);
+    fz_purge_glyph_cache(ctx_);
+}
+
 bool MuContext::shrinkStore(unsigned int percent) const noexcept {
     return fz_shrink_store(ctx_, percent) != 0;
 }
