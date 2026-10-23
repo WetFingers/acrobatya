@@ -6,14 +6,17 @@ include(GoogleTest)
 set(OTTISK_TEST_DATA_DIR "${CMAKE_BINARY_DIR}/test-data")
 set(OTTISK_RELEASE_TEST_TARGETS render_tests)
 
-# gtest-исполняемый файл из каталога: ottisk_gtest_exe(<цель> <каталог> <префикс> <метки> <таймаут> <библиотеки…>)
+# gtest-исполняемый файл из каталога:
+#   ottisk_gtest_exe(<цель> <каталог> <префикс> <метки> <таймаут> <библиотеки…> [PROPERTIES <имя> <значение>…])
+# Значения-списки в PROPERTIES — с экранированной «;» ("corpus\;mutants"), как метки.
 function(ottisk_gtest_exe target dir prefix labels timeout)
+  cmake_parse_arguments(PARSE_ARGV 5 _o "" "" "PROPERTIES")
   file(GLOB_RECURSE _src CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/${dir}/*.cpp")
   if(NOT _src)
     return()
   endif()
   add_executable(${target} ${_src})
-  target_link_libraries(${target} PRIVATE ${ARGN} GTest::gtest GTest::gtest_main)
+  target_link_libraries(${target} PRIVATE ${_o_UNPARSED_ARGUMENTS} GTest::gtest GTest::gtest_main)
   target_compile_definitions(${target} PRIVATE OTTISK_SOURCE_DIR="${CMAKE_SOURCE_DIR}" OTTISK_BINARY_DIR="${CMAKE_BINARY_DIR}")
   target_include_directories(${target} PRIVATE "${CMAKE_SOURCE_DIR}/src" "${CMAKE_SOURCE_DIR}/${dir}")
   ottisk_warnings(${target})
@@ -29,7 +32,7 @@ function(ottisk_gtest_exe target dir prefix labels timeout)
     DISCOVERY_MODE PRE_TEST
     DISCOVERY_TIMEOUT 30
     XML_OUTPUT_DIR "${CMAKE_BINARY_DIR}/gtest-xml"
-    PROPERTIES LABELS "${_labels}" TIMEOUT ${timeout})
+    PROPERTIES LABELS "${_labels}" TIMEOUT ${timeout} ${_o_PROPERTIES})
 endfunction()
 
 # Окружение ctest для всех тестов каталога сборки.

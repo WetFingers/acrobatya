@@ -7,6 +7,9 @@ if(OTTISK_ASAN)
   string(REGEX REPLACE "/RTC[1csu]*" "" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
   string(REGEX REPLACE "/RTC[1csu]*" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
   add_compile_options(/fsanitize=address)
+  # MuPDF, gtest, spdlog, fmt собраны без ASan: без этого STL даёт LNK2038 «annotate_string/annotate_vector»
+  # (сессия 1.1); проверки переполнения контейнеров теряются только на границе с чужим кодом.
+  add_compile_definitions(_DISABLE_VECTOR_ANNOTATION _DISABLE_STRING_ANNOTATION)
   add_link_options(/INCREMENTAL:NO)
   get_filename_component(OTTISK_ASAN_BIN "${CMAKE_CXX_COMPILER}" DIRECTORY)
 endif()

@@ -132,7 +132,23 @@ endif()
 enable_testing()
 include(cmake/tests.cmake)
 ottisk_gtest_exe(unit_tests tests/unit unit "unit" 60 ottisk_services)
-ottisk_gtest_exe(engine_tests tests/engine engine "engine;slow" 600 ottisk_services)
+# Корпус и мутанты (план 1.1): фикстура corpus — сверка скачанного без записи индекса (нет корпуса — код 77,
+# пропуск; тесты сами дают SKIP), mutants — 100 своих битых PDF в build/<пресет>/gen; после первой строки
+# «progress:» у теста 120 с на остаток.
+ottisk_gtest_exe(engine_tests tests/engine engine "engine;slow" 600 ottisk_services
+  PROPERTIES FIXTURES_REQUIRED "corpus\;mutants" TIMEOUT_AFTER_MATCH "120\;^progress:")
+if(TARGET engine_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_test(NAME engine.corpus.verify
+    COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/fetch_corpus.py" --verify --dry-run --missing-code 77
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+  set_tests_properties(engine.corpus.verify PROPERTIES LABELS "engine;slow" FIXTURES_SETUP corpus
+    SKIP_RETURN_CODE 77 TIMEOUT 300)
+  add_test(NAME engine.mutants.generate
+    COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/gen/make_mutants.py"
+      --corpus "${CMAKE_BINARY_DIR}/gen" --tmp "${CMAKE_BINARY_DIR}/gen-tmp"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+  set_tests_properties(engine.mutants.generate PROPERTIES LABELS "engine;slow" FIXTURES_SETUP mutants TIMEOUT 300)
+endif()
 ottisk_gtest_exe(render_tests tests/render render "render;slow" 900 ottisk_core)
 ottisk_gtest_exe(e2e_tests tests/e2e e2e "e2e;slow" 900 ottisk_services)
 
