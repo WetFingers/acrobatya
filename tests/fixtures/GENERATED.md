@@ -88,6 +88,14 @@ openpyxl, python-pptx, odfpy), `mutool` из `C:\src\mupdf\platform\win32\x64\Re
 | `text.json` | строки генератора (страница, текст, кегль, базовая линия и x0/x1 в пунктах MuPDF — y вниз), число векторов `vectors.pdf` | |
 | `stext_expected.json` | слова и координаты PDFium (pypdfium2 5.14.0): точка пера, чернильная рамка, кегль — для `cyr-cid`, `type1-diff`, `truetype-nonembedded`, `search`; `embedded` — можно ли сравнивать чернила | `unit.stext.words_match_pdfium_reference` |
 
+### `tests/fixtures/view/` — `make_view.py` (сессия 2.2; ожидания раскладки — `layout_expected.json`, вручную)
+
+| Файл | Что внутри | Кто пользуется |
+|---|---|---|
+| `layout-mixed.pdf` | 5 страниц: Letter; A4 с `/Rotate 90`; A4; 300 × 400; Letter с `/Rotate 100` (MuPDF → 90); на каждой «Страница N», рамка и цветной квадрат в левом верхнем углу; `/PageLayout /TwoColumnRight` | `ui.page_view_layout` (размеры, `/PageLayout`), `ui.page_view_render` |
+| `layout-mixed.json` | MediaBox, `/Rotate` и размер на экране каждой страницы | |
+| `layout_expected.json` | рамки страниц и размеры содержимого `layoutPages()` для пяти режимов и поворота вида — **посчитаны вручную** по правилам `ui/view/layout.h`, не генератором | `ui.page_view_layout` |
+
 ### `tests/fixtures/annots/` — `make_annots.py` (+ `tools/gen/annots.js`)
 
 `annots-all.pdf` — байт в байт копия `matrix-28.pdf` под именем из плана (сессии 5.1, 5.2).

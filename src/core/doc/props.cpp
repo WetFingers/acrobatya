@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cstring>
 #include <ctime>
 #include <set>
 #include <stdexcept>
@@ -497,6 +498,20 @@ void setLang(Document& doc, const std::string& value) {
         }
     });
     op.commit();
+}
+
+std::string pageLayout(Document& doc) {
+    pdf_document* pdf = doc.pdf();
+    if (pdf == nullptr) {
+        return {};
+    }
+    fz_context* ctx = doc.context().get();
+    char name[64] = {};
+    mu::call(ctx, [&] {
+        const char* value = pdf_to_name(ctx, pdf_dict_getp(ctx, pdf_trailer(ctx, pdf), "Root/PageLayout"));
+        strncpy_s(name, sizeof(name), value != nullptr ? value : "", _TRUNCATE);
+    });
+    return name;
 }
 
 bool tagged(Document& doc) {

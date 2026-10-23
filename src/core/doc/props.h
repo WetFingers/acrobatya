@@ -44,6 +44,10 @@ void setLang(Document& doc, const std::string& lang);
 // «Документ с тегами»: /MarkInfo /Marked true.
 bool tagged(Document& doc);
 
+// /PageLayout каталога (имя: SinglePage, OneColumn, TwoColumnLeft…) — раскладка при открытии (эталон 3.1);
+// нет или не PDF — пусто.
+std::string pageLayout(Document& doc);
+
 struct FontInfo {
     std::string name;      // /BaseFont (подмножество — с префиксом «ABCDEF+»)
     std::string type;      // Type1, MMType1, TrueType, Type3, «Type0 (CIDFontType2)»…

@@ -9,6 +9,7 @@
 
 #include "core/doc/document.h"
 #include "core/doc/journal.h"
+#include "core/doc/props.h"
 #include "core/mu/call.h"
 #include "core/mu/context.h"
 #include "core/render/display_cache.h"
@@ -516,6 +517,7 @@ void DocumentSession::install(std::unique_ptr<Document> doc, OpenSummary& s, con
             s.isPdf = doc->isPdf();
             s.pageCount = doc->pageCount();
             s.pageSizes = layoutSizes(*doc, s.pageCount);
+            s.pageLayout = QString::fromStdString(props::pageLayout(*doc));
             doc_ = std::shared_ptr<Document>(std::move(doc));
         } catch (const MuError& e) {
             s = OpenSummary{};

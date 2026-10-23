@@ -1,0 +1,67 @@
+{
+  "generator": "tools/gen/make_view.py",
+  "pdf": "layout-mixed.pdf",
+  "page_layout": "TwoColumnRight",
+  "pages": [
+    {
+      "page": 0,
+      "mediabox": [
+        612.0,
+        792.0
+      ],
+      "rotate": 0,
+      "screen_pt": [
+        612,
+        792
+      ]
+    },
+    {
+      "page": 1,
+      "mediabox": [
+        595.2756,
+        841.8898
+      ],
+      "rotate": 90,
+      "screen_pt": [
+        841.8898,
+        595.2756
+      ]
+    },
+    {
+      "page": 2,
+      "mediabox": [
+        595.2756,
+        841.8898
+      ],
+      "rotate": 0,
+      "screen_pt": [
+        595.2756,
+        841.8898
+      ]
+    },
+    {
+      "page": 3,
+      "mediabox": [
+        300.0,
+        400.0
+      ],
+      "rotate": 0,
+      "screen_pt": [
+        300,
+        400
+      ]
+    },
+    {
+      "page": 4,
+      "mediabox": [
+        612.0,
+        792.0
+      ],
+      "rotate": 100,
+      "screen_pt": [
+        792,
+        612
+      ]
+    }
+  ]
+}

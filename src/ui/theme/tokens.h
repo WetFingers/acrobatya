@@ -124,6 +124,10 @@ inline constexpr Rgba kAnnotationColors[] = {
     hex(0x2196F3), hex(0x00BCD4), hex(0x4CAF50), hex(0x8BC34A), hex(0x000000), hex(0xFFFFFF),
 };
 
+// Бумага — фон страницы до прихода растра и под прозрачными страницами: цвет документа, не темы (в тёмной
+// теме страница остаётся белой, как в Acrobat; ночной режим — замена цветов 2.5b).
+inline constexpr Rgba kPaperColor = hex(0xFFFFFF);
+
 // Размеры, px при k = 1 (эталон 6.4–6.5). motionMs — время, scaled() его не трогает.
 struct Metrics {
     int grid = 4;                 // сетка
@@ -138,33 +142,56 @@ struct Metrics {
     int rightPanel = 280;         // правая панель
     int rightPanelMin = 220;      //   ширина тянется 220–480
     int rightPanelMax = 480;
-    int statusBar = 32;     // строка состояния
-    int radius = 4;         // скругление кнопок и полей
-    int radiusLarge = 8;    // карточки, плавающая панель
-    int hitTarget = 32;     // зона нажатия не меньше
-    int iconPanel = 20;     // иконка в панелях
-    int iconRow = 16;       // иконка в строках и меню
-    int iconEmpty = 40;     // иконка пустого состояния
-    int panelTitlePx = 13;  // заголовок панели, 600
-    int homeTitlePx = 20;   // заголовок Главной
-    int focusRing = 2;      // рамка фокуса accent
-    int shadowBlur = 16;    // тень: размытие
-    int shadowOffset = 4;   //   и сдвиг вниз
-    double fontPt = 9.0;    // Segoe UI 9 pt
-    int motionMs = 120;     // движение
-    double scale = 1.0;     // k, с которым получены размеры
+    int statusBar = 32;          // строка состояния
+    int radius = 4;              // скругление кнопок и полей
+    int radiusLarge = 8;         // карточки, плавающая панель
+    int hitTarget = 32;          // зона нажатия не меньше
+    int iconPanel = 20;          // иконка в панелях
+    int iconRow = 16;            // иконка в строках и меню
+    int iconEmpty = 40;          // иконка пустого состояния
+    int panelTitlePx = 13;       // заголовок панели, 600
+    int homeTitlePx = 20;        // заголовок Главной
+    int focusRing = 2;           // рамка фокуса accent
+    int shadowBlur = 16;         // тень: размытие
+    int shadowOffset = 4;        //   и сдвиг вниз
+    int pageGap = 8;             // зазор между страницами и до края холста (эталон 3.1)
+    int toolWindowWidth = 280;   // окно «Лупы» и «Панорамирования и масштаба» (эталон 3.1)
+    int toolWindowHeight = 220;  //   и его высота
+    int pageBorder = 1;          // рамка страницы на холсте — волосяная: «Крупные элементы» её не меняют
+    double fontPt = 9.0;         // Segoe UI 9 pt
+    int motionMs = 120;          // движение
+    double scale = 1.0;          // k, с которым получены размеры
 };
 
 // Все поля-размеры Metrics: их масштабирует Tokens::scaled (и проверяет ui.theme).
 inline constexpr int Metrics::* kMetricSizes[] = {
-    &Metrics::grid,        &Metrics::globalBar,     &Metrics::tabHeight,
-    &Metrics::tabMaxWidth, &Metrics::row,           &Metrics::cardRow,
-    &Metrics::navButton,   &Metrics::leftPanel,     &Metrics::leftPanelCollapsed,
-    &Metrics::rightPanel,  &Metrics::rightPanelMin, &Metrics::rightPanelMax,
-    &Metrics::statusBar,   &Metrics::radius,        &Metrics::radiusLarge,
-    &Metrics::hitTarget,   &Metrics::iconPanel,     &Metrics::iconRow,
-    &Metrics::iconEmpty,   &Metrics::panelTitlePx,  &Metrics::homeTitlePx,
-    &Metrics::focusRing,   &Metrics::shadowBlur,    &Metrics::shadowOffset,
+    &Metrics::grid,
+    &Metrics::globalBar,
+    &Metrics::tabHeight,
+    &Metrics::tabMaxWidth,
+    &Metrics::row,
+    &Metrics::cardRow,
+    &Metrics::navButton,
+    &Metrics::leftPanel,
+    &Metrics::leftPanelCollapsed,
+    &Metrics::rightPanel,
+    &Metrics::rightPanelMin,
+    &Metrics::rightPanelMax,
+    &Metrics::statusBar,
+    &Metrics::radius,
+    &Metrics::radiusLarge,
+    &Metrics::hitTarget,
+    &Metrics::iconPanel,
+    &Metrics::iconRow,
+    &Metrics::iconEmpty,
+    &Metrics::panelTitlePx,
+    &Metrics::homeTitlePx,
+    &Metrics::focusRing,
+    &Metrics::shadowBlur,
+    &Metrics::shadowOffset,
+    &Metrics::pageGap,
+    &Metrics::toolWindowWidth,
+    &Metrics::toolWindowHeight,
 };
 
 struct Tokens {

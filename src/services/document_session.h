@@ -90,6 +90,7 @@ struct OpenSummary {
     // Размеры для раскладки, пункты, с учётом /CropBox и /Rotate (fit.h layoutPageSize: 0 × 0 — Letter,
     // больше 14 400 pt — уменьшено; масштаб такой страницы — размер раскладки / DisplayList::bounds()).
     QVector<QSizeF> pageSizes;
+    QString pageLayout;  // /PageLayout каталога (SinglePage, OneColumn, TwoColumnLeft…) или пусто
     TaskFailed error;
 };
 
