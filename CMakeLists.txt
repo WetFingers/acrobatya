@@ -121,9 +121,12 @@ target_link_libraries(bench PRIVATE ottisk_core)
 ottisk_warnings(bench)
 
 if(OTTISK_FUZZ)
+  # Харнес идёт через ottisk_core; MuPDF не инструментирован — покрытие для libFuzzer даёт наш код.
+  target_compile_options(ottisk_core PRIVATE /fsanitize-coverage=inline-8bit-counters /fsanitize-coverage=edge
+    /fsanitize-coverage=trace-cmp)
   file(GLOB_RECURSE OTTISK_FUZZ_SRC CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/fuzz/*.cpp")
   add_executable(pdf_open_fuzzer ${OTTISK_FUZZ_SRC})
-  target_link_libraries(pdf_open_fuzzer PRIVATE mupdf::mupdf)
+  target_link_libraries(pdf_open_fuzzer PRIVATE ottisk_core)
   target_compile_options(pdf_open_fuzzer PRIVATE /fsanitize=fuzzer)
   target_link_options(pdf_open_fuzzer PRIVATE /fsanitize=fuzzer)
 endif()
