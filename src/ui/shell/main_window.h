@@ -17,6 +17,7 @@
 
 #include "services/document_session.h"
 #include "services/session_store.h"
+#include "services/settings_keys.h"
 #include "services/single_instance.h"
 
 class QSplitter;
@@ -32,11 +33,13 @@ class TileCache;
 
 namespace ot::ui {
 
+class CommandPalette;
 class DocumentTabs;
 class DocumentView;
 class GlobalBar;
 class FullScreenWindow;
 class NavPane;
+class PreferencesDialog;
 class ReadModeBar;
 class StatusBar;
 class ToolPanel;
@@ -86,14 +89,13 @@ public:
     SessionState sessionState() const;
     void restoreSession(const SessionState& state);
     static bool restoreSessionEnabled();
-    // «Восстанавливать последний вид при открытии» (Установки → Документы; вкл. по умолчанию, ключ переедет в
-    // settings_keys.h в 2.4b).
-    static constexpr char kRestoreViewKey[] = "documents/restoreLastView";
+    // «Восстанавливать последний вид при открытии» (Установки → Документы; вкл. по умолчанию).
+    static constexpr const char* kRestoreViewKey = settings::kRestoreLastView.name;
     static bool restoreLastViewEnabled();
     // Состояние панелей между запусками (2.4): F8 — все скрыты, Shift+F4 — левая свёрнута (F4 —
     // navpane/open).
-    static constexpr char kPanelsHiddenKey[] = "window/panelsHidden";
-    static constexpr char kToolPanelCollapsedKey[] = "tools/panelCollapsed";
+    static constexpr const char* kPanelsHiddenKey = settings::kPanelsHidden.name;
+    static constexpr const char* kToolPanelCollapsedKey = settings::kToolPanelCollapsed.name;
     // Контекст команд режима чтения: Esc — «выход» (view.exitMode).
     static constexpr char kReadModeContext[] = "readMode";
 
@@ -121,6 +123,17 @@ public:
     // странице.
     void enterFullScreen();
     FullScreenWindow* fullScreenWindow() const;
+
+    // Установки (Ctrl+K, ⚙; preferences/): диалог создаётся при первом вызове, open() — не блокирует цикл
+    // событий; category — id категории («general», «pageDisplay»…), пусто — прежняя. «ОК» → applyPreferences.
+    PreferencesDialog* showPreferences(const QString& category = {});
+    PreferencesDialog* preferencesDialog() const;
+    // Применить settings.ini к работающему окну: тема и «Крупные элементы», язык, однобуквенные ускорители,
+    // логические номера страниц (зовёт «ОК» Установок).
+    void applyPreferences();
+    // Палитра команд (Ctrl+Shift+P; command_palette.h) — команды реестра окна.
+    CommandPalette* showCommandPalette();
+    CommandPalette* commandPalette() const;
 
 signals:
     void readModeChanged(bool on);
@@ -185,6 +198,8 @@ private:
     bool menuBarShown_ = false;
     ReadModeBar* readBar_ = nullptr;
     QPointer<FullScreenWindow> fullScreen_;
+    QPointer<PreferencesDialog> preferences_;
+    QPointer<CommandPalette> palette_;
 
     struct Actions;
     std::unique_ptr<Actions> actions_;

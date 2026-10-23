@@ -5,7 +5,6 @@
 #include <QFile>
 #include <QLibraryInfo>
 #include <QLocale>
-#include <QSettings>
 #include <QTranslator>
 
 #include <memory>
@@ -13,6 +12,7 @@
 #include <spdlog/spdlog.h>
 
 #include "services/app_info.h"
+#include "services/settings.h"
 
 namespace ot::i18n {
 
@@ -49,8 +49,7 @@ QString fromSettings(const QString& iniPath) {
     if (!QFile::exists(path)) {
         return QStringLiteral("system");
     }
-    QSettings settings(path, QSettings::IniFormat);
-    return settings.value(QLatin1String(kLanguageKey), QStringLiteral("system")).toString();
+    return Settings(path).get(settings::kLanguage);
 }
 
 bool install(const QString& language) {

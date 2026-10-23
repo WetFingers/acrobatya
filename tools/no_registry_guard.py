@@ -8,6 +8,9 @@ RegDeleteTree*, RegDeleteValue*, SHSetValue*, SHDeleteKey*, SHDeleteValue*, SHRe
 SHRegWriteUSValue*, QSettings::NativeFormat, QSettings::Registry32Format/Registry64Format и любое «HKEY_».
 Ещё: QSettings без IniFormat в файле допустим, только если где-то в src вызван
 QSettings::setDefaultFormat(QSettings::IniFormat) (эталон 4.7) — иначе формат по умолчанию на Windows — реестр.
+И с ним: конструктор QSettings с аргументами без IniFormat — красный, кроме QSettings(QSettings::UserScope|SystemScope
+[, parent]): QSettings(организация[, программа]) Qt всегда открывает в NativeFormat (реестр), setDefaultFormat
+действует только на QSettings() и QSettings(scope) (2.4b; Settings — services/settings.h).
 Исключения — файлы из ALLOWED ниже (glob от корня репозитория); сейчас пусто, позже —
 src/services/shell_register.* (проверка ассоциации, HKCU\\Software\\Classes\\.pdf\\UserChoice).
 Код 0 — зелёный, 1 — красный (строки «файл:строка: что»). Каталога src нет — зелёный.
@@ -37,6 +40,40 @@ FORBIDDEN_RE = re.compile(
 DEFAULT_INI_RE = re.compile(r"setDefaultFormat\s*\(\s*QSettings\s*::\s*IniFormat\s*\)")
 QSETTINGS_RE = re.compile(r"\bQSettings\b")
 INCLUDE_LINE_RE = re.compile(r"^[ \t]*#[ \t]*include\b.*$", re.MULTILINE)
+# QSettings имя(…), QSettings(…), QSettings{…}: не QSettings::, не QSettings& / QSettings* (объявления).
+CTOR_RE = re.compile(r"\bQSettings\b(?!\s*::)(?!\s*[&*])\s*(?:[A-Za-z_]\w*\s*)?([({])")
+SCOPE_ONLY_RE = re.compile(r"^\s*QSettings\s*::\s*(?:UserScope|SystemScope)\s*(?:,\s*[A-Za-z_][\w.>-]*\s*)?$")
+
+
+def ctor_args(code: str, open_pos: int) -> str | None:
+    """Текст аргументов от скобки open_pos до парной; None — скобка не закрыта."""
+    pairs = {"(": ")", "{": "}"}
+    stack = [pairs[code[open_pos]]]
+    i = open_pos + 1
+    while i < len(code):
+        ch = code[i]
+        if ch in pairs:
+            stack.append(pairs[ch])
+        elif stack and ch == stack[-1]:
+            stack.pop()
+            if not stack:
+                return code[open_pos + 1 : i]
+        i += 1
+    return None
+
+
+def native_ctor_errors(rel: str, code: str, lines: "LineIndex") -> list[str]:
+    errors = []
+    for m in CTOR_RE.finditer(code):
+        args = ctor_args(code, m.start(1))
+        if args is None or not args.strip() or "IniFormat" in args or SCOPE_ONLY_RE.match(args):
+            continue
+        # Объявление функции, которая возвращает QSettings (QSettings имя() const): аргументов нет — выше.
+        errors.append(
+            f"{rel}:{lines.line(m.start())}: QSettings({args.strip()[:60]}) без IniFormat — Qt откроет "
+            "NativeFormat (реестр); писать через Settings (services/settings.h) или QSettings(путь, IniFormat)"
+        )
+    return errors
 
 # ---- лексер C++: комментарии, строки, символы (копия из i18n_guard.py — правьте все четыре) ----
 _IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -175,6 +212,7 @@ def main(argv: list[str]) -> int:
         for m in FORBIDDEN_RE.finditer(code):
             token = re.sub(r"\s+", "", m.group(1))
             errors.append(f"{rel}:{lines.line(m.start())}: реестр запрещён вне списка исключений: {token}")
+        errors.extend(native_ctor_errors(rel, mask(text, spans, {"comment"}), lines))
         bare = INCLUDE_LINE_RE.sub(lambda m: " " * len(m.group(0)), mask(text, spans, {"comment", "string", "char"}))
         if DEFAULT_INI_RE.search(bare):
             default_ini = True

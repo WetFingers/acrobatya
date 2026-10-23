@@ -9,6 +9,8 @@
 #include <QList>
 #include <QString>
 
+#include "services/settings_keys.h"
+
 namespace ot {
 
 class StateDb;
@@ -27,8 +29,8 @@ struct SessionState {
 
 namespace session {
 
-// Ключ settings.ini «Открывать документы прошлого сеанса» (сессия 2.4b переносит его в settings_keys.h).
-inline constexpr char kRestoreKey[] = "general/restoreSession";
+// Ключ settings.ini «Открывать документы прошлого сеанса» (settings_keys.h).
+inline constexpr const char* kRestoreKey = settings::kRestoreSession.name;
 
 bool save(StateDb& db, const SessionState& state);
 SessionState load(StateDb& db);

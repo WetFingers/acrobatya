@@ -16,7 +16,6 @@
 #include <QMessageBox>
 #include <QMimeData>
 #include <QPushButton>
-#include <QSettings>
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QStandardPaths>
@@ -32,11 +31,14 @@
 #include "services/commands.h"
 #include "services/convert_ops.h"
 #include "services/document_registry.h"
+#include "services/i18n.h"
 #include "services/recent.h"
 #include "services/render_pool.h"
+#include "services/settings.h"
 #include "services/shell_launcher.h"
 #include "services/thumbnails.h"
 #include "services/tile_cache.h"
+#include "ui/shell/command_palette.h"
 #include "ui/shell/document_tabs.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/full_screen.h"
@@ -44,6 +46,7 @@
 #include "ui/shell/home/home_page.h"
 #include "ui/shell/message_bar.h"
 #include "ui/shell/nav_pane.h"
+#include "ui/shell/preferences/preferences_dialog.h"
 #include "ui/shell/quick_bar.h"
 #include "ui/shell/read_mode.h"
 #include "ui/shell/status_bar.h"
@@ -159,7 +162,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(globalBar_, &GlobalBar::allToolsClicked, this, &MainWindow::showAllTools);
     connect(toolPanel_, &ToolPanel::toolRequested, this,
             [this](const QString& id) { ToolRegistry::instance().activate(id, currentDocument()); });
-    connect(globalBar_, &GlobalBar::settingsClicked, this, [this] { notifyLater(tr("Установки"), 2); });
+    connect(globalBar_, &GlobalBar::settingsClicked, this, [this] { showPreferences(); });
     connect(globalBar_, &GlobalBar::searchRequested, this, [this] { notifyLater(tr("Поиск"), 2); });
 
     // Полоса режима чтения — над документом (не страница стека центра).
@@ -174,14 +177,12 @@ MainWindow::MainWindow(QWidget* parent)
     menuBar()->hide();
     // Панели — как при прошлом выходе (Shift+F4, F8).
     {
-        const QSettings ini(app::settingsPath(), QSettings::IniFormat);
-        toolPanel_->setCollapsed(ini.value(QLatin1String(kToolPanelCollapsedKey), false).toBool());
-        panelsHidden_ = ini.value(QLatin1String(kPanelsHiddenKey), false).toBool();
+        const Settings ini;
+        toolPanel_->setCollapsed(ini.get(settings::kToolPanelCollapsed));
+        panelsHidden_ = ini.get(settings::kPanelsHidden);
     }
-    connect(toolPanel_, &ToolPanel::collapsedChanged, this, [](bool collapsed) {
-        QSettings(app::settingsPath(), QSettings::IniFormat)
-            .setValue(QLatin1String(kToolPanelCollapsedKey), collapsed);
-    });
+    connect(toolPanel_, &ToolPanel::collapsedChanged, this,
+            [](bool collapsed) { Settings().set(settings::kToolPanelCollapsed, collapsed); });
     showHome();
 }
 
@@ -418,15 +419,9 @@ void MainWindow::restoreSession(const SessionState& state) {
     }
 }
 
-bool MainWindow::restoreLastViewEnabled() {
-    QSettings settings(app::settingsPath(), QSettings::IniFormat);
-    return settings.value(QLatin1String(kRestoreViewKey), true).toBool();
-}
+bool MainWindow::restoreLastViewEnabled() { return Settings().get(settings::kRestoreLastView); }
 
-bool MainWindow::restoreSessionEnabled() {
-    QSettings settings(app::settingsPath(), QSettings::IniFormat);
-    return settings.value(QLatin1String(session::kRestoreKey), false).toBool();
-}
+bool MainWindow::restoreSessionEnabled() { return Settings().get(settings::kRestoreSession); }
 
 void MainWindow::handleRequest(const SingleInstance::Request& request) {
     if (isMinimized()) {
@@ -504,6 +499,53 @@ void MainWindow::applyInitialView(DocumentView* view, const OpenSummary& summary
 }
 
 FullScreenWindow* MainWindow::fullScreenWindow() const { return fullScreen_.data(); }
+
+PreferencesDialog* MainWindow::showPreferences(const QString& category) {
+    if (preferences_ == nullptr) {
+        preferences_ = new PreferencesDialog(this);
+        connect(preferences_, &PreferencesDialog::applied, this, &MainWindow::applyPreferences);
+    }
+    if (!category.isEmpty()) {
+        preferences_->showCategory(category);
+    }
+    preferences_->open();  // окно-модальный, без своего цикла событий
+    preferences_->raise();
+    return preferences_;
+}
+
+PreferencesDialog* MainWindow::preferencesDialog() const { return preferences_.data(); }
+
+void MainWindow::applyPreferences() {
+    const Settings s;
+    if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance())) {
+        const ThemeChoice choice = parseThemeChoice(s.get(settings::kTheme)).value_or(ThemeChoice::System);
+        const double scale = s.get(settings::kLargeElements) ? kLargeElementsScale : 1.0;
+        if (choice != Theme::instance().choice() || !qFuzzyCompare(scale, Theme::instance().scale())) {
+            Theme::apply(*app, choice, scale);
+        }
+    }
+    const QString language = i18n::resolve(s.get(settings::kLanguage));
+    if (language != i18n::current()) {
+        i18n::install(language);  // окна получат LanguageChange
+    }
+    setSingleKeyAccelerators(s.get(settings::kSingleKeyAccelerators));
+    status_->reloadSettings();
+    updateActions();
+}
+
+CommandPalette* MainWindow::showCommandPalette() {
+    if (palette_ == nullptr) {
+        palette_ = new CommandPalette(*commands_, this);
+        connect(palette_, &CommandPalette::commandTriggered, this, &MainWindow::updateActions);
+    }
+    palette_->reset();
+    palette_->open();
+    palette_->raise();
+    palette_->activateWindow();
+    return palette_;
+}
+
+CommandPalette* MainWindow::commandPalette() const { return palette_.data(); }
 
 void MainWindow::enterFullScreen() {
     DocumentView* view = currentDocument();

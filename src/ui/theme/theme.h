@@ -23,6 +23,9 @@ namespace ot::ui {
 
 enum class ThemeChoice { System, Light, Dark, HighContrast };
 
+// «Крупные элементы управления» (ocr-42; Установки → Общие, --scale 1.25): множитель Tokens::scaled.
+inline constexpr double kLargeElementsScale = 1.25;
+
 QString themeChoiceName(ThemeChoice choice);  // system | light | dark | contrast — для --theme и настроек
 std::optional<ThemeChoice> parseThemeChoice(const QString& name);
 

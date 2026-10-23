@@ -66,6 +66,8 @@ std::vector<Scene> paneScenes();
 std::vector<Scene> statusScenes();
 // mode_scenes.cpp — read-mode, full-screen (2.4).
 std::vector<Scene> modeScenes();
+// prefs_scenes.cpp — preferences-general, preferences-page-display, palette (2.4b).
+std::vector<Scene> prefsScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.
 bool waitSceneReady(const Scene& scene, QWidget* window, int timeoutMs = 30000);

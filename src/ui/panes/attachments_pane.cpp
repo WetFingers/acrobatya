@@ -11,7 +11,6 @@
 #include <QLocale>
 #include <QMessageBox>
 #include <QPushButton>
-#include <QSettings>
 #include <QStackedWidget>
 #include <QStandardPaths>
 #include <QTemporaryDir>
@@ -21,8 +20,8 @@
 #include <exception>
 #include <memory>
 
-#include "services/app_info.h"
 #include "services/nav_ops.h"
+#include "services/settings.h"
 #include "services/shell_launcher.h"
 #include "ui/shell/document_view.h"
 #include "ui/theme/icons.h"
@@ -127,11 +126,7 @@ QString AttachmentsPane::tempFolder() {
     return dir->isValid() ? dir->path() : QDir::tempPath();
 }
 
-bool AttachmentsPane::allowOpenNonPdf() {
-    return QSettings(app::settingsPath(), QSettings::IniFormat)
-        .value(QLatin1String(kAllowOpenKey), true)
-        .toBool();
-}
+bool AttachmentsPane::allowOpenNonPdf() { return Settings().get(settings::kAllowOpenAttachments); }
 
 bool AttachmentsPane::canOpen(const attachments::Attachment& a) {
     if (!a.embedded || attachments::isBlocked(a.fileName)) {

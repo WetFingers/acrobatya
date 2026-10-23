@@ -33,3 +33,6 @@ status-bar
 message-bar-stack
 read-mode
 full-screen
+
+# 2.4b — Установки
+preferences-general

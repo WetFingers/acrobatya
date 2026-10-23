@@ -3,14 +3,13 @@
 #include <QContextMenuEvent>
 #include <QEvent>
 #include <QMenu>
-#include <QSettings>
 #include <QStackedWidget>
 #include <QVBoxLayout>
 
 #include <algorithm>
 #include <utility>
 
-#include "services/app_info.h"
+#include "services/settings.h"
 #include "ui/panes/attachments_pane.h"
 #include "ui/panes/bookmarks_pane.h"
 #include "ui/panes/destinations_pane.h"
@@ -67,8 +66,6 @@ private:
     int stage_;
     EmptyState* empty_ = nullptr;
 };
-
-QSettings navSettings() { return QSettings(app::settingsPath(), QSettings::IniFormat); }
 
 }  // namespace
 
@@ -152,15 +149,14 @@ NavPane::NavPane(QWidget* parent) : QWidget(parent) {
         new StubNavPage(QStringLiteral("fields"), 6, paneIcon(QStringLiteral("fields")), panel_->pages()));
     addPage(new DestinationsPane(panel_->pages()));
 
-    QSettings s = navSettings();
-    open_ = s.value(QLatin1String(kOpenKey), false).toBool();
-    const QString saved = s.value(QLatin1String(kCurrentKey), current_).toString();
+    const Settings s;
+    open_ = s.get(settings::kNavPaneOpen);
+    const QString saved = s.get(settings::kNavPaneCurrent);
     if (pages_.contains(saved) && saved != QLatin1String("fields")) {
         current_ = saved;
     }
     buttons_.value(QStringLiteral("fields"))->setVisible(false);
-    buttons_.value(QStringLiteral("destinations"))
-        ->setVisible(s.value(QLatin1String(kDestinationsKey), false).toBool());
+    buttons_.value(QStringLiteral("destinations"))->setVisible(s.get(settings::kNavPaneDestinations));
 
     retranslate();
     applyMetrics();
@@ -268,7 +264,7 @@ void NavPane::setFieldsVisible(bool visible) {
 
 void NavPane::setDestinationsButton(bool on) {
     buttons_.value(QStringLiteral("destinations"))->setVisible(on);
-    navSettings().setValue(QLatin1String(kDestinationsKey), on);
+    Settings().set(settings::kNavPaneDestinations, on);
     if (!on && current_ == QLatin1String("destinations") && open_) {
         closePanel();
     }
@@ -280,13 +276,14 @@ bool NavPane::hasDestinationsButton() const {
 
 int NavPane::panelWidth() const {
     const Metrics& m = Theme::sizes();
-    const int w = navSettings().value(QLatin1String(kWidthKey), m.rightPanel).toInt();
+    const Settings s;
+    const int w = s.contains(settings::kNavPaneWidth.name) ? s.get(settings::kNavPaneWidth) : m.rightPanel;
     return std::clamp(w, m.rightPanelMin, m.rightPanelMax);
 }
 
 void NavPane::setPanelWidth(int width) {
     const Metrics& m = Theme::sizes();
-    navSettings().setValue(QLatin1String(kWidthKey), std::clamp(width, m.rightPanelMin, m.rightPanelMax));
+    Settings().set(settings::kNavPaneWidth, std::clamp(width, m.rightPanelMin, m.rightPanelMax));
 }
 
 void NavPane::applyState() {
@@ -307,9 +304,9 @@ void NavPane::applyState() {
 }
 
 void NavPane::saveState() const {
-    QSettings s = navSettings();
-    s.setValue(QLatin1String(kOpenKey), open_);
-    s.setValue(QLatin1String(kCurrentKey), current_);
+    Settings s;
+    s.set(settings::kNavPaneOpen, open_);
+    s.set(settings::kNavPaneCurrent, current_);
 }
 
 QMenu* NavPane::railMenu() {

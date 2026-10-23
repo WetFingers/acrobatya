@@ -1,10 +1,8 @@
 #include "ui/tools/tool_registry.h"
 
-#include <QSettings>
-
 #include <algorithm>
 
-#include "services/app_info.h"
+#include "services/settings.h"
 #include "ui/shell/document_view.h"
 
 namespace ot::ui {
@@ -145,10 +143,7 @@ void ToolRegistry::setView(DocumentView* view) {
 
 DocumentView* ToolRegistry::view() const { return view_; }
 
-QStringList ToolRegistry::pinned() const {
-    const QSettings settings(app::settingsPath(), QSettings::IniFormat);
-    return settings.value(QLatin1String(kPinnedKey)).toStringList();
-}
+QStringList ToolRegistry::pinned() const { return Settings().get(settings::kPinnedTools); }
 
 bool ToolRegistry::isPinned(const QString& id) const { return pinned().contains(id); }
 
@@ -162,8 +157,7 @@ void ToolRegistry::setPinned(const QString& id, bool on) {
     } else {
         pins.removeAll(id);
     }
-    QSettings settings(app::settingsPath(), QSettings::IniFormat);
-    settings.setValue(QLatin1String(kPinnedKey), pins);
+    Settings().set(settings::kPinnedTools, pins);
     emit pinnedChanged();
 }
 

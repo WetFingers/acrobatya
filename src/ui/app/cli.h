@@ -32,9 +32,10 @@ struct CliOptions {
     bool commandsList = false;
     QString shotsOut;  // каталог для PNG
     QSize shotsSize{1440, 900};
-    QString theme;       // пусто — по умолчанию (окно — system, снимки — light)
-    double scale = 1.0;  // 1 или 1,25
-    QString lang;        // пусто — из настройки
+    QString theme;            // пусто — по умолчанию (окно — system, снимки — light)
+    double scale = 1.0;       // 1 или 1,25
+    bool scaleGiven = false;  // --scale задан (иначе — настройка «Крупные элементы»)
+    QString lang;             // пусто — из настройки
     bool showcase = false;
     int smokeSeconds = 0;
     int page = 0;      // --page N (с 1); 0 — не задана

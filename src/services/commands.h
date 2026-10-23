@@ -25,6 +25,8 @@
 #include <functional>
 #include <vector>
 
+#include "services/settings_keys.h"
+
 namespace ot {
 
 struct Command {
@@ -46,8 +48,8 @@ struct Command {
 class CommandRegistry : public QObject {
     Q_OBJECT
 public:
-    static constexpr char kSingleKeyKey[] = "hotkeys/singleKeyAccelerators";
-    static constexpr char kOverrideGroup[] = "hotkeys";
+    static constexpr const char* kSingleKeyKey = settings::kSingleKeyAccelerators.name;
+    static constexpr const char* kOverrideGroup = settings::kHotkeysGroup;
     static constexpr char kViewContext[] = "view";
 
     struct Conflict {

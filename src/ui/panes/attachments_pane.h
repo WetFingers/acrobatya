@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "core/links/attachments.h"
+#include "services/settings_keys.h"
 #include "ui/panes/nav_page.h"
 
 class QPushButton;
@@ -30,8 +31,8 @@ class EmptyState;
 class AttachmentsPane : public NavPage {
     Q_OBJECT
 public:
-    // Ключ settings.ini (Установки → Диспетчер доверия; в settings_keys.h — 2.4b): вкл. по умолчанию.
-    static constexpr char kAllowOpenKey[] = "trust/allowOpenAttachments";
+    // Ключ settings.ini (Установки → Диспетчер доверия; settings_keys.h): вкл. по умолчанию.
+    static constexpr const char* kAllowOpenKey = settings::kAllowOpenAttachments.name;
 
     using Confirm = std::function<bool(const QString& fileName)>;
     using SaveChooser = std::function<QString(const QString& suggestedPath)>;

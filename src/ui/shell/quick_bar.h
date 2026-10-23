@@ -9,6 +9,7 @@
 
 #include <vector>
 
+#include "services/settings_keys.h"
 #include "ui/view/tools/view_tool.h"
 #include "ui/widgets/floating_bar.h"
 
@@ -19,7 +20,7 @@ class PageView;
 class QuickBar : public FloatingBar {
     Q_OBJECT
 public:
-    static constexpr char kOrderKey[] = "quickbar/order";
+    static constexpr const char* kOrderKey = settings::kQuickBarOrder.name;
 
     struct Item {
         const char* id;

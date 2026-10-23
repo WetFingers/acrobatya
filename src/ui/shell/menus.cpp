@@ -10,14 +10,13 @@
 #include <QKeySequence>
 #include <QMenu>
 #include <QMenuBar>
-#include <QSettings>
 #include <QStackedWidget>
 
 #include <tuple>
 
-#include "services/app_info.h"
 #include "services/commands.h"
 #include "services/document_session.h"
+#include "services/settings.h"
 #include "ui/shell/document_tabs.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/global_bar.h"
@@ -178,9 +177,9 @@ void MainWindow::registerCommands() {
            .title = tr("&Установки…"),
            .shortcuts = {key(Qt::CTRL | Qt::Key_K)},
            .icon = QStringLiteral("settings"),
+           .run = [this] { showPreferences(); },
            .menu = QStringLiteral("edit"),
-           .separatorBefore = true,
-           .stage = 2});
+           .separatorBefore = true});
 
     // Вид
     r.add({.id = QStringLiteral("view.home"),
@@ -388,9 +387,9 @@ void MainWindow::registerCommands() {
     r.add({.id = QStringLiteral("app.palette"),
            .title = tr("Палитра &команд…"),
            .shortcuts = {key(Qt::CTRL | Qt::SHIFT | Qt::Key_P)},
+           .run = [this] { showCommandPalette(); },
            .menu = QStringLiteral("view"),
-           .separatorBefore = true,
-           .stage = 2});
+           .separatorBefore = true});
 
     // Инструменты просмотра (однобуквенные клавиши — настройка, эталон 6.8).
     const std::tuple<const char*, QString, QKeySequence, ViewToolId, const char*> viewTools[] = {
@@ -682,8 +681,7 @@ void MainWindow::updateActions() {
 }
 
 void MainWindow::setSingleKeyAccelerators(bool on) {
-    QSettings(app::settingsPath(), QSettings::IniFormat)
-        .setValue(QLatin1String(CommandRegistry::kSingleKeyKey), on);
+    Settings().set(settings::kSingleKeyAccelerators, on);
     commands_->setSingleKeysEnabled(on);
     for (int i = 0; i < documentCount(); ++i) {
         if (auto* quick = qobject_cast<QuickBar*>(document(i)->floatingBar())) {
@@ -698,7 +696,7 @@ bool MainWindow::singleKeyAccelerators() const { return commands_->singleKeysEna
 // состояние — в settings.ini.
 void MainWindow::setPanelsHidden(bool hidden) {
     panelsHidden_ = hidden;
-    QSettings(app::settingsPath(), QSettings::IniFormat).setValue(QLatin1String(kPanelsHiddenKey), hidden);
+    Settings().set(settings::kPanelsHidden, hidden);
     applyPanels();
     updateActions();
 }

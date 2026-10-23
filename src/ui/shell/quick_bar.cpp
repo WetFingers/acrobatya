@@ -2,9 +2,8 @@
 
 #include <QCoreApplication>
 #include <QEvent>
-#include <QSettings>
 
-#include "services/app_info.h"
+#include "services/settings.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
 #include "ui/widgets/tool_button.h"
@@ -46,8 +45,7 @@ QuickBar::QuickBar(QWidget* parent) : FloatingBar(parent) {
         ToolButton* b = addButton(QLatin1String(item.id), QLatin1String(item.icon), QString());
         b->setEnabled(item.stage == 0);
     }
-    const QSettings settings(app::settingsPath(), QSettings::IniFormat);
-    QStringList order = settings.value(QLatin1String(kOrderKey)).toStringList();
+    const QStringList order = Settings().get(settings::kQuickBarOrder);
     setOrder(order.isEmpty() ? defaultOrder() : order);
     connect(this, &FloatingBar::triggered, this, &QuickBar::trigger);
     retranslate();

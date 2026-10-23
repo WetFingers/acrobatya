@@ -6,7 +6,7 @@
 
 #include <algorithm>
 
-#include "services/app_info.h"
+#include "services/settings.h"
 
 namespace ot {
 
@@ -130,8 +130,9 @@ void CommandRegistry::setSingleKeysEnabled(bool on) {
 }
 
 void CommandRegistry::loadSettings() {
-    QSettings ini(app::settingsPath(), QSettings::IniFormat);
-    singleKeys_ = ini.value(QLatin1String(kSingleKeyKey), false).toBool();
+    Settings settings;
+    singleKeys_ = settings.get(settings::kSingleKeyAccelerators);
+    QSettings& ini = settings.raw();
     overrides_.clear();
     ini.beginGroup(QLatin1String(kOverrideGroup));
     for (const QString& key : ini.childKeys()) {

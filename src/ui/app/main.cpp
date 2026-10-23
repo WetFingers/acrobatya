@@ -20,6 +20,7 @@
 #include "services/commands.h"
 #include "services/i18n.h"
 #include "services/session_store.h"
+#include "services/settings.h"
 #include "services/single_instance.h"
 #include "ui/app/cli.h"
 #include "ui/shell/main_window.h"
@@ -109,6 +110,8 @@ int main(int argc, char** argv) {
     if (!opts.dataDir.isEmpty()) {  // до первого обращения к каталогу данных (настройки, state.sqlite)
         qputenv("OTTISK_DATA_DIR", QFileInfo(opts.dataDir).absoluteFilePath().toUtf8());
     }
+    // Настройки — только INI в каталоге данных (эталон 4.7): и QSettings() без формата, и диалоги Qt.
+    ot::Settings::installDefaultFormat();
     if (!opts.logLevel.isEmpty()) {
         spdlog::set_level(spdlog::level::from_str(opts.logLevel.toStdString()));
     }
@@ -144,8 +147,16 @@ int main(int argc, char** argv) {
         return runShots(opts.shots, shot);
     }
 
-    // Тема до создания окна: Fusion, палитра и шрифт из токенов (эталон 6.4); по умолчанию — «Системная».
-    Theme::apply(app, parseThemeChoice(opts.theme).value_or(ThemeChoice::System), opts.scale);
+    // Тема до создания окна: Fusion, палитра и шрифт из токенов (эталон 6.4): --theme/--scale, иначе
+    // Установки → Общие (view-25, ocr-42), по умолчанию — «Системная».
+    const ot::Settings settings;
+    const ThemeChoice theme =
+        parseThemeChoice(opts.theme)
+            .value_or(parseThemeChoice(settings.get(ot::settings::kTheme)).value_or(ThemeChoice::System));
+    const double scale = opts.scaleGiven
+                             ? opts.scale
+                             : (settings.get(ot::settings::kLargeElements) ? kLargeElementsScale : 1.0);
+    Theme::apply(app, theme, scale);
     if (opts.showcase) {
         std::unique_ptr<QWidget> showcase(createShowcaseWindow());
         showcase->show();
@@ -154,6 +165,7 @@ int main(int argc, char** argv) {
         }
         return app.exec();
     }
+    ot::Settings().migrate();  // meta/version (2.4b)
     // Второй экземпляр: файлы — первому (он поднимет окно), этот выходит.
     AllowSetForegroundWindow(ASFW_ANY);
     if (ot::SingleInstance::sendToRunning({opts.files, opts.page})) {

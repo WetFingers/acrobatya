@@ -7,13 +7,12 @@
 #include <QLineEdit>
 #include <QProgressBar>
 #include <QScrollBar>
-#include <QSettings>
 #include <QTimer>
 
 #include "core/pages/labels.h"
-#include "services/app_info.h"
 #include "services/background_tasks.h"
 #include "services/document_session.h"
+#include "services/settings.h"
 #include "ui/shell/document_view.h"
 #include "ui/theme/theme.h"
 #include "ui/view/page_view.h"
@@ -178,11 +177,7 @@ StatusBar::StatusBar(QWidget* parent) : QWidget(parent) {
     refreshTasks();
 }
 
-bool StatusBar::useLogicalNumbers() {
-    return QSettings(app::settingsPath(), QSettings::IniFormat)
-        .value(QLatin1String(kLogicalKey), true)
-        .toBool();
-}
+bool StatusBar::useLogicalNumbers() { return Settings().get(settings::kUseLogicalPageNumbers); }
 
 void StatusBar::setDocument(DocumentView* view) {
     if (view_ != nullptr) {

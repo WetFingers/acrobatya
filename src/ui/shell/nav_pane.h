@@ -12,6 +12,8 @@
 #include <QStringList>
 #include <QWidget>
 
+#include "services/settings_keys.h"
+
 class QMenu;
 class QStackedWidget;
 class QVBoxLayout;
@@ -47,10 +49,10 @@ private:
 class NavPane : public QWidget {
     Q_OBJECT
 public:
-    static constexpr char kOpenKey[] = "navpane/open";
-    static constexpr char kCurrentKey[] = "navpane/current";
-    static constexpr char kWidthKey[] = "navpane/width";
-    static constexpr char kDestinationsKey[] = "navpane/destinations";
+    static constexpr const char* kOpenKey = settings::kNavPaneOpen.name;
+    static constexpr const char* kCurrentKey = settings::kNavPaneCurrent.name;
+    static constexpr const char* kWidthKey = settings::kNavPaneWidth.name;
+    static constexpr const char* kDestinationsKey = settings::kNavPaneDestinations.name;
 
     explicit NavPane(QWidget* parent = nullptr);
     ~NavPane() override;

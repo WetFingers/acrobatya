@@ -14,6 +14,7 @@
 #include <memory>
 #include <vector>
 
+#include "services/settings_keys.h"
 #include "ui/tools/tool.h"
 
 namespace ot::ui {
@@ -21,7 +22,7 @@ namespace ot::ui {
 class ToolRegistry : public QObject {
     Q_OBJECT
 public:
-    static constexpr char kPinnedKey[] = "tools/pinned";
+    static constexpr const char* kPinnedKey = settings::kPinnedTools.name;
 
     static ToolRegistry& instance();
     // 16 id эталона 6.2 по порядку.

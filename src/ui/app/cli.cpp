@@ -60,6 +60,7 @@ CliOptions parseCli(const QStringList& arguments) {
             if (!next(v)) break;
             bool ok = false;
             o.scale = v.toDouble(&ok);
+            o.scaleGiven = true;
             if (!ok || o.scale < 1.0 || o.scale > 2.0) {
                 o.error = QStringLiteral("bad --scale ") + v;
             }

@@ -6,7 +6,6 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QScreen>
-#include <QSettings>
 #include <QVBoxLayout>
 #include <QVariantAnimation>
 #include <QWheelEvent>
@@ -14,9 +13,9 @@
 #include <algorithm>
 #include <cmath>
 
-#include "services/app_info.h"
 #include "services/document_session.h"
 #include "services/nav_ops.h"
+#include "services/settings.h"
 #include "ui/view/page_view.h"
 
 namespace ot::ui {
@@ -29,8 +28,6 @@ namespace {
 constexpr int kMinTransitionMs = 100;
 constexpr int kMaxTransitionMs = 5000;
 constexpr int kBlinds = 6;
-
-QSettings fullScreenSettings() { return QSettings(app::settingsPath(), QSettings::IniFormat); }
 
 TransitionType fullScreenTypeFromName(const QString& name) {
     for (int t = 0; t <= static_cast<int>(TransitionType::Fade); ++t) {
@@ -48,30 +45,30 @@ TransitionType fullScreenTypeFromName(const QString& name) {
 // ---------------------------------------------------------------- настройки
 
 FullScreenSettings FullScreenSettings::load() {
-    const QSettings s = fullScreenSettings();
+    const Settings s;
     FullScreenSettings f;
-    f.advanceSeconds = std::max(0, s.value(QStringLiteral("fullScreen/advanceSeconds"), 0).toInt());
-    f.useDocDuration = s.value(QStringLiteral("fullScreen/useDocDuration"), true).toBool();
-    f.loop = s.value(QStringLiteral("fullScreen/loop"), false).toBool();
-    f.escapeExits = s.value(QStringLiteral("fullScreen/escapeExits"), true).toBool();
-    f.clickAdvances = s.value(QStringLiteral("fullScreen/clickAdvances"), true).toBool();
-    f.transitions = s.value(QStringLiteral("fullScreen/transitions"), true).toBool();
-    f.defaultTransition = s.value(QStringLiteral("fullScreen/defaultTransition"), QString()).toString();
-    const QColor bg(s.value(QStringLiteral("fullScreen/background"), QStringLiteral("#000000")).toString());
+    f.advanceSeconds = s.get(settings::kFullScreenAdvanceSeconds);
+    f.useDocDuration = s.get(settings::kFullScreenUseDocDuration);
+    f.loop = s.get(settings::kFullScreenLoop);
+    f.escapeExits = s.get(settings::kFullScreenEscapeExits);
+    f.clickAdvances = s.get(settings::kFullScreenClickAdvances);
+    f.transitions = s.get(settings::kFullScreenTransitions);
+    f.defaultTransition = s.get(settings::kFullScreenDefaultTransition);
+    const QColor bg(s.get(settings::kFullScreenBackground));
     f.background = bg.isValid() ? bg : QColor(Qt::black);
     return f;
 }
 
 void FullScreenSettings::save() const {
-    QSettings s = fullScreenSettings();
-    s.setValue(QStringLiteral("fullScreen/advanceSeconds"), advanceSeconds);
-    s.setValue(QStringLiteral("fullScreen/useDocDuration"), useDocDuration);
-    s.setValue(QStringLiteral("fullScreen/loop"), loop);
-    s.setValue(QStringLiteral("fullScreen/escapeExits"), escapeExits);
-    s.setValue(QStringLiteral("fullScreen/clickAdvances"), clickAdvances);
-    s.setValue(QStringLiteral("fullScreen/transitions"), transitions);
-    s.setValue(QStringLiteral("fullScreen/defaultTransition"), defaultTransition);
-    s.setValue(QStringLiteral("fullScreen/background"), background.name());
+    Settings s;
+    s.set(settings::kFullScreenAdvanceSeconds, advanceSeconds);
+    s.set(settings::kFullScreenUseDocDuration, useDocDuration);
+    s.set(settings::kFullScreenLoop, loop);
+    s.set(settings::kFullScreenEscapeExits, escapeExits);
+    s.set(settings::kFullScreenClickAdvances, clickAdvances);
+    s.set(settings::kFullScreenTransitions, transitions);
+    s.set(settings::kFullScreenDefaultTransition, defaultTransition);
+    s.set(settings::kFullScreenBackground, background.name());
 }
 
 // ---------------------------------------------------------------- переход поверх вида

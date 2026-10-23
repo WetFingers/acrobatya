@@ -8,10 +8,12 @@
 #include <QString>
 #include <QStringList>
 
+#include "services/settings_keys.h"
+
 namespace ot::i18n {
 
-// Ключ настройки в settings.ini: system | ru | en (сессия 2.4b переносит его в settings_keys.h).
-inline constexpr char kLanguageKey[] = "language/ui";
+// Ключ настройки в settings.ini: system | ru | en (settings_keys.h).
+inline constexpr const char* kLanguageKey = settings::kLanguage.name;
 
 QStringList available();                            // "ru", "en"
 QString resolve(const QString& requested);          // ru | en | system | пусто → ru | en

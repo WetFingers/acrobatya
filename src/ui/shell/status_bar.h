@@ -15,6 +15,8 @@
 #include <string>
 #include <vector>
 
+#include "services/settings_keys.h"
+
 class QHBoxLayout;
 class QLabel;
 class QLineEdit;
@@ -33,7 +35,7 @@ class StatusBar : public QWidget {
 public:
     // «Использовать логические номера страниц» (Установки → Просмотр страницы, 2.5b; вкл. по умолчанию, как в
     // Acrobat).
-    static constexpr char kLogicalKey[] = "pageDisplay/useLogicalPageNumbers";
+    static constexpr const char* kLogicalKey = settings::kUseLogicalPageNumbers.name;
 
     explicit StatusBar(QWidget* parent = nullptr);
 
@@ -61,6 +63,8 @@ public:
     // Перейти по вводу поля; false — такой страницы нет (поле вернуло текущую).
     bool goToInput(const QString& text);
     static bool useLogicalNumbers();
+    // Настройки сменились (Установки → «ОК»): логические номера и прочее — заново.
+    void reloadSettings() { refreshAll(); }
 
 signals:
     void pageInputRejected(const QString& text);
