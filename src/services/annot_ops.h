@@ -23,6 +23,12 @@ QFuture<std::vector<AnnotInfo>> list(DocumentSession& session, int page,
 QFuture<std::optional<AnnotInfo>> at(DocumentSession& session, int page, PointF point, float tolerance = 0,
                                      TaskPriority priority = TaskPriority::High);
 QFuture<void> setRect(DocumentSession& session, AnnotRef ref, RectF rect);
+// Несколько рамок одним шагом истории (выбранные аннотации тянут вместе — 2.2b).
+struct RectEdit {
+    AnnotRef ref;
+    RectF rect;
+};
+QFuture<void> setRects(DocumentSession& session, std::vector<RectEdit> edits);
 QFuture<void> remove(DocumentSession& session, std::vector<AnnotRef> refs);
 
 }  // namespace ot::annot

@@ -14,6 +14,8 @@ ToolController::ToolController(PageView& view) : QObject(&view), view_(view) {
     tools_[static_cast<std::size_t>(ViewToolId::Loupe)] = std::make_unique<LoupeTool>(view, *this);
     tools_[static_cast<std::size_t>(ViewToolId::PanZoom)] = std::make_unique<PanZoomTool>(view, *this);
     tools_[static_cast<std::size_t>(ViewToolId::Snapshot)] = std::make_unique<SnapshotTool>(view, *this);
+    tools_[static_cast<std::size_t>(ViewToolId::AnnotSelect)] =
+        std::make_unique<AnnotSelectTool>(view, *this);
 }
 
 ToolController::~ToolController() = default;
@@ -56,6 +58,9 @@ void ToolController::cycleZoomTools() {
 
 void ToolController::reset() {
     const bool cancelled = current().cancel();
+    if (current().escape(cancelled)) {
+        return;
+    }
     if (current_ != defaultTool()) {
         setTool(defaultTool());
         return;
@@ -85,11 +90,13 @@ void ToolController::documentChanged() {
     select().forgetPages();
     loupe().documentChanged();
     panZoom().refresh();
+    annotSelect().documentChanged();
 }
 
 void ToolController::pageChanged(int page) {
     select().forgetPage(page);
     loupe().pageChanged(page);
+    annotSelect().pageChanged(page);
     if (page == view_.currentPage()) {
         panZoom().refresh();
     }

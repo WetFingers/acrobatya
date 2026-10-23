@@ -3,10 +3,12 @@
 // (OverlayStack). «Закрепить» (comment-42): однократный инструмент (Снимок; инструменты комментариев 5.x)
 // после действия возвращает прежний, если не закреплён. Однобуквенные клавиши (H, V, Z, Shift+Z, X; эталон
 // 6.8) выключены по умолчанию — включает настройка. Пробел держит «Руку» временно, Esc бросает действие и
-// возвращает «Выделение».
+// возвращает «Выделение» (инструмент, который поглотил Esc — ViewTool::escape, — остаётся). «Выбор объектов»
+// (AnnotSelectTool, 2.2b) — общий выбор аннотаций для инструментов этапов 3–6.
 #pragma once
 
 #include <QImage>
+#include <QMenu>
 #include <QObject>
 
 #include <array>
@@ -32,6 +34,9 @@ public:
     SelectTool& select() const { return static_cast<SelectTool&>(toolFor(ViewToolId::Select)); }
     LoupeTool& loupe() const { return static_cast<LoupeTool&>(toolFor(ViewToolId::Loupe)); }
     PanZoomTool& panZoom() const { return static_cast<PanZoomTool&>(toolFor(ViewToolId::PanZoom)); }
+    AnnotSelectTool& annotSelect() const {
+        return static_cast<AnnotSelectTool&>(toolFor(ViewToolId::AnnotSelect));
+    }
     static constexpr ViewToolId defaultTool() noexcept { return ViewToolId::Select; }
 
     void setTool(ViewToolId id);
@@ -65,12 +70,19 @@ public:
     // Для инструментов.
     void emitSnapshot(const QImage& image) { emit snapshotTaken(image); }
     void emitSelectionChanged() { emit selectionChanged(); }
+    void emitAnnotSelectionChanged() { emit annotSelectionChanged(); }
+    void emitAnnotContextMenu(QMenu* menu) { emit annotContextMenu(menu); }
 
 signals:
     void toolChanged(ot::ui::ViewToolId id);
     void pinnedChanged(bool pinned);
     void snapshotTaken(const QImage& image);
     void selectionChanged();
+    // «Выбор объектов»: набор выбранных аннотаций сменился.
+    void annotSelectionChanged();
+    // Правая кнопка по выбранным аннотациям: подписчики (инструменты 5.1, 6.3) добавляют пункты в menu
+    // (прямым соединением, до показа); пустое меню не показывается.
+    void annotContextMenu(QMenu* menu);
 
 private:
     void switchTo(ViewToolId id, bool remember);

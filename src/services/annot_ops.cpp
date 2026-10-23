@@ -25,6 +25,19 @@ QFuture<void> setRect(DocumentSession& session, AnnotRef ref, RectF rect) {
     });
 }
 
+QFuture<void> setRects(DocumentSession& session, std::vector<RectEdit> edits) {
+    return session.edit(QString::fromLatin1(kSetRectStep), [edits = std::move(edits)](TaskContext& tc) {
+        std::vector<int> pages;
+        for (const RectEdit& e : edits) {
+            ot::annot::setRect(tc.document(), e.ref, e.rect);
+            if (std::find(pages.begin(), pages.end(), e.ref.page) == pages.end()) {
+                pages.push_back(e.ref.page);
+                tc.touchPage(e.ref.page);
+            }
+        }
+    });
+}
+
 QFuture<void> remove(DocumentSession& session, std::vector<AnnotRef> refs) {
     return session.edit(QString::fromLatin1(kDeleteStep), [refs = std::move(refs)](TaskContext& tc) {
         ot::annot::remove(tc.document(), refs);

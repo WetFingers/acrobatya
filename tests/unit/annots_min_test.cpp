@@ -387,3 +387,26 @@ TEST(annots_min, session_edits_are_undoable_steps) {
     EXPECT_THROW(bad.waitForFinished(), MuError);
     session.close();
 }
+
+// Выбранные аннотации тянут вместе (AnnotSelectTool 2.2b): несколько рамок — один шаг истории.
+TEST(annots_min, session_set_rects_is_one_step) {
+    ot::test::qtApp();
+    ot::DocumentSession session;
+    ASSERT_TRUE(session.open(QString::fromStdWString(fixture("annots-all.pdf").wstring())));
+    const std::vector<AnnotInfo> list = ot::annot::list(session, 0).result();
+    const AnnotInfo square = bySubtype(list, AnnotType::Square);
+    const AnnotInfo circle = bySubtype(list, AnnotType::Circle);
+    auto shifted = [](const RectF& r) { return RectF{r.x0 + 7, r.y0 - 3, r.x1 + 7, r.y1 - 3}; };
+    ot::annot::setRects(session, {{square.ref, shifted(square.rect)}, {circle.ref, shifted(circle.rect)}})
+        .waitForFinished();
+    EXPECT_EQ(session.undoState().undoName, QString::fromLatin1(ot::annot::kSetRectStep));
+    const auto moved = ot::annot::list(session, 0).result();
+    expectRectNear(bySubtype(moved, AnnotType::Square).rect, shifted(square.rect));
+    expectRectNear(bySubtype(moved, AnnotType::Circle).rect, shifted(circle.rect));
+    EXPECT_TRUE(session.undo().result());
+    EXPECT_FALSE(session.undoState().canUndo);
+    const auto restored = ot::annot::list(session, 0).result();
+    expectRectNear(bySubtype(restored, AnnotType::Square).rect, square.rect);
+    expectRectNear(bySubtype(restored, AnnotType::Circle).rect, circle.rect);
+    session.close();
+}

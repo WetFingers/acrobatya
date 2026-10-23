@@ -157,6 +157,7 @@ struct Metrics {
     int pageGap = 8;             // зазор между страницами и до края холста (эталон 3.1)
     int toolWindowWidth = 280;   // окно «Лупы» и «Панорамирования и масштаба» (эталон 3.1)
     int toolWindowHeight = 220;  //   и его высота
+    int handle = 8;              // ручка рамки выбранного объекта на странице (AnnotSelectTool)
     int pageBorder = 1;          // рамка страницы на холсте — волосяная: «Крупные элементы» её не меняют
     double fontPt = 9.0;         // Segoe UI 9 pt
     int motionMs = 120;          // движение
@@ -192,6 +193,7 @@ inline constexpr int Metrics::* kMetricSizes[] = {
     &Metrics::pageGap,
     &Metrics::toolWindowWidth,
     &Metrics::toolWindowHeight,
+    &Metrics::handle,
 };
 
 struct Tokens {

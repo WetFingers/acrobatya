@@ -991,7 +991,11 @@ bool PageView::event(QEvent* event) {
             key->matches(QKeySequence::SelectAll) ||
             (controller_->singleKeyShortcuts() && (mods == Qt::NoModifier || mods == Qt::ShiftModifier) &&
              (k == Qt::Key_H || k == Qt::Key_V || k == Qt::Key_Z || k == Qt::Key_X));
-        if (ctrlZoom || rotate || history || tool) {
+        // «Выбор объектов»: Del удаляет выбранные аннотации, а не уходит ярлыку окна.
+        const bool annotDelete = mods == Qt::NoModifier && k == Qt::Key_Delete &&
+                                 controller_->tool() == ViewToolId::AnnotSelect &&
+                                 !controller_->annotSelect().selection().empty();
+        if (ctrlZoom || rotate || history || tool || annotDelete) {
             event->accept();
             return true;
         }

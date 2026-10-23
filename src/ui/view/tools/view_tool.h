@@ -3,7 +3,9 @@
 // (ui/view/tool_controller.h). Рука (H; пробел — временно), Выделение (V: текст по строкам, Alt — столбцы,
 // двойной/тройной щелчок — слово/строка, Ctrl+A, I-курсор над текстом), Увеличение области (Z: рамка или
 // щелчок, Ctrl — уменьшить), цикл зума (Shift+Z), Лупа (панель 200–800 %), Панорамирование и масштаб (панель
-// с миниатюрой и рамкой), Снимок (X: область → PNG в буфер, Alt — 300 dpi; однократный).
+// с миниатюрой и рамкой), Снимок (X: область → PNG в буфер, Alt — 300 dpi; однократный). Выбор объектов
+// (план 2.2b; эталон 3.4 «Выделение и правка на странице»; общий для этапов 3–6) — аннотации страницы:
+// щелчок, Shift, рамка, перемещение и масштаб ручками, Del.
 #pragma once
 
 #include <QCursor>
@@ -23,7 +25,9 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <vector>
 
+#include "core/annot/annots.h"
 #include "core/text/selection.h"
 #include "core/util/geometry.h"
 #include "ui/view/tools/tool_panels.h"
@@ -37,8 +41,8 @@ namespace ot::ui {
 class PageView;
 class ToolController;
 
-enum class ViewToolId { Select, Hand, MarqueeZoom, Loupe, PanZoom, Snapshot };
-inline constexpr int kViewToolCount = 6;
+enum class ViewToolId { Select, Hand, MarqueeZoom, Loupe, PanZoom, Snapshot, AnnotSelect };
+inline constexpr int kViewToolCount = 7;
 
 class ViewTool {
 public:
@@ -66,6 +70,8 @@ public:
     virtual QCursor cursor(QPointF point, Qt::KeyboardModifiers modifiers) const = 0;
     // Esc: бросить незавершённое действие. true — было что бросать.
     virtual bool cancel() { return false; }
+    // Esc после cancel(): true — инструмент поглотил Esc (бросил действие, снял выбор) и остаётся текущим.
+    virtual bool escape(bool /*cancelled*/) { return false; }
 
 protected:
     PageView& view_;
@@ -268,6 +274,95 @@ private:
     HandTool hand_;
     QPointer<PanZoomPanel> panel_;
     std::function<void()> refresh_;
+};
+
+// ---------------------------------------------------------------- Выбор объектов (аннотаций)
+
+// Аннотации страницы — только через минимальное ядро 2.2 (services/annot_ops.h: annotAt, list, setRect,
+// remove — операции журнала); вид хранит AnnotRef{page, objnum} и рамки-значения, не указатели MuPDF.
+// Щелчок — верхняя аннотация под курсором (annotAt), Shift+щелчок — добавить/убрать, рамка по пустому месту —
+// все, что она задевает (Shift — добавить); выбранные тянутся вместе (одна операция журнала), у одной
+// выбранной — восемь ручек масштаба; Del — удалить выбранные; правая кнопка — контекстное меню, которое
+// наполняют инструменты (сигнал ToolController::annotContextMenu; пустое не показывается — 5.1/6.3). Рамки
+// выбранных — слой рамок аннотаций вида, ручки и рамка выбора — слой инструмента. Разметка (квады), Ink и
+// вершины линий получают свой хит-тест и правку в 5.1.
+class AnnotSelectTool : public ViewTool {
+public:
+    using AnnotInfo = annot::AnnotInfo;
+    using AnnotRef = annot::AnnotRef;
+    // Ручки рамки: углы и середины сторон по часовой стрелке от левого верхнего (вьюпорт).
+    enum Handle { TopLeft, Top, TopRight, Right, BottomRight, Bottom, BottomLeft, Left, kHandleCount };
+
+    using ViewTool::ViewTool;
+    ViewToolId id() const noexcept override { return ViewToolId::AnnotSelect; }
+    QString title() const override;
+    void activate() override;
+    void deactivate() override;
+    bool mousePress(QMouseEvent* event) override;
+    bool mouseMove(QMouseEvent* event) override;
+    bool mouseRelease(QMouseEvent* event) override;
+    bool keyPress(QKeyEvent* event) override;
+    void paintOverlay(QPainter& painter) override;
+    QCursor cursor(QPointF point, Qt::KeyboardModifiers modifiers) const override;
+    bool cancel() override;
+    bool escape(bool cancelled) override;
+
+    // Выбранные (в порядке выбора) и их рамки в пунктах страницы.
+    const std::vector<AnnotInfo>& selection() const noexcept { return selected_; }
+    bool isSelected(const AnnotRef& ref) const;
+    void setSelection(std::vector<AnnotInfo> annots);
+    void clearSelection();
+    // Del: удалить выбранные одной операцией журнала.
+    void deleteSelection();
+    // Идёт перетаскивание, рамка выбора или ждём хит-тест.
+    bool dragging() const noexcept { return drag_ != Drag::None; }
+    // Рамки выбранных на экране (с предпросмотром перетаскивания) и ручка под точкой вьюпорта.
+    std::vector<QRectF> frames() const;
+    std::optional<Handle> handleAt(QPointF viewportPoint) const;
+    // Аннотации страницы (для рамки выбора): загружены — указатель, нет — запрос и nullptr.
+    const std::vector<AnnotInfo>* annotList(int page);
+    bool hasAnnotList(int page) const { return lists_.contains(page); }
+    // Документ сменился — выбора нет; правка страницы — рамки выбранных на ней заново (undo тоже).
+    void documentChanged();
+    void pageChanged(int page);
+
+private:
+    enum class Drag { None, Pending, Move, Resize, Marquee };
+    struct Press {
+        QPointF viewport;
+        QPoint global;
+        int page = -1;
+        Qt::MouseButton button = Qt::NoButton;
+        Qt::KeyboardModifiers modifiers;
+    };
+
+    void hitArrived(const std::optional<AnnotInfo>& hit, quint64 request);
+    void listArrived(int page);
+    std::optional<QRectF> frameOf(const AnnotInfo& info) const;
+    bool selectedAt(QPointF viewportPoint) const;
+    bool moved() const;
+    // Рамка аннотации после перетаскивания до current_ (пункты страницы).
+    RectF draggedRect(const AnnotInfo& info) const;
+    void finishDrag();
+    void finishMarquee();
+    bool applyBands();
+    void showContextMenu(QPoint global);
+    void publish();
+    void selectionChanged();
+
+    std::vector<AnnotInfo> selected_;
+    Drag drag_ = Drag::None;
+    Handle handle_ = TopLeft;
+    Press press_;
+    QPointF current_;
+    bool pressing_ = false;
+    quint64 request_ = 0;
+    quint64 epoch_ = 0;  // смена документа делает старые ответы устаревшими
+    QHash<int, std::vector<AnnotInfo>> lists_;
+    QHash<int, quint64> listGeneration_;  // правка страницы делает ответы старше неё устаревшими
+    QSet<int> listRequested_;
+    QSet<int> refresh_;           // страницы, где рамки выбранных ждут нового списка
+    std::map<int, RectF> bands_;  // рамка выбора по страницам (пункты), ждёт списков
 };
 
 }  // namespace ot::ui
