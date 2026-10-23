@@ -2,6 +2,10 @@
 // Правила MuPDF: один контекст — один поток одновременно; все контексты одного процесса делят один
 // fz_locks_context; контекст для другого потока — clone() (общие allocator, store, locks).
 // В MuPDF 1.28.5 fz_locks_context — три поля {user, lock, unlock}, FZ_LOCK_MAX = 3 нерекурсивных мьютекса.
+//
+// global() — один корневой контекст на процесс (FZ_STORE_DEFAULT = 256 МиБ, обработчики документов);
+// документы и потоки рендера работают в его клонах. Предупреждения и ошибки MuPDF идут в spdlog
+// (логгер по умолчанию, префикс «mupdf: »); клоны наследуют колбэки; колбэки не бросают.
 #pragma once
 
 #include <memory>
@@ -15,16 +19,21 @@ namespace ot {
 
 class MuContext {
 public:
-    // Новый корневой контекст: замки, кэш FZ_STORE_DEFAULT, зарегистрированные обработчики документов.
+    // Новый корневой контекст: замки, кэш FZ_STORE_DEFAULT, обработчики документов, журнал в spdlog.
+    // В программе — только global(); отдельные корни — для тестов и инструментов.
     MuContext();
     ~MuContext();
 
     MuContext(const MuContext&) = delete;
     MuContext& operator=(const MuContext&) = delete;
 
+    // Корневой контекст процесса (создаётся при первом вызове, потокобезопасно).
+    static MuContext& global();
+
     fz_context* get() const noexcept { return ctx_; }
 
-    // Клон для другого потока: общий кэш и замки, свой стек исключений.
+    // Клон для другого потока: общий кэш и замки, свой стек исключений, те же колбэки и настройки
+    // (AA, ICC) на момент клонирования.
     std::unique_ptr<MuContext> clone() const;
 
     // Версия MuPDF, с которой собрана программа (FZ_VERSION).

@@ -1,12 +1,15 @@
 // mu::call — единственный вход в MuPDF из C++ (эталон 4.1, страж fztry_guard: fz_try/fz_catch живут
 // только в src/core/mu/). Тело выполняется внутри fz_try; ошибка MuPDF становится ot::MuError.
 //
-// Правила для тела (лямбды):
-//  * только вызовы MuPDF и присваивания в переменные, объявленные СНАРУЖИ (по ссылке);
-//  * никаких объектов C++ с деструкторами внутри тела: fz_try — это setjmp/longjmp, при ошибке
-//    деструкторы не выполняются;
-//  * не бросать исключения C++ из тела и не вызывать то, что их бросает;
-//  * освобождение (fz_drop_*) — после mu::call: drop-функции не бросают.
+// Правила для тела (лямбды) — их проверяет tools/fztry_guard.py:
+//  * только вызовы MuPDF и присваивания в переменные, объявленные СНАРУЖИ (по ссылке), в том числе
+//    handle.reset(…) у RAII-обёрток core/mu/handles.h, объявленных снаружи;
+//  * никаких объектов C++ с деструкторами внутри тела (std::string, std::vector, mu::*Handle…): fz_try —
+//    это setjmp/longjmp, при ошибке деструкторы не выполняются;
+//  * нет return, throw и вложенного mu::call: исключение C++ не должно пересекать кадр setjmp;
+//  * освобождение (fz_drop_*) — после mu::call или через RAII-обёртки: drop-функции не бросают.
+// Ошибка уходит в журнал колбэком контекста (fz_report_error → spdlog); отмена (FZ_ERROR_ABORT,
+// FZ_ERROR_TRYLATER) не журналируется — fz_ignore_error.
 #pragma once
 
 #include <cstring>
@@ -36,7 +39,11 @@ void call(fz_context* ctx, F&& body) {
         code = fz_caught(ctx);
         const char* text = fz_caught_message(ctx);
         strncpy_s(message, sizeof(message), text ? text : "MuPDF error", _TRUNCATE);
-        fz_report_error(ctx);
+        if (code == FZ_ERROR_ABORT || code == FZ_ERROR_TRYLATER) {
+            fz_ignore_error(ctx);
+        } else {
+            fz_report_error(ctx);
+        }
     }
     if (code != 0) {
         throw MuError(code, message);
