@@ -1,4 +1,4 @@
-# «Оттиск» — стиль C++ (эталон 9.5). clang-format 19.1.5 из Build Tools (tools/vcenv.cmd кладёт его в PATH).
+# «АкроБатя» — стиль C++ (эталон 9.5). clang-format 19.1.5 из Build Tools (tools/vcenv.cmd кладёт его в PATH).
 # Проверка: tools/format_guard.py (ctest unit.guard.format) и tools/verify.py — clang-format --dry-run --Werror.
 ---
 Language: Cpp

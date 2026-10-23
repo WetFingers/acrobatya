@@ -1,12 +1,12 @@
 ﻿<#
 .SYNOPSIS
-    Сборка MuPDF 1.28.5 из C:\src\mupdf\platform\win32\mupdf.sln для «Оттиска».
+    Сборка MuPDF 1.28.5 из C:\src\mupdf\platform\win32\mupdf.sln для «АкроБати».
 
 .DESCRIPTION
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\mupdf-build.ps1 -Config Debug|Release [-NoLtcg] [-Target mutool] [-Rebuild]
 
     Все проекты получают tools\ottisk-md.props (/MD и /U_DEBUG во всех конфигурациях) через
-    /p:ForceImportBeforeCppTargets. -NoLtcg — Release без /GL (ускоряет линковку exe «Оттиска»).
+    /p:ForceImportBeforeCppTargets. -NoLtcg — Release без /GL (ускоряет линковку exe «АкроБати»).
     -Rebuild — сначала удаляет x64\<Config> (выходные .lib/.exe и промежуточные файлы), потом собирает.
     Цель по умолчанию — mutool: она тянет libmupdf, libthirdparty, libharfbuzz, libtesseract, libleptonica,
     libextract, libzxing, libmubarcode, libpkcs7, libmuthreads, libmutool и libresources (Debug|x64 у
@@ -53,7 +53,7 @@ if ($Rebuild) {
 
 $msArgs = @($sln, "/t:$Target", "/p:Configuration=$Config", '/p:Platform=x64', '/p:PlatformToolset=v143',
           "/p:ForceImportBeforeCppTargets=$props", '/m', '/v:m', '/nologo')
-if ($NoLtcg) { $msArgs += '/p:OttiskNoLtcg=true' }
+if ($NoLtcg) { $msArgs += '/p:AcroBatyaNoLtcg=true' }
 
 $t0 = Get-Date
 Write-Host ("MSBuild {0} {1}{2} → {3}" -f $Target, $Config, $(if ($NoLtcg) { ' без LTCG' } else { '' }), $log)

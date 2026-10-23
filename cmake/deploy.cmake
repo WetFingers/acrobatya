@@ -1,10 +1,10 @@
-# Установка и развёртывание Ottisk.exe:  cmake --install build/release --prefix build/deploy
+# Установка и развёртывание AcroBatya.exe:  cmake --install build/release --prefix build/deploy
 #
-# Подключается в самом конце корневого CMakeLists.txt, после создания цели Ottisk и после
+# Подключается в самом конце корневого CMakeLists.txt, после создания цели AcroBatya и после
 # find_package(Qt6 …):   include(cmake/deploy.cmake)
 #
 # Раскладка build/deploy (плоская, как в {app} установщика):
-#   Ottisk.exe, Qt6*.dll, qt.conf            — корень (QT_DEPLOY_BIN_DIR = ".")
+#   AcroBatya.exe, Qt6*.dll, qt.conf            — корень (QT_DEPLOY_BIN_DIR = ".")
 #   plugins/platforms/qwindows.dll           — windeployqt (--plugindir plugins, по умолчанию Qt 6.12)
 #   plugins/platforms/qoffscreen.dll         — здесь же явно: windeployqt его не берёт, а он нужен
 #                                              --shots/--self-check под QT_QPA_PLATFORM=offscreen
@@ -13,26 +13,26 @@
 # CRT (Microsoft.VC143.CRT), qpdf.exe, tessdata/ и licenses/ кладёт tools/build.ps1 после install —
 # они не из сборки CMake.
 #
-# windeployqt запускается на exe из дерева сборки ($<TARGET_FILE:Ottisk>) с рабочим каталогом —
+# windeployqt запускается на exe из дерева сборки ($<TARGET_FILE:AcroBatya>) с рабочим каталогом —
 # префиксом установки; DLL Qt он кладёт в QT_DEPLOY_BIN_DIR. По умолчанию это CMAKE_INSTALL_BINDIR
 # ("bin"), зафиксированный в QtDeploySupport.cmake ещё при find_package(Qt6), — тогда DLL Qt уехали бы
-# в deploy/bin, отдельно от Ottisk.exe. Документация Qt (QT_DEPLOY_BIN_DIR) советует задать
+# в deploy/bin, отдельно от AcroBatya.exe. Документация Qt (QT_DEPLOY_BIN_DIR) советует задать
 # CMAKE_INSTALL_BINDIR до find_package(Qt6); чтобы не зависеть от порядка в корневом CMakeLists.txt,
 # здесь "." задаётся в скрипте установки до include(QtDeploySupport.cmake) — в нём стоит
 # if(NOT QT_DEPLOY_BIN_DIR), так что наше значение остаётся. Проверено на build/release этапа 0
-# (23.10.2026): Qt6*.dll и qt.conf («Prefix = .», «Binaries = .») — рядом с Ottisk.exe,
-# qwindows.dll и qoffscreen.dll — в plugins/platforms, Ottisk.exe --self-check = 0 с системным PATH.
+# (23.10.2026): Qt6*.dll и qt.conf («Prefix = .», «Binaries = .») — рядом с AcroBatya.exe,
+# qwindows.dll и qoffscreen.dll — в plugins/platforms, AcroBatya.exe --self-check = 0 с системным PATH.
 
-if(NOT TARGET Ottisk)
-  message(FATAL_ERROR "cmake/deploy.cmake: цели Ottisk ещё нет — подключайте после add_executable/qt_add_executable(Ottisk …)")
+if(NOT TARGET AcroBatya)
+  message(FATAL_ERROR "cmake/deploy.cmake: цели AcroBatya ещё нет — подключайте после add_executable/qt_add_executable(AcroBatya …)")
 endif()
 if(NOT COMMAND qt_generate_deploy_app_script)
   message(FATAL_ERROR "cmake/deploy.cmake: нет qt_generate_deploy_app_script — сначала find_package(Qt6 6.12 COMPONENTS Core …)")
 endif()
 
-install(TARGETS Ottisk RUNTIME DESTINATION .)
+install(TARGETS AcroBatya RUNTIME DESTINATION .)
 
-# Плоская раскладка: Qt6*.dll и qt.conf — рядом с Ottisk.exe.
+# Плоская раскладка: Qt6*.dll и qt.conf — рядом с AcroBatya.exe.
 install(CODE [[
   set(QT_DEPLOY_BIN_DIR ".")
 ]])
@@ -42,7 +42,7 @@ install(CODE [[
 # передаётся windeployqt как есть, после --dir . --libdir <bin> --plugindir plugins --force.
 # Ключи windeployqt проверены `windeployqt --help` из C:\Qt\6.12.0\msvc2022_64\bin.
 qt_generate_deploy_app_script(
-  TARGET Ottisk
+  TARGET AcroBatya
   OUTPUT_SCRIPT OTTISK_DEPLOY_SCRIPT
   NO_TRANSLATIONS
   NO_COMPILER_RUNTIME

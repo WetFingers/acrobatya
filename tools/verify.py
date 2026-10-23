@@ -1,4 +1,4 @@
-"""Полная проверка «Оттиска» (эталон 9.5): configure при нужде → сборка ∥ стражи → ctest.
+"""Полная проверка «АкроБати» (эталон 9.5): configure при нужде → сборка ∥ стражи → ctest.
 
     py -3.14 tools/verify.py                       # msvc-debug: сборка, стражи, ctest -L "unit|ui" -LE slow
     py -3.14 tools/verify.py --fast                # без ctest
@@ -436,7 +436,7 @@ def tool_env() -> dict[str, str]:
     env["PYTHONIOENCODING"] = "utf-8"
     vcpkg = env.get("VCPKG_ROOT", "")
     if not vcpkg or "microsoft visual studio" in vcpkg.lower():
-        # vcvars64 «Developer Prompt» ставит VCPKG_ROOT на vcpkg из Build Tools — у «Оттиска» свой клон.
+        # vcvars64 «Developer Prompt» ставит VCPKG_ROOT на vcpkg из Build Tools — у «АкроБати» свой клон.
         own = env.get("OTTISK_VCPKG_ROOT") or str(Path(env.get("LOCALAPPDATA", "")) / "vcpkg")
         if Path(own).is_dir():
             env["VCPKG_ROOT"] = own
@@ -467,7 +467,7 @@ def main(argv: list[str]) -> int:
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="replace")
-    ap = argparse.ArgumentParser(description="Сборка, стражи и ctest «Оттиска» одной командой")
+    ap = argparse.ArgumentParser(description="Сборка, стражи и ctest «АкроБати» одной командой")
     ap.add_argument("--preset", default="msvc-debug", choices=sorted(PRESET_DIRS))
     ap.add_argument("--fast", action="store_true", help="без ctest")
     ap.add_argument("--full", action="store_true", help='ещё ctest -L "render|engine|compat|e2e"')

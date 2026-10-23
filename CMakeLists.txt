@@ -1,4 +1,4 @@
-# «Оттиск» — настольный PDF-редактор уровня Acrobat Standard (эталон docs/design.md 5.2–5.5).
+# «АкроБатя» — настольный PDF-редактор уровня Acrobat Standard (эталон docs/design.md 5.2–5.5).
 # Сборка: cmd /c "tools\vcenv.cmd && cmake --preset msvc-debug && cmake --build --preset msvc-debug"
 # Исходники целей — GLOB_RECURSE … CONFIGURE_DEPENDS по каталогам: новый файл кладётся в каталог
 # своей цели, CMake не правится. Все цели /MD; в Debug — release-DLL Qt и Debug-библиотеки MuPDF.
@@ -15,7 +15,7 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
 endif()
 
 include(cmake/product.cmake)
-project(Ottisk VERSION ${OTTISK_VERSION} DESCRIPTION "PDF editor" LANGUAGES C CXX)
+project(AcroBatya VERSION ${OTTISK_VERSION} DESCRIPTION "PDF editor" LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -95,14 +95,14 @@ set(OTTISK_APP_SRC "${CMAKE_SOURCE_DIR}/src/ui/app/main.cpp")
 if(EXISTS "${CMAKE_SOURCE_DIR}/installer/app.rc")
   list(APPEND OTTISK_APP_SRC "${CMAKE_SOURCE_DIR}/installer/app.rc")
 endif()
-if(EXISTS "${CMAKE_SOURCE_DIR}/installer/Ottisk.manifest")
-  list(APPEND OTTISK_APP_SRC "${CMAKE_SOURCE_DIR}/installer/Ottisk.manifest")
+if(EXISTS "${CMAKE_SOURCE_DIR}/installer/AcroBatya.manifest")
+  list(APPEND OTTISK_APP_SRC "${CMAKE_SOURCE_DIR}/installer/AcroBatya.manifest")
 endif()
-add_executable(Ottisk WIN32 ${OTTISK_APP_SRC})
-target_link_libraries(Ottisk PRIVATE ottisk_ui_lib shell32)
-ottisk_qt(Ottisk)
-ottisk_warnings(Ottisk)
-add_dependencies(Ottisk qt_runtime)
+add_executable(AcroBatya WIN32 ${OTTISK_APP_SRC})
+target_link_libraries(AcroBatya PRIVATE ottisk_ui_lib shell32)
+ottisk_qt(AcroBatya)
+ottisk_warnings(AcroBatya)
+add_dependencies(AcroBatya qt_runtime)
 
 # --- инструменты: imgcmp (метрики как pdfium_diff), render_refs (эталоны рендера), bench
 file(GLOB_RECURSE OTTISK_IMGCMP_SRC CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/tools/imgcmp/*.cpp")

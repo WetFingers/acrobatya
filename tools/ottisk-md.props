@@ -4,13 +4,13 @@
   (tools/mupdf-build.ps1). Импорт стоит в начале Microsoft.Cpp.targets — после ItemDefinitionGroup
   самих проектов, поэтому эти значения перебивают проектные.
 
-  Зачем: «Оттиск» во всех конфигурациях линкуется с /MD (Qt из aqt собран с /MD, vcpkg —
+  Зачем: «АкроБатя» во всех конфигурациях линкуется с /MD (Qt из aqt собран с /MD, vcpkg —
   x64-windows-static-md-release). Debug-проекты MuPDF по умолчанию /MDd и явно /D_DEBUG; при
   /MD + /D_DEBUG CRT/STL выбирают msvcprtd/ucrtd и _ITERATOR_DEBUG_LEVEL=2 → LNK2038/LNK4098
   на C++-объектах harfbuzz/tesseract/zxing. /U_DEBUG снимает его; NDEBUG не добавляем —
   assert в Debug остаются.
 
-  /p:OttiskNoLtcg=true — Release без /GL и LTCG (если LTCG-линковка exe слишком долгая).
+  /p:AcroBatyaNoLtcg=true — Release без /GL и LTCG (если LTCG-линковка exe слишком долгая).
 -->
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemDefinitionGroup>
@@ -19,7 +19,7 @@
       <UndefinePreprocessorDefinitions>_DEBUG;%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(OttiskNoLtcg)' == 'true'">
+  <ItemDefinitionGroup Condition="'$(AcroBatyaNoLtcg)' == 'true'">
     <ClCompile>
       <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>

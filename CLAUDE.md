@@ -1,4 +1,4 @@
-# «Оттиск» — настольный PDF-редактор для Windows
+# «АкроБатя» — настольный PDF-редактор для Windows
 
 Личная программа семьи уровня Adobe Acrobat Standard: просмотр и печать, правка текста и картинок в PDF,
 комментарии и Fill & Sign, формы и конструктор форм, подписи PAdES, страницы, создание и конвертация,
@@ -46,7 +46,7 @@ libtiff, fmt, spdlog, nlohmann-json, sqlite3[fts5], gtest; qpdf 12.4.2 — porta
 ## Слои и структура (эталон 5.1–5.2)
 
 `core` (чистый C++20, без Qt) → `services` (Qt Core/Gui/Network/PrintSupport, без Widgets) → `ui`
-(Qt Widgets, `Ottisk.exe`). Обратных зависимостей нет: `core` не включает `<Q…>`, `services` — `QtWidgets`,
+(Qt Widgets, `AcroBatya.exe`). Обратных зависимостей нет: `core` не включает `<Q…>`, `services` — `QtWidgets`,
 `ui` — `mupdf/` (страж `unit.guard.boundaries`). `ui` меняет документ только запросом к `DocumentSession`.
 
 ```text
@@ -60,12 +60,12 @@ ottisk/                    корень Git (локальный, без push) и
 ├─ src/core/               ottisk_core: mu/ doc/ render/ text/ print/ edit/ sign/ annot/ forms/ pages/
 │                          create/ decor/ links/ crypt/ ocr/ a11y/ optimize/ util/
 ├─ src/services/           ottisk_services: DocumentSession, настройки, пулы, процессы, Fake*-бэкенды
-├─ src/ui/                 ottisk_ui_lib + Ottisk.exe: app/ theme/ widgets/ shell/ view/ tools/ panes/ dialogs/ shots/
+├─ src/ui/                 ottisk_ui_lib + AcroBatya.exe: app/ theme/ widgets/ shell/ view/ tools/ panes/ dialogs/ shots/
 ├─ tests/                  unit/ ui/ engine/ render/ e2e/ compat/ bench/ build/ corpus/ fixtures/ data/mini/
 ├─ fuzz/                   pdf_open_fuzzer.cpp (пресет msvc-fuzz)
 ├─ tools/                  vcenv.cmd, verify.py, build.ps1, build_lock.ps1, shots.ps1, lint.ps1, стражи *.py,
 │                          imgcmp/, render_refs.cpp, queue-lib.ps1, test_reset_parse.ps1, test_guard.ps1, gen/ …
-├─ installer/              ottisk.iss (UTF-8 BOM), app.ico, app.rc, Ottisk.manifest, licenses/
+├─ installer/              ottisk.iss (UTF-8 BOM), app.ico, app.rc, AcroBatya.manifest, licenses/
 ├─ i18n/                   ottisk_ru.ts, ottisk_en.ts (9.2)
 └─ assets/                 icons/ (только нужные Lucide), stamps/, help/ru, help/en
 ```
@@ -88,10 +88,10 @@ Tools; в `PATH` машины их нет). Команды ниже — для P
 - `cmd /c "tools\vcenv.cmd && clang-format -i <файлы>"` — формат
 - `powershell -NoProfile -ExecutionPolicy Bypass -File tools\shots.ps1 -Only home[,…] [-Theme dark]` — снимки
   сцен в `.queue/screenshots/` (offscreen, 1440 × 900); смотреть PNG
-- `build\debug\bin\Ottisk.exe --self-check | --version | --shots <сцены> --out <каталог> | --smoke <с>` (с
+- `build\debug\bin\AcroBatya.exe --self-check | --version | --shots <сцены> --out <каталог> | --smoke <с>` (с
   `C:\Qt\6.12.0\msvc2022_64\bin` в `PATH`)
 - `"$env:OTTISK_PYTHON" -X utf8 -I tools/<скрипт>.py` — всё на Python над PDF, корпусами и скачанным
-- `tools\build.ps1` — выпуск → `dist/Ottisk-<версия>-setup.exe` (только рубеж и 9.4)
+- `tools\build.ps1` — выпуск → `dist/AcroBatya-<версия>-setup.exe` (только рубеж и 9.4)
 - `node .claude/skills/next-task/done.mjs "этап N: …" "<кусок пункта>"` — коммит и отметка пункта
 - `.\run-queue.ps1 -Status` — прогресс очереди (подробно — `QUEUE.md`)
 
@@ -106,7 +106,7 @@ Tools; в `PATH` машины их нет). Команды ниже — для P
    `PFXImportCertStore(NO_PERSIST_KEY)` и строку «Нужна ручная проверка». LibreOffice нет к 7.3 — не `BLOCKED`,
    а `FakeOfficeBackend` + `SKIP 77`.
 4. **Только чтение:** `C:\Qt`, `C:\src\mupdf`, `%LOCALAPPDATA%\vcpkg`, `C:\Tools` (писать можно в `C:\Tools\logs`),
-   эталон и справочники; данные человека (`%LOCALAPPDATA%\Ottisk`, профиль Acrobat, хранилище сертификатов)
+   эталон и справочники; данные человека (`%LOCALAPPDATA%\AcroBatya`, профиль Acrobat, хранилище сертификатов)
    не трогать — у тестов `OTTISK_DATA_DIR` в `build`, у очереди `OTTISK_INSTANCE=test`. Хук `guard.ps1` это держит.
 5. **Задание — сессия, шаг — пункт.** Пункты по очереди: одна законченная правка, один коммит, отметка `[x]`
    **сразу после коммита** (`done.mjs`). Пункты чужих сессий «заодно» не делаются.
@@ -115,7 +115,7 @@ Tools; в `PATH` машины их нет). Команды ниже — для P
 7. **Проверки:** по ходу — сборка своей цели и тесты рядом с правкой; в конце сессии — `py -3.14 tools\verify.py`
    зелёный; экран построен или изменён — сцена и **просмотр PNG**.
 8. **Сборка:** рабочая — `build/debug`, один Ninja за раз (`tools\build_lock.ps1`); `build/release` — только рубежи,
-   9.4, сессии 1.1 (`render_refs`) и 1.2 (`bench`); Release-цели — `Ottisk render_refs render_tests bench`.
+   9.4, сессии 1.1 (`render_refs`) и 1.2 (`bench`); Release-цели — `AcroBatya render_refs render_tests bench`.
    Новый файл — в каталог своей цели (GLOB), CMake не правится; цели, каталоги, PCH и `CMakeLists.txt` меняет
    только главный исполнитель сессии.
 9. **Эталоны рендера** — только `render_refs --update --reason "…"` из сессии, которой это поручено (1.1, смена
@@ -135,7 +135,7 @@ Tools; в `PATH` машины их нет). Команды ниже — для P
     проверка», а не `[~]`/`NEEDS_HUMAN` (те — только когда результат без человека невозможен, как 10.1).
 15. **Git:** коммиты на русском `этап N: что сделано`; версия `0.N.0` и тег `v0.N.0` ставит последний пункт
     этапа N; `git push`, `reset --hard`, `clean -f` запрещены, удалённого репозитория нет.
-16. **Ultracode:** агенты workflow не собирают (кроме единственного исполнителя — своя цель через
+16. **Субагенты и ultracode** (очередь по умолчанию — Opus 5.5 xhigh): агенты не собирают (кроме единственного исполнителя — своя цель через
     `build_lock.ps1`), не запускают `verify.py`/`shots.ps1`, не правят CMake/PCH/план/журнал и не коммитят —
     подробно в разделе «Ultracode» навыка `/next-task`.
 

@@ -1,8 +1,8 @@
-// Ресурсы Ottisk.exe: значок и сведения о версии (Проводник → Свойства → Подробно).
+// Ресурсы AcroBatya.exe: значок и сведения о версии (Проводник → Свойства → Подробно).
 // Файл в UTF-8 (без BOM) — отсюда #pragma code_page(65001): rc.exe иначе читает кириллицу в ACP.
 // Версию передаёт CMake дефайнами OTTISK_VERSION_MAJOR/MINOR/PATCH (из cmake/product.cmake) —
 // общими для цели (target_compile_definitions) или только для .rc (set_property(SOURCE … COMPILE_DEFINITIONS)).
-// Манифест здесь НЕ подключается: installer/Ottisk.manifest входит в исходники цели Ottisk
+// Манифест здесь НЕ подключается: installer/AcroBatya.manifest входит в исходники цели AcroBatya
 // (add_executable в CMakeLists.txt); второй ресурс RT_MANIFEST с тем же ID дал бы CVT1100 при линковке.
 #pragma code_page(65001)
 
@@ -45,12 +45,12 @@ BEGIN
         BLOCK "041904b0"  // русский, Unicode (кодовая страница 1200)
         BEGIN
             VALUE "CompanyName", ""
-            VALUE "FileDescription", "Оттиск — PDF-редактор"
+            VALUE "FileDescription", "АкроБатя — PDF-редактор"
             VALUE "FileVersion", OTTISK_VERSION_STRING
-            VALUE "InternalName", "Ottisk"
-            VALUE "LegalCopyright", "© авторы «Оттиска». Сторонние компоненты — licenses\\THIRD-PARTY-NOTICES.md"
-            VALUE "OriginalFilename", "Ottisk.exe"
-            VALUE "ProductName", "Оттиск"
+            VALUE "InternalName", "AcroBatya"
+            VALUE "LegalCopyright", "© авторы «АкроБати». Сторонние компоненты — licenses\\THIRD-PARTY-NOTICES.md"
+            VALUE "OriginalFilename", "AcroBatya.exe"
+            VALUE "ProductName", "АкроБатя"
             VALUE "ProductVersion", OTTISK_VERSION_STRING
         END
     END

@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <!--
-  Манифест Ottisk.exe. Подключение (цель Ottisk): файл среди исходников —
-    add_executable(Ottisk WIN32 … installer/app.rc installer/Ottisk.manifest)
+  Манифест AcroBatya.exe. Подключение (цель AcroBatya): файл среди исходников —
+    add_executable(AcroBatya WIN32 … installer/app.rc installer/AcroBatya.manifest)
   CMake передаёт .manifest линковщику (/MANIFEST:EMBED /MANIFESTINPUT), а финализатор Qt 6.12
   (_qt_internal_finalize_windows_app, только для qt_add_executable) видит .manifest в SOURCES и свой
   автоманифест не добавляет. trustInfo задан здесь; link.exe сливает его с блоком от /MANIFESTUAC в один
   (проверено mt.exe на сборке этапа 0), /MANIFESTUAC:NO — по желанию, как делает сам Qt.
-  activeCodePage UTF-8: узкие пути (Tesseract fopen, профиль LibreOffice) работают с «…\Programs\Оттиск».
+  activeCodePage UTF-8: узкие пути (Tesseract fopen, профиль LibreOffice) работают с «…\Programs\АкроБатя».
   Версия в assemblyIdentity — не версия продукта (её несёт VERSIONINFO в app.rc), менять не нужно.
 -->
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0" xmlns:asmv3="urn:schemas-microsoft-com:asm.v3">
-  <assemblyIdentity type="win32" name="Ottisk" version="1.0.0.0" processorArchitecture="amd64"/>
-  <description>Оттиск — PDF-редактор</description>
+  <assemblyIdentity type="win32" name="AcroBatya" version="1.0.0.0" processorArchitecture="amd64"/>
+  <description>АкроБатя — PDF-редактор</description>
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application>
       <!-- Windows 10 и Windows 11 -->

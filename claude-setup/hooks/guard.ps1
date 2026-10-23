@@ -1,18 +1,18 @@
-﻿# Защитный хук Claude Code (PreToolUse для Bash и PowerShell) — очередь «Оттиска».
+﻿# Защитный хук Claude Code (PreToolUse для Bash и PowerShell) — очередь «АкроБати».
 # Блокирует опасные команды даже в режиме --dangerously-skip-permissions.
 # Вход — JSON хука на stdin ({tool_name, tool_input.command, cwd}); код выхода 2 = команда запрещена
 # (текст из stderr получает Claude), 0 = можно. Ошибка внутри хука — пропуск (код 0), как в образце.
 #
 # Правила — эталон 10.6:
 #   * git push / remote add / reset --hard / clean -f / config --global;
-#   * установщики — по ТОЧНЫМ образцам (подстрока «setup.exe» перекрыла бы наш dist\Ottisk-0.N.0-setup.exe
+#   * установщики — по ТОЧНЫМ образцам (подстрока «setup.exe» перекрыла бы наш dist\AcroBatya-0.N.0-setup.exe
 #     и unins000.exe на рубежах): VS Installer\setup.exe, vs_*.exe, msiexec /i|/x, winget install … --scope
-#     machine, vc_redist*.exe /install; разрешены dist\Ottisk-*-setup.exe /VERYSILENT, unins000.exe /VERYSILENT,
+#     machine, vc_redist*.exe /install; разрешены dist\AcroBatya-*-setup.exe /VERYSILENT, unins000.exe /VERYSILENT,
 #     msiexec /a (административная распаковка LibreOffice в C:\Tools\libreoffice), tools\build_lock.ps1 -Target;
 #   * запись и удаление — только в проекте, C:\Tools\logs и %TEMP% (кроме %TEMP%\claude — scratchpad человека);
 #     C:\Qt, C:\src\mupdf, %LOCALAPPDATA%\vcpkg, C:\Tools, профиль Acrobat — только чтение; в проекте только
 #     чтение у .git, эталона, справочников и tests/render/expected (их правит лишь render_refs);
-#   * реестр — только HKCU\Software\Classes\Ottisk* и значение Ottisk в HKCU\Software\RegisteredApplications;
+#   * реестр — только HKCU\Software\Classes\AcroBatya* и значение AcroBatya в HKCU\Software\RegisteredApplications;
 #   * новые зависимости (pip/winget/choco/scoop/npm -g install) — только через QUEUE: BLOCKED.
 # Запись определяется эвристикой по командной строке (перенаправления, командлеты и утилиты записи, флаги
 # вывода); то, что программа пишет сама внутри себя, хук не видит. Проверка — tools/test_guard.ps1.
@@ -197,8 +197,8 @@ function Test-RegAllowed([string]$key, [string]$valueName) {
     $k = ConvertTo-Plain $key
     $k = $k -replace '^(?i)Registry::', '' -replace '^(?i)HKEY_CURRENT_USER', 'HKCU' -replace '^(?i)HKCU:', 'HKCU'
     $k = $k -replace '/', '\'
-    if ($k -match '^(?i)HKCU\\Software\\Classes\\Ottisk[^\\]*(\\|$)') { return $true }
-    if ($k -match '^(?i)HKCU\\Software\\RegisteredApplications\\?$' -and (ConvertTo-Plain $valueName) -ieq 'Ottisk') { return $true }
+    if ($k -match '^(?i)HKCU\\Software\\Classes\\AcroBatya[^\\]*(\\|$)') { return $true }
+    if ($k -match '^(?i)HKCU\\Software\\RegisteredApplications\\?$' -and (ConvertTo-Plain $valueName) -ieq 'AcroBatya') { return $true }
     return $false
 }
 $RegCmdlets = @('new-item', 'ni', 'set-item', 'si', 'remove-item', 'ri', 'rm', 'del', 'rmdir', 'rd', 'erase', 'clear-item', 'cli',
@@ -306,7 +306,7 @@ function Test-Segment($seg, [int]$depth) {
         if ($sub -in @('add', 'delete')) {
             $key = if ($info.Pos.Count -gt 1) { $info.Pos[1] } else { '' }
             $vname = @(Get-Named $info @('/v')) | Select-Object -First 1
-            if (-not (Test-RegAllowed $key $vname)) { Block "изменение реестра ($(ConvertTo-Plain $key)) — можно только HKCU\Software\Classes\Ottisk* и значение Ottisk в RegisteredApplications" }
+            if (-not (Test-RegAllowed $key $vname)) { Block "изменение реестра ($(ConvertTo-Plain $key)) — можно только HKCU\Software\Classes\AcroBatya* и значение AcroBatya в RegisteredApplications" }
         } elseif ($sub -in @('import', 'copy', 'restore', 'load', 'unload')) {
             Block "изменение реестра (reg $sub)"
         } elseif ($sub -in @('export', 'save') -and $info.Pos.Count -gt 2) {
@@ -321,7 +321,7 @@ function Test-Segment($seg, [int]$depth) {
             $vname = @(Get-Named $info @('-name')) | Select-Object -First 1
             if ($verb -notmatch 'itemproperty$|^(sp|rp|rnp|clp|cpp|mp)$') { $vname = '' }
             foreach ($k in $regPaths) {
-                if (-not (Test-RegAllowed $k $vname)) { Block "изменение реестра ($(ConvertTo-Plain $k)) — можно только HKCU\Software\Classes\Ottisk* и значение Ottisk в RegisteredApplications" }
+                if (-not (Test-RegAllowed $k $vname)) { Block "изменение реестра ($(ConvertTo-Plain $k)) — можно только HKCU\Software\Classes\AcroBatya* и значение AcroBatya в RegisteredApplications" }
             }
             return
         }

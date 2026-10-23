@@ -1,16 +1,16 @@
 ﻿<#
 .SYNOPSIS
-    Снимки сцен «Оттиска» без экрана: Ottisk.exe --shots … под QT_QPA_PLATFORM=offscreen.
+    Снимки сцен «АкроБати» без экрана: AcroBatya.exe --shots … под QT_QPA_PLATFORM=offscreen.
 
 .DESCRIPTION
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\shots.ps1 -Only home[,имя…] | -All
         [-Preset msvc-debug] [-Out .queue\screenshots] [-Theme light|dark] [-Size 1440x900] [-TimeoutSeconds 600]
 
-    Запускает build\<каталог пресета>\bin\Ottisk.exe --shots <имена|all> --out <каталог> с окружением:
+    Запускает build\<каталог пресета>\bin\AcroBatya.exe --shots <имена|all> --out <каталог> с окружением:
       PATH += C:\Qt\6.12.0\msvc2022_64\bin (DLL Qt в build не копируются), QT_QPA_PLATFORM=offscreen,
       QT_QPA_FONTDIR=C:/Windows/Fonts, OTTISK_DATA_DIR=.queue\shots-data (данные человека не читаются),
       OTTISK_INSTANCE=test (своё имя QLocalServer — файлы не уходят в установленную копию).
-    Печатает пути PNG, их размеры в пикселях и байтах. Код выхода — код Ottisk.exe
+    Печатает пути PNG, их размеры в пикселях и байтах. Код выхода — код AcroBatya.exe
     (нет exe — 1). Снимки — только из главной сессии очереди (агенты workflow их не запускают).
     Файл в UTF-8 с BOM: Windows PowerShell 5.1 иначе читает кириллицу неверно.
 #>
@@ -42,9 +42,9 @@ if ($Size -and $Size -notmatch '^\d+x\d+$') {
 
 # msvc-debug → build\debug, msvc-release → build\release, msvc-asan → build\asan …
 $buildName = $Preset -replace '^msvc-', ''
-$exe = Join-Path $root "build\$buildName\bin\Ottisk.exe"
+$exe = Join-Path $root "build\$buildName\bin\AcroBatya.exe"
 if (-not (Test-Path -LiteralPath $exe)) {
-    Write-Host "Нет $exe — сначала соберите цель Ottisk (пресет $Preset)"
+    Write-Host "Нет $exe — сначала соберите цель AcroBatya (пресет $Preset)"
     exit 1
 }
 
@@ -85,8 +85,8 @@ try {
     $env:QT_QPA_FONTDIR = 'C:/Windows/Fonts'
     $env:OTTISK_DATA_DIR = $dataDir
     $env:OTTISK_INSTANCE = 'test'
-    Write-Host "Ottisk.exe $($exeArgs -join ' ')"
-    # Ottisk.exe — GUI-приложение (WIN32): через & PowerShell его не ждёт и кода не даёт,
+    Write-Host "AcroBatya.exe $($exeArgs -join ' ')"
+    # AcroBatya.exe — GUI-приложение (WIN32): через & PowerShell его не ждёт и кода не даёт,
     # поэтому Start-Process с ожиданием и выводом в файлы
     $logBase = Join-Path $env:TEMP ("ottisk-shots-{0}" -f $PID)
     $argLine = ($exeArgs | ForEach-Object { if ("$_" -match '[\s"]') { '"' + ("$_" -replace '"', '\"') + '"' } else { "$_" } }) -join ' '
@@ -95,7 +95,7 @@ try {
     $null = $process.Handle
     if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
         & taskkill.exe /T /F /PID $process.Id 2>&1 | Out-Null
-        Write-Host "Ottisk.exe не завершился за $TimeoutSeconds с — остановлен"
+        Write-Host "AcroBatya.exe не завершился за $TimeoutSeconds с — остановлен"
     }
     $process.WaitForExit()
     $code = $process.ExitCode
@@ -117,8 +117,8 @@ $pngs = Get-ChildItem -LiteralPath $outDir -Filter '*.png' -File |
 foreach ($png in $pngs) {
     Write-Host ("{0}  {1}  {2:N0} КБ" -f $png.FullName, (Get-PngSize $png.FullName), ($png.Length / 1KB))
 }
-Write-Host ("Снимков: {0}, код Ottisk.exe {1}, {2:N1} с" -f @($pngs).Count, $code, $watch.Elapsed.TotalSeconds)
+Write-Host ("Снимков: {0}, код AcroBatya.exe {1}, {2:N1} с" -f @($pngs).Count, $code, $watch.Elapsed.TotalSeconds)
 if ($code -eq 0 -and @($pngs).Count -eq 0) {
-    Write-Host 'Внимание: Ottisk.exe вернул 0, но новых PNG нет'
+    Write-Host 'Внимание: AcroBatya.exe вернул 0, но новых PNG нет'
 }
 exit $code

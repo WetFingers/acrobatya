@@ -1,4 +1,4 @@
-# «Оттиск» — clang-tidy 19.1.5 (эталон 9.5). Запуск: tools/lint.ps1 -Changed (по git diff) или -All (рубеж).
+# «АкроБатя» — clang-tidy 19.1.5 (эталон 9.5). Запуск: tools/lint.ps1 -Changed (по git diff) или -All (рубеж).
 # Отключены шумные проверки:
 #   bugprone-easily-swappable-parameters — срабатывает на любые два соседних int/QString;
 #   cert-err58-cpp — статические QString/std::string в пространствах имён;

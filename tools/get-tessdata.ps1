@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Языковые модели Tesseract (tessdata_fast) для OCR «Оттиска»: rus, eng, deu → C:\Tools\tessdata.
+    Языковые модели Tesseract (tessdata_fast) для OCR «АкроБати»: rus, eng, deu → C:\Tools\tessdata.
 
 .DESCRIPTION
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\get-tessdata.ps1 [-Dest C:\Tools\tessdata] [-VerifyOnly]

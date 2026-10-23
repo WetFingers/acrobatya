@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Запасной путь установки Qt для «Оттиска» через aqtinstall (без прав администратора).
+    Запасной путь установки Qt для «АкроБати» через aqtinstall (без прав администратора).
 
 .DESCRIPTION
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\install-qt.ps1 [-Fallback] [-WhatIf] [-Force]

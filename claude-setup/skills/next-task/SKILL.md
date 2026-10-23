@@ -1,6 +1,6 @@
 ---
 name: next-task
-description: Выполнить следующее задание очереди «Оттиска» — сессию из docs/plan.md (пачку пунктов) или рубеж (проверку этапов). Используется скриптом run-queue.ps1 и вручную командой /next-task.
+description: Выполнить следующее задание очереди «АкроБати» — сессию из docs/plan.md (пачку пунктов) или рубеж (проверку этапов). Используется скриптом run-queue.ps1 и вручную командой /next-task.
 disable-model-invocation: true
 ---
 
@@ -52,7 +52,7 @@ disable-model-invocation: true
 
 - **Сборка своей цели:** `powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_lock.ps1 -Target <цель>`
   (замок `.queue/build.lock` — один Ninja за раз, `vcenv` внутри, лог `build/debug/build.log`, при ошибке — хвост).
-  Цели: `ottisk_core`, `ottisk_services`, `Ottisk`, `unit_tests`, `ui_tests`, `engine_tests`, `render_tests`,
+  Цели: `ottisk_core`, `ottisk_services`, `AcroBatya`, `unit_tests`, `ui_tests`, `engine_tests`, `render_tests`,
   `e2e_tests`, `imgcmp`, `render_refs`, `bench`. Ошибки — `Select-String -Path build\debug\build.log -Pattern 'error C|error LNK|FAILED' | Select-Object -Last 40`.
 - **Тесты рядом с правкой:** `cmd /c "tools\vcenv.cmd && ctest --test-dir build/debug -R <регекс> --output-on-failure"` или прямо
   `build\debug\bin\unit_tests.exe --gtest_filter=<Набор>.* --gtest_brief=1` (тому, кто запускает exe из
@@ -143,13 +143,15 @@ disable-model-invocation: true
 - **Qt — без окна.** Тесты и сцены идут с `QT_QPA_PLATFORM=offscreen` (глобальный `env` очереди);
   окно на экране человека открывает только рубеж (`--smoke 8` с `$env:QT_QPA_PLATFORM=''`), на секунды.
 - **Сборки:** рабочая — `build/debug`; `build/release` — только рубежи, 9.4, сессия 1.1 (`render_refs`)
-  и 1.2 (`bench`); Release-цели — только `Ottisk render_refs render_tests bench`.
+  и 1.2 (`bench`); Release-цели — только `AcroBatya render_refs render_tests bench`.
 - **Опора уже сверена.** Строки «Опора» и «Осторожно» плана проверены перед запуском очереди:
   не перепроверяй их обходом папок — открой названные файлы и начинай.
 
-## Ultracode (Opus 5.5, `--effort ultracode`)
+## Ultracode (только если очередь запущена с `-Effort ultracode`)
 
-Очередь запускает сессию с `--effort ultracode`: Claude Code подгружает навык workflow-authoring и
+По умолчанию (решение человека 23.10.2026) очередь идёт на Opus 5.5 с `--effort xhigh`: workflow не нужны, субагенты
+(инструмент Agent, без фона) — по правилам раздела «Быстро»; правила ниже про «один исполнитель на файлы»,
+сборку и запреты для агентов действуют и для них. Если человек запустит очередь с `-Effort ultracode` (сессия идёт с `--effort ultracode`): Claude Code подгружает навык workflow-authoring и
 предлагает workflow для каждого шага. Workflow и фоновые агенты досчитываются после хода: очередь
 даёт до 2 часов ожидания (`CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=7200000`). Чтобы работа не терялась
 и не ломала репозиторий:
@@ -167,7 +169,7 @@ disable-model-invocation: true
   `tools/shots.ps1`, `tools/build.ps1` — в `build/debug` один Ninja за раз (замок `.queue/build.lock`);
   **не правят** `CMakeLists.txt`, `cmake/*.cmake`, `CMakePresets.json`, PCH (`src/core/pch.h`, `src/services/pch.h`, `src/ui/pch.h`), `docs/plan.md`,
   `docs/progress.md`, `CHANGELOG.md`, `tests/render/expected/`; **не коммитят**, не трогают `.queue/`,
-  теги, `%LOCALAPPDATA%\Ottisk` человека и `C:\Qt`, `C:\src\mupdf`, `%LOCALAPPDATA%\vcpkg`, `C:\Tools`.
+  теги, `%LOCALAPPDATA%\AcroBatya` человека и `C:\Qt`, `C:\src\mupdf`, `%LOCALAPPDATA%\vcpkg`, `C:\Tools`.
 - **Цикл сборки для C++-исполнителей** (иначе ни один агент не может скомпилировать свой код, а главная
   сессия чинит чужие ошибки сама):
   1. главная сессия после workflow запускает `tools\build_lock.ps1 -Target <цели пункта>`
@@ -195,7 +197,7 @@ disable-model-invocation: true
 а поймать расхождения с эталоном и стыки между этапами (эталон 9.6).
 
 1. `py -3.14 tools\verify.py --full` (Debug целиком); Release — `py -3.14 tools\verify.py --preset msvc-release --labels "render|bench"`
-   (цели `Ottisk render_refs render_tests bench`; LTCG-линковка долгая — в фоне с логом и блокирующим ожиданием).
+   (цели `AcroBatya render_refs render_tests bench`; LTCG-линковка долгая — в фоне с логом и блокирующим ожиданием).
 2. ASan: пресет `msvc-asan`, `unit|engine` под ASan. Фаззер 10 минут: пресет `msvc-fuzz`,
    `pdf_open_fuzzer -max_total_time=600 -rss_limit_mb=4096 -timeout=20`; падения → `tests/fixtures/regress/`
    и тест `unit.regress.load`.
@@ -204,7 +206,7 @@ disable-model-invocation: true
 4. **Снимки:** `tools\shots.ps1 -All`; контакт-листы `"$env:OTTISK_PYTHON" -X utf8 -I tools/review_refs.py --shots --sheet 16`;
    поштучно (`Read`) — сцены с pHash-расстоянием > 8 к `.queue/shots-prev/` и 30 главных сцен `tools/main_scenes.txt`,
    против раздела 6 эталона. Сцены не хватает — допиши её: она пригодится следующему рубежу.
-5. **Окно на экране:** один раз `$env:QT_QPA_PLATFORM=''; build\release\bin\Ottisk.exe --smoke 8 -platform windows`
+5. **Окно на экране:** один раз `$env:QT_QPA_PLATFORM=''; build\release\bin\AcroBatya.exe --smoke 8 -platform windows`
    (с `C:\Qt\6.12.0\msvc2022_64\bin` в `PATH`): код 0, в stderr нет «Could not load the Qt platform plugin».
    Больше ничего на экране не открывать.
 6. Скрипт `tools/verify_r<N>.py` (`"$env:OTTISK_PYTHON" -X utf8 -I`, в Git; журналы и артефакты — `.queue/r<N>/`)
@@ -213,7 +215,7 @@ disable-model-invocation: true
 7. `tools/scope_report.py` — «закрыто N из M»; `tools\lint.ps1 -All`; пресет `msvc-analyze` +
    `"$env:OTTISK_PYTHON" -X utf8 -I tools/analyze_summary.py` — новых предупреждений против `docs/analyze-baseline.json` нет.
 8. **Установщик:** `git diff --stat v0.N.0 HEAD -- src tools installer assets i18n` пуст — не пересобирать;
-   иначе `tools\build.ps1` → `dist/Ottisk-<версия>-setup.exe`, `tests/build/install_test.py` (тихая установка
+   иначе `tools\build.ps1` → `dist/AcroBatya-<версия>-setup.exe`, `tests/build/install_test.py` (тихая установка
    `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=<temp>` → `--self-check` с `QT_QPA_PLATFORM=''` и под offscreen →
    `unins000.exe /VERYSILENT`), затем `git tag -f v0.N.0`.
 9. Пройди пункты проверяемых этапов по коду: действительно ли сделано то, что отмечено.

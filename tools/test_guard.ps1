@@ -8,7 +8,7 @@
     Каждая команда подаётся в guard.ps1 так же, как это делает Claude Code перед вызовом Bash/PowerShell:
     JSON хука PreToolUse ({tool_name, cwd, tool_input.command}) на stdin; ожидаемый код выхода — 2 (запрещено)
     или 0 (можно). Основной набор — 6 команд эталона (3 запрещённых, 3 разрешённых, включая установщик
-    dist\Ottisk-0.0.1-setup.exe /VERYSILENT); дополнительный — регрессии остальных правил хука, в том числе
+    dist\AcroBatya-0.0.1-setup.exe /VERYSILENT); дополнительный — регрессии остальных правил хука, в том числе
     JSON хука с BOM впереди (так пишет в stdin вызывающий с консолью UTF-8 — хук обязан его пережить).
     Ещё проверяется, что .claude\hooks\guard.ps1 совпадает с claude-setup (копию кладёт run-queue.ps1), и
     строка команды хука из claude-setup\settings.json целиком: через cmd.exe, из чужого каталога, с
@@ -77,8 +77,8 @@ $Main = @(
        Cmd = 'msiexec /i C:\Tools\dl\lo\LibreOffice_26.8.1_Win_x86-64.msi /qn' },
     @{ Name = 'запись в C:\Qt'; Tool = 'PowerShell'; Expect = 2
        Cmd = 'Set-Content -Path C:\Qt\6.12.0\msvc2022_64\bin\qt.conf -Value "[Paths]"' },
-    @{ Name = 'тихая установка dist\Ottisk-0.0.1-setup.exe /VERYSILENT'; Tool = 'PowerShell'; Expect = 0
-       Cmd = '& dist\Ottisk-0.0.1-setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="$env:TEMP\ottisk-install-test" /LOG="C:\Tools\logs\install-0.0.1.log"' },
+    @{ Name = 'тихая установка dist\AcroBatya-0.0.1-setup.exe /VERYSILENT'; Tool = 'PowerShell'; Expect = 0
+       Cmd = '& dist\AcroBatya-0.0.1-setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="$env:TEMP\ottisk-install-test" /LOG="C:\Tools\logs\install-0.0.1.log"' },
     @{ Name = 'msiexec /a (распаковка LibreOffice в C:\Tools\libreoffice)'; Tool = 'PowerShell'; Expect = 0
        Cmd = 'msiexec /a C:\Tools\dl\lo\LibreOffice_26.8.1_Win_x86-64.msi /qn TARGETDIR=C:\Tools\libreoffice' },
     @{ Name = 'tools\build_lock.ps1 -Target'; Tool = 'PowerShell'; Expect = 0
@@ -99,19 +99,19 @@ $Extra = @(
     @{ Name = 'pip install в venv-test'; Tool = 'PowerShell'; Expect = 2; Cmd = 'C:\Tools\venv-test\Scripts\python.exe -m pip install requests' },
     @{ Name = 'robocopy в C:\src\mupdf'; Tool = 'PowerShell'; Expect = 2; Cmd = 'robocopy tools\mupdf-patches C:\src\mupdf\source /E' },
     @{ Name = 'перенаправление в C:\Tools'; Tool = 'PowerShell'; Expect = 2; Cmd = 'cmake --version > C:\Tools\qpdf\cmake.txt' },
-    @{ Name = 'cp в /c/Qt (Bash)'; Tool = 'Bash'; Expect = 2; Cmd = 'cp build/debug/bin/Ottisk.exe /c/Qt/6.12.0/' },
+    @{ Name = 'cp в /c/Qt (Bash)'; Tool = 'Bash'; Expect = 2; Cmd = 'cp build/debug/bin/AcroBatya.exe /c/Qt/6.12.0/' },
     @{ Name = 'запись в scratchpad'; Tool = 'PowerShell'; Expect = 2; Cmd = 'Copy-Item build\x.png "$env:TEMP\claude\abc\scratchpad\x.png"' },
     @{ Name = 'удаление вне проекта'; Tool = 'PowerShell'; Expect = 2; Cmd = 'Remove-Item -Recurse -Force C:\Users\Public\Documents\x' },
     @{ Name = 'удаление корня проекта'; Tool = 'Bash'; Expect = 2; Cmd = 'rm -rf .' },
     @{ Name = 'правка эталона через оболочку'; Tool = 'PowerShell'; Expect = 2; Cmd = 'Add-Content docs\design.md "x"' },
     @{ Name = 'эталоны рендера руками'; Tool = 'PowerShell'; Expect = 2; Cmd = 'Copy-Item out.png tests\render\expected\mini\blank-a4.pdf.1.72.png' },
-    @{ Name = 'реестр вне Ottisk'; Tool = 'PowerShell'; Expect = 2; Cmd = 'reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v x /d y /f' },
-    @{ Name = 'вложенный cmd /c с записью в C:\Tools'; Tool = 'PowerShell'; Expect = 2; Cmd = 'cmd /c "copy build\debug\bin\Ottisk.exe C:\Tools\pdfcpu\"' },
-    @{ Name = 'вложенный cmd //c (Git Bash) с записью в C:\Qt'; Tool = 'Bash'; Expect = 2; Cmd = 'cmd //c "tools\vcenv.cmd && copy build\debug\bin\Ottisk.exe C:\Qt\6.12.0\"' },
+    @{ Name = 'реестр вне AcroBatya'; Tool = 'PowerShell'; Expect = 2; Cmd = 'reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v x /d y /f' },
+    @{ Name = 'вложенный cmd /c с записью в C:\Tools'; Tool = 'PowerShell'; Expect = 2; Cmd = 'cmd /c "copy build\debug\bin\AcroBatya.exe C:\Tools\pdfcpu\"' },
+    @{ Name = 'вложенный cmd //c (Git Bash) с записью в C:\Qt'; Tool = 'Bash'; Expect = 2; Cmd = 'cmd //c "tools\vcenv.cmd && copy build\debug\bin\AcroBatya.exe C:\Qt\6.12.0\"' },
     @{ Name = 'cmd //c (Git Bash): ctest под vcenv'; Tool = 'Bash'; Expect = 0; Cmd = 'cmd //c "tools\vcenv.cmd && ctest --test-dir build/debug -R unit.mu --output-on-failure"' },
     @{ Name = 'unins000.exe /VERYSILENT'; Tool = 'PowerShell'; Expect = 0; Cmd = '& "$env:TEMP\ottisk-install-test\unins000.exe" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART' },
-    @{ Name = 'реестр HKCU\Software\Classes\Ottisk.pdf'; Tool = 'PowerShell'; Expect = 0; Cmd = 'reg delete HKCU\Software\Classes\Ottisk.pdf /f' },
-    @{ Name = 'RegisteredApplications\Ottisk'; Tool = 'PowerShell'; Expect = 0; Cmd = 'Remove-ItemProperty -Path HKCU:\Software\RegisteredApplications -Name Ottisk' },
+    @{ Name = 'реестр HKCU\Software\Classes\AcroBatya.pdf'; Tool = 'PowerShell'; Expect = 0; Cmd = 'reg delete HKCU\Software\Classes\AcroBatya.pdf /f' },
+    @{ Name = 'RegisteredApplications\AcroBatya'; Tool = 'PowerShell'; Expect = 0; Cmd = 'Remove-ItemProperty -Path HKCU:\Software\RegisteredApplications -Name AcroBatya' },
     @{ Name = 'сборка с логом в C:\Tools\logs'; Tool = 'PowerShell'; Expect = 0; Cmd = 'cmd /c "tools\vcenv.cmd && cmake --build build/debug --target unit_tests" 2>&1 | Tee-Object -FilePath C:\Tools\logs\build.txt' },
     @{ Name = 'OTTISK_PYTHON над PDF'; Tool = 'PowerShell'; Expect = 0; Cmd = '& "$env:OTTISK_PYTHON" -X utf8 -I tools/compat_check.py build/out.pdf --json C:\Tools\logs\compat.json' },
     @{ Name = 'mutool OCR: чтение tessdata, вывод в logs'; Tool = 'PowerShell'; Expect = 0; Cmd = 'C:\src\mupdf\platform\win32\x64\Release\mutool.exe draw -t rus+eng -d C:\Tools\tessdata -r 300 -o C:\Tools\logs\out.ocr.pdf scan.png' },

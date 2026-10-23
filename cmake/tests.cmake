@@ -18,7 +18,7 @@ function(ottisk_gtest_exe target dir prefix labels timeout)
   target_include_directories(${target} PRIVATE "${CMAKE_SOURCE_DIR}/src" "${CMAKE_SOURCE_DIR}/${dir}")
   ottisk_warnings(${target})
   add_dependencies(${target} qt_runtime)
-  # В Release собираются только Ottisk render_refs render_tests bench (эталон 5.5): обнаружение
+  # В Release собираются только AcroBatya render_refs render_tests bench (эталон 5.5): обнаружение
   # PRE_TEST падает на несобранном exe и роняет весь ctest, поэтому прочие gtest там не регистрируются.
   if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT target IN_LIST OTTISK_RELEASE_TEST_TARGETS)
     return()

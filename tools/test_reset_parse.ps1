@@ -10,9 +10,9 @@
        Get-ResetWaitSeconds — секунды до сброса плюс 120 с (±60) при фиксированном «сейчас» 23.10.2026 12:00.
        Функции берутся dot-source'ом из tools/queue-lib.ps1 — того же файла, что подключает run-queue.ps1.
     2. Сценарий run-queue.ps1 -SimulateLimit на временной копии репозитория (docs/plan.md с этапом 0 [x],
-       .queue/state.json с "verified": ["0"]): вызовы claude по порядку — claude-opus-5-5 ultracode →
+       .queue/state.json с "verified": ["0"]): вызовы claude по порядку — claude-opus-5-5 xhigh →
        claude-fable-5-1 xhigh (CLAUDE_CODE_EFFORT_LEVEL=xhigh) → ожидание до сброса + 120 с → снова
-       claude-opus-5-5 ultracode на той же сессии 1.1.
+       claude-opus-5-5 xhigh на той же сессии 1.1.
     3. -DryRun на той же копии печатает «Сессия 1.1», -Status — этап 0 «проверен».
     4. Отказ старта (и -DryRun) на копии с одним [ ] в этапе 0 и на копии без "verified": ["0"].
     5. Отказ -Setup писать "verified": ["0"] на копии с одним [ ] в этапе 0 (план при этом не меняется).
@@ -149,9 +149,9 @@ try {
     $wait = @($events | Where-Object { $_.event -eq 'wait' }) | Select-Object -First 1
     if ($calls.Count -ge 3) {
         $c1 = $calls[0]; $c2 = $calls[1]; $c3 = $calls[2]
-        [void](Check "1-й вызов: основная claude-opus-5-5 --effort ultracode (получили $($c1.model) $($c1.effort), CLAUDE_CODE_EFFORT_LEVEL='$($c1.env_effort)')" ($c1.model -eq 'claude-opus-5-5' -and $c1.effort -eq 'ultracode' -and -not $c1.env_effort))
+        [void](Check "1-й вызов: основная claude-opus-5-5 --effort xhigh, CLAUDE_CODE_EFFORT_LEVEL=xhigh (получили $($c1.model) $($c1.effort), '$($c1.env_effort)')" ($c1.model -eq 'claude-opus-5-5' -and $c1.effort -eq 'xhigh' -and $c1.env_effort -eq 'xhigh'))
         [void](Check "2-й вызов: запасная claude-fable-5-1 --effort xhigh, CLAUDE_CODE_EFFORT_LEVEL=xhigh (получили $($c2.model) $($c2.effort), '$($c2.env_effort)')" ($c2.model -eq 'claude-fable-5-1' -and $c2.effort -eq 'xhigh' -and $c2.env_effort -eq 'xhigh'))
-        [void](Check "3-й вызов: снова claude-opus-5-5 --effort ultracode (получили $($c3.model) $($c3.effort), '$($c3.env_effort)')" ($c3.model -eq 'claude-opus-5-5' -and $c3.effort -eq 'ultracode' -and -not $c3.env_effort))
+        [void](Check "3-й вызов: снова claude-opus-5-5 --effort xhigh (получили $($c3.model) $($c3.effort), '$($c3.env_effort)')" ($c3.model -eq 'claude-opus-5-5' -and $c3.effort -eq 'xhigh' -and $c3.env_effort -eq 'xhigh'))
         $envOk = @($calls | Where-Object { $_.bg_wait -eq '7200000' -and $_.no_autoupdate -eq '1' -and $_.args -match '^-p /next-task --dangerously-skip-permissions --output-format json --max-turns 300 ' }).Count -eq $calls.Count
         [void](Check 'окружение вызова: CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=7200000, DISABLE_AUTOUPDATER=1, -p /next-task, ходов 300 из заголовка' $envOk)
         if ($wait -and $c2.reset_at) {

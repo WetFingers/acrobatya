@@ -1,27 +1,27 @@
 ﻿<#
 .SYNOPSIS
-    Сборка выпуска «Оттиска»: Release → build\deploy → dist\Ottisk-<версия>-setup.exe (эталон 10.3).
+    Сборка выпуска «АкроБати»: Release → build\deploy → dist\AcroBatya-<версия>-setup.exe (эталон 10.3).
 
 .DESCRIPTION
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\build.ps1 [-SkipInstaller] [-Version x.y.z] [-NoBuild] [-WhatIf]
 
     Шаги (каждый печатает путь, размер и время):
       1. cmake --preset msvc-release                         (через tools\vcenv.cmd; лог build\release\configure.log)
-      2. cmake --build --preset msvc-release --target Ottisk render_refs render_tests bench
+      2. cmake --build --preset msvc-release --target AcroBatya render_refs render_tests bench
          (лог build\release\build.log; LTCG-линковка с /GL-библиотеками MuPDF долгая — раз в минуту
          печатается, что сборка идёт; таймаут -BuildTimeoutMinutes, по умолчанию 30)
       3. ctest --test-dir build\release -L render             (лог build\release\ctest-render.log)
-      4. cmake --install build\release --prefix build\deploy  (cmake\deploy.cmake: Ottisk.exe + windeployqt)
+      4. cmake --install build\release --prefix build\deploy  (cmake\deploy.cmake: AcroBatya.exe + windeployqt)
       5. докладка в build\deploy: platforms\qoffscreen.dll (рядом с qwindows.dll), DLL из
-         Microsoft.VC143.CRT ($env:VCToolsRedistDir\x64 после vcvars) рядом с Ottisk.exe, qpdf.exe и
+         Microsoft.VC143.CRT ($env:VCToolsRedistDir\x64 после vcvars) рядом с AcroBatya.exe, qpdf.exe и
          его DLL, tessdata\{rus,eng,deu}.traineddata, licenses\ (installer\licenses + THIRD-PARTY-NOTICES.md).
-         CRT — одна копия на {app} для Ottisk.exe и qpdf.exe: из двух источников (VC Redist и
+         CRT — одна копия на {app} для AcroBatya.exe и qpdf.exe: из двух источников (VC Redist и
          C:\Tools\qpdf\bin) берётся более новая версия каждой DLL — новая CRT совместима со старыми
          сборками, наоборот — нет (qpdf 12.4.2 собран MSVC 14.51 и несёт CRT 14.51, наш — 14.44)
-      6. build\deploy\Ottisk.exe --self-check — с PATH только из системных папок (доказывает, что
+      6. build\deploy\AcroBatya.exe --self-check — с PATH только из системных папок (доказывает, что
          развёртывание самодостаточно), данные — в build\self-check; код 0
       7. ISCC /Qp "/DAppVer=<версия>" "/DDeployDir=<абс>\build\deploy" installer\ottisk.iss
-         → dist\Ottisk-<версия>-setup.exe
+         → dist\AcroBatya-<версия>-setup.exe
 
     -NoBuild       — без шагов 1–3: развёртывание из уже собранного build\release.
     -SkipInstaller — без шага 7.
@@ -52,7 +52,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $toolsRoot = if ($env:OTTISK_TOOLS) { $env:OTTISK_TOOLS } else { 'C:\Tools' }
 $qtRoot = if ($env:QT_ROOT) { $env:QT_ROOT } else { 'C:\Qt\6.12.0\msvc2022_64' }
 $preset = 'msvc-release'
-$targets = 'Ottisk render_refs render_tests bench'
+$targets = 'AcroBatya render_refs render_tests bench'
 $iss = Join-Path $root 'installer\ottisk.iss'
 $tessLanguages = 'rus', 'eng', 'deu'
 
@@ -217,7 +217,7 @@ function Invoke-SelfCheck([string]$program) {
         $null = $process.Handle
         if (-not $process.WaitForExit(120000)) {
             & taskkill.exe /T /F /PID $process.Id 2>&1 | Out-Null
-            throw 'Ottisk.exe --self-check не завершился за 120 с'
+            throw 'AcroBatya.exe --self-check не завершился за 120 с'
         }
         $process.WaitForExit()
         $code = $process.ExitCode
@@ -229,7 +229,7 @@ function Invoke-SelfCheck([string]$program) {
     $lines | ForEach-Object { Write-Host "      $_" }
     if ($code -ne 0) {
         Get-Content -LiteralPath $err -Encoding UTF8 -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "      $_" }
-        throw "Ottisk.exe --self-check завершился с кодом $code"
+        throw "AcroBatya.exe --self-check завершился с кодом $code"
     }
     return $lines
 }
@@ -240,7 +240,7 @@ $productVersion = Get-ProductVersion
 if ($Version) {
     if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw "-Version ""$Version"": ожидается x.y.z" }
     if ($productVersion -and $productVersion -ne $Version) {
-        Write-Warning "-Version $Version не совпадает с cmake\product.cmake ($productVersion): Ottisk.exe покажет $productVersion"
+        Write-Warning "-Version $Version не совпадает с cmake\product.cmake ($productVersion): AcroBatya.exe покажет $productVersion"
     }
     $appVersion = $Version
 }
@@ -261,12 +261,12 @@ if (-not $NoBuild) {
 }
 $steps.Add(@{ Key = 'install'; Title = 'Установка в deploy'; Command = "cmake --install ""$buildDirAbs"" --prefix ""$deployDirAbs""" })
 $steps.Add(@{ Key = 'extras'; Title = 'Докладка'; Command = "qoffscreen.dll → к qwindows.dll; Microsoft.VC143.CRT\*.dll → корень (CRT-DLL новее — из qpdf\bin); $toolsRoot\qpdf\bin\qpdf.exe + qpdf*.dll; $toolsRoot\tessdata\{$($tessLanguages -join ',')}.traineddata → tessdata\; installer\licenses + THIRD-PARTY-NOTICES.md → licenses\" })
-$steps.Add(@{ Key = 'selfcheck'; Title = 'Самопроверка'; Command = "$deployDirAbs\Ottisk.exe --self-check" })
+$steps.Add(@{ Key = 'selfcheck'; Title = 'Самопроверка'; Command = "$deployDirAbs\AcroBatya.exe --self-check" })
 if (-not $SkipInstaller) {
-    $steps.Add(@{ Key = 'iscc'; Title = 'Установщик'; Command = "ISCC /Qp ""/DAppVer=$versionText"" ""/DDeployDir=$deployDirAbs"" installer\ottisk.iss → $distDirAbs\Ottisk-$versionText-setup.exe" })
+    $steps.Add(@{ Key = 'iscc'; Title = 'Установщик'; Command = "ISCC /Qp ""/DAppVer=$versionText"" ""/DDeployDir=$deployDirAbs"" installer\ottisk.iss → $distDirAbs\AcroBatya-$versionText-setup.exe" })
 }
 
-Write-Host "Оттиск $versionText — сборка выпуска"
+Write-Host "АкроБатя $versionText — сборка выпуска"
 Write-Host 'План:'
 for ($i = 0; $i -lt $steps.Count; $i++) {
     Write-Host ("  [{0}/{1}] {2}: {3}" -f ($i + 1), $steps.Count, $steps[$i].Title, $steps[$i].Command)
@@ -306,7 +306,7 @@ try {
                 Write-Host "      цели: $targets; лог $currentLog (LTCG-линковка долгая, таймаут $BuildTimeoutMinutes мин)"
                 $code = Invoke-VcLogged -Command $step.Command -Log $currentLog -TimeoutMinutes $BuildTimeoutMinutes -Progress
                 if ($code -ne 0) { throw "cmake --build: код $code" }
-                $exe = Join-Path $buildDirAbs 'bin\Ottisk.exe'
+                $exe = Join-Path $buildDirAbs 'bin\AcroBatya.exe'
                 if (-not (Test-Path -LiteralPath $exe)) { throw "Сборка не создала $exe" }
                 Write-Host "      $exe — $(Format-Size (Get-Item -LiteralPath $exe).Length), $(Format-Elapsed $watch)"
             }
@@ -333,7 +333,7 @@ try {
                 $currentLog = Join-Path $buildDirAbs 'install.log'
                 $code = Invoke-VcLogged -Command $step.Command -Log $currentLog -TimeoutMinutes 15
                 if ($code -ne 0) { throw "cmake --install: код $code" }
-                $exe = Join-Path $deployDirAbs 'Ottisk.exe'
+                $exe = Join-Path $deployDirAbs 'AcroBatya.exe'
                 if (-not (Test-Path -LiteralPath $exe)) { throw "cmake --install не положил $exe" }
                 Write-Host "      $deployDirAbs — $(Format-Size (Get-DirSize $deployDirAbs)), $(Format-Elapsed $watch)"
             }
@@ -346,7 +346,7 @@ try {
                 if (-not (Test-Path -LiteralPath $qoffscreen)) { throw "Нет $qoffscreen" }
                 Copy-Deploy $qoffscreen $qwindows.DirectoryName
                 Write-Host "      qoffscreen.dll → $($qwindows.DirectoryName)"
-                # CRT: все DLL папки Microsoft.VC143.CRT — рядом с Ottisk.exe (app-local)
+                # CRT: все DLL папки Microsoft.VC143.CRT — рядом с AcroBatya.exe (app-local)
                 $crtDir = Get-VcRedistCrtDir
                 $crt = Get-ChildItem -LiteralPath $crtDir -Filter '*.dll'
                 foreach ($dll in $crt) { Copy-Deploy $dll.FullName $deployDirAbs }
@@ -389,17 +389,17 @@ try {
             }
             'selfcheck' {
                 $currentLog = Join-Path $selfCheckDir 'self-check-errors.txt'
-                $selfCheck = Invoke-SelfCheck (Join-Path $deployDirAbs 'Ottisk.exe')
+                $selfCheck = Invoke-SelfCheck (Join-Path $deployDirAbs 'AcroBatya.exe')
                 # -NoBuild берёт готовый build\release: после смены версии в cmake\product.cmake он устарел
                 $reported = $selfCheck | Where-Object { $_ -match '^version:\s*(\S+)' } | Select-Object -First 1
                 if ($productVersion -and $reported -and $reported -notmatch ('^version:\s*' + [regex]::Escape($productVersion) + '\b')) {
-                    throw "Ottisk.exe сообщает «$reported», а cmake\product.cmake — ${productVersion}: сборка $buildDirAbs устарела (запустите без -NoBuild)"
+                    throw "AcroBatya.exe сообщает «$reported», а cmake\product.cmake — ${productVersion}: сборка $buildDirAbs устарела (запустите без -NoBuild)"
                 }
                 Write-Host "      код 0, $(Format-Elapsed $watch)"
             }
             'iscc' {
                 $currentLog = $null
-                $setup = Join-Path $distDirAbs "Ottisk-$appVersion-setup.exe"
+                $setup = Join-Path $distDirAbs "AcroBatya-$appVersion-setup.exe"
                 New-Item -ItemType Directory -Force -Path $distDirAbs | Out-Null
                 if (Test-Path -LiteralPath $setup) { Remove-Item -LiteralPath $setup -Force }
                 & $iscc /Qp "/DAppVer=$appVersion" "/DDeployDir=$deployDirAbs" "/O$distDirAbs" $iss
@@ -418,6 +418,6 @@ catch {
     exit 1
 }
 
-$result = if ($SkipInstaller) { $deployDirAbs } else { Join-Path $distDirAbs "Ottisk-$appVersion-setup.exe" }
+$result = if ($SkipInstaller) { $deployDirAbs } else { Join-Path $distDirAbs "AcroBatya-$appVersion-setup.exe" }
 Write-Host "Готово за $(Format-Elapsed $total): $result"
 exit 0

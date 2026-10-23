@@ -1,4 +1,4 @@
-// Точка входа Ottisk.exe (эталон 3.18, 10.3). Служебные режимы без окна (--version, --self-check,
+// Точка входа AcroBatya.exe (эталон 3.18, 10.3). Служебные режимы без окна (--version, --self-check,
 // --register-notify) идут на QCoreApplication и не требуют платформенного плагина Qt.
 #include <QApplication>
 #include <QCoreApplication>
@@ -56,14 +56,14 @@ int main(int argc, char** argv) {
         hasArg(argc, argv, "--register-notify")) {
         attachParentConsole();
         QCoreApplication app(argc, argv);
-        QCoreApplication::setApplicationName(QStringLiteral("Ottisk"));
+        QCoreApplication::setApplicationName(QStringLiteral("AcroBatya"));
         const CliOptions opts = parseCli(QCoreApplication::arguments());
         if (opts.registerNotify) {
             SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nullptr, nullptr);
             return 0;
         }
         if (opts.version) {
-            printUtf8(QStringLiteral("Ottisk ") + ot::app::version());
+            printUtf8(QStringLiteral("AcroBatya ") + ot::app::version());
             std::fflush(stdout);
             return 0;
         }
@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
     }
 
     QApplication app(argc, argv);
-    QApplication::setApplicationName(QStringLiteral("Ottisk"));
+    QApplication::setApplicationName(QStringLiteral("AcroBatya"));
     QApplication::setApplicationVersion(ot::app::version());
     const CliOptions opts = parseCli(QApplication::arguments());
     if (!opts.error.isEmpty()) {

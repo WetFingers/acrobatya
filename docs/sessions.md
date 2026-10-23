@@ -1,13 +1,13 @@
-# Очередь первой версии «Оттиска»: как устроена и что делает человек
+# Очередь первой версии «АкроБати»: как устроена и что делает человек
 
-Как очередь проходит этапы 1–10 — от каркаса этапа 0 до установщика `Ottisk-0.9.0-setup.exe` и выпуска
+Как очередь проходит этапы 1–10 — от каркаса этапа 0 до установщика `AcroBatya-0.9.0-setup.exe` и выпуска
 1.0.0 после пилота — и почему именно так. Сама очередь — `docs/plan.md`, эталон — `docs/design.md`
-(версия 0.1 от 22 октября 2026, решения человека (1)–(16)). Модель и усилие — **Opus 5.5, ultracode**
-везде: очередь запускается `.\run-queue.ps1 -Model claude-opus-5-5 -Effort ultracode -VerifyEffort ultracode
--FallbackModel claude-fable-5-1 -FallbackEffort xhigh`, в заголовках плана остаётся «усилие xhigh» как в образце «Мастерской»
-(флаги перебивают); запасная модель Fable 5.1 идёт с усилием xhigh, после ожидания сброса очередь возвращается к Opus 5.5 ultracode. Схема перенесена из `bny-studio`: эталон → `plan.md` с сессиями и рубежами → `/next-task`
+(версия 0.1 от 22 октября 2026, решения человека (1)–(16)). Модель и усилие — **Opus 5.5, xhigh**
+везде (решение человека 23.10.2026; было ultracode): очередь запускается `.\run-queue.ps1` (по умолчанию `-Model claude-opus-5-5 -Effort xhigh -VerifyEffort xhigh
+-FallbackModel claude-fable-5-1 -FallbackEffort xhigh`), в заголовках плана «усилие xhigh» как в образце «Мастерской»;
+запасная модель Fable 5.1 идёт с усилием xhigh, после ожидания сброса очередь возвращается к Opus 5.5 xhigh. Схема перенесена из `bny-studio`: эталон → `plan.md` с сессиями и рубежами → `/next-task`
 → `progress.md` → Git, с заменой Python/pytest на C++/CMake/ctest, `tools/verify.py` на Python 3.14,
-снимков PySide6 на снимки Qt Widgets без экрана (`Ottisk.exe --shots`), а Docker/Postgres — ничем:
+снимков PySide6 на снимки Qt Widgets без экрана (`AcroBatya.exe --shots`), а Docker/Postgres — ничем:
 данных программы хватает `settings.ini` и `state.sqlite`.
 
 ## Коротко
@@ -99,7 +99,7 @@ limit» и ждёт «resets HH:MM», `docs/scope.json` (186 + 8 + 28 + 30 ID), 
   C++-объектах tesseract/harfbuzz, Release как есть; `libresources.lib` всегда из Release — в `.sln` у него нет
   Debug-конфигурации); очередь работает в `build/debug` инкрементально одним Ninja (`.queue/build.lock`),
   `-j 10`, PCH на цель + unity; `build/release` — только рубежи, 9.4, сессия 1.1 (`render_refs`) и 1.2 (`bench`);
-  Release-цели — только `Ottisk render_refs render_tests bench`, остальные тесты на Debug (каждый exe с
+  Release-цели — только `AcroBatya render_refs render_tests bench`, остальные тесты на Debug (каждый exe с
   `/GL`-библиотеками MuPDF линкуется LTCG долго; в этапе 0 это замеряется, при > 3 мин Release MuPDF
   пересобирается `-NoLtcg`); все замеры времени и памяти — Release.
 - Корпуса качаются один раз в этапе 0 по всем тегам, которые упоминает план; сессии и рубежи ничего не качают
@@ -128,7 +128,7 @@ limit» и ждёт «resets HH:MM», `docs/scope.json` (186 + 8 + 28 + 30 ID), 
 ## Ожидания
 
 По опыту «Мастерской» на Opus 5.5 ultracode сессия шла 2–4 часа и стоила 40–55 $; здесь сборка C++ длиннее
-(инкремент одного `.cpp` в `ui` до 60 с, линковка `Ottisk.exe` Debug до 40 с, `verify.py` 2–6 минут,
+(инкремент одного `.cpp` в `ui` до 60 с, линковка `AcroBatya.exe` Debug до 40 с, `verify.py` 2–6 минут,
 после смены PCH 10–15), а XL-сессии тяжелее. Ориентир: сессия — 2–5 часов и 45–70 $, рубеж — 1–2 часа и
 30–50 $; весь план (48 сессий и 5 рубежей) — ориентировочно 105–185 часов машинного времени и 2,7–3,8 тыс. $.
 Точные цифры — в `.queue/log/summary.log` построчно; замеры времени сборки — в `docs/progress.md` этапа 0.
@@ -160,7 +160,7 @@ limit» и ждёт «resets HH:MM», `docs/scope.json` (186 + 8 + 28 + 30 ID), 
 4. Ответы на вопросы раздела 12 эталона — правкой «Правил работы» `docs/plan.md` между сессиями; пока
    действуют ответы по умолчанию.
 
-**После Р1 (M1):** открыть 10 своих файлов (`Ottisk.exe --smoke 8`), сравнить рендер с Acrobat Reader/Edge
+**После Р1 (M1):** открыть 10 своих файлов (`AcroBatya.exe --smoke 8`), сравнить рендер с Acrobat Reader/Edge
 на глаз; напечатать буклет на «Microsoft Print to PDF» и открыть в Edge; окно при 125 %/150 %.
 
 **После Р2 (M2):** подписать файл с меткой времени DigiCert и открыть в Acrobat Reader и Edge — зелёная галочка
@@ -174,7 +174,7 @@ limit» и ждёт «resets HH:MM», `docs/scope.json` (186 + 8 + 28 + 30 ID), 
 глазами; AES-256 файл, колонтитулы и водяной знак в Acrobat Reader; буклет на принтере; NVDA/Экранный
 диктор читает страницу.
 
-**После Р5 (M5):** поставить `Ottisk-0.9.0-setup.exe` на чистую учётную запись без администратора,
+**После Р5 (M5):** поставить `AcroBatya-0.9.0-setup.exe` на чистую учётную запись без администратора,
 ассоциация `.pdf` через Параметры, SmartScreen; две недели пилота с семьёй; замечания — в `docs/pilot.md`
 строками `- [ ] дата · кто · что`. Когда пилот закончен — снять `[~]` с пунктов 10.1 и запустить очередь
 снова: 10.1 закроет замечания регрессионными тестами и выпустит 1.0.0. До пилота `-Status` показывает этап 10
@@ -183,8 +183,8 @@ limit» и ждёт «resets HH:MM», `docs/scope.json` (186 + 8 + 28 + 30 ID), 
 
 ## Как наблюдать и останавливать
 
-- Запуск: `.\run-queue.ps1 -Model claude-opus-5-5 -Effort ultracode -VerifyEffort ultracode
-  -FallbackModel claude-fable-5-1 -FallbackEffort xhigh` из корня `ottisk`; `-DryRun` печатает следующую сессию без запуска;
+- Запуск: `.\run-queue.ps1` (по умолчанию `-Model claude-opus-5-5 -Effort xhigh -VerifyEffort xhigh
+  -FallbackModel claude-fable-5-1 -FallbackEffort xhigh`) из корня `ottisk`; `-DryRun` печатает следующую сессию без запуска;
   `-Status` — таблица этапов.
 - Наблюдение: `.queue/current.md` — текущее задание; `.queue/log/summary.log` — строка на запуск (вердикт,
   модель, минуты, ходы, стоимость); `.queue/log/<сессия>.txt` — полный вывод; `docs/progress.md` — запись

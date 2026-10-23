@@ -1,8 +1,8 @@
-"""Значок «Оттиска» — круглая печать: `"$env:OTTISK_PYTHON" -X utf8 -I tools/make_icon.py [--out installer/app.ico]`.
+"""Значок «АкроБати» — круглая печать: `"$env:OTTISK_PYTHON" -X utf8 -I tools/make_icon.py [--out installer/app.ico]`.
 
 Знак — оттиск круглой печати тёплого тёмно-красного цвета: диск, по краю кольцо со словом
-«ОТТИСК • ОТТИСК •», внутреннее кольцо и крупная буква «О» в центре. Мелкие размеры
-упрощаются (уровни детализации): 16–32 — диск и «О», 48–64 — ещё кольцо, 128 и 256 — полный знак.
+«АКРОБАТЯ • АКРОБАТЯ •», внутреннее кольцо и крупная буква «А» в центре. Мелкие размеры
+упрощаются (уровни детализации): 16–32 — диск и «А», 48–64 — ещё кольцо, 128 и 256 — полный знак.
 Каждый размер рисуется отдельно в масштабе ×8 и уменьшается LANCZOS — без размытия от готового 256.
 
 Детерминированность: только Pillow, без случайностей и дат; шрифт — Georgia Bold из
@@ -36,7 +36,7 @@ INK = (150, 36, 30, 255)  # тёплый тёмно-красный, «штемп
 INK_EDGE = (118, 24, 22, 255)  # край диска чуть темнее — оттиск по краю плотнее
 PAPER = (250, 238, 222, 255)  # кремовый — «бумага» в просветах печати
 
-RING_TEXT = "ОТТИСК•ОТТИСК•"
+RING_TEXT = "АКРОБАТЯ•АКРОБАТЯ•"
 FONT_CANDIDATES = (
     Path("C:/Windows/Fonts/georgiab.ttf"),
     Path("C:/Windows/Fonts/timesbd.ttf"),
@@ -65,13 +65,13 @@ def draw_ring(draw: ImageDraw.ImageDraw, k: float, radius: float, width: float, 
 
 
 def draw_center_letter(image: Image.Image, k: float, font_file: Path, height: float) -> None:
-    """Буква «О» по центру: высота глифа — `height` единиц знака."""
+    """Буква «А» по центру: высота глифа — `height` единиц знака."""
     font = ImageFont.truetype(str(font_file), size=max(8, round(height * 1.38 * k)))
     layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
-    left, top, right, bottom = draw.textbbox((0, 0), "О", font=font)
+    left, top, right, bottom = draw.textbbox((0, 0), "А", font=font)
     c = CANVAS / 2 * k
-    draw.text((c - (left + right) / 2, c - (top + bottom) / 2), "О", font=font, fill=PAPER)
+    draw.text((c - (left + right) / 2, c - (top + bottom) / 2), "А", font=font, fill=PAPER)
     image.alpha_composite(layer)
 
 
@@ -184,7 +184,7 @@ def main() -> int:
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="replace")
-    parser = argparse.ArgumentParser(description="Значок «Оттиска» (installer/app.ico)")
+    parser = argparse.ArgumentParser(description="Значок «АкроБати» (installer/app.ico)")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help="куда записать .ico")
     parser.add_argument("--preview", type=Path, help="контактный лист PNG (светлый и тёмный фон)")
     options = parser.parse_args()

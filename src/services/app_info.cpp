@@ -23,8 +23,8 @@ QString dataDir() {
     QString dir = qEnvironmentVariable("OTTISK_DATA_DIR");
     if (dir.isEmpty()) {
         const QString local = qEnvironmentVariable("LOCALAPPDATA");
-        dir = local.isEmpty() ? QDir::home().filePath(QStringLiteral("AppData/Local/Ottisk"))
-                              : QDir(local).filePath(QStringLiteral("Ottisk"));
+        dir = local.isEmpty() ? QDir::home().filePath(QStringLiteral("AppData/Local/AcroBatya"))
+                              : QDir(local).filePath(QStringLiteral("AcroBatya"));
     }
     QDir().mkpath(dir);
     return QDir::cleanPath(dir);
@@ -32,12 +32,12 @@ QString dataDir() {
 
 QString instanceName() {
     const QString suffix = qEnvironmentVariable("OTTISK_INSTANCE");
-    return suffix.isEmpty() ? QStringLiteral("Ottisk") : QStringLiteral("Ottisk-") + suffix;
+    return suffix.isEmpty() ? QStringLiteral("AcroBatya") : QStringLiteral("AcroBatya-") + suffix;
 }
 
 bool selfCheck(QStringList& lines) {
     bool ok = true;
-    lines << QStringLiteral("product: Ottisk");
+    lines << QStringLiteral("product: AcroBatya");
     lines << QStringLiteral("version: ") + version();
     lines << QStringLiteral("qt: ") + qtVersion() + QStringLiteral(" (built ") +
                  QStringLiteral(QT_VERSION_STR) + QStringLiteral(")");

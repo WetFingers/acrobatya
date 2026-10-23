@@ -1,4 +1,4 @@
-# Журнал разработки «Оттиска»
+# Журнал разработки «АкроБати»
 
 Сюда Claude Code дописывает итоги этапа 0, каждой сессии и рубежа очереди. Правила записи — в `CLAUDE.md`.
 Очередь — `docs/plan.md`, эталон — `docs/design.md`, как работает очередь — `QUEUE.md`.
@@ -14,7 +14,7 @@
   `winget`/UAC к 7.3 не нужен. Человеку только посмотреть: при желании поставить LibreOffice штатно (тогда
   обновить `OTTISK_SOFFICE`).
 - **К рубежу Р1 · Acrobat Reader (по желанию)** — для живой сверки рендера, буклета и наших файлов глазами.
-- **К рубежу Р2 · Сертификат для живой подписи** — `New-SelfSignedCertificate -Subject "CN=Оттиск тест"
+- **К рубежу Р2 · Сертификат для живой подписи** — `New-SelfSignedCertificate -Subject "CN=АкроБатя тест"
   -CertStoreLocation Cert:\CurrentUser\My -KeyExportPolicy NonExportable` или настоящий от УЦ/на токене;
   подпись с меткой времени DigiCert и проверка в Acrobat Reader и Edge.
 - **К рубежу Р4 · Сканер WIA и принтер** — скан со сканера, буклет на бумаге (очередь проверяет их через
@@ -57,8 +57,8 @@
      с «Привет» (код 0, 35 с — первый запуск с созданием профиля `C:\Tools\lo-prof-0`).
   9. `tools/vcenv.cmd`, `verify.py`, `build.ps1`, `shots.ps1`, `lint.ps1`, `build_lock.ps1`, `analyze_summary.py`,
      `compat_check.py`, `bench_compare.py`, `copy_icons.py`, `scope_report.py`, `review_refs.py`; `installer/`
-     (`ottisk.iss` per-user, ProgID `Ottisk.pdf`, Capabilities в HKCU, `app.ico`, `app.rc`, `Ottisk.manifest`,
-     `licenses/`), `THIRD-PARTY-NOTICES.md`; `dist/Ottisk-0.0.1-setup.exe` (38 МБ): тихая установка, `--self-check`
+     (`ottisk.iss` per-user, ProgID `AcroBatya.pdf`, Capabilities в HKCU, `app.ico`, `app.rc`, `AcroBatya.manifest`,
+     `licenses/`), `THIRD-PARTY-NOTICES.md`; `dist/AcroBatya-0.0.1-setup.exe` (38 МБ): тихая установка, `--self-check`
      с экраном и под offscreen, `--shots`, `--smoke 3`, удаление — `tests/build/install_test.py` зелёный.
   10. Очередь: `run-queue.ps1` + `tools/queue-lib.ps1` (без Docker/Postgres; `Test-Limited`, 24-часовой и
       относительный разбор «resets …», запас 120 с, основная → запасная Fable 5.1 xhigh → ждать → снова основная;
@@ -96,7 +96,7 @@
     `openssl req -x509`, — иначе два прогона генераторов давали разные байты.
   - `expected.json` эталонов лежит в `tests/render/expected/expected.json` (как в «Опоре» 1.1) — под deny и хуком
     вместе с PNG; `render_refs --update`/`--mark-release-only` в Debug-сборке отказывают (код 2).
-  - Release-пресет сборки собирает только `Ottisk render_refs render_tests bench` (`targets` в `CMakePresets.json`).
+  - Release-пресет сборки собирает только `AcroBatya render_refs render_tests bench` (`targets` в `CMakePresets.json`).
   - Метки ctest якорятся: `-L "unit|ui"` совпадало и с меткой `build` теста установки (`ui` ⊂ `build`) — ручной
     `ctest -L ui` ставил программу. `verify.py` оборачивает `--labels` в `^(…)$`, в командах — `-L "^(unit|ui)$"`.
   - Фикстуры названы как в плане: `forms/forms-all.pdf` (+ копия `fields-all.pdf`), `annots/annots-all.pdf`
@@ -108,16 +108,16 @@
   - **`fz_locks_context` в MuPDF 1.28.5 — три поля** (`user, lock, unlock`), а не пять, как в `docs/tech-facts.md`
     (§1.2 и факт 7 раздела 0): справочник ошибается, код сделан по заголовку `fitz/context.h:270`.
   - ctest не передаёт окружение в PRE_TEST-обнаружение gtest; в строках CMake пути только с `/`.
-  - Программа WIN32: из PowerShell `& Ottisk.exe` не ждёт и не отдаёт вывод — запускать через `cmd /c` с
+  - Программа WIN32: из PowerShell `& AcroBatya.exe` не ждёт и не отдаёт вывод — запускать через `cmd /c` с
     перенаправлением или из Python; `--self-check` сам подключается к консоли родителя.
   - Qt offscreen без `QT_QPA_FONTDIR` рисует квадраты — `main()` подставляет `%WINDIR%\Fonts`.
   - clang-format (Google, `ReflowComments`) склеивает строки комментария — абзацы разделять пустым `//`.
   - `soffice.com` печатает «Could not find platform independent libraries» (встроенный Python) — безвредно.
   - `qtdiag` Qt 6.12 печатает только «by MSVC 2022»; версия компилятора 19.44.35227.0 — в
     `C:\Qt\6.12.0\msvc2022_64\config_qtbase.summary` (тест пункта 1 «qtdiag печатает msvc 19.44» проверять там).
-  - Каталог корпусов `%LOCALAPPDATA%\ottisk\corpus` (эталон 9.2) в NTFS — тот же каталог, что данные программы
-    `%LOCALAPPDATA%\Ottisk` (эталон 4.7): регистр не различается. Деинсталлятор корпус не трогает
-    (`[UninstallDelete]` — только `thumbs`, `autosave`, `lo-prof-*`); расхождение эталонов, не дефект.
+  - Каталог корпусов `%LOCALAPPDATA%\ottisk\corpus` (эталон 9.2) до переименования совпадал в NTFS с каталогом данных
+    `%LOCALAPPDATA%\Ottisk` (регистр не различается). С 23.10.2026 данные программы — `%LOCALAPPDATA%\AcroBatya`,
+    каталоги разные; деинсталлятор корпус не трогает.
   - Хук блокирует `curl -o C:\Tools\dl\…`: этап 0 вёлся из сессии вне папки `ottisk`; из очереди `C:\Tools` — только чтение.
 - Замеры:
 
@@ -127,10 +127,10 @@
   | configure Release (порты из бинарного кэша vcpkg) | 15 с |
   | configure повторный | 19–34 с |
   | полная сборка Debug (39 целей, PCH + unity) | 33 с |
-  | инкремент одного `.cpp` в ui → `Ottisk.exe` | 4 с |
-  | линковка Debug: `Ottisk.exe` / `unit_tests` / `render_refs` | 0,6 / 1,7 / 6,8 с |
-  | линковка Release с `/GL` MuPDF: `render_refs` / `Ottisk` | 238 / 74 с |
-  | линковка Release без LTCG: `render_refs` / `Ottisk` | 1,6 / 1,1 с |
+  | инкремент одного `.cpp` в ui → `AcroBatya.exe` | 4 с |
+  | линковка Debug: `AcroBatya.exe` / `unit_tests` / `render_refs` | 0,6 / 1,7 / 6,8 с |
+  | линковка Release с `/GL` MuPDF: `render_refs` / `AcroBatya` | 238 / 74 с |
+  | линковка Release без LTCG: `render_refs` / `AcroBatya` | 1,6 / 1,1 с |
   | MuPDF: Debug с props / Release `-NoLtcg` | 130 / 217 с |
   | `verify.py` (configure + сборка + стражи + 28 тестов) | 28–30 с |
   | `render_refs --update` (60 файлов, 128 PNG) / `ctest -L render` | 3 / 9 с |
@@ -148,3 +148,12 @@
   `ctest -L render` 129/129 на Debug и Release; `dumpbin /directives` Debug-библиотек MuPDF — `MSVCRTD|ucrtd|
   msvcprtd|MDd_DynamicDebug` 0 вхождений, `RuntimeLibrary=MD_DynamicRelease`; `fetch_corpus.py --verify` 0;
   `install_test.py` 0; снимок `home` 1440 × 900 (Segoe UI, кириллица) посмотрен; `scope_check` 252 = 252.
+
+### 2026-10-23 · Этап 0 · Решения человека: Opus 5.5 xhigh и имя «АкроБатя»
+- Сделано: очередь по умолчанию — Opus 5.5 с усилием xhigh (было ultracode), запасная Fable 5.1 xhigh: `run-queue.ps1`,
+  `tools/test_reset_parse.ps1`, план, эталон, `QUEUE.md`, навык (раздел «Ultracode» — только при `-Effort ultracode`).
+  Продукт получил имя «АкроБатя» (AcroBatya): заголовок, установщик, exe/цель `AcroBatya`, ProgID, Capabilities, каталог
+  данных, значок (печать «АКРОБАТЯ», буква «А»), документы; внутренние имена `ottisk*`/`OTTISK_*`/`ot` и тексты фикстур — без
+  изменений (правило в «Правилах работы» плана). Исправлена ошибка плана и эталона: `fz_locks_context` — три поля, не пять.
+- Проверки: те же команды, что в записи «Окружение и очередь», — `verify.py`, рендер Debug и Release, `build.ps1` → `AcroBatya-0.0.1-setup.exe`,
+  `install_test.py`, `test_reset_parse.ps1`, `test_guard.ps1`, `-DryRun` → 1.1.

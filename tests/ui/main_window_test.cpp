@@ -23,7 +23,7 @@ private slots:
         w.resize(1440, 900);
         w.show();
         QVERIFY(QTest::qWaitForWindowExposed(&w));
-        QCOMPARE(w.windowTitle(), QStringLiteral("Оттиск"));
+        QCOMPARE(w.windowTitle(), QStringLiteral("АкроБатя"));
         QStringList menus;
         for (QAction* a : w.menuBar()->actions()) {
             menus << a->text().remove(QLatin1Char('&'));
@@ -51,7 +51,7 @@ private slots:
         auto* image = w.findChild<QLabel*>(QStringLiteral("pageImage"));
         QVERIFY(image != nullptr);
         QVERIFY(!image->pixmap().isNull());
-        QVERIFY(w.windowTitle().endsWith(QStringLiteral(" — Оттиск")));
+        QVERIFY(w.windowTitle().endsWith(QStringLiteral(" — АкроБатя")));
     }
 
     void shotsSceneWritesPng() {
@@ -67,7 +67,7 @@ private slots:
 
     void cliParsesServiceModes() {
         const auto o =
-            ot::ui::parseCli({QStringLiteral("Ottisk.exe"), QStringLiteral("--shots"),
+            ot::ui::parseCli({QStringLiteral("AcroBatya.exe"), QStringLiteral("--shots"),
                               QStringLiteral("home,all"), QStringLiteral("--out"), QStringLiteral("x"),
                               QStringLiteral("--size"), QStringLiteral("800x600"), QStringLiteral("--smoke"),
                               QStringLiteral("8"), QStringLiteral("файл.pdf")});

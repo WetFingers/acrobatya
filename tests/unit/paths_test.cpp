@@ -7,7 +7,7 @@
 namespace paths = ot::paths;
 
 TEST(paths, utf8_roundtrip) {
-    const std::string utf8 = "Оттиск · ПДФ — «проба» ü";
+    const std::string utf8 = "АкроБатя · ПДФ — «проба» ü";
     EXPECT_EQ(paths::narrow(paths::widen(utf8)), utf8);
     EXPECT_EQ(paths::widen("abc"), L"abc");
     EXPECT_TRUE(paths::widen("").empty());

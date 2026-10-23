@@ -1,4 +1,4 @@
-# Оттиск
+# АкроБатя
 
 Настольный PDF-редактор для Windows уровня Adobe Acrobat Standard — личная программа семьи: просмотр и печать,
 правка текста в PDF, комментарии и Fill & Sign, формы, подписи PAdES, страницы, создание и конвертация, защита,
@@ -24,9 +24,9 @@ py -3.14 tools\verify.py                                                     # �
 ```
 
 `tools\vcenv.cmd` — окружение MSVC (vcvars64) плюс clang-format/clang-tidy в `PATH`. Программа из сборки:
-`build\debug\bin\Ottisk.exe` (с `C:\Qt\6.12.0\msvc2022_64\bin` в `PATH`); `--self-check` — самопроверка без окна,
+`build\debug\bin\AcroBatya.exe` (с `C:\Qt\6.12.0\msvc2022_64\bin` в `PATH`); `--self-check` — самопроверка без окна,
 `--shots home --out <каталог>` — снимок окна без экрана. Выпуск и установщик: `tools\build.ps1` →
-`dist\Ottisk-<версия>-setup.exe` (тихо: `/VERYSILENT`).
+`dist\AcroBatya-<версия>-setup.exe` (тихо: `/VERYSILENT`).
 
 ## Лицензии
 

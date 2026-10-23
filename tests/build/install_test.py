@@ -1,26 +1,26 @@
-"""Тихая установка, самопроверка и удаление «Оттиска» (ctest-метка build, только рубеж и выпуск).
+"""Тихая установка, самопроверка и удаление «АкроБати» (ctest-метка build, только рубеж и выпуск).
 
     "C:\\Tools\\venv-test\\Scripts\\python.exe" -X utf8 -I tests/build/install_test.py --root <репозиторий>
-        [--setup dist\\Ottisk-<версия>-setup.exe] [--keep] [--smoke СЕКУНДЫ]
+        [--setup dist\\AcroBatya-<версия>-setup.exe] [--keep] [--smoke СЕКУНДЫ]
 
 0. Защита данных человека: тот же AppId (из installer/ottisk.iss) уже установлен (запись удаления
-   …\\Uninstall\\{AppId}_is1 в HKCU/HKLM) или в %LOCALAPPDATA%\\Ottisk\\autosave есть файлы — отказ с
+   …\\Uninstall\\{AppId}_is1 в HKCU/HKLM) или в %LOCALAPPDATA%\\AcroBatya\\autosave есть файлы — отказ с
    кодом 1 и объяснением: тихая установка в другой каталог перехватила бы ярлык «Пуск» и запись удаления
    установленной копии, а деинсталляция стёрла бы autosave человека. Обойти — OTTISK_INSTALL_TEST_FORCE=1.
 
-1. Установщик — `--setup` или `dist/Ottisk-<версия>-setup.exe` (версия — из cmake/product.cmake,
+1. Установщик — `--setup` или `dist/AcroBatya-<версия>-setup.exe` (версия — из cmake/product.cmake,
    `set(OTTISK_VERSION "x.y.z")`). Нет установщика — сообщение и код 1.
 2. `<setup> /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CURRENTUSER /DIR=<временный каталог> /TASKS=""`:
    без ярлыка на рабочем столе и без записей ассоциации в реестр. С `OTTISK_ALLOW_REGISTRY=1`
-   ставится с `/TASKS="fileassoc"` и проверяются HKCU\\Software\\Classes\\Ottisk.pdf и
-   RegisteredApplications\\Ottisk (после удаления — что их нет; эталон 10.4); значение
-   .pdf\\OpenWithProgids\\Ottisk.pdf деинсталляция по правилу Windows оставляет — тест это проверяет и,
+   ставится с `/TASKS="fileassoc"` и проверяются HKCU\\Software\\Classes\\AcroBatya.pdf и
+   RegisteredApplications\\AcroBatya (после удаления — что их нет; эталон 10.4); значение
+   .pdf\\OpenWithProgids\\AcroBatya.pdf деинсталляция по правилу Windows оставляет — тест это проверяет и,
    если до установки значения не было, удаляет его сам (машина возвращается в исходное состояние).
    Установщик Inno Setup всё равно пишет свою запись удаления в HKCU (…\\Uninstall\\{AppId}_is1)
    и ярлык в меню «Пуск» — деинсталляция их убирает.
-3. Файлы: Ottisk.exe, Qt6Core.dll, platforms\\qwindows.dll и qoffscreen.dll (в plugins\\ или рядом),
+3. Файлы: AcroBatya.exe, Qt6Core.dll, platforms\\qwindows.dll и qoffscreen.dll (в plugins\\ или рядом),
    Microsoft.VC143.CRT или msvcp140.dll, qpdf.exe, tessdata\\rus.traineddata, unins000.exe.
-4. `<dir>\\Ottisk.exe --self-check` дважды, с PATH только из системных папок и данными во временном
+4. `<dir>\\AcroBatya.exe --self-check` дважды, с PATH только из системных папок и данными во временном
    каталоге: без QT_QPA_PLATFORM (в stderr нет «Could not load the Qt platform plugin») и с
    QT_QPA_PLATFORM=offscreen — оба с кодом 0, в выводе есть «version: <версия>», «qt:», «mupdf:», «data:».
    --self-check работает на QCoreApplication и платформенный плагин не грузит, поэтому плагины
@@ -50,7 +50,7 @@ PLATFORM_ERROR = "Could not load the Qt platform plugin"
 SELF_CHECK_KEYS = ("version:", "qt:", "mupdf:", "data:")
 REGISTRY_FLAG = "OTTISK_ALLOW_REGISTRY"
 FORCE_FLAG = "OTTISK_INSTALL_TEST_FORCE"
-PROG_ID = "Ottisk.pdf"
+PROG_ID = "AcroBatya.pdf"
 OPEN_WITH_KEY = r"Software\Classes\.pdf\OpenWithProgids"
 
 
@@ -84,7 +84,7 @@ def app_id(root: Path) -> str | None:
 
 
 def installed_copy(guid: str) -> str | None:
-    """Каталог уже установленного «Оттиска» с тем же AppId (реестр только читается) или None."""
+    """Каталог уже установленного «АкроБати» с тем же AppId (реестр только читается) или None."""
     import winreg
 
     subkey = rf"Software\Microsoft\Windows\CurrentVersion\Uninstall\{{{guid}}}_is1"
@@ -101,11 +101,11 @@ def installed_copy(guid: str) -> str | None:
 
 
 def user_autosave_files() -> int:
-    """Файлов в %LOCALAPPDATA%\\Ottisk\\autosave человека — их стёр бы [UninstallDelete] установщика."""
+    """Файлов в %LOCALAPPDATA%\\AcroBatya\\autosave человека — их стёр бы [UninstallDelete] установщика."""
     base = os.environ.get("LOCALAPPDATA")
     if not base:
         return 0
-    autosave = Path(base) / "Ottisk" / "autosave"
+    autosave = Path(base) / "AcroBatya" / "autosave"
     if not autosave.is_dir():
         return 0
     return sum(1 for item in autosave.rglob("*") if item.is_file())
@@ -197,9 +197,9 @@ def registry_values() -> dict[str, bool]:
             return False
 
     return {
-        "ProgID Ottisk.pdf": key_exists(r"Software\Classes\Ottisk.pdf\shell\open\command"),
-        "Capabilities": key_exists(r"Software\Ottisk\Capabilities\FileAssociations"),
-        "RegisteredApplications\\Ottisk": value_exists(r"Software\RegisteredApplications", "Ottisk"),
+        "ProgID AcroBatya.pdf": key_exists(r"Software\Classes\AcroBatya.pdf\shell\open\command"),
+        "Capabilities": key_exists(r"Software\AcroBatya\Capabilities\FileAssociations"),
+        "RegisteredApplications\\AcroBatya": value_exists(r"Software\RegisteredApplications", "AcroBatya"),
     }
 
 
@@ -268,13 +268,13 @@ def main() -> int:
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="replace")
-    parser = ExitOneParser(description="Тихая установка, --self-check и удаление «Оттиска»")
+    parser = ExitOneParser(description="Тихая установка, --self-check и удаление «АкроБати»")
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[2],
                         help="корень репозитория (по умолчанию — два уровня выше tests/build)")
-    parser.add_argument("--setup", type=Path, help="установщик (по умолчанию dist/Ottisk-<версия>-setup.exe)")
+    parser.add_argument("--setup", type=Path, help="установщик (по умолчанию dist/AcroBatya-<версия>-setup.exe)")
     parser.add_argument("--keep", action="store_true", help="не удалять программу после проверок")
     parser.add_argument("--smoke", type=int, default=3, metavar="СЕКУНДЫ",
-                        help="Ottisk.exe --smoke N без QT_QPA_PLATFORM — окно на экране (по умолчанию 3, 0 — нет)")
+                        help="AcroBatya.exe --smoke N без QT_QPA_PLATFORM — окно на экране (по умолчанию 3, 0 — нет)")
     options = parser.parse_args()
 
     root = options.root.resolve()
@@ -285,10 +285,10 @@ def main() -> int:
     if options.setup:
         setup = options.setup if options.setup.is_absolute() else (Path.cwd() / options.setup)
     elif version:
-        setup = root / "dist" / f"Ottisk-{version}-setup.exe"
+        setup = root / "dist" / f"AcroBatya-{version}-setup.exe"
     else:
-        candidates = sorted((root / "dist").glob("Ottisk-*-setup.exe"), key=lambda p: p.stat().st_mtime)
-        setup = candidates[-1] if candidates else root / "dist" / "Ottisk-<версия>-setup.exe"
+        candidates = sorted((root / "dist").glob("AcroBatya-*-setup.exe"), key=lambda p: p.stat().st_mtime)
+        setup = candidates[-1] if candidates else root / "dist" / "AcroBatya-<версия>-setup.exe"
     if not setup.is_file():
         say(f"нет установщика: {setup}")
         if not version and not options.setup:
@@ -296,7 +296,7 @@ def main() -> int:
         say("  соберите: powershell -NoProfile -ExecutionPolicy Bypass -File tools\\build.ps1")
         return 1
     if not version:
-        match = re.search(r"Ottisk-(\d+\.\d+\.\d+)-setup\.exe$", setup.name)
+        match = re.search(r"AcroBatya-(\d+\.\d+\.\d+)-setup\.exe$", setup.name)
         version = match.group(1) if match else None
 
     allow_registry = os.environ.get(REGISTRY_FLAG) == "1"
@@ -305,11 +305,11 @@ def main() -> int:
     autosave = user_autosave_files()
     if (existing or autosave) and os.environ.get(FORCE_FLAG) != "1":
         if existing:
-            say(f"«Оттиск» уже установлен (AppId {{{guid}}}): {existing}")
+            say(f"«АкроБатя» уже установлен (AppId {{{guid}}}): {existing}")
             say("  тихая установка с тем же AppId в другой каталог перехватила бы его ярлык в «Пуске» и запись")
             say("  удаления, а деинсталляция тестовой копии оставила бы установленную без них")
         if autosave:
-            say(f"в %LOCALAPPDATA%\\Ottisk\\autosave {autosave} файлов — деинсталляция ([UninstallDelete]) стёрла бы их")
+            say(f"в %LOCALAPPDATA%\\AcroBatya\\autosave {autosave} файлов — деинсталляция ([UninstallDelete]) стёрла бы их")
         say(f"  удалите установленную копию / сохраните документы или задайте {FORCE_FLAG}=1")
         return 1
     if not guid:
@@ -331,7 +331,7 @@ def main() -> int:
     except subprocess.TimeoutExpired:
         say("установщик не завершился за 600 с")
         return 1
-    if not checker.check(result.returncode == 0 and (app / "Ottisk.exe").is_file(),
+    if not checker.check(result.returncode == 0 and (app / "AcroBatya.exe").is_file(),
                          f"тихая установка: код {result.returncode}, {time.monotonic() - started:.1f} с"):
         say(f"  журнал установки: {work / 'setup.log'}")
         if (app / "unins000.exe").is_file():  # установка прошла частично — убрать за собой
@@ -342,8 +342,8 @@ def main() -> int:
         return 1
 
     say("файлы:")
-    checker.check((app / "Ottisk.exe").is_file(), "Ottisk.exe")
-    checker.check((app / "Qt6Core.dll").is_file(), "Qt6Core.dll рядом с Ottisk.exe")
+    checker.check((app / "AcroBatya.exe").is_file(), "AcroBatya.exe")
+    checker.check((app / "Qt6Core.dll").is_file(), "Qt6Core.dll рядом с AcroBatya.exe")
     platforms = find_platform_dir(app)
     checker.check(platforms is not None, "platforms\\qwindows.dll (plugins\\platforms или platforms)")
     checker.check(platforms is not None and (platforms / "qoffscreen.dll").is_file(), "qoffscreen.dll рядом с qwindows.dll")
@@ -357,7 +357,7 @@ def main() -> int:
             checker.check(present, f"реестр HKCU: {name}")
 
     say("самопроверка:")
-    exe = app / "Ottisk.exe"
+    exe = app / "AcroBatya.exe"
     self_check(checker, exe, version, data_dir, None)
     self_check(checker, exe, version, data_dir, "offscreen")
     say("платформенные плагины:")

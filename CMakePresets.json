@@ -58,7 +58,7 @@
   ],
   "buildPresets": [
     { "name": "msvc-debug", "configurePreset": "msvc-debug", "jobs": 10 },
-    { "name": "msvc-release", "configurePreset": "msvc-release", "jobs": 10, "targets": ["Ottisk", "render_refs", "render_tests", "bench"] },
+    { "name": "msvc-release", "configurePreset": "msvc-release", "jobs": 10, "targets": ["AcroBatya", "render_refs", "render_tests", "bench"] },
     { "name": "msvc-asan", "configurePreset": "msvc-asan", "jobs": 10 },
     { "name": "msvc-fuzz", "configurePreset": "msvc-fuzz", "jobs": 10, "targets": ["pdf_open_fuzzer"] },
     { "name": "msvc-analyze", "configurePreset": "msvc-analyze", "jobs": 10 }

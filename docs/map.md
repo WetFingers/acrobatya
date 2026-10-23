@@ -1,4 +1,4 @@
-# Карта кода «Оттиска»
+# Карта кода «АкроБати»
 
 Где что лежит и как добавляется типовая вещь. Сессия читает этот файл **первым**, до поиска по коду.
 Дерево и состав — эталон `docs/design.md` 5.1–5.3; здесь — короткий путеводитель и рецепты.
@@ -17,7 +17,7 @@
 | `ottisk_core` (static) | `src/core/**` | `src/core/pch.h` (MuPDF + std) | MuPDF `.lib` (`cmake/mupdf.cmake`), OpenSSL, tiff, fmt, spdlog, json, sqlite3, Tesseract/Leptonica |
 | `ottisk_services` (static) | `src/services/**` | `src/services/pch.h` (QtCore) | `ottisk_core`, Qt Core/Gui/Network/PrintSupport/Concurrent |
 | `ottisk_ui_lib` (static) | `src/ui/**` кроме `app/main.cpp` | `src/ui/pch.h` (QtWidgets) | `ottisk_services`, Qt Widgets/Svg |
-| `Ottisk` (exe, WIN32) | `src/ui/app/main.cpp` + `installer/app.rc`, `installer/Ottisk.manifest` | — | `ottisk_ui_lib` |
+| `AcroBatya` (exe, WIN32) | `src/ui/app/main.cpp` + `installer/app.rc`, `installer/AcroBatya.manifest` | — | `ottisk_ui_lib` |
 | `unit_tests` | `tests/unit/**` | — | gtest, `ottisk_services`; метка `unit` |
 | `ui_tests` | `tests/ui/**` | — | QTest, `ottisk_ui_lib`; метка `ui` |
 | `engine_tests`, `render_tests`, `e2e_tests` | `tests/engine/**`, `tests/render/**`, `tests/e2e/**` | — | gtest; метки `engine;slow`, `render;slow`, `e2e;slow` |
@@ -93,7 +93,7 @@
 | `tests/corpus/manifest.json` | корпуса `{id, url\|git, sha256, license, tags[], expect}` → `%LOCALAPPDATA%\ottisk\corpus` (`OTTISK_CORPUS`) |
 | `tests/fixtures/` | свои фикстуры ≤ 50 КБ и пермиссивные (`LICENSES.md`): `annots/ forms/ enc/ sig/ images/ scans/ office/ scenes/ demo/ regress/ pki/ (4.1)` |
 | `tools/` | `vcenv.cmd`, `verify.py`, `build.ps1`, `build_lock.ps1`, `shots.ps1`, `lint.ps1`, стражи `*_guard.py` и `scope_check.py`, `scope_report.py`, `imgcmp/`, `render_refs.cpp`, `review_refs.py`, `fetch_corpus.py`, `compat_check.py`, `bench_compare.py`, `analyze_summary.py`, `copy_icons.py`, `gen/` (генераторы фикстур), `get-tessdata.ps1`, `install-qt.ps1`, `mupdf-build.ps1` + `ottisk-md.props`, очередь: `queue-lib.ps1`, `test_reset_parse.ps1`, `test_guard.ps1` |
-| `installer/` | `ottisk.iss` (UTF-8 BOM, per-user), `app.ico`, `app.rc`, `Ottisk.manifest` (UTF-8 ACP, longPathAware), `licenses/` |
+| `installer/` | `ottisk.iss` (UTF-8 BOM, per-user), `app.ico`, `app.rc`, `AcroBatya.manifest` (UTF-8 ACP, longPathAware), `licenses/` |
 | `assets/` | `icons/` (только нужные Lucide + `LICENSE`, список `icons.txt`), `stamps/`, `help/ru`, `help/en` |
 | `i18n/` | `ottisk_ru.ts`, `ottisk_en.ts`, части `en-parts/` для перевода агентами (9.2) |
 
@@ -152,7 +152,7 @@ PowerShell-стражи очереди `tools/test_reset_parse.ps1` и `tools/te
    (`general/`, `pageDisplay/`, `documents/`, `commenting/`, `forms/`, `editing/`, `signatures/`, `trust/`,
    `search/`, `reading/`, `ocr/`, `convert/`, `print/`, `hotkeys/`, `quickbar/`, `language/`); чтение — через
    типизированный `Settings` (`src/services/settings.h`).
-2. Хранение — `QSettings(IniFormat)` → `%LOCALAPPDATA%\Ottisk\settings.ini` (никогда не реестр —
+2. Хранение — `QSettings(IniFormat)` → `%LOCALAPPDATA%\AcroBatya\settings.ini` (никогда не реестр —
    `unit.guard.no_registry`); в тестах и сценах — `OTTISK_DATA_DIR`. Смена смысла ключа — миграция по `meta/version`.
 3. Интерфейс — в категории диалога «Установки» (`src/ui/shell/preferences/`, названия — как в русском Acrobat).
 4. Тест: умолчание, запись-чтение, влияние на поведение; сцена категории Установок при новом виде.

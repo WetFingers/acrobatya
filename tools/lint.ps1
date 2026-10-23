@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    clang-tidy по исходникам «Оттиска»: только изменённые (-Changed) или все (-All).
+    clang-tidy по исходникам «АкроБати»: только изменённые (-Changed) или все (-All).
 
 .DESCRIPTION
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\lint.ps1 -Changed | -All [-Preset msvc-debug]

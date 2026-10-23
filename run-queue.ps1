@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Автоматическая очередь «Оттиска»: выполняет docs/plan.md сессию за сессией через Claude Code.
+    Автоматическая очередь «АкроБати»: выполняет docs/plan.md сессию за сессией через Claude Code.
 
 .DESCRIPTION
     Скрипт находит первую сессию плана с невыполненными пунктами (или непройденный рубеж), пишет задание
@@ -19,7 +19,7 @@
     .\run-queue.ps1 -Status       # прогресс по этапам
     .\run-queue.ps1 -Setup        # проверка окружения; "verified": ["0"] — только если все пункты этапа 0 уже [x]
     .\run-queue.ps1 -DryRun       # следующее задание в .queue\current.md, Claude не запускается
-    .\run-queue.ps1               # очередь до конца плана (Opus 5.5 ultracode, запасная Fable 5.1 xhigh)
+    .\run-queue.ps1               # очередь до конца плана (Opus 5.5 xhigh, запасная Fable 5.1 xhigh)
     .\run-queue.ps1 -MaxTasks 3   # не больше трёх заданий
 #>
 [CmdletBinding()]
@@ -31,7 +31,7 @@ param(
     # -Setup без tools/verify.py (только проверки окружения и этапа 0).
     [switch]$SkipVerify,
     # Брать усилие из заголовка сессии («усилие xhigh»), если -Effort/-VerifyEffort не заданы явно.
-    # По умолчанию выключено: решение человека 11 — ultracode во всех сессиях, заголовки флаги перебивают.
+    # По умолчанию выключено: решение человека 23.10.2026 — Opus 5.5 xhigh во всех сессиях, флаги главнее заголовков.
     [switch]$UsePlanEffort,
     # Тест: вместо claude — заглушка (первые два вызова отвечают текстом лимита, третий — без лимита),
     # Wait-Until не спит, а печатает и пишет в .queue\simulate-limit.jsonl, до какого времени ждал бы.
@@ -45,9 +45,9 @@ param(
     # Запасная модель: на неё очередь переходит сама, когда у основной кончился лимит использования.
     [string]$FallbackModel = 'claude-fable-5-1',
     [ValidateSet('low', 'medium', 'high', 'xhigh', 'max', 'ultracode')]
-    [string]$Effort = 'ultracode',
+    [string]$Effort = 'xhigh',
     [ValidateSet('low', 'medium', 'high', 'xhigh', 'max', 'ultracode')]
-    [string]$VerifyEffort = 'ultracode',
+    [string]$VerifyEffort = 'xhigh',
     # Усилие запасной модели: ultracode для Fable CLI может отвергнуть — прогон упал бы как обычная неудача.
     [ValidateSet('low', 'medium', 'high', 'xhigh', 'max', 'ultracode')]
     [string]$FallbackEffort = 'xhigh',
@@ -78,7 +78,7 @@ $StopFile    = Join-Path $QueueDir 'STOP'
 $SummaryLog  = Join-Path $LogDir 'summary.log'
 $SimLog      = Join-Path $QueueDir 'simulate-limit.jsonl'
 $ToolsRoot   = if ($env:OTTISK_TOOLS) { $env:OTTISK_TOOLS } else { 'C:\Tools' }
-$DefaultOttiskPython = Join-Path $ToolsRoot 'venv-test\Scripts\python.exe'
+$DefaultAcroBatyaPython = Join-Path $ToolsRoot 'venv-test\Scripts\python.exe'
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 
 $PrimaryModel = $Model
@@ -470,8 +470,8 @@ function Invoke-Setup {
     Ensure-LocalSettings
     Update-PathFromRegistry
     if (-not $env:OTTISK_PYTHON) {
-        $env:OTTISK_PYTHON = $DefaultOttiskPython
-        Say "  OTTISK_PYTHON не задан в окружении — беру $DefaultOttiskPython (так же в settings.local.json)" 'DarkGray'
+        $env:OTTISK_PYTHON = $DefaultAcroBatyaPython
+        Say "  OTTISK_PYTHON не задан в окружении — беру $DefaultAcroBatyaPython (так же в settings.local.json)" 'DarkGray'
     }
 
     # MSVC и clang-format — только через tools\vcenv.cmd (vcvars64 clang-format в PATH не кладёт).
@@ -568,7 +568,7 @@ if (-not $gate.Ok) {
 }
 
 Update-PathFromRegistry
-if (-not $env:OTTISK_PYTHON) { $env:OTTISK_PYTHON = $DefaultOttiskPython }
+if (-not $env:OTTISK_PYTHON) { $env:OTTISK_PYTHON = $DefaultAcroBatyaPython }
 $needCmds = @('git', 'node', 'py')
 if (-not $SimulateLimit) { $needCmds = @('claude') + $needCmds }
 foreach ($c in $needCmds) { if (-not (Test-Cmd $c)) { Say "Не найден $c. Сначала выполните .\run-queue.ps1 -Setup" 'Red'; exit 1 } }
@@ -611,7 +611,7 @@ while ($true) {
     $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
     $logFile = Join-Path $LogDir ("$stamp-{0}-s{1}.json" -f $u.Kind, $u.Stage.Num)
     # Ходы — из заголовка сессии, если человек не задал своё в командной строке. Усилие — из флагов
-    # (по умолчанию ultracode, решение 11); заголовок «усилие xhigh» берётся только с -UsePlanEffort.
+    # (по умолчанию xhigh, решение человека 23.10.2026); заголовок «усилие …» берётся только с -UsePlanEffort.
     $forcedTurns  = $PSBoundParameters.ContainsKey($(if ($u.Kind -eq 'verify') { 'VerifyMaxTurns' } else { 'MaxTurns' }))
     $forcedEffort = $PSBoundParameters.ContainsKey($(if ($u.Kind -eq 'verify') { 'VerifyEffort' } else { 'Effort' }))
     $turns = if ($u.Kind -eq 'verify') { $VerifyMaxTurns } else { $MaxTurns }

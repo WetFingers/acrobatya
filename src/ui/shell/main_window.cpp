@@ -23,7 +23,7 @@ namespace ot::ui {
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), session_(new ot::DocumentSession(this)) {
     setObjectName(QStringLiteral("mainWindow"));
-    setWindowTitle(tr("Оттиск"));
+    setWindowTitle(tr("АкроБатя"));
     resize(1280, 800);
 
     stack_ = new QStackedWidget(this);
@@ -114,7 +114,7 @@ bool MainWindow::openFile(const QString& path) {
         statusBar()->showMessage(tr("Не удалось открыть файл: %1").arg(session_->errorString()));
         return false;
     }
-    setWindowTitle(tr("%1 — Оттиск").arg(QFileInfo(path).fileName()));
+    setWindowTitle(tr("%1 — АкроБатя").arg(QFileInfo(path).fileName()));
     stack_->setCurrentWidget(view_);
     showPage(0);
     return true;
@@ -122,7 +122,7 @@ bool MainWindow::openFile(const QString& path) {
 
 void MainWindow::showHome() {
     stack_->setCurrentWidget(home_);
-    setWindowTitle(tr("Оттиск"));
+    setWindowTitle(tr("АкроБатя"));
     pageStatus_->clear();
 }
 
@@ -150,7 +150,7 @@ void MainWindow::openDialog() {
 
 void MainWindow::about() {
     QMessageBox::about(this, tr("О программе"),
-                       tr("Оттиск %1\nPDF-движок MuPDF %2 (AGPL-3.0)\nQt %3 (LGPL-3.0)")
+                       tr("АкроБатя %1\nPDF-движок MuPDF %2 (AGPL-3.0)\nQt %3 (LGPL-3.0)")
                            .arg(ot::app::version(), ot::app::mupdfVersion(), ot::app::qtVersion()));
 }
 

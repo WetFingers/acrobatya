@@ -2,7 +2,7 @@
 
     "%OTTISK_PYTHON%" -X utf8 -I tools/no_registry_guard.py --root <репозиторий>
 
-Программа хранит настройки в INI/JSON (%LOCALAPPDATA%\\Ottisk), а ассоциацию .pdf пишет установщик.
+Программа хранит настройки в INI/JSON (%LOCALAPPDATA%\\AcroBatya), а ассоциацию .pdf пишет установщик.
 В src/** запрещены (вне комментариев): RegSetValue*, RegSetKeyValue*, RegCreateKey*, RegDeleteKey*,
 RegDeleteTree*, RegDeleteValue*, SHSetValue*, SHDeleteKey*, SHDeleteValue*, SHRegSetUSValue*,
 SHRegWriteUSValue*, QSettings::NativeFormat, QSettings::Registry32Format/Registry64Format и любое «HKEY_».

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Корпуса тестовых PDF «Оттиска»: загрузка и сверка по tests/corpus/manifest.json.
+"""Корпуса тестовых PDF «АкроБати»: загрузка и сверка по tests/corpus/manifest.json.
 
 Запуск — только через venv тестов, в режиме UTF-8 и с изоляцией:
     "%OTTISK_PYTHON%" -X utf8 -I tools/fetch_corpus.py [--only tag:a,b | id:x,y] [--verify] [--list]
