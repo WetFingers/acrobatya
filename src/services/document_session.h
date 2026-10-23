@@ -182,6 +182,9 @@ public:
     // ошибка — в SaveReport, не исключение (нет документа — исключение в QFuture).
     QFuture<SaveReport> save(const SaveOptions& options = {});
     QFuture<SaveReport> saveAs(const QString& path, const SaveOptions& options = {});
+    // «Сохранить как копию» (Saver::saveCopy): копия с правками в path, документ остаётся на своём файле с
+    // правками и историей (сигнала saved нет).
+    QFuture<SaveReport> saveCopy(const QString& path, const SaveOptions& options = {});
 
     // С ожиданием: исключение задачи бросается здесь. Из потока документа (внутри задачи) выполняется сразу.
     template <class F>

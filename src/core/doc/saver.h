@@ -38,6 +38,7 @@ enum class SaveError {
     LinearizeFailed,         // qpdf --linearize
     ReplaceFailed,           // MoveFileExW: файл цели занят или нет прав — документ открыт из временного
     ReopenFailed,            // сохранённый файл не открылся (документ закрыт)
+    SameAsDocument,          // «Сохранить как копию» поверх файла документа — это «Сохранить»
 };
 
 // Новое шифрование («Сохранить как» с защитой паролем, 7.6): без него шифрование файла сохраняется как есть.
@@ -75,6 +76,14 @@ public:
                            const SaveOptions& options = {});
     // «Сохранить» в путь документа.
     static SaveReport save(Document& doc, const SaveOptions& options = {});
+    // «Сохранить как копию» (2.4b; --script doc.saveCopy): записать документ с несохранёнными правками в
+    // target, а сам документ оставить на своём файле — с правками и историей undo. Запись открытого документа
+    // перестроила бы его xref (и сбросила журнал), поэтому пишется второй документ: снимок журнала (Autosave
+    // во временной папке, без копии исходника) переигрывается на исходном файле, без правок — исходный файл
+    // открывается заново; режим — как решил бы decide для самого документа. Нет файла (новый, из памяти) —
+    // NoPath, target — файл документа — SameAsDocument.
+    static SaveReport saveCopy(Document& doc, const std::filesystem::path& target,
+                               const SaveOptions& options = {});
 
     static const char* modeName(SaveMode mode) noexcept;
     static const char* errorName(SaveError error) noexcept;

@@ -1,0 +1,7 @@
+{
+  "comment": "Отрицательный сценарий (план 2.4b): неизвестный cmd — код не 0 и «step 2 view.bogus \"нет такого действия\": unknown command» в stderr; doc.open не выполняется (шаги проверяются до запуска).",
+  "steps": [
+    {"cmd": "doc.open", "args": {"path": "../fixtures/demo/report.pdf"}},
+    {"cmd": "view.bogus", "name": "нет такого действия"}
+  ]
+}

@@ -53,9 +53,10 @@ public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
 
-    // Открыть файл во вкладке (уже открытый — его вкладка становится текущей); page — с нуля, -1 — первая.
-    // false — не открылся: окно сообщает причину (неблокирующий диалог), errorString().
-    bool openFile(const QString& path, int page = -1);
+    // Открыть файл во вкладке (уже открытый — его вкладка становится текущей); page — с нуля, -1 — первая;
+    // password — для зашифрованного (--script doc.open; диалог пароля — 2.5). false — не открылся: окно
+    // сообщает причину (неблокирующий диалог), errorString().
+    bool openFile(const QString& path, int page = -1, const QString& password = {});
     int openFiles(const QStringList& paths, int page = -1);  // сколько открылось
     // Закрыть вкладку (с подтверждением, если есть правки); false — «Отмена» или нет вкладки.
     bool closeDocument(int index);

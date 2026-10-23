@@ -328,6 +328,49 @@ TEST(saver, linearize_through_qpdf_for_fast_web_view) {
     EXPECT_EQ(Saver::decide(*signedDoc, options).error, SaveError::WouldBreakSignatures);
 }
 
+// «Сохранить как копию» (2.4b, doc.saveCopy): копия с несохранёнными правками, а документ остаётся на своём
+// файле — с правками и историей undo (запись идёт через снимок журнала во второй документ, а не через xref
+// открытого). Копия без правок, отказ писать копию поверх своего файла и документа без файла.
+TEST(saver, save_copy_keeps_document_file_edits_and_history) {
+    ot::test::TempDir dir;
+    const fs::path src = put(dir.path(), L"исходник.pdf", ot::test::makePdf(ot::MuContext::global(), 3));
+    auto doc = Document::openOrThrow(src);
+    {
+        Journal::Operation op(*doc, "Set name");
+        ot::test::putRootName(*doc, "AcroBatyaCopy", "edited");
+        op.commit();
+    }
+    ASSERT_TRUE(doc->undoStack().canUndo());
+    const fs::path copy = dir.path() / L"копия.pdf";
+    const SaveReport r = Saver::saveCopy(*doc, copy);
+    ASSERT_TRUE(r.ok()) << r.message;
+    EXPECT_EQ(r.mode, SaveMode::Incremental);  // лёгкая правка — как у «Сохранить»
+    EXPECT_GT(r.bytes, 0u);
+    EXPECT_EQ(doc->path(), src);
+    EXPECT_EQ(ot::test::rootName(*doc, "AcroBatyaCopy"), "edited");
+    EXPECT_TRUE(doc->undoStack().canUndo());
+    EXPECT_EQ(ot::test::rootName(*Document::openOrThrow(copy), "AcroBatyaCopy"), "edited");
+    EXPECT_EQ(ot::test::rootName(*Document::openOrThrow(src), "AcroBatyaCopy"), "");
+    EXPECT_TRUE(filesIn(dir.path()).size() == 2) << "no temp files left";
+    (void)doc->undoStack().undo();
+    EXPECT_EQ(ot::test::rootName(*doc, "AcroBatyaCopy"), "");
+    // После отмены копия — без правки; полная запись по просьбе.
+    const fs::path clean = dir.path() / L"после отмены.pdf";
+    SaveOptions full;
+    full.mode = SaveMode::Full;
+    const SaveReport rc = Saver::saveCopy(*doc, clean, full);
+    ASSERT_TRUE(rc.ok()) << rc.message;
+    EXPECT_EQ(rc.mode, SaveMode::Full);
+    EXPECT_EQ(ot::test::rootName(*Document::openOrThrow(clean), "AcroBatyaCopy"), "");
+    EXPECT_TRUE(doc->undoStack().canRedo());
+    // Поверх своего файла — это «Сохранить», не копия.
+    EXPECT_EQ(Saver::saveCopy(*doc, src).error, SaveError::SameAsDocument);
+    EXPECT_EQ(ot::test::rootName(*Document::openOrThrow(src), "AcroBatyaCopy"), "");
+    // Документ без файла (из памяти) — копировать не из чего: «Сохранить как».
+    auto memory = Document::openOrThrowMemory(ot::test::makePdf(ot::MuContext::global(), 1));
+    EXPECT_EQ(Saver::saveCopy(*memory, dir.path() / L"m.pdf").error, SaveError::NoPath);
+}
+
 TEST(saver, ten_edits_undone_then_full_write_equals_source_by_qpdf_json) {
     OT_FEATURE("edit-13");
     const QpdfTool qpdf;

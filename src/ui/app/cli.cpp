@@ -73,6 +73,8 @@ CliOptions parseCli(const QStringList& arguments) {
             if (o.smokeSeconds <= 0) {
                 o.error = QStringLiteral("bad --smoke ") + v;
             }
+        } else if (a == QLatin1String("--script")) {
+            if (!next(o.script)) break;
         } else if (a == QLatin1String("--page")) {
             QString v;
             if (!next(v)) break;

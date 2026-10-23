@@ -1,8 +1,10 @@
 #include "core/doc/document.h"
 
+#include <cstdio>
 #include <cstring>
 #include <cwctype>
 #include <stdexcept>
+#include <string_view>
 
 #include "core/doc/journal.h"
 #include "core/doc/props.h"
@@ -135,6 +137,66 @@ void xrefFingerprint(const pdf_document* pdf, unsigned char digest[16]) {
     fz_md5_final(&state, digest);
 }
 
+// Фрагмент журнала «N 0 obj … [stream … endstream] endobj» или «N 0 newobj». pdf_parse_journal_obj MuPDF
+// 1.28.5 читает поток фильтром поиска endstream (длина 0), а тот на потоке в памяти обрывает данные длиннее
+// ~1 КБ (XMP после Document::setProperties: 1025 байт из 1371 и «expected 'endstream' keyword», 2.4b). Поток
+// здесь берётся по /Length фрагмента (pdf_write_journal пишет данные и сразу за ними перевод строки и
+// endstream); не сходится — по первому «перевод строки + endstream» после начала данных.
+pdf_obj* parseJournalObject(fz_context* ctx, pdf_document* pdf, fz_stream* stm, const std::string& journal,
+                            int* num, fz_buffer** buf, int* newobj) {
+    *buf = nullptr;
+    *newobj = 0;
+    const auto at = static_cast<size_t>(fz_tell(ctx, stm));
+    const size_t eol = journal.find('\n', at);
+    const std::string line = journal.substr(at, eol == std::string::npos ? std::string::npos : eol - at);
+    int n = 0;
+    int gen = 0;
+    char keyword[8] = {};
+    if (std::sscanf(line.c_str(), "%d %d %7s", &n, &gen, keyword) == 3 &&
+        std::strcmp(keyword, "newobj") == 0) {
+        *num = n;
+        *newobj = 1;
+        fz_seek(ctx, stm, static_cast<int64_t>(eol == std::string::npos ? journal.size() : eol + 1),
+                SEEK_SET);
+        return nullptr;
+    }
+    int64_t stmofs = 0;
+    pdf_obj* value = pdf_parse_ind_obj(ctx, pdf, stm, num, &gen, &stmofs, nullptr);
+    if (stmofs == 0) {
+        return value;  // без потока: endobj уже прочитан
+    }
+    // Всё, что может не сойтись, проверяется до выделения буфера (fz_try — только в mu::call).
+    static constexpr std::string_view kEnd = "\nendstream";
+    const auto start = static_cast<size_t>(stmofs);
+    const int64_t declared = pdf_dict_get_int64(ctx, value, PDF_NAME(Length));
+    size_t len = std::string::npos;
+    if (declared >= 0 && start + static_cast<size_t>(declared) + kEnd.size() <= journal.size() &&
+        std::string_view(journal).substr(start + static_cast<size_t>(declared), kEnd.size()) == kEnd) {
+        len = static_cast<size_t>(declared);
+    } else if (const size_t end = journal.find(kEnd, start); end != std::string::npos) {
+        len = end - start;
+    }
+    size_t after = std::string::npos;  // за «endobj»
+    if (len != std::string::npos) {
+        size_t i = start + len + kEnd.size();
+        while (i < journal.size() && (journal[i] == ' ' || journal[i] == '\r' || journal[i] == '\n')) {
+            ++i;
+        }
+        if (std::string_view(journal).substr(i, 6) == "endobj") {
+            after = i + 6;
+        }
+    }
+    if (after == std::string::npos) {
+        pdf_drop_obj(ctx, value);
+        fz_throw(ctx, FZ_ERROR_SYNTAX, "journal stream of object %d: expected 'endstream' and 'endobj'",
+                 *num);
+    }
+    *buf = fz_new_buffer_from_copied_data(ctx, reinterpret_cast<const unsigned char*>(journal.data()) + start,
+                                          len);
+    fz_seek(ctx, stm, static_cast<int64_t>(after), SEEK_SET);
+    return value;
+}
+
 // Журнал автосохранения (pdf_write_journal с позицией 0: у фрагментов — значения «после шага») на только что
 // открытый исходник. pdf_read_journal в MuPDF 1.28.5 не годится: pdf_deserialise_journal добавляет фрагменты
 // в pending_tail, которого при загрузке нет (assert в Debug, «Can't add a journal fragment absent an
@@ -240,7 +302,7 @@ void replayJournal(fz_context* ctx, pdf_document* pdf, const std::string& journa
             int num = 0;
             int newobj = 0;
             fz_buffer* buf = nullptr;
-            pdf_obj* value = pdf_parse_journal_obj(ctx, pdf, stm, &num, &buf, &newobj);
+            pdf_obj* value = parseJournalObject(ctx, pdf, stm, journal, &num, &buf, &newobj);
             // Как swap_fragments при redo: запись получает значение фрагмента, фрагмент — прежнее значение.
             pdf_xref_entry* x = pdf_get_incremental_xref_entry(ctx, pdf, num);
             pdf_obj* oldObj = x->obj;

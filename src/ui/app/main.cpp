@@ -4,8 +4,10 @@
 // в командной строке окно открывает вкладки прошлого сеанса, если это включено (general/restoreSession).
 #include <QApplication>
 #include <QCoreApplication>
+#include <QDir>
 #include <QFileInfo>
 #include <QJsonDocument>
+#include <QTemporaryDir>
 #include <QTimer>
 
 #include <cstdio>
@@ -21,8 +23,10 @@
 #include "services/i18n.h"
 #include "services/session_store.h"
 #include "services/settings.h"
+#include "services/shell_launcher.h"
 #include "services/single_instance.h"
 #include "ui/app/cli.h"
+#include "ui/app/script_actions.h"
 #include "ui/shell/main_window.h"
 #include "ui/shots/scenes.h"
 #include "ui/theme/theme.h"
@@ -110,6 +114,14 @@ int main(int argc, char** argv) {
     if (!opts.dataDir.isEmpty()) {  // до первого обращения к каталогу данных (настройки, state.sqlite)
         qputenv("OTTISK_DATA_DIR", QFileInfo(opts.dataDir).absoluteFilePath().toUtf8());
     }
+    // --script без --data-dir и OTTISK_DATA_DIR — свой временный каталог данных: сценарий не пишет в
+    // недавние, сеанс и настройки человека (CLAUDE.md, правило 4).
+    std::unique_ptr<QTemporaryDir> scriptData;
+    if (!opts.script.isEmpty() && qEnvironmentVariableIsEmpty("OTTISK_DATA_DIR")) {
+        scriptData =
+            std::make_unique<QTemporaryDir>(QDir::tempPath() + QStringLiteral("/AcroBatya-script-XXXXXX"));
+        qputenv("OTTISK_DATA_DIR", scriptData->path().toLocal8Bit());
+    }
     // Настройки — только INI в каталоге данных (эталон 4.7): и QSettings() без формата, и диалоги Qt.
     ot::Settings::installDefaultFormat();
     if (!opts.logLevel.isEmpty()) {
@@ -131,6 +143,17 @@ int main(int argc, char** argv) {
             QString::fromUtf8(QJsonDocument(window.commands().toJson()).toJson(QJsonDocument::Compact)));
         std::fflush(stdout);
         return 0;
+    }
+    if (!opts.script.isEmpty()) {
+        attachParentConsole();
+        if (qEnvironmentVariableIsEmpty("OTTISK_INSTANCE")) {
+            qputenv("OTTISK_INSTANCE", "test");  // сценарий не говорит с окном человека
+        }
+        // Оболочка Windows в сценарии — только фейк (эталон 8.3): command.run ничего не открывает у человека.
+        static ot::FakeShellLauncher shell;
+        ot::ShellLauncher::setInstance(&shell);
+        Theme::apply(app, parseThemeChoice(opts.theme).value_or(ThemeChoice::Light), opts.scale);
+        return runScript(opts.script, opts.shotsOut);
     }
     if (!opts.shots.isEmpty()) {
         attachParentConsole();

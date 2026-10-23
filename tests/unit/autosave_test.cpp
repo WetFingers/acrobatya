@@ -192,6 +192,35 @@ TEST(autosave, three_edits_are_recovered_with_history_after_crash) {
     expectThreeEdits(*fresh);
 }
 
+// Свойства документа (/Info и поток XMP — Document::setProperties) переживают запись журнала и восстановление
+// на настоящем файле с XMP и сжатыми потоками (tests/fixtures/demo/report.pdf; найдено в 2.4b сценарием
+// doc.setProperty → doc.saveCopy).
+TEST(autosave, properties_edit_with_xmp_stream_is_recovered) {
+    ot::test::TempDir dir;
+    const fs::path src = put(dir.path(), L"report.pdf",
+                             ot::paths::readFile(ot::test::sourceDir() / L"tests/fixtures/demo/report.pdf"));
+    std::string before;
+    {
+        auto doc = Document::openOrThrow(src);
+        before = doc->properties().title;
+        ot::DocProperties p = doc->properties();
+        p.title = "Заголовок из автосохранения";
+        doc->setProperties(p);
+        Autosave autosave(dir.path() / L"autosave");
+        std::string error;
+        ASSERT_EQ(autosave.save(*doc, &error), AutosaveStatus::Saved) << error;
+        EXPECT_EQ(doc->properties().title, "Заголовок из автосохранения") << "document unchanged by autosave";
+        const std::optional<AutosaveEntry> entry = autosave.find(src);
+        ASSERT_TRUE(entry.has_value());
+        ot::RecoverResult r = autosave.recover(*entry);
+        ASSERT_TRUE(r.ok()) << r.message;
+        EXPECT_EQ(r.document->properties().title, "Заголовок из автосохранения");
+        ASSERT_TRUE(r.document->undoStack().canUndo());
+        (void)r.document->undoStack().undo();
+        EXPECT_EQ(r.document->properties().title, before);
+    }
+}
+
 TEST(autosave, undone_steps_stay_redoable_after_recovery) {
     ot::test::TempDir dir;
     const fs::path file = put(dir.path(), L"redo.pdf", ot::test::makePdf(ot::MuContext::global(), 3));

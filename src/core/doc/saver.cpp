@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <system_error>
 
+#include "core/doc/autosave.h"
 #include "core/doc/document.h"
 #include "core/doc/journal.h"
 #include "core/mu/call.h"
@@ -171,6 +172,8 @@ const char* Saver::errorName(SaveError error) noexcept {
             return "replace-failed";
         case SaveError::ReopenFailed:
             return "reopen-failed";
+        case SaveError::SameAsDocument:
+            return "same-as-document";
     }
     return "?";
 }
@@ -325,6 +328,79 @@ SaveReport Saver::save(Document& doc, const fs::path& target, const SaveOptions&
     r.bytes = fs::file_size(absTarget, ec);
     spdlog::info("saver: {} written {} ({} bytes)", paths::toUtf8(absTarget), modeName(r.mode), r.bytes);
     return r;
+}
+
+SaveReport Saver::saveCopy(Document& doc, const fs::path& target, const SaveOptions& options) {
+    SaveReport r = decide(doc, options);
+    if (!r.ok()) {
+        return r;
+    }
+    if (target.empty()) {
+        return refuse(r, SaveError::NoPath, "no target path");
+    }
+    const fs::path source = doc.filePath().empty() ? doc.path() : doc.filePath();
+    if (source.empty() || doc.path().empty()) {
+        return refuse(r, SaveError::NoPath, "document has no file to copy from: use Save As");
+    }
+    std::error_code ec;
+    const fs::path absTarget = fs::absolute(target, ec);
+    if (ec) {
+        return refuse(r, SaveError::WriteFailed, "bad target path: " + ec.message());
+    }
+    for (const fs::path& own : {doc.path(), source}) {
+        if (fs::equivalent(absTarget, own, ec) || absTarget == fs::absolute(own, ec)) {
+            return refuse(r, SaveError::SameAsDocument, "a copy over the document's own file is Save");
+        }
+    }
+
+    // Временная папка снимка: index.json и журнал (копия исходника не нужна — исходный файл открыт и цел).
+    std::random_device rd;
+    wchar_t name[48];
+    swprintf_s(name, L"AcroBatya-copy-%lu-%08x", GetCurrentProcessId(), rd());
+    const fs::path work = fs::temp_directory_path(ec) / name;
+    struct RemoveDir {
+        fs::path dir;
+        ~RemoveDir() {
+            std::error_code e;
+            fs::remove_all(dir, e);
+        }
+    } cleanup{work};
+
+    std::unique_ptr<Document> twin;
+    try {
+        Autosave snapshot(work, 0);
+        std::string error;
+        const AutosaveStatus status =
+            doc.journaled() ? snapshot.save(doc, &error) : AutosaveStatus::NothingToSave;
+        if (status == AutosaveStatus::Saved) {
+            const std::optional<AutosaveEntry> entry = snapshot.find(doc.path());
+            if (!entry) {
+                return refuse(r, SaveError::WriteFailed, "edits snapshot has no entry");
+            }
+            RecoverResult recovered = snapshot.recover(*entry, doc.password());
+            if (!recovered.ok()) {
+                return refuse(r, SaveError::WriteFailed,
+                              "edits snapshot does not replay: " + recovered.message);
+            }
+            twin = std::move(recovered.document);
+        } else if (status == AutosaveStatus::NothingToSave) {
+            twin = Document::openOrThrow(source, doc.password());
+        } else {
+            return refuse(r, SaveError::WriteFailed, "cannot snapshot edits: " + error);
+        }
+    } catch (const std::exception& e) {
+        return refuse(r, SaveError::WriteFailed, std::string("copy: ") + e.what());
+    }
+    SaveOptions exact = options;
+    exact.mode = r.mode;  // режим самого документа (тяжёлые правки второго документа решают так же)
+    exact.allowBreakingSignatures = true;  // подписанному decide уже ответил выше
+    SaveReport written = save(*twin, absTarget, exact);
+    written.mode = r.mode;
+    if (written.ok()) {
+        spdlog::info("saver: copy of {} written to {} ({} bytes)", paths::toUtf8(doc.path()),
+                     paths::toUtf8(absTarget), written.bytes);
+    }
+    return written;
 }
 
 }  // namespace ot

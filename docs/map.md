@@ -443,6 +443,31 @@ PowerShell-стражи очереди `tools/test_reset_parse.ps1` и `tools/te
 4. Действие для рубежей — `ScriptRunner::registerAction(id, jsonSchema, fn)` (`--script`, 2.4b) с тем же id.
 5. Палитра команд (`Ctrl+Shift+P`) берёт команды из реестра сама.
 
+### Новое действие `--script` (с 2.4b)
+
+Сценарий — JSON-массив шагов `{"cmd": "id", "args": {…}, "name": "…"}` (или `{"steps": [...]}`), запуск —
+`AcroBatya.exe --script файл.json [--out каталог] [--data-dir каталог]` (без `--data-dir` — временный каталог данных,
+оболочка — `FakeShellLauncher`); код 0 и «ok: N steps» в stdout, иначе код 1 и «step N cmd "name": …» в stderr.
+Движок — `src/services/script_runner.h` (`ScriptRunner`, `ScriptContext`, `ScriptError`), базовые действия окна —
+`src/ui/app/script_actions.cpp` (`doc.open/save/saveCopy/close/undo/redo/setProperty`, `view.zoom/zoomFit/zoomIn/
+zoomOut/page/layout/rotate`, `command.run{id}`, `shot{name}`, `wait{ms}`).
+
+1. id — как у команды реестра (`группа.действие`: `edit.insertText`, `annot.create`, `form.setValue`, `sign.sign`,
+   `ocr.recognize`); регистрирует сессия-владелец своей функцией `register<Имя>ScriptActions(ScriptRunner&,
+   MainWindow&)` в папке своего инструмента (`src/ui/tools/<папка>/<имя>_script.cpp`) и строкой её вызова в конце
+   `registerBaseActions` (`src/ui/app/script_actions.cpp`). Рубежи действий не изобретают.
+2. Схема аргументов — JSON Schema строкой (`R"({"type": "object", "properties": {…}, "required": […],
+   "additionalProperties": false})"`; понимаются `type`, `enum`, `minimum`/`maximum`, `minLength`, `properties`,
+   `required`, `additionalProperties: false`, `items`, `minItems`/`maxItems`); страницы — с 1, как в интерфейсе.
+   Неизвестный cmd и аргумент не по схеме ловятся до выполнения всего сценария.
+3. Тело — только через `DocumentSession` и `services/*_ops.h` (как ui): `script::await(future, "id")` ждёт задачу с
+   циклом событий, `script::document(window)` — текущий документ, `script::settle()` — после правки окна;
+   пути — `context.path(arg)` (относительные — от файла сценария, `${VAR}` — окружение, `${OUT_DIR}`, `${SCRIPT_DIR}`);
+   ошибка — `throw ScriptError("английский текст")`.
+4. Тест — сценарий `tests/scripts/<имя>.json` и `runner.runFile` в `tests/ui/<имя>_test.cpp` (окно, `registerBaseActions`
+   + своя регистрация); неверные аргументы — ошибка шага с его именем. Рубеж (`tools/verify_r<N>.py`) зовёт exe с
+   `--out .queue/r<N>/…` и смотрит код и строку итога.
+
 ### Новый `OT_FEATURE`
 
 1. ID — только из `docs/scope.json` (`full`/`partial`/`nice`) и пунктов плана; новый ID не выдумывается

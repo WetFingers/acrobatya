@@ -411,6 +411,14 @@ QFuture<SaveReport> DocumentSession::saveAs(const QString& path, const SaveOptio
     return saveTo(path, options);
 }
 
+QFuture<SaveReport> DocumentSession::saveCopy(const QString& path, const SaveOptions& options) {
+    return post(
+        [path, options](TaskContext& tc) {
+            return Saver::saveCopy(tc.document(), std::filesystem::path(path.toStdWString()), options);
+        },
+        TaskPriority::Normal, QStringLiteral("save copy"));
+}
+
 QFuture<SaveReport> DocumentSession::saveTo(const QString& path, const SaveOptions& options) {
     return post(
         [this, path, options](TaskContext& tc) {

@@ -1,0 +1,14 @@
+{
+  "comment": "Правка и отмена через --script (план 2.4b; основа undo/redo рубежей Р1–Р3): копия до правки, правка Title, копия с правкой, undo, копия после отмены — before.pdf и undone.pdf совпадают по qpdf --json, edited.pdf несёт новый Title. Файлы — в --out (${OUT_DIR}).",
+  "steps": [
+    {"cmd": "doc.open", "args": {"path": "../fixtures/demo/report.pdf"}},
+    {"cmd": "doc.saveCopy", "args": {"path": "${OUT_DIR}/before.pdf", "mode": "full"}},
+    {"cmd": "doc.setProperty", "args": {"key": "title", "value": "Заголовок из сценария"}, "name": "правка Title"},
+    {"cmd": "doc.saveCopy", "args": {"path": "${OUT_DIR}/edited.pdf", "mode": "full"}},
+    {"cmd": "doc.undo", "args": {"n": 1}},
+    {"cmd": "doc.saveCopy", "args": {"path": "${OUT_DIR}/undone.pdf", "mode": "full"}},
+    {"cmd": "doc.redo"},
+    {"cmd": "doc.undo"},
+    {"cmd": "doc.close"}
+  ]
+}

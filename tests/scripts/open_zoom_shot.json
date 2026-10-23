@@ -1,0 +1,12 @@
+{
+  "comment": "Первый сценарий --script (план 2.4b): открыть отчёт, уместить страницу, снимок; третья страница по ширине, снимок. AcroBatya.exe --script tests/scripts/open_zoom_shot.json --out <каталог>",
+  "steps": [
+    {"cmd": "doc.open", "args": {"path": "../fixtures/demo/report.pdf"}, "name": "открыть отчёт"},
+    {"cmd": "view.zoomFit", "args": {"mode": "page"}},
+    {"cmd": "shot", "args": {"name": "open-zoom-page"}},
+    {"cmd": "view.page", "args": {"page": 3}},
+    {"cmd": "view.zoomFit", "args": {"mode": "width"}},
+    {"cmd": "shot", "args": {"name": "open-zoom-width-p3"}},
+    {"cmd": "doc.close"}
+  ]
+}

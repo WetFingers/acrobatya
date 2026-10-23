@@ -202,14 +202,14 @@ MainWindow::~MainWindow() {
 
 DocumentTabs& MainWindow::tabs() const { return *globalBar_->tabs(); }
 
-bool MainWindow::openFile(const QString& path, int page) {
+bool MainWindow::openFile(const QString& path, int page, const QString& password) {
     error_.clear();
     const QFileInfo info(path);
     if (!info.isFile()) {
         reportOpenError(path, tr("Файл не найден."));
         return false;
     }
-    const DocumentRegistry::Opened opened = registry_->open(info.absoluteFilePath());
+    const DocumentRegistry::Opened opened = registry_->open(info.absoluteFilePath(), password);
     if (opened.id == 0) {
         const OpenSummary& s = opened.summary;
         QString reason;

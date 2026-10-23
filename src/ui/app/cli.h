@@ -10,6 +10,9 @@
 //   --scale 1|1.25            «Крупные элементы» (ocr-42)
 //   --showcase                витрина компонентов (эталон 6.4) вместо главного окна
 //   --smoke <секунды>         окно на N секунд и выход с кодом 0
+//   --script <файл.json>      шаги {"cmd", "args"} над окном (services/script_runner.h,
+//   ui/app/script_actions.h):
+//                             снимки shot — в --out; без --data-dir — свой временный каталог данных
 //   --register-notify         SHChangeNotify(SHCNE_ASSOCCHANGED) после установщика
 //   --page <N>                открыть файлы на странице N (с 1)
 //   --log trace|debug|info|warn|error|off   уровень журнала
@@ -38,6 +41,7 @@ struct CliOptions {
     QString lang;             // пусто — из настройки
     bool showcase = false;
     int smokeSeconds = 0;
+    QString script;    // --script <файл.json>
     int page = 0;      // --page N (с 1); 0 — не задана
     QString logLevel;  // пусто — по умолчанию
     QString dataDir;   // --data-dir
