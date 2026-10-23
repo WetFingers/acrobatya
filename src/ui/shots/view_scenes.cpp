@@ -10,6 +10,8 @@
 
 #include <functional>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <utility>
 
 #include "core/text/search.h"
@@ -101,7 +103,8 @@ Scene viewScene(const char* name, const char* fixture, ViewSceneHost::Setup setu
 
 PointF scenePoint(double x, double y) { return {static_cast<float>(x), static_cast<float>(y)}; }
 
-// Две строки выделены (как протягиванием «Выделения») и «оттиск» найден: подсветка всех, второе — текущее.
+// Две строки выделены (как протягиванием «Выделения») и первое слово страницы («Оттиск» заголовка) найдено:
+// подсветка всех совпадений, второе — текущее. Искомое берётся из документа — строк с кириллицей в коде нет.
 void selectionSetup(ViewSceneHost& h) {
     PageView& v = h.view();
     v.setZoomPercent(150);
@@ -112,8 +115,16 @@ void selectionSetup(ViewSceneHost& h) {
             const TextSelection sel = selectStream(*text, scenePoint(72.5, 257), scenePoint(250, 274));
             v.selectionOverlay().setQuads(0, sel.quads);
             const auto lean = h.session().textPage(0, SearchSession::textOptions()).result();
-            v.setSearchHits(searchPage(*lean, "\u043e\u0442\u0442\u0438\u0441\u043a"));  // «оттиск»
-            v.setCurrentSearchHit(1);
+            const std::vector<TextWord> words = text->words();
+            if (!words.empty()) {
+                std::string needle = words.front().text;
+                while (!needle.empty() &&
+                       std::string_view(":;,.").find(needle.back()) != std::string_view::npos) {
+                    needle.pop_back();  // слово без знака препинания за ним
+                }
+                v.setSearchHits(searchPage(*lean, needle));
+                v.setCurrentSearchHit(1);
+            }
         }
     } catch (const std::exception&) {  // NOLINT(bugprone-empty-catch): без слоя — сцена без подсветки
     }
