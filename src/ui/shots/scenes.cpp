@@ -2,16 +2,14 @@
 
 #include <QApplication>
 #include <QDir>
-#include <QFont>
-#include <QPalette>
 #include <QPixmap>
-#include <QStyleFactory>
 #include <QTextStream>
 
 #include <cstdio>
 #include <functional>
 
 #include "ui/shell/main_window.h"
+#include "ui/theme/theme.h"
 
 namespace ot::ui {
 
@@ -43,27 +41,6 @@ void printLine(const QString& s) {
 
 }  // namespace
 
-void applyBaseTheme(const QString& theme) {
-    QApplication::setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
-    QFont font(QStringLiteral("Segoe UI"));
-    font.setPointSizeF(9.0);
-    QApplication::setFont(font);
-    QPalette p = QApplication::style()->standardPalette();
-    if (theme == QLatin1String("dark")) {
-        p.setColor(QPalette::Window, QColor(0x2b, 0x2b, 0x2b));
-        p.setColor(QPalette::WindowText, QColor(0xee, 0xee, 0xee));
-        p.setColor(QPalette::Base, QColor(0x1e, 0x1e, 0x1e));
-        p.setColor(QPalette::AlternateBase, QColor(0x2f, 0x2f, 0x2f));
-        p.setColor(QPalette::Text, QColor(0xee, 0xee, 0xee));
-        p.setColor(QPalette::Button, QColor(0x3a, 0x3a, 0x3a));
-        p.setColor(QPalette::ButtonText, QColor(0xee, 0xee, 0xee));
-        p.setColor(QPalette::Highlight, QColor(0x3d, 0x7e, 0xd6));
-        p.setColor(QPalette::HighlightedText, Qt::white);
-        p.setColor(QPalette::Dark, QColor(0x15, 0x15, 0x15));
-    }
-    QApplication::setPalette(p);
-}
-
 QStringList sceneNames() {
     QStringList names;
     for (const Scene& s : scenes()) {
@@ -73,7 +50,8 @@ QStringList sceneNames() {
 }
 
 int runShots(const QStringList& names, const QString& outDir, QSize size, const QString& theme) {
-    applyBaseTheme(theme);
+    auto* app = qobject_cast<QApplication*>(QCoreApplication::instance());
+    Theme::apply(*app, parseThemeChoice(theme).value_or(ThemeChoice::Light));
     const QString out = outDir.isEmpty() ? QStringLiteral(".queue/screenshots") : outDir;
     QDir().mkpath(out);
     QStringList wanted = names;

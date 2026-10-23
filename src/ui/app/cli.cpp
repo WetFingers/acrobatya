@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+#include "ui/theme/theme.h"
+
 namespace ot::ui {
 
 CliOptions parseCli(const QStringList& arguments) {
@@ -39,6 +41,18 @@ CliOptions parseCli(const QStringList& arguments) {
             }
         } else if (a == QLatin1String("--theme")) {
             if (!next(o.theme)) break;
+            if (!parseThemeChoice(o.theme)) {
+                o.error = QStringLiteral("bad --theme ") + o.theme +
+                          QStringLiteral(" (system|light|dark|contrast)");
+            }
+        } else if (a == QLatin1String("--scale")) {
+            QString v;
+            if (!next(v)) break;
+            bool ok = false;
+            o.scale = v.toDouble(&ok);
+            if (!ok || o.scale < 1.0 || o.scale > 2.0) {
+                o.error = QStringLiteral("bad --scale ") + v;
+            }
         } else if (a == QLatin1String("--smoke")) {
             QString v;
             if (!next(v)) break;

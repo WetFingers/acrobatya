@@ -13,6 +13,7 @@
 #include "ui/app/cli.h"
 #include "ui/shell/main_window.h"
 #include "ui/shots/scenes.h"
+#include "ui/theme/theme.h"
 
 namespace {
 
@@ -90,7 +91,8 @@ int main(int argc, char** argv) {
         return runShots(opts.shots, opts.shotsOut, opts.shotsSize, opts.theme);
     }
 
-    applyBaseTheme(opts.theme);
+    // Тема до создания окна: Fusion, палитра и шрифт из токенов (эталон 6.4); по умолчанию — «Системная».
+    Theme::apply(app, parseThemeChoice(opts.theme).value_or(ThemeChoice::System), opts.scale);
     MainWindow window;
     window.show();
     if (!opts.files.isEmpty()) {

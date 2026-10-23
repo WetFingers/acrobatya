@@ -9,6 +9,7 @@
 #include <QtTest/QtTest>
 
 #include "services/document_session.h"
+#include "support/ui_test.h"
 #include "ui/app/cli.h"
 #include "ui/shell/main_window.h"
 #include "ui/shots/scenes.h"
@@ -16,7 +17,6 @@
 class MainWindowTest : public QObject {
     Q_OBJECT
 private slots:
-    void initTestCase() { ot::ui::applyBaseTheme(QStringLiteral("light")); }
 
     void showsHomeWithRussianMenus() {
         ot::ui::MainWindow w;
@@ -62,7 +62,6 @@ private slots:
             0);
         QImage img(QDir(dir.path()).filePath(QStringLiteral("home.png")));
         QCOMPARE(img.size(), QSize(800, 600));
-        ot::ui::applyBaseTheme(QStringLiteral("light"));
     }
 
     void cliParsesServiceModes() {
@@ -81,5 +80,5 @@ private slots:
     }
 };
 
-QTEST_MAIN(MainWindowTest)
+OT_UI_TEST(MainWindowTest, "main_window");
 #include "main_window_test.moc"

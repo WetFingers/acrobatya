@@ -12,7 +12,4 @@ QStringList sceneNames();
 // Снять сцены (names может содержать "all"); код возврата для main: 0 — все сняты.
 int runShots(const QStringList& names, const QString& outDir, QSize size, const QString& theme);
 
-// Тема этапа 0: Fusion + светлая или тёмная палитра (токены — сессия 2.1).
-void applyBaseTheme(const QString& theme);
-
 }  // namespace ot::ui

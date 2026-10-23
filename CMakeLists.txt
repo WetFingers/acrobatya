@@ -230,8 +230,16 @@ target_include_directories(ui_tests PRIVATE "${CMAKE_SOURCE_DIR}/tests/ui")
 ottisk_qt(ui_tests)
 ottisk_warnings(ui_tests)
 add_dependencies(ui_tests qt_runtime)
-add_test(NAME ui.main_window COMMAND ui_tests -o "${CMAKE_BINARY_DIR}/qtest-ui.xml,junitxml" -o -,txt)
-set_tests_properties(ui.main_window PROPERTIES LABELS "ui" TIMEOUT 120)
+# Набор QTest на файл: tests/ui/<имя>_test.cpp регистрирует OT_UI_TEST(Класс, "<имя>") → ctest ui.<имя>
+# (tests/ui/support/ui_main.cpp запускает набор по имени). Новый файл — новый ctest без правки CMake.
+file(GLOB OTTISK_UI_SUITES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/tests/ui/*_test.cpp")
+foreach(_suite_src IN LISTS OTTISK_UI_SUITES)
+  get_filename_component(_suite "${_suite_src}" NAME_WE)
+  string(REGEX REPLACE "_test$" "" _suite "${_suite}")
+  add_test(NAME ui.${_suite}
+    COMMAND ui_tests ${_suite} -o "${CMAKE_BINARY_DIR}/qtest-ui-${_suite}.xml,junitxml" -o -,txt)
+  set_tests_properties(ui.${_suite} PROPERTIES LABELS "ui" TIMEOUT 120)
+endforeach()
 
 ottisk_guard(i18n i18n_guard.py)
 ottisk_guard(fztry fztry_guard.py)
