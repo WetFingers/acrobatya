@@ -33,6 +33,13 @@ ToolButton* FloatingBar::addButton(const QString& id, const QString& iconName, c
     return b;
 }
 
+void FloatingBar::addWidget(const QString& id, QWidget* widget) {
+    widget->setParent(this);
+    widgets_[id] = widget;
+    order_ << id;
+    relayout();
+}
+
 void FloatingBar::addSeparator() {
     order_ << QLatin1String(kSeparator);
     relayout();
@@ -41,7 +48,7 @@ void FloatingBar::addSeparator() {
 void FloatingBar::setOrder(const QStringList& ids) {
     order_.clear();
     for (const QString& id : ids) {
-        if (id == QLatin1String(kSeparator) || buttons_.count(id) != 0) {
+        if (id == QLatin1String(kSeparator) || buttons_.count(id) != 0 || widgets_.count(id) != 0) {
             order_ << id;
         }
     }
@@ -77,6 +84,9 @@ void FloatingBar::relayout() {
     for (const auto& [id, b] : buttons_) {
         b->setVisible(order_.contains(id));
     }
+    for (const auto& [id, w] : widgets_) {
+        w->setVisible(order_.contains(id));
+    }
     const Metrics& m = Theme::sizes();
     for (const QString& id : order_) {
         if (id == QLatin1String(kSeparator)) {
@@ -87,6 +97,8 @@ void FloatingBar::relayout() {
             separators_ << sep;
         } else if (ToolButton* b = button(id)) {
             layout_->addWidget(b);
+        } else if (const auto it = widgets_.find(id); it != widgets_.end()) {
+            layout_->addWidget(it->second, 0, Qt::AlignVCenter);
         }
     }
     adjustSize();

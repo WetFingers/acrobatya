@@ -64,6 +64,8 @@ Scene homeScene(const char* name);  // Главная без недавних
 std::vector<Scene> paneScenes();
 // status_scenes.cpp — status-bar, message-bar-stack (2.4).
 std::vector<Scene> statusScenes();
+// mode_scenes.cpp — read-mode, full-screen (2.4).
+std::vector<Scene> modeScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.
 bool waitSceneReady(const Scene& scene, QWidget* window, int timeoutMs = 30000);

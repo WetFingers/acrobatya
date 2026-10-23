@@ -71,4 +71,9 @@ QFuture<std::vector<layers::LayerUi>> resetLayers(DocumentSession& session) {
         TaskPriority::High, QStringLiteral("Reset layers"));
 }
 
+QFuture<std::vector<presentation::PageTransition>> transitions(DocumentSession& session) {
+    return session.post([](TaskContext& tc) { return presentation::transitions(tc.document()); },
+                        TaskPriority::High, QStringLiteral("Page transitions"));
+}
+
 }  // namespace ot::nav

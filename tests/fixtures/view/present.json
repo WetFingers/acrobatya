@@ -1,0 +1,23 @@
+{
+  "generator": "tools/gen/make_view.py",
+  "pdf": "present.pdf",
+  "pages": 3,
+  "page_mode": "FullScreen",
+  "non_full_screen": "UseThumbs",
+  "transitions": [
+    {
+      "page": 0,
+      "dur": 1
+    },
+    {
+      "page": 1,
+      "type": "Fade",
+      "duration": 0.3
+    },
+    {
+      "page": 2,
+      "type": "Box",
+      "duration": 0.3
+    }
+  ]
+}

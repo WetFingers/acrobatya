@@ -25,6 +25,8 @@ public:
     // Кнопка известна панели; в раскладку попадает через setOrder (addButton без setOrder — в конец).
     ToolButton* addButton(const QString& id, const QString& iconName, const QString& toolTip,
                           bool checkable = true);
+    // Не кнопка (поле страницы, подпись масштаба полосы режима чтения 2.4) — в раскладку по id, как кнопка.
+    void addWidget(const QString& id, QWidget* widget);
     void addSeparator();
     void setOrder(const QStringList& ids);
     QStringList order() const { return order_; }
@@ -42,6 +44,7 @@ private:
     QHBoxLayout* layout_ = nullptr;
     QButtonGroup* group_ = nullptr;
     std::map<QString, ToolButton*> buttons_;
+    std::map<QString, QWidget*> widgets_;
     QStringList order_;
     QList<QWidget*> separators_;
 };

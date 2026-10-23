@@ -10,6 +10,7 @@
 #include <QFileInfo>
 #include <QFuture>
 #include <QHBoxLayout>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -38,11 +39,13 @@
 #include "services/tile_cache.h"
 #include "ui/shell/document_tabs.h"
 #include "ui/shell/document_view.h"
+#include "ui/shell/full_screen.h"
 #include "ui/shell/global_bar.h"
 #include "ui/shell/home/home_page.h"
 #include "ui/shell/message_bar.h"
 #include "ui/shell/nav_pane.h"
 #include "ui/shell/quick_bar.h"
+#include "ui/shell/read_mode.h"
 #include "ui/shell/status_bar.h"
 #include "ui/shell/tool_panel.h"
 #include "ui/theme/theme.h"
@@ -159,15 +162,33 @@ MainWindow::MainWindow(QWidget* parent)
     connect(globalBar_, &GlobalBar::settingsClicked, this, [this] { notifyLater(tr("Установки"), 2); });
     connect(globalBar_, &GlobalBar::searchRequested, this, [this] { notifyLater(tr("Поиск"), 2); });
 
+    // Полоса режима чтения — над документом (не страница стека центра).
+    readBar_ = new ReadModeBar(center_);
+    readBar_->hide();
+    center_->installEventFilter(this);
+    readBar_->installEventFilter(this);
+    connect(readBar_, &ReadModeBar::exitRequested, this, [this] { setReadMode(false); });
+
     commands_ = new CommandRegistry(this);
     buildMenus();
     menuBar()->hide();
+    // Панели — как при прошлом выходе (Shift+F4, F8).
+    {
+        const QSettings ini(app::settingsPath(), QSettings::IniFormat);
+        toolPanel_->setCollapsed(ini.value(QLatin1String(kToolPanelCollapsedKey), false).toBool());
+        panelsHidden_ = ini.value(QLatin1String(kPanelsHiddenKey), false).toBool();
+    }
+    connect(toolPanel_, &ToolPanel::collapsedChanged, this, [](bool collapsed) {
+        QSettings(app::settingsPath(), QSettings::IniFormat)
+            .setValue(QLatin1String(kToolPanelCollapsedKey), collapsed);
+    });
     showHome();
 }
 
 // Вкладки уходят раньше пула и кеша: вид отменяет свои тайлы, сессия закрывается в своём потоке.
 MainWindow::~MainWindow() {
     disconnect(&BackgroundTasks::shared(), nullptr, this, nullptr);  // реестр задач живёт дольше окна
+    delete fullScreen_;  // его вид рисует в пуле и кеше окна — раньше них
     while (documentCount() > 0) {
         DocumentView* view = document(0);
         const quint64 id = view->id();
@@ -224,7 +245,7 @@ bool MainWindow::openFile(const QString& path, int page) {
     quick->attach(&view->view());
     quick->setSingleKeyHints(commands_->singleKeysEnabled());
     view->setFloatingBar(quick);
-    quick->setVisible(!panelsHidden_);
+    quick->setVisible(!panelsHidden_ && !readMode_);
     connect(&view->view().tools(), &ToolController::toolChanged, this, &MainWindow::updateActions);
     bool placed = page >= 0;
     if (page >= 0) {
@@ -288,6 +309,7 @@ bool MainWindow::closeAllDocuments() {
 }
 
 void MainWindow::showHome() {
+    setReadMode(false);
     center_->setCurrentWidget(home_);
     home_->setFocus();
     toolPanel_->hide();
@@ -311,11 +333,13 @@ void MainWindow::showDocument(int index) {
     tabs().setCurrentIndex(index);
     documents_->setCurrentWidget(view);
     center_->setCurrentWidget(documents_);
-    toolPanel_->setVisible(!panelsHidden_);
     navPane_->setDocument(view);
-    navPane_->setShown(!panelsHidden_);
     status_->setDocument(view);
-    updateStatusVisibility();
+    applyPanels();
+    if (readMode_) {
+        readBar_->attach(view);
+        placeReadBar();
+    }
     QTimer::singleShot(0, this, &MainWindow::applyNavWidth);
     ToolRegistry::instance().setView(view);
     globalBar_->setHomeActive(false);
@@ -442,7 +466,8 @@ void MainWindow::releaseView(DocumentView* view) {
 
 // Строка состояния: с документом — всегда (кроме F8); на Главной — только пока идёт фоновая задача.
 void MainWindow::updateStatusVisibility() {
-    status_->setVisible(!panelsHidden_ && (!isHomeShown() || !BackgroundTasks::shared().isEmpty()));
+    status_->setVisible(!panelsHidden_ && !readMode_ &&
+                        (!isHomeShown() || !BackgroundTasks::shared().isEmpty()));
 }
 
 // Начальный вид файла (view-47): /OpenAction — если страницу не задали и последний вид не восстановлен;
@@ -456,12 +481,71 @@ void MainWindow::applyInitialView(DocumentView* view, const OpenSummary& summary
                                                          {"UseThumbs", "thumbnails"},
                                                          {"UseOC", "layers"},
                                                          {"UseAttachments", "attachments"}};
+    // /PageMode /FullScreen — панель после выхода из полного экрана — /NonFullScreenPageMode.
+    const QString panelMode =
+        mode == QLatin1String("FullScreen") ? QString::fromStdString(v.nonFullScreenPageMode) : mode;
     for (const auto& [pdfMode, pane] : panes) {
-        if (mode == QLatin1String(pdfMode)) {
+        if (panelMode == QLatin1String(pdfMode)) {
             navPane_->showPane(QLatin1String(pane));
         }
     }
-    Q_UNUSED(view);
+    // Документ просит полный экран — не сразу, а полосой с кнопкой (как «Предупреждать, когда документ
+    // запрашивает полноэкранный режим» в Acrobat).
+    if (mode == QLatin1String("FullScreen")) {
+        MessageBar* bar =
+            view->messageStack().add(Tone::Info, tr("Документ просит открыться в полноэкранном режиме."));
+        bar->setObjectName(QStringLiteral("fullScreenRequestBar"));
+        bar->addAction(tr("Полноэкранный режим"), QStringLiteral("fullScreen"), true);
+        connect(bar, &MessageBar::actionTriggered, this, [this, bar] {
+            bar->closeButton()->click();
+            enterFullScreen();
+        });
+    }
+}
+
+FullScreenWindow* MainWindow::fullScreenWindow() const { return fullScreen_.data(); }
+
+void MainWindow::enterFullScreen() {
+    DocumentView* view = currentDocument();
+    if (view == nullptr) {
+        return;
+    }
+    if (fullScreen_ != nullptr) {
+        fullScreen_->raise();
+        fullScreen_->activateWindow();
+        return;
+    }
+    auto* fs = new FullScreenWindow(view->sessionPtr(), view->pool(), cache_.get(),
+                                    view->view().currentPage(), this);
+    const quint64 id = view->id();
+    connect(fs, &FullScreenWindow::closed, this, [this, id](int page) {
+        // Вид документа — на показанной странице; окно — снова активное.
+        for (int i = 0; i < documentCount(); ++i) {
+            if (document(i)->id() == id) {
+                document(i)->view().goToPage(page);
+            }
+        }
+        activateWindow();
+    });
+    fullScreen_ = fs;
+    fs->start(screen());
+}
+
+bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
+    // Центр сменил размер или полоса — ширину (другая подпись страницы, масштаба) — снова по центру.
+    if ((watched == center_ || watched == readBar_) && event->type() == QEvent::Resize) {
+        placeReadBar();
+    }
+    // Режим чтения: Esc — выход, раньше инструментов вида (вид забирает Esc себе через ShortcutOverride).
+    if (readMode_ && event->type() == QEvent::KeyPress &&
+        static_cast<QKeyEvent*>(event)->key() == Qt::Key_Escape &&
+        static_cast<QKeyEvent*>(event)->modifiers() == Qt::NoModifier &&
+        QApplication::activePopupWidget() == nullptr && QApplication::activeModalWidget() == nullptr &&
+        QApplication::activeWindow() == this) {
+        setReadMode(false);
+        return true;
+    }
+    return QMainWindow::eventFilter(watched, event);
 }
 
 // Ширина панели навигации — из settings.ini (её пишет перетаскивание разделителя).

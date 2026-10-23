@@ -18,7 +18,10 @@
                       выключенный, заблокированный, группа-подпись), вложения /EmbeddedFiles (inner.pdf, notes.txt,
                       report.docx, setup.exe) и /FileAttachment на стр. 2, назначения /Names /Dests и /Dests
                       каталога, закладки с /C и /F, переходы /Trans и /Dur, /PageLabels i–iv, /OpenAction, /DisplayDocTitle;
-  nav.json          — что в nav.pdf (слои, вложения, назначения, закладки, переходы).
+  nav.json          — что в nav.pdf (слои, вложения, назначения, закладки, переходы);
+  present.pdf       — 3 слайда для полного экрана (сессия 2.4): /PageMode /FullScreen,
+                      /NonFullScreenPageMode /UseThumbs, /Dur 1 на стр. 1, /Fade и /Box;
+  present.json      — что в present.pdf.
 Ожидания раскладки (layout_expected.json рядом) посчитаны вручную по правилам ui/view/layout.h — не этим
 скриптом.
 Откуда: свои тексты; шрифт Arial из C:\\Windows\\Fonts (подмножество).
@@ -297,6 +300,31 @@ def nav(out: Path) -> dict:
     }
 
 
+def present(out: Path) -> dict:
+    """3 слайда A4 альбомной (сессия 2.4, полный экран): /PageMode /FullScreen, /NonFullScreenPageMode
+    /UseThumbs; стр. 1 — /Dur 1 (сама листается через 1 с), стр. 2 — /Trans /Fade 0,3 с, стр. 3 — /Box наружу."""
+    doc = g.Doc("Показ", "Полноэкранный режим АкроБати", creator="tools/gen/make_view.py")
+    pdf = doc.pdf
+    font = doc.font("arial")
+    w, h = A4[1], A4[0]
+    colors = [(0.15, 0.35, 0.70), (0.80, 0.30, 0.20), (0.20, 0.55, 0.30)]
+    for i, rgb in enumerate(colors):
+        cv = doc.canvas((w, h))
+        cv.rect(0, 0, w, h, fill=rgb)
+        cv.text_center(w / 2, h / 2, "Слайд %d" % (i + 1), font, 48, rgb=(1, 1, 1))
+        doc.add_page(cv)
+    pages = [pdf.pages[i].obj for i in range(3)]
+    pages[0].Dur = 1
+    pages[1].Trans = Dictionary(Type=Name.Trans, S=Name.Fade, D=0.3)
+    pages[2].Trans = Dictionary(Type=Name.Trans, S=Name.Box, M=Name.O, D=0.3)
+    pdf.Root.PageMode = Name.FullScreen
+    pdf.Root.ViewerPreferences = Dictionary(NonFullScreenPageMode=Name.UseThumbs)
+    doc.save(out)
+    return {"pages": 3, "page_mode": "FullScreen", "non_full_screen": "UseThumbs",
+            "transitions": [{"page": 0, "dur": 1}, {"page": 1, "type": "Fade", "duration": 0.3},
+                            {"page": 2, "type": "Box", "duration": 0.3}]}
+
+
 def main():
     args = g.common_args(__doc__)
     dst = Path(args.out) / "tests" / "fixtures" / "view"
@@ -317,6 +345,10 @@ def main():
     g.check_size(dst / "nav.pdf", LIMIT)
     g.write_json(dst / "nav.json", {"generator": "tools/gen/make_view.py", "pdf": "nav.pdf", **nav_meta})
     g.say("view: nav.pdf")
+    present_meta = present(dst / "present.pdf")
+    g.check_size(dst / "present.pdf", LIMIT)
+    g.write_json(dst / "present.json", {"generator": "tools/gen/make_view.py", "pdf": "present.pdf", **present_meta})
+    g.say("view: present.pdf")
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@
 
 #include <vector>
 
+#include "core/doc/presentation.h"
 #include "core/links/attachments.h"
 #include "core/links/destinations.h"
 #include "core/links/layers.h"
@@ -32,5 +33,8 @@ QFuture<std::vector<layers::LayerUi>> layers(DocumentSession& session);
 // Переключить строку (заблокированная и подпись группы не меняются) / сбросить к /D — ответ: строки после.
 QFuture<std::vector<layers::LayerUi>> toggleLayer(DocumentSession& session, int index);
 QFuture<std::vector<layers::LayerUi>> resetLayers(DocumentSession& session);
+
+// Переходы /Trans и /Dur всех страниц (полный экран, 2.4).
+QFuture<std::vector<presentation::PageTransition>> transitions(DocumentSession& session);
 
 }  // namespace ot::nav

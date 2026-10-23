@@ -35,7 +35,9 @@ namespace ot::ui {
 class DocumentTabs;
 class DocumentView;
 class GlobalBar;
+class FullScreenWindow;
 class NavPane;
+class ReadModeBar;
 class StatusBar;
 class ToolPanel;
 
@@ -88,6 +90,12 @@ public:
     // settings_keys.h в 2.4b).
     static constexpr char kRestoreViewKey[] = "documents/restoreLastView";
     static bool restoreLastViewEnabled();
+    // Состояние панелей между запусками (2.4): F8 — все скрыты, Shift+F4 — левая свёрнута (F4 —
+    // navpane/open).
+    static constexpr char kPanelsHiddenKey[] = "window/panelsHidden";
+    static constexpr char kToolPanelCollapsedKey[] = "tools/panelCollapsed";
+    // Контекст команд режима чтения: Esc — «выход» (view.exitMode).
+    static constexpr char kReadModeContext[] = "readMode";
 
     // Второй экземпляр передал файлы: открыть и поднять окно.
     void handleRequest(const ot::SingleInstance::Request& request);
@@ -105,7 +113,17 @@ public:
     void setPanelsHidden(bool hidden);
     bool panelsHidden() const { return panelsHidden_; }
 
+    // Режим чтения (Ctrl+H; read_mode.cpp): только холст и тонкая полоса внизу; Esc — назад, панели как были.
+    void setReadMode(bool on);
+    bool isReadMode() const { return readMode_; }
+    ReadModeBar* readModeBar() const { return readBar_; }
+    // Полный экран (Ctrl+L; full_screen.h): окно без рамки на мониторе окна; выход — вид на показанной
+    // странице.
+    void enterFullScreen();
+    FullScreenWindow* fullScreenWindow() const;
+
 signals:
+    void readModeChanged(bool on);
     void documentOpened(ot::ui::DocumentView* view);
     void currentDocumentChanged(ot::ui::DocumentView* view);
 
@@ -113,6 +131,7 @@ protected:
     void closeEvent(QCloseEvent* event) override;
     void changeEvent(QEvent* event) override;
     void showEvent(QShowEvent* event) override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
     void dragEnterEvent(QDragEnterEvent* event) override;
     void dropEvent(QDropEvent* event) override;
 
@@ -138,6 +157,8 @@ private:
     void showAllTools();
     void releaseView(DocumentView* view);
     void applyNavWidth();
+    void applyPanels();
+    void placeReadBar();
     void updateStatusVisibility();
     void applyInitialView(DocumentView* view, const OpenSummary& summary);
     void openAttachmentPdf(const QString& path, const QString& title);
@@ -160,6 +181,10 @@ private:
     QString error_;
     bool closing_ = false;
     bool panelsHidden_ = false;
+    bool readMode_ = false;
+    bool menuBarShown_ = false;
+    ReadModeBar* readBar_ = nullptr;
+    QPointer<FullScreenWindow> fullScreen_;
 
     struct Actions;
     std::unique_ptr<Actions> actions_;

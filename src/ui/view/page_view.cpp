@@ -759,9 +759,9 @@ void PageView::autoScrollTick() {
 void PageView::paintEvent(QPaintEvent* /*event*/) {
     QPainter p(viewport());
     const Palette& colors = Theme::colors();
-    p.fillRect(viewport()->rect(), colors.canvas.color());
+    p.fillRect(viewport()->rect(), canvasColor_.isValid() ? canvasColor_ : colors.canvas.color());
     const qreal dpr = devicePixelRatioF();
-    const int border = Theme::sizes().pageBorder;
+    const int border = pageBorder_ ? Theme::sizes().pageBorder : 0;
     for (const int page : visiblePages()) {
         QRectF r = pageViewportRect(page);
         // Страница — на целых пикселях устройства (иначе швы между тайлами).

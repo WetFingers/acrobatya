@@ -22,6 +22,7 @@
 #pragma once
 
 #include <QAbstractScrollArea>
+#include <QColor>
 #include <QElapsedTimer>
 #include <QPointer>
 #include <QSizeF>
@@ -157,6 +158,17 @@ public:
     void setCurrentSearchHit(int index);
     int currentSearchHit() const noexcept { return currentHit_; }
 
+    // Цвет холста вместо токена canvas (полноэкранный режим — цвет фона из его настроек); невалидный — токен.
+    void setCanvasColor(const QColor& color) {
+        canvasColor_ = color;
+        viewport()->update();
+    }
+    // Рамка вокруг страницы (полный экран — без неё).
+    void setPageBorder(bool on) {
+        pageBorder_ = on;
+        viewport()->update();
+    }
+
     // Растр страниц (ui/view/tile_painter.h) и слои поверх них (ui/view/overlay.h): выделение текста,
     // совпадения поиска, рамки аннотаций — встроенные; инструменты добавляют свои.
     TilePainter& tilePainter() const noexcept { return *tiles_; }
@@ -246,6 +258,8 @@ private:
     QuadOverlay search_;
     RectOverlay annotFrames_;
     QMetaObject::Connection screenConnection_;
+    QColor canvasColor_;
+    bool pageBorder_ = true;
 };
 
 }  // namespace ot::ui

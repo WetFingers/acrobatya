@@ -99,6 +99,8 @@ openpyxl, python-pptx, odfpy), `mutool` из `C:\src\mupdf\platform\win32\x64\Re
 | `links.json` | ссылки: страница, вид, рамка в координатах MuPDF (y вниз), назначение | `unit.links` |
 | `nav.pdf` | 4 страницы A4 (сессия 2.4): на стр. 1 слои `/OCProperties` — «Сетка» (чёрный квадрат 200 × 200 в центре), «Подписи» с вложенными «Русские» и «English» (выкл.), группа-подпись «Служебные» с заблокированным «Водяной знак»; вложения `/EmbeddedFiles` (`inner.pdf`, `notes.txt`, `report.docx`, `setup.exe` — байты-заглушки, не программы) и `/FileAttachment` `data.csv` на стр. 2; назначения `/Names /Dests` (`chapter1`, `chapter2`, `summary`) и `/Dests` каталога (`intro`); закладки с `/C` и `/F`, раскрытые и закрытые; `/Trans` (растворение, шторка) и `/Dur 3`; `/PageLabels` i–iv; `/OpenAction [стр. 2 /Fit]`, `/DisplayDocTitle` | `unit.outlines`, `unit.destinations`, `unit.attachments`, `unit.layers`, `unit.nav_ops`, `ui.panes`, сцены `pane-*` |
 | `nav.json` | что в `nav.pdf`: строки слоёв, вложения (имя, описание, размер), назначения, закладки верхнего уровня, переходы | `unit.*` выше |
+| `present.pdf` | 3 слайда A4 альбомной (сессия 2.4): `/PageMode /FullScreen`, `/NonFullScreenPageMode /UseThumbs`; стр. 1 — `/Dur 1`, стр. 2 — `/Trans /Fade 0,3 с`, стр. 3 — `/Box` наружу | `ui.modes`, сцена `full-screen` |
+| `present.json` | что в `present.pdf` | |
 
 ### `tests/fixtures/annots/` — `make_annots.py` (+ `tools/gen/annots.js`)
 

@@ -5,11 +5,13 @@
 #include <QElapsedTimer>
 #include <QPixmap>
 #include <QScrollArea>
+#include <QSettings>
 #include <QThread>
 
 #include <cstdio>
 #include <memory>
 
+#include "services/app_info.h"
 #include "services/i18n.h"
 #include "services/shell_launcher.h"
 #include "ui/shell/document_view.h"
@@ -47,6 +49,14 @@ double sceneScale(const Scene& s, const ShotOptions& o) { return s.scale.value_o
 
 std::function<QWidget*()> withMainWindow(std::function<void(MainWindow&)> setup) {
     return [setup = std::move(setup)]() -> QWidget* {
+        // Состояние панелей прошлой сцены (F8, Shift+F4, правая навигация) — не в следующую: данные снимков
+        // общие, сцены — независимые.
+        {
+            QSettings ini(app::settingsPath(), QSettings::IniFormat);
+            ini.remove(QLatin1String(MainWindow::kPanelsHiddenKey));
+            ini.remove(QLatin1String(MainWindow::kToolPanelCollapsedKey));
+            ini.remove(QStringLiteral("navpane"));
+        }
         auto* w = new MainWindow();
         // Сцена не спрашивает «Сохранить изменения?» при закрытии (модальный вопрос без экрана не закрыть).
         w->setCloseConfirm([](DocumentView&) { return MainWindow::CloseAnswer::Discard; });
@@ -78,6 +88,9 @@ const std::vector<Scene>& sceneTable() {
             table.push_back(std::move(s));
         }
         for (Scene& s : statusScenes()) {  // 2.4: status-bar, message-bar-stack
+            table.push_back(std::move(s));
+        }
+        for (Scene& s : modeScenes()) {  // 2.4: read-mode, full-screen
             table.push_back(std::move(s));
         }
         return table;

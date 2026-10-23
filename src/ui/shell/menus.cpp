@@ -308,14 +308,26 @@ void MainWindow::registerCommands() {
     r.add({.id = QStringLiteral("view.readMode"),
            .title = tr("Режим &чтения"),
            .shortcuts = {key(Qt::CTRL | Qt::Key_H)},
+           .icon = QStringLiteral("book-open"),
+           .run = [this] { setReadMode(!readMode_); },
+           .enabled = hasDoc,
            .menu = QStringLiteral("view"),
            .separatorBefore = true,
-           .stage = 2});
+           .checkable = true,
+           .checked = [this] { return readMode_; }});
     r.add({.id = QStringLiteral("view.fullScreen"),
            .title = tr("&Полноэкранный режим"),
            .shortcuts = {key(Qt::CTRL | Qt::Key_L)},
-           .menu = QStringLiteral("view"),
-           .stage = 2});
+           .icon = QStringLiteral("maximize"),
+           .run = [this] { enterFullScreen(); },
+           .enabled = hasDoc,
+           .menu = QStringLiteral("view")});
+    // Esc — выход из режима чтения (только пока он включён; полный экран — своё окно, Esc ловит оно).
+    r.add({.id = QStringLiteral("view.exitMode"),
+           .title = tr("Выйти из режима чтения"),
+           .shortcuts = {key(Qt::Key_Escape)},
+           .run = [this] { setReadMode(false); },
+           .when = QLatin1String(kReadModeContext)});
     r.add({.id = QStringLiteral("view.navPane"),
            .title = tr("Панель &навигации"),
            .shortcuts = {key(Qt::Key_F4)},
@@ -682,17 +694,12 @@ void MainWindow::setSingleKeyAccelerators(bool on) {
 
 bool MainWindow::singleKeyAccelerators() const { return commands_->singleKeysEnabled(); }
 
-// F8: левая панель, правая навигация, строка состояния и плавающие панели документов скрыты или видны.
+// F8: левая панель, правая навигация, строка состояния и плавающие панели документов скрыты или видны;
+// состояние — в settings.ini.
 void MainWindow::setPanelsHidden(bool hidden) {
     panelsHidden_ = hidden;
-    toolPanel_->setVisible(!hidden && !isHomeShown());
-    navPane_->setShown(!hidden && !isHomeShown());
-    updateStatusVisibility();
-    for (int i = 0; i < documentCount(); ++i) {
-        if (QWidget* bar = document(i)->floatingBar()) {
-            bar->setVisible(!hidden);
-        }
-    }
+    QSettings(app::settingsPath(), QSettings::IniFormat).setValue(QLatin1String(kPanelsHiddenKey), hidden);
+    applyPanels();
     updateActions();
 }
 
