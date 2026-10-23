@@ -22,6 +22,7 @@ class QSplitter;
 class QStackedWidget;
 
 namespace ot {
+class CommandRegistry;
 class DocumentRegistry;
 class DocumentSession;
 class RenderPool;
@@ -63,6 +64,8 @@ public:
     GlobalBar& globalBar() const { return *globalBar_; }
     ToolPanel& toolPanel() const { return *toolPanel_; }
     DocumentRegistry& registry() const { return *registry_; }
+    // Реестр команд окна (меню, клавиши, палитра 2.4b, --script 2.4b, страж unit.guard.hotkeys).
+    CommandRegistry& commands() const { return *commands_; }
     QWidget* homePage() const { return home_; }
     QString errorString() const { return error_; }
 
@@ -88,6 +91,13 @@ public:
     // Сообщение «появится в версии 0.N» — тостом над окном (заглушки будущих этапов).
     void notifyLater(const QString& what, int stage);
 
+    // Однобуквенные ускорители H, V, Z, Shift+Z, X… (эталон 6.8; настройка, выкл. по умолчанию).
+    void setSingleKeyAccelerators(bool on);
+    bool singleKeyAccelerators() const;
+    // F8: все панели (левая, плавающие; правая и строка состояния — 2.4) скрыты.
+    void setPanelsHidden(bool hidden);
+    bool panelsHidden() const { return panelsHidden_; }
+
 signals:
     void documentOpened(ot::ui::DocumentView* view);
     void currentDocumentChanged(ot::ui::DocumentView* view);
@@ -99,8 +109,11 @@ protected:
     void dropEvent(QDropEvent* event) override;
 
 private:
-    // menus.cpp — строка меню, «Меню ▾» и «Поделиться ▾».
+    // menus.cpp — команды окна в реестре, меню из реестра («Меню ▾», строка меню, «Поделиться ▾»), клавиши.
+    void registerCommands();
+    void registerToolCommands();
     void buildMenus();
+    void rebuildMenus();
     void retranslateMenus();
     void updateActions();
 
@@ -120,6 +133,7 @@ private:
     std::unique_ptr<RenderPool> pool_;
     std::unique_ptr<TileCache> cache_;
     std::unique_ptr<DocumentRegistry> registry_;
+    CommandRegistry* commands_ = nullptr;
 
     GlobalBar* globalBar_ = nullptr;
     QSplitter* body_ = nullptr;
@@ -130,6 +144,7 @@ private:
     CloseConfirm confirm_;
     QString error_;
     bool closing_ = false;
+    bool panelsHidden_ = false;
 
     struct Actions;
     std::unique_ptr<Actions> actions_;

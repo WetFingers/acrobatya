@@ -1,333 +1,602 @@
-// Меню окна (эталон 6.1, 6.8): строка меню (скрыта, F9) и «Меню ▾» глобальной панели — одни и те же QMenu;
-// действия добавлены в само окно, поэтому их клавиши работают и без строки меню. «Поделиться ▾» — путь в
-// буфер (Проводник — ShellLauncher 2.4, почта — 9.1). Клавиши — из таблицы эталона 6.8.
+// Команды и меню окна (эталон 6.1, 6.8; view-32, view-51): все действия окна — команды реестра
+// services/commands.h с клавишами таблицы 6.8; строка меню (Файл, Правка, Вид, Инструменты, Подпись, Окно,
+// Справка; скрыта, F9) и «Меню ▾» глобальной панели — одни и те же QMenu, собранные из реестра; QAction
+// команды живёт в окне (клавиши работают и без строки меню), команды контекста "view" — в области документов
+// (Qt::WidgetWithChildrenShortcut: Home, PgUp, ←, Ctrl+C не мешают полям ввода; инструменту, которому клавиша
+// нужна самому, PageView отвечает на ShortcutOverride). Инструменты — из ToolRegistry («Инструменты», команды
+// Tool::commands()); заглушки будущих этапов — серые с подсказкой. Однобуквенные ускорители — настройка.
 #include <QAction>
-#include <QActionGroup>
+#include <QHash>
 #include <QKeySequence>
 #include <QMenu>
 #include <QMenuBar>
+#include <QSettings>
+#include <QStackedWidget>
 
+#include <tuple>
+
+#include "services/app_info.h"
+#include "services/commands.h"
 #include "services/document_session.h"
 #include "ui/shell/document_tabs.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/global_bar.h"
 #include "ui/shell/main_window.h"
+#include "ui/shell/quick_bar.h"
 #include "ui/shell/tool_panel.h"
+#include "ui/tools/tool_registry.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
 
 namespace ot::ui {
 
 struct MainWindow::Actions {
-    QMenu* file = nullptr;
-    QMenu* edit = nullptr;
-    QMenu* view = nullptr;
-    QMenu* zoom = nullptr;
-    QMenu* layout = nullptr;
-    QMenu* rotate = nullptr;
-    QMenu* navigate = nullptr;
-    QMenu* window = nullptr;
-    QMenu* help = nullptr;
+    QHash<QString, QMenu*> menus;  // "file", "view/zoom"…
+    QHash<QString, QAction*> byId;
     QMenu* main = nullptr;   // «Меню ▾»
     QMenu* share = nullptr;  // «Поделиться ▾»
-
-    QAction* open = nullptr;
-    QAction* save = nullptr;
-    QAction* saveAs = nullptr;
-    QAction* close = nullptr;
-    QAction* print = nullptr;
-    QAction* properties = nullptr;
-    QAction* quit = nullptr;
-    QAction* undo = nullptr;
-    QAction* redo = nullptr;
-    QAction* copy = nullptr;
-    QAction* selectAll = nullptr;
-    QAction* home = nullptr;
-    QAction* zoomIn = nullptr;
-    QAction* zoomOut = nullptr;
-    QAction* actualSize = nullptr;
-    QAction* fitPage = nullptr;
-    QAction* fitWidth = nullptr;
-    QAction* fitVisible = nullptr;
-    QAction* single = nullptr;
-    QAction* continuous = nullptr;
-    QAction* facing = nullptr;
-    QAction* facingContinuous = nullptr;
-    QAction* cover = nullptr;
-    QAction* rotateCw = nullptr;
-    QAction* rotateCcw = nullptr;
-    QAction* first = nullptr;
-    QAction* previous = nullptr;
-    QAction* next = nullptr;
-    QAction* last = nullptr;
-    QAction* back = nullptr;
-    QAction* forward = nullptr;
-    QAction* menuBar = nullptr;
-    QAction* toolPanel = nullptr;
-    QAction* nextTab = nullptr;
-    QAction* previousTab = nullptr;
-    QAction* about = nullptr;
-    QAction* copyPath = nullptr;
-    QAction* explorer = nullptr;
-    QAction* mail = nullptr;
-    QList<QAction*> documentOnly;  // недоступны на Главной
+    QList<QAction*> tabActions;
 };
 
 namespace {
 
-QAction* make(QWidget* owner, QMenu* menu, const QString& name,
-              std::initializer_list<QKeySequence> keys = {}) {
-    auto* a = new QAction(owner);
-    a->setObjectName(name);
-    a->setShortcuts(QList<QKeySequence>(keys));
-    a->setShortcutContext(Qt::WindowShortcut);
-    owner->addAction(a);  // клавиша работает и при скрытой строке меню
-    if (menu != nullptr) {
-        menu->addAction(a);
-    }
-    return a;
-}
+QKeySequence key(QKeyCombination k) { return QKeySequence(k); }
 
 }  // namespace
 
-void MainWindow::buildMenus() {
-    actions_ = std::make_unique<Actions>();
-    Actions& a = *actions_;
-    QMenuBar* bar = menuBar();
-    a.file = bar->addMenu(QString());
-    a.edit = bar->addMenu(QString());
-    a.view = bar->addMenu(QString());
-    a.window = bar->addMenu(QString());
-    a.help = bar->addMenu(QString());
-
-    auto view = [this]() -> PageView* {
+// Команды окна. Повторный вызов (смена языка) заменяет их по id — названия по новому переводчику.
+void MainWindow::registerCommands() {
+    CommandRegistry& r = *commands_;
+    auto hasDoc = [this] { return currentDocument() != nullptr; };
+    auto editable = [this] {
         DocumentView* d = currentDocument();
-        return d != nullptr ? &d->view() : nullptr;
+        return d != nullptr && !d->isViewOnly();
     };
-    auto onView = [view](auto fn) {
-        return [view, fn] {
-            if (PageView* v = view()) {
-                fn(*v);
+    auto onView = [this](std::function<void(PageView&)> fn) -> std::function<void()> {
+        return [this, fn = std::move(fn)] {
+            if (DocumentView* d = currentDocument()) {
+                fn(d->view());
             }
         };
     };
+    auto tool = [onView](ViewToolId id) { return onView([id](PageView& v) { v.tools().setTool(id); }); };
+    auto toolChecked = [this](ViewToolId id) -> std::function<bool()> {
+        return [this, id] {
+            DocumentView* d = currentDocument();
+            return d != nullptr && d->view().tools().tool() == id;
+        };
+    };
+    auto mode = [this](PageMode m) -> std::function<bool()> {
+        return [this, m] {
+            DocumentView* d = currentDocument();
+            return d != nullptr && d->view().pageMode() == m;
+        };
+    };
+    const QString view = QLatin1String(CommandRegistry::kViewContext);
 
     // Файл
-    a.open = make(this, a.file, QStringLiteral("doc.open"), {QKeySequence(Qt::CTRL | Qt::Key_O)});
-    connect(a.open, &QAction::triggered, this, &MainWindow::openDialog);
-    a.file->addSeparator();
-    a.save = make(this, a.file, QStringLiteral("doc.save"), {QKeySequence(Qt::CTRL | Qt::Key_S)});
-    connect(a.save, &QAction::triggered, this, &MainWindow::saveCurrent);
-    a.saveAs =
-        make(this, a.file, QStringLiteral("doc.saveAs"), {QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S)});
-    connect(a.saveAs, &QAction::triggered, this, &MainWindow::saveCurrentAs);
-    a.file->addSeparator();
-    a.close = make(this, a.file, QStringLiteral("doc.close"),
-                   {QKeySequence(Qt::CTRL | Qt::Key_W), QKeySequence(Qt::CTRL | Qt::Key_F4)});
-    connect(a.close, &QAction::triggered, this, [this] { closeDocument(currentIndex()); });
-    a.file->addSeparator();
-    a.print = make(this, a.file, QStringLiteral("doc.print"), {QKeySequence(Qt::CTRL | Qt::Key_P)});
-    connect(a.print, &QAction::triggered, this, [this] { notifyLater(tr("Печать"), 2); });
-    a.properties = make(this, a.file, QStringLiteral("doc.properties"), {QKeySequence(Qt::CTRL | Qt::Key_D)});
-    connect(a.properties, &QAction::triggered, this, [this] { notifyLater(tr("Свойства документа"), 2); });
-    a.file->addSeparator();
-    a.quit = make(this, a.file, QStringLiteral("app.quit"), {QKeySequence(Qt::CTRL | Qt::Key_Q)});
-    connect(a.quit, &QAction::triggered, this, &QWidget::close);
+    r.add({.id = QStringLiteral("doc.open"),
+           .title = tr("&Открыть…"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_O)},
+           .icon = QStringLiteral("folder-open"),
+           .run = [this] { openDialog(); },
+           .menu = QStringLiteral("file")});
+    r.add({.id = QStringLiteral("doc.save"),
+           .title = tr("&Сохранить"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_S)},
+           .icon = QStringLiteral("save"),
+           .run = [this] { saveCurrent(); },
+           .enabled = hasDoc,
+           .menu = QStringLiteral("file"),
+           .separatorBefore = true});
+    r.add({.id = QStringLiteral("doc.saveAs"),
+           .title = tr("Сохранить &как…"),
+           .shortcuts = {key(Qt::CTRL | Qt::SHIFT | Qt::Key_S)},
+           .run = [this] { saveCurrentAs(); },
+           .enabled = hasDoc,
+           .menu = QStringLiteral("file")});
+    r.add({.id = QStringLiteral("doc.close"),
+           .title = tr("&Закрыть"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_W), key(Qt::CTRL | Qt::Key_F4)},
+           .run = [this] { closeDocument(currentIndex()); },
+           .enabled = hasDoc,
+           .menu = QStringLiteral("file"),
+           .separatorBefore = true});
+    r.add({.id = QStringLiteral("doc.print"),
+           .title = tr("&Печать…"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_P)},
+           .icon = QStringLiteral("printer"),
+           .menu = QStringLiteral("file"),
+           .separatorBefore = true,
+           .stage = 2});
+    r.add({.id = QStringLiteral("doc.properties"),
+           .title = tr("Сво&йства документа…"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_D)},
+           .menu = QStringLiteral("file"),
+           .stage = 2});
+    r.add({.id = QStringLiteral("app.quit"),
+           .title = tr("В&ыход"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_Q)},
+           .run = [this] { close(); },
+           .menu = QStringLiteral("file"),
+           .separatorBefore = true});
 
     // Правка
-    a.undo = make(this, a.edit, QStringLiteral("edit.undo"), {QKeySequence(Qt::CTRL | Qt::Key_Z)});
-    connect(a.undo, &QAction::triggered, this, [this] {
-        if (DocumentView* d = currentDocument()) {
-            d->session().undo();
-        }
-    });
-    a.redo = make(this, a.edit, QStringLiteral("edit.redo"), {QKeySequence(Qt::CTRL | Qt::Key_Y)});
-    connect(a.redo, &QAction::triggered, this, [this] {
-        if (DocumentView* d = currentDocument()) {
-            d->session().redo();
-        }
-    });
-    a.edit->addSeparator();
-    // Копирование и «выделить всё» — у «Выделения» вида; клавиши Ctrl+C/Ctrl+A вид обрабатывает сам.
-    a.copy = make(this, a.edit, QStringLiteral("edit.copy"));
-    connect(a.copy, &QAction::triggered, this,
-            onView([](PageView& v) { v.tools().select().copySelection(); }));
-    a.selectAll = make(this, a.edit, QStringLiteral("edit.selectAll"));
-    connect(a.selectAll, &QAction::triggered, this, onView([](PageView& v) {
-                v.tools().setTool(ViewToolId::Select);
-                v.tools().select().selectAll();
-            }));
+    r.add({.id = QStringLiteral("edit.undo"),
+           .title = tr("&Отменить"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_Z)},
+           .run =
+               [this] {
+                   if (DocumentView* d = currentDocument()) {
+                       d->session().undo();
+                   }
+               },
+           .enabled = [this,
+                       editable] { return editable() && currentDocument()->session().undoState().canUndo; },
+           .menu = QStringLiteral("edit")});
+    r.add({.id = QStringLiteral("edit.redo"),
+           .title = tr("&Вернуть"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_Y)},
+           .run =
+               [this] {
+                   if (DocumentView* d = currentDocument()) {
+                       d->session().redo();
+                   }
+               },
+           .enabled = [this,
+                       editable] { return editable() && currentDocument()->session().undoState().canRedo; },
+           .menu = QStringLiteral("edit")});
+    r.add({.id = QStringLiteral("edit.copy"),
+           .title = tr("&Копировать"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_C)},
+           .run = onView([](PageView& v) { v.tools().select().copySelection(); }),
+           .when = view,
+           .enabled = hasDoc,
+           .menu = QStringLiteral("edit"),
+           .separatorBefore = true});
+    r.add({.id = QStringLiteral("edit.selectAll"),
+           .title = tr("Выделить &всё"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_A)},
+           .run = onView([](PageView& v) {
+               v.tools().setTool(ViewToolId::Select);
+               v.tools().select().selectAll();
+           }),
+           .when = view,
+           .enabled = hasDoc,
+           .menu = QStringLiteral("edit")});
+    r.add({.id = QStringLiteral("edit.find"),
+           .title = tr("&Найти…"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_F)},
+           .icon = QStringLiteral("search"),
+           .menu = QStringLiteral("edit"),
+           .separatorBefore = true,
+           .stage = 2});
+    r.add({.id = QStringLiteral("app.preferences"),
+           .title = tr("&Установки…"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_K)},
+           .icon = QStringLiteral("settings"),
+           .menu = QStringLiteral("edit"),
+           .separatorBefore = true,
+           .stage = 2});
 
     // Вид
-    a.home = make(this, a.view, QStringLiteral("view.home"));
-    connect(a.home, &QAction::triggered, this, &MainWindow::showHome);
-    a.view->addSeparator();
-    a.zoom = a.view->addMenu(QString());
-    a.zoomIn = make(this, a.zoom, QStringLiteral("view.zoomIn"),
-                    {QKeySequence(Qt::CTRL | Qt::Key_Equal), QKeySequence(Qt::CTRL | Qt::Key_Plus)});
-    connect(a.zoomIn, &QAction::triggered, this, onView([](PageView& v) { v.zoomIn(); }));
-    a.zoomOut = make(this, a.zoom, QStringLiteral("view.zoomOut"), {QKeySequence(Qt::CTRL | Qt::Key_Minus)});
-    connect(a.zoomOut, &QAction::triggered, this, onView([](PageView& v) { v.zoomOut(); }));
-    a.zoom->addSeparator();
-    a.actualSize =
-        make(this, a.zoom, QStringLiteral("view.actualSize"), {QKeySequence(Qt::CTRL | Qt::Key_1)});
-    connect(a.actualSize, &QAction::triggered, this, onView([](PageView& v) { v.fit(FitMode::ActualSize); }));
-    a.fitPage = make(this, a.zoom, QStringLiteral("view.fitPage"), {QKeySequence(Qt::CTRL | Qt::Key_0)});
-    connect(a.fitPage, &QAction::triggered, this, onView([](PageView& v) { v.fit(FitMode::Page); }));
-    a.fitWidth = make(this, a.zoom, QStringLiteral("view.fitWidth"), {QKeySequence(Qt::CTRL | Qt::Key_2)});
-    connect(a.fitWidth, &QAction::triggered, this, onView([](PageView& v) { v.fit(FitMode::Width); }));
-    a.fitVisible =
-        make(this, a.zoom, QStringLiteral("view.fitVisible"), {QKeySequence(Qt::CTRL | Qt::Key_3)});
-    connect(a.fitVisible, &QAction::triggered, this, onView([](PageView& v) { v.fit(FitMode::Visible); }));
-
-    a.layout = a.view->addMenu(QString());
-    auto* modes = new QActionGroup(this);
-    const std::pair<QAction**, PageMode> modeActions[] = {
-        {&a.single, PageMode::SinglePage},
-        {&a.continuous, PageMode::Continuous},
-        {&a.facing, PageMode::Facing},
-        {&a.facingContinuous, PageMode::FacingContinuous},
+    r.add({.id = QStringLiteral("view.home"),
+           .title = tr("&Главная"),
+           .icon = QStringLiteral("home"),
+           .run = [this] { showHome(); },
+           .menu = QStringLiteral("view")});
+    r.add({.id = QStringLiteral("view.zoomIn"),
+           .title = tr("&Увеличить"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_Equal), key(Qt::CTRL | Qt::Key_Plus)},
+           .icon = QStringLiteral("zoom-in"),
+           .run = onView([](PageView& v) { v.zoomIn(); }),
+           .enabled = hasDoc,
+           .menu = QStringLiteral("view/zoom")});
+    r.add({.id = QStringLiteral("view.zoomOut"),
+           .title = tr("У&меньшить"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_Minus)},
+           .icon = QStringLiteral("zoom-out"),
+           .run = onView([](PageView& v) { v.zoomOut(); }),
+           .enabled = hasDoc,
+           .menu = QStringLiteral("view/zoom")});
+    const std::tuple<const char*, QString, QKeyCombination, FitMode, bool> fits[] = {
+        {"view.actualSize", tr("&Реальный размер"), Qt::CTRL | Qt::Key_1, FitMode::ActualSize, true},
+        {"view.fitPage", tr("Уместить &страницу"), Qt::CTRL | Qt::Key_0, FitMode::Page, false},
+        {"view.fitWidth", tr("По &ширине"), Qt::CTRL | Qt::Key_2, FitMode::Width, false},
+        {"view.fitVisible", tr("По &видимому"), Qt::CTRL | Qt::Key_3, FitMode::Visible, false},
     };
-    const char* modeNames[] = {"view.singlePage", "view.continuous", "view.facing", "view.facingContinuous"};
-    int n = 0;
-    for (const auto& [slot, mode] : modeActions) {
-        QAction* act = make(this, a.layout, QLatin1String(modeNames[n++]));
-        act->setCheckable(true);
-        modes->addAction(act);
-        connect(act, &QAction::triggered, this, onView([mode](PageView& v) { v.setPageMode(mode); }));
-        *slot = act;
+    for (const auto& [id, title, k, fit, sep] : fits) {
+        const FitMode f = fit;
+        r.add({.id = QLatin1String(id),
+               .title = title,
+               .shortcuts = {key(k)},
+               .run = onView([f](PageView& v) { v.fit(f); }),
+               .enabled = hasDoc,
+               .menu = QStringLiteral("view/zoom"),
+               .separatorBefore = sep});
     }
-    a.layout->addSeparator();
-    a.cover = make(this, a.layout, QStringLiteral("view.coverPage"));
-    a.cover->setCheckable(true);
-    connect(a.cover, &QAction::toggled, this,
-            [onView](bool on) { onView([on](PageView& v) { v.setCoverPage(on); })(); });
+    const std::tuple<const char*, QString, PageMode> modes[] = {
+        {"view.singlePage", tr("&Одна страница"), PageMode::SinglePage},
+        {"view.continuous", tr("&Непрерывно"), PageMode::Continuous},
+        {"view.facing", tr("&Разворот"), PageMode::Facing},
+        {"view.facingContinuous", tr("Разворот н&епрерывно"), PageMode::FacingContinuous},
+    };
+    for (const auto& [id, title, pm] : modes) {
+        const PageMode m = pm;
+        r.add({.id = QLatin1String(id),
+               .title = title,
+               .run = onView([m](PageView& v) { v.setPageMode(m); }),
+               .enabled = hasDoc,
+               .menu = QStringLiteral("view/layout"),
+               .checkable = true,
+               .checked = mode(m)});
+    }
+    r.add({.id = QStringLiteral("view.coverPage"),
+           .title = tr("&Титульная страница отдельно"),
+           .run = onView([](PageView& v) { v.setCoverPage(!v.coverPage()); }),
+           .enabled = hasDoc,
+           .menu = QStringLiteral("view/layout"),
+           .separatorBefore = true,
+           .checkable = true,
+           .checked = [this] {
+               return currentDocument() != nullptr && currentDocument()->view().coverPage();
+           }});
+    r.add({.id = QStringLiteral("view.rotateCw"),
+           .title = tr("По &часовой стрелке"),
+           .shortcuts = {key(Qt::CTRL | Qt::SHIFT | Qt::Key_Equal), key(Qt::CTRL | Qt::SHIFT | Qt::Key_Plus)},
+           .icon = QStringLiteral("rotate-cw"),
+           .run = onView([](PageView& v) { v.rotateView(90); }),
+           .enabled = hasDoc,
+           .menu = QStringLiteral("view/rotate")});
+    r.add({.id = QStringLiteral("view.rotateCcw"),
+           .title = tr("&Против часовой стрелки"),
+           .shortcuts = {key(Qt::CTRL | Qt::SHIFT | Qt::Key_Minus)},
+           .icon = QStringLiteral("rotate-ccw"),
+           .run = onView([](PageView& v) { v.rotateView(-90); }),
+           .enabled = hasDoc,
+           .menu = QStringLiteral("view/rotate")});
+    r.add({.id = QStringLiteral("view.firstPage"),
+           .title = tr("&Первая страница"),
+           .shortcuts = {key(Qt::Key_Home)},
+           .run = onView([](PageView& v) { v.firstPage(); }),
+           .when = view,
+           .enabled = hasDoc,
+           .menu = QStringLiteral("view/navigate")});
+    r.add({.id = QStringLiteral("view.previousPage"),
+           .title = tr("П&редыдущая страница"),
+           .shortcuts = {key(Qt::Key_PageUp), key(Qt::Key_Left)},
+           .run = onView([](PageView& v) { v.previousPage(); }),
+           .when = view,
+           .enabled = hasDoc,
+           .menu = QStringLiteral("view/navigate")});
+    r.add({.id = QStringLiteral("view.nextPage"),
+           .title = tr("&Следующая страница"),
+           .shortcuts = {key(Qt::Key_PageDown), key(Qt::Key_Right)},
+           .run = onView([](PageView& v) { v.nextPage(); }),
+           .when = view,
+           .enabled = hasDoc,
+           .menu = QStringLiteral("view/navigate")});
+    r.add({.id = QStringLiteral("view.lastPage"),
+           .title = tr("П&оследняя страница"),
+           .shortcuts = {key(Qt::Key_End)},
+           .run = onView([](PageView& v) { v.lastPage(); }),
+           .when = view,
+           .enabled = hasDoc,
+           .menu = QStringLiteral("view/navigate")});
+    r.add({.id = QStringLiteral("view.goToPage"),
+           .title = tr("Перейти к &странице…"),
+           .shortcuts = {key(Qt::CTRL | Qt::SHIFT | Qt::Key_N)},
+           .menu = QStringLiteral("view/navigate"),
+           .stage = 2});
+    r.add({.id = QStringLiteral("view.back"),
+           .title = tr("Предыдущий &вид"),
+           .shortcuts = {key(Qt::ALT | Qt::Key_Left)},
+           .run = onView([](PageView& v) { v.goBack(); }),
+           .enabled = hasDoc,
+           .menu = QStringLiteral("view/navigate"),
+           .separatorBefore = true});
+    r.add({.id = QStringLiteral("view.forward"),
+           .title = tr("Следующий в&ид"),
+           .shortcuts = {key(Qt::ALT | Qt::Key_Right)},
+           .run = onView([](PageView& v) { v.goForward(); }),
+           .enabled = hasDoc,
+           .menu = QStringLiteral("view/navigate")});
+    r.add({.id = QStringLiteral("view.readMode"),
+           .title = tr("Режим &чтения"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_H)},
+           .menu = QStringLiteral("view"),
+           .separatorBefore = true,
+           .stage = 2});
+    r.add({.id = QStringLiteral("view.fullScreen"),
+           .title = tr("&Полноэкранный режим"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_L)},
+           .menu = QStringLiteral("view"),
+           .stage = 2});
+    r.add({.id = QStringLiteral("view.navPane"),
+           .title = tr("Панель &навигации"),
+           .shortcuts = {key(Qt::Key_F4)},
+           .menu = QStringLiteral("view/panels"),
+           .stage = 2});
+    r.add({.id = QStringLiteral("view.toolPanel"),
+           .title = tr("Панель &инструментов"),
+           .shortcuts = {key(Qt::SHIFT | Qt::Key_F4)},
+           .run = [this] { toolPanel_->toggleCollapsed(); },
+           .menu = QStringLiteral("view/panels"),
+           .checkable = true,
+           .checked = [this] { return !toolPanel_->isCollapsed(); }});
+    r.add({.id = QStringLiteral("view.allPanels"),
+           .title = tr("&Все панели"),
+           .shortcuts = {key(Qt::Key_F8)},
+           .run = [this] { setPanelsHidden(!panelsHidden_); },
+           .menu = QStringLiteral("view/panels"),
+           .checkable = true,
+           .checked = [this] { return !panelsHidden_; }});
+    r.add({.id = QStringLiteral("view.menuBar"),
+           .title = tr("&Строка меню"),
+           .shortcuts = {key(Qt::Key_F9)},
+           .run = [this] { menuBar()->setVisible(!menuBar()->isVisible()); },
+           .menu = QStringLiteral("view/panels"),
+           .checkable = true,
+           .checked = [this] { return menuBar()->isVisible(); }});
+    r.add({.id = QStringLiteral("app.palette"),
+           .title = tr("Палитра &команд…"),
+           .shortcuts = {key(Qt::CTRL | Qt::SHIFT | Qt::Key_P)},
+           .menu = QStringLiteral("view"),
+           .separatorBefore = true,
+           .stage = 2});
 
-    a.rotate = a.view->addMenu(QString());
-    a.rotateCw = make(this, a.rotate, QStringLiteral("view.rotateCw"),
-                      {QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Equal),
-                       QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Plus)});
-    connect(a.rotateCw, &QAction::triggered, this, onView([](PageView& v) { v.rotateView(90); }));
-    a.rotateCcw = make(this, a.rotate, QStringLiteral("view.rotateCcw"),
-                       {QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Minus)});
-    connect(a.rotateCcw, &QAction::triggered, this, onView([](PageView& v) { v.rotateView(-90); }));
+    // Инструменты просмотра (однобуквенные клавиши — настройка, эталон 6.8).
+    const std::tuple<const char*, QString, QKeySequence, ViewToolId, const char*> viewTools[] = {
+        {"tool.select", tr("&Выделение"), key(Qt::Key_V), ViewToolId::Select, "mouse-pointer-2"},
+        {"tool.hand", tr("&Рука"), key(Qt::Key_H), ViewToolId::Hand, "hand"},
+        {"tool.marqueeZoom", tr("&Увеличение области"), key(Qt::Key_Z), ViewToolId::MarqueeZoom, "zoom-in"},
+        {"tool.loupe", tr("&Лупа"), QKeySequence(), ViewToolId::Loupe, ""},
+        {"tool.panZoom", tr("&Панорамирование и масштаб"), QKeySequence(), ViewToolId::PanZoom, ""},
+        {"tool.snapshot", tr("&Снимок"), key(Qt::Key_X), ViewToolId::Snapshot, ""},
+    };
+    for (const auto& [id, title, k, t, icon] : viewTools) {
+        r.add({.id = QLatin1String(id),
+               .title = title,
+               .shortcuts = k.isEmpty() ? QList<QKeySequence>{} : QList<QKeySequence>{k},
+               .icon = QLatin1String(icon),
+               .run = tool(t),
+               .when = view,
+               .enabled = hasDoc,
+               .menu = QStringLiteral("tools"),
+               .singleKey = !k.isEmpty(),
+               .checkable = true,
+               .checked = toolChecked(t)});
+    }
+    r.add({.id = QStringLiteral("tool.zoomCycle"),
+           .title = tr("Сменить инструмент &масштаба"),
+           .shortcuts = {key(Qt::SHIFT | Qt::Key_Z)},
+           .run = onView([](PageView& v) { v.tools().cycleZoomTools(); }),
+           .when = view,
+           .enabled = hasDoc,
+           .menu = QStringLiteral("tools"),
+           .singleKey = true});
+    r.add({.id = QStringLiteral("tools.all"),
+           .title = tr("Все &инструменты"),
+           .icon = QStringLiteral("grid-2x2"),
+           .run = [this] { showAllTools(); },
+           .menu = QStringLiteral("tools"),
+           .separatorBefore = true});
 
-    a.navigate = a.view->addMenu(QString());
-    a.first = make(this, a.navigate, QStringLiteral("view.firstPage"));
-    connect(a.first, &QAction::triggered, this, onView([](PageView& v) { v.firstPage(); }));
-    a.previous = make(this, a.navigate, QStringLiteral("view.previousPage"));
-    connect(a.previous, &QAction::triggered, this, onView([](PageView& v) { v.previousPage(); }));
-    a.next = make(this, a.navigate, QStringLiteral("view.nextPage"));
-    connect(a.next, &QAction::triggered, this, onView([](PageView& v) { v.nextPage(); }));
-    a.last = make(this, a.navigate, QStringLiteral("view.lastPage"));
-    connect(a.last, &QAction::triggered, this, onView([](PageView& v) { v.lastPage(); }));
-    a.navigate->addSeparator();
-    a.back = make(this, a.navigate, QStringLiteral("view.back"), {QKeySequence(Qt::ALT | Qt::Key_Left)});
-    connect(a.back, &QAction::triggered, this, onView([](PageView& v) { v.goBack(); }));
-    a.forward =
-        make(this, a.navigate, QStringLiteral("view.forward"), {QKeySequence(Qt::ALT | Qt::Key_Right)});
-    connect(a.forward, &QAction::triggered, this, onView([](PageView& v) { v.goForward(); }));
-    a.view->addSeparator();
-    a.toolPanel =
-        make(this, a.view, QStringLiteral("view.toolPanel"), {QKeySequence(Qt::SHIFT | Qt::Key_F4)});
-    a.toolPanel->setCheckable(true);
-    a.toolPanel->setChecked(true);
-    connect(a.toolPanel, &QAction::triggered, this, [this](bool on) { toolPanel_->setCollapsed(!on); });
-    connect(toolPanel_, &ToolPanel::collapsedChanged, a.toolPanel,
-            [&a](bool collapsed) { a.toolPanel->setChecked(!collapsed); });
-    a.menuBar = make(this, a.view, QStringLiteral("view.menuBar"), {QKeySequence(Qt::Key_F9)});
-    a.menuBar->setCheckable(true);
-    connect(a.menuBar, &QAction::toggled, menuBar(), &QWidget::setVisible);
+    // Подпись (этапы 4–5).
+    const std::tuple<const char*, QString, int, bool> sign[] = {
+        {"sign.fillSign", tr("&Заполнить и подписать"), 5, false},
+        {"sign.digital", tr("Поставить &цифровую подпись…"), 4, true},
+        {"sign.certify", tr("&Сертифицировать…"), 4, false},
+        {"sign.timestamp", tr("&Метка времени документа"), 4, false},
+        {"sign.validateAll", tr("&Проверить все подписи"), 4, true},
+        {"sign.identities", tr("&Удостоверения…"), 4, false},
+    };
+    for (const auto& [id, title, stage, sep] : sign) {
+        r.add({.id = QLatin1String(id),
+               .title = title,
+               .menu = QStringLiteral("sign"),
+               .separatorBefore = sep,
+               .stage = stage});
+    }
 
-    // Окно: переключение вкладок и список документов.
-    a.nextTab =
-        make(this, a.window, QStringLiteral("window.nextTab"), {QKeySequence(Qt::CTRL | Qt::Key_Tab)});
-    connect(a.nextTab, &QAction::triggered, this, [this] {
-        tabs().selectNext();
-        showDocument(tabs().currentIndex());
-    });
-    a.previousTab =
-        make(this, a.window, QStringLiteral("window.previousTab"),
-             {QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Tab), QKeySequence(Qt::CTRL | Qt::Key_Backtab)});
-    connect(a.previousTab, &QAction::triggered, this, [this] {
-        tabs().selectPrevious();
-        showDocument(tabs().currentIndex());
-    });
-    connect(a.window, &QMenu::aboutToShow, this, [this] {
-        Actions& acts = *actions_;
-        for (QAction* act : acts.window->actions()) {
-            if (act->property("otTab").isValid()) {
-                acts.window->removeAction(act);
-                act->deleteLater();
-            }
+    // Окно
+    r.add({.id = QStringLiteral("window.nextTab"),
+           .title = tr("&Следующая вкладка"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_Tab)},
+           .run =
+               [this] {
+                   tabs().selectNext();
+                   showDocument(tabs().currentIndex());
+               },
+           .enabled = hasDoc,
+           .menu = QStringLiteral("window")});
+    r.add({.id = QStringLiteral("window.previousTab"),
+           .title = tr("&Предыдущая вкладка"),
+           .shortcuts = {key(Qt::CTRL | Qt::SHIFT | Qt::Key_Tab), key(Qt::CTRL | Qt::Key_Backtab)},
+           .run =
+               [this] {
+                   tabs().selectPrevious();
+                   showDocument(tabs().currentIndex());
+               },
+           .enabled = hasDoc,
+           .menu = QStringLiteral("window")});
+
+    // Справка
+    r.add({.id = QStringLiteral("help.contents"),
+           .title = tr("&Справка АкроБати"),
+           .shortcuts = {key(Qt::Key_F1)},
+           .menu = QStringLiteral("help"),
+           .stage = 9});
+    r.add({.id = QStringLiteral("help.about"),
+           .title = tr("&О программе"),
+           .run = [this] { about(); },
+           .menu = QStringLiteral("help"),
+           .separatorBefore = true});
+
+    // «Поделиться ▾»
+    r.add({.id = QStringLiteral("share.mail"),
+           .title = tr("Отправить по &почте…"),
+           .icon = QStringLiteral("mail"),
+           .menu = QStringLiteral("share"),
+           .stage = 9});
+    r.add({.id = QStringLiteral("share.copyPath"),
+           .title = tr("&Копировать путь"),
+           .run = [this] { copyPath(); },
+           .enabled = hasDoc,
+           .menu = QStringLiteral("share")});
+    r.add({.id = QStringLiteral("share.showInExplorer"),
+           .title = tr("Показать в &Проводнике"),
+           .menu = QStringLiteral("share"),
+           .stage = 2});
+    registerToolCommands();
+}
+
+// «Инструменты»: 16 инструментов эталона 6.2 (заглушки — серые) и команды самих инструментов.
+void MainWindow::registerToolCommands() {
+    CommandRegistry& r = *commands_;
+    QStringList stale;
+    for (const Command* c : r.all()) {
+        if (c->id.startsWith(QLatin1String("tools.")) && c->id != QLatin1String("tools.all")) {
+            stale << c->id;
         }
+    }
+    for (const QString& id : stale) {
+        r.remove(id);
+    }
+    bool first = true;
+    for (Tool* t : ToolRegistry::instance().tools()) {
+        const QString id = t->id();
+        r.add({.id = QStringLiteral("tools.") + id,
+               .title = t->title(),
+               .icon = t->icon(),
+               .run = [this, id] { ToolRegistry::instance().activate(id, currentDocument()); },
+               .menu = QStringLiteral("tools"),
+               .separatorBefore = first,
+               .stage = t->isStub() ? t->stage() : 0});
+        first = false;
+        for (Command c : t->commands()) {
+            r.add(std::move(c));
+        }
+    }
+}
+
+void MainWindow::buildMenus() {
+    actions_ = std::make_unique<Actions>();
+    commands_->loadSettings();
+    registerCommands();
+    actions_->main = new QMenu(this);
+    actions_->main->setObjectName(QStringLiteral("mainMenu"));
+    globalBar_->setMainMenu(actions_->main);
+    actions_->share = new QMenu(this);
+    actions_->share->setObjectName(QStringLiteral("shareMenu"));
+    globalBar_->setShareMenu(actions_->share);
+    rebuildMenus();
+    connect(commands_, &CommandRegistry::shortcutsChanged, this, &MainWindow::updateActions);
+    connect(&ToolRegistry::instance(), &ToolRegistry::toolsChanged, this, [this] {
+        registerToolCommands();
+        rebuildMenus();
+    });
+}
+
+// Меню из реестра: верхние меню по порядку эталона 6.1, подменю «Вида» — там, где встречена первая их
+// команда.
+void MainWindow::rebuildMenus() {
+    Actions& a = *actions_;
+    for (QAction* act : std::as_const(a.byId)) {
+        delete act;
+    }
+    a.byId.clear();
+    menuBar()->clear();
+    a.main->clear();
+    a.share->clear();
+    for (auto it = a.menus.constBegin(); it != a.menus.constEnd(); ++it) {
+        if (!it.key().contains(QLatin1Char('/'))) {
+            delete it.value();  // подменю — дети верхних меню
+        }
+    }
+    a.menus.clear();
+    a.tabActions.clear();
+
+    const std::pair<const char*, QString> tops[] = {
+        {"file", tr("&Файл")},         {"edit", tr("&Правка")},  {"view", tr("&Вид")},
+        {"tools", tr("&Инструменты")}, {"sign", tr("П&одпись")}, {"window", tr("О&кно")},
+        {"help", tr("&Справка")},
+    };
+    for (const auto& [id, title] : tops) {
+        auto* m = new QMenu(title, this);
+        m->setObjectName(QStringLiteral("menu.") + QLatin1String(id));
+        m->setToolTipsVisible(true);
+        a.menus.insert(QLatin1String(id), m);
+        menuBar()->addMenu(m);
+        a.main->addMenu(m);
+    }
+    a.share->setToolTipsVisible(true);
+    const QHash<QString, QString> subTitles = {
+        {QStringLiteral("view/zoom"), tr("&Масштаб")},
+        {QStringLiteral("view/layout"), tr("&Отображение страниц")},
+        {QStringLiteral("view/rotate"), tr("&Повернуть вид")},
+        {QStringLiteral("view/navigate"), tr("Пере&ход по страницам")},
+        {QStringLiteral("view/panels"), tr("Показать или с&крыть")},
+    };
+
+    for (const Command* c : commands_->all()) {
+        if (c->menu.isEmpty()) {
+            continue;
+        }
+        QMenu* target = c->menu == QLatin1String("share") ? a.share : a.menus.value(c->menu);
+        if (target == nullptr) {
+            QMenu* top = a.menus.value(c->menu.section(QLatin1Char('/'), 0, 0));
+            if (top == nullptr) {
+                continue;
+            }
+            target = top->addMenu(subTitles.value(c->menu, c->menu));
+            target->setObjectName(QStringLiteral("menu.") + c->menu);
+            target->setToolTipsVisible(true);
+            a.menus.insert(c->menu, target);
+        }
+        if (c->separatorBefore && !target->isEmpty()) {
+            target->addSeparator();
+        }
+        auto* act = new QAction(c->title, this);
+        act->setObjectName(c->id);
+        act->setCheckable(c->checkable);
+        const QString id = c->id;
+        connect(act, &QAction::triggered, this, [this, id] {
+            commands_->trigger(id);
+            updateActions();
+        });
+        // Клавиша контекста "view" — только при фокусе в документе; остальные — во всём окне.
+        if (c->when == QLatin1String(CommandRegistry::kViewContext)) {
+            act->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+            documents_->addAction(act);
+        } else {
+            act->setShortcutContext(Qt::WindowShortcut);
+            addAction(act);
+        }
+        target->addAction(act);
+        a.byId.insert(id, act);
+    }
+
+    // «Окно»: список открытых документов при показе меню.
+    QMenu* window = a.menus.value(QStringLiteral("window"));
+    connect(window, &QMenu::aboutToShow, this, [this, window] {
+        Actions& acts = *actions_;
+        for (QAction* act : std::as_const(acts.tabActions)) {
+            window->removeAction(act);
+            act->deleteLater();
+        }
+        acts.tabActions.clear();
         if (documentCount() > 0) {
-            acts.window->addSeparator()->setProperty("otTab", true);
+            acts.tabActions << window->addSeparator();
         }
         for (int i = 0; i < documentCount(); ++i) {
-            QAction* act = acts.window->addAction(tabs().tabText(i));
-            act->setProperty("otTab", i);
+            QAction* act = window->addAction(tabs().tabText(i));
             act->setCheckable(true);
             act->setChecked(i == currentIndex());
             connect(act, &QAction::triggered, this, [this, i] { showDocument(i); });
+            acts.tabActions << act;
         }
     });
-
-    // Справка
-    a.about = make(this, a.help, QStringLiteral("help.about"));
-    connect(a.about, &QAction::triggered, this, &MainWindow::about);
-
-    // «Меню ▾» — те же меню выпадающим списком.
-    a.main = new QMenu(this);
-    a.main->setObjectName(QStringLiteral("mainMenu"));
-    for (QMenu* m : {a.file, a.edit, a.view, a.window, a.help}) {
-        a.main->addMenu(m);
-    }
-    globalBar_->setMainMenu(a.main);
-
-    // «Поделиться ▾»
-    a.share = new QMenu(this);
-    a.share->setObjectName(QStringLiteral("shareMenu"));
-    a.mail = make(this, a.share, QStringLiteral("share.mail"));
-    connect(a.mail, &QAction::triggered, this, [this] { notifyLater(tr("Отправить по почте"), 9); });
-    a.copyPath = make(this, a.share, QStringLiteral("share.copyPath"));
-    connect(a.copyPath, &QAction::triggered, this, &MainWindow::copyPath);
-    a.explorer = make(this, a.share, QStringLiteral("share.showInExplorer"));
-    connect(a.explorer, &QAction::triggered, this, [this] { notifyLater(tr("Показать в Проводнике"), 2); });
-    globalBar_->setShareMenu(a.share);
-
-    a.documentOnly = {a.save,
-                      a.saveAs,
-                      a.close,
-                      a.print,
-                      a.properties,
-                      a.undo,
-                      a.redo,
-                      a.copy,
-                      a.selectAll,
-                      a.zoomIn,
-                      a.zoomOut,
-                      a.actualSize,
-                      a.fitPage,
-                      a.fitWidth,
-                      a.fitVisible,
-                      a.single,
-                      a.continuous,
-                      a.facing,
-                      a.facingContinuous,
-                      a.cover,
-                      a.rotateCw,
-                      a.rotateCcw,
-                      a.first,
-                      a.previous,
-                      a.next,
-                      a.last,
-                      a.back,
-                      a.forward,
-                      a.copyPath,
-                      a.explorer,
-                      a.mail};
-    retranslateMenus();
     updateActions();
 }
 
@@ -335,90 +604,58 @@ void MainWindow::retranslateMenus() {
     if (!actions_) {
         return;
     }
-    Actions& a = *actions_;
-    a.file->setTitle(tr("&Файл"));
-    a.edit->setTitle(tr("&Правка"));
-    a.view->setTitle(tr("&Вид"));
-    a.zoom->setTitle(tr("&Масштаб"));
-    a.layout->setTitle(tr("&Отображение страниц"));
-    a.rotate->setTitle(tr("&Повернуть вид"));
-    a.navigate->setTitle(tr("Пере&ход по страницам"));
-    a.window->setTitle(tr("&Окно"));
-    a.help->setTitle(tr("&Справка"));
-
-    a.open->setText(tr("&Открыть…"));
-    a.save->setText(tr("&Сохранить"));
-    a.saveAs->setText(tr("Сохранить &как…"));
-    a.close->setText(tr("&Закрыть"));
-    a.print->setText(tr("&Печать…"));
-    a.properties->setText(tr("Сво&йства документа…"));
-    a.quit->setText(tr("В&ыход"));
-    a.undo->setText(tr("&Отменить"));
-    a.redo->setText(tr("&Вернуть"));
-    a.copy->setText(tr("&Копировать"));
-    a.selectAll->setText(tr("Выделить &всё"));
-    a.home->setText(tr("&Главная"));
-    a.zoomIn->setText(tr("&Увеличить"));
-    a.zoomOut->setText(tr("У&меньшить"));
-    a.actualSize->setText(tr("&Реальный размер"));
-    a.fitPage->setText(tr("Уместить &страницу"));
-    a.fitWidth->setText(tr("По &ширине"));
-    a.fitVisible->setText(tr("По &видимому"));
-    a.single->setText(tr("&Одна страница"));
-    a.continuous->setText(tr("&Непрерывно"));
-    a.facing->setText(tr("&Разворот"));
-    a.facingContinuous->setText(tr("Разворот &непрерывно"));
-    a.cover->setText(tr("&Титульная страница отдельно"));
-    a.rotateCw->setText(tr("По &часовой стрелке"));
-    a.rotateCcw->setText(tr("&Против часовой стрелки"));
-    a.first->setText(tr("&Первая страница"));
-    a.previous->setText(tr("П&редыдущая страница"));
-    a.next->setText(tr("&Следующая страница"));
-    a.last->setText(tr("П&оследняя страница"));
-    a.back->setText(tr("Предыдущий &вид"));
-    a.forward->setText(tr("Следующий в&ид"));
-    a.toolPanel->setText(tr("Панель &инструментов"));
-    a.menuBar->setText(tr("&Строка меню"));
-    a.nextTab->setText(tr("&Следующая вкладка"));
-    a.previousTab->setText(tr("&Предыдущая вкладка"));
-    a.about->setText(tr("&О программе"));
-    a.mail->setText(tr("Отправить по &почте…"));
-    a.copyPath->setText(tr("&Копировать путь"));
-    a.explorer->setText(tr("Показать в &Проводнике"));
-    // Клавиши, которые вид обрабатывает сам (без конфликта с полями ввода), — подписью в меню.
-    const std::pair<QAction*, QKeySequence> viewKeys[] = {
-        {a.copy, QKeySequence(Qt::CTRL | Qt::Key_C)}, {a.selectAll, QKeySequence(Qt::CTRL | Qt::Key_A)},
-        {a.first, QKeySequence(Qt::Key_Home)},        {a.previous, QKeySequence(Qt::Key_PageUp)},
-        {a.next, QKeySequence(Qt::Key_PageDown)},     {a.last, QKeySequence(Qt::Key_End)},
-    };
-    for (const auto& [act, key] : viewKeys) {
-        act->setText(act->text() + QLatin1Char('\t') + key.toString(QKeySequence::NativeText));
-    }
+    registerCommands();
+    rebuildMenus();
 }
 
 void MainWindow::updateActions() {
     if (!actions_) {
         return;
     }
-    Actions& a = *actions_;
-    DocumentView* d = currentDocument();
-    for (QAction* act : a.documentOnly) {
-        act->setEnabled(d != nullptr);
+    for (auto it = actions_->byId.constBegin(); it != actions_->byId.constEnd(); ++it) {
+        const Command* c = commands_->find(it.key());
+        QAction* act = it.value();
+        if (c == nullptr) {
+            continue;
+        }
+        act->setEnabled(commands_->isEnabled(c->id));
+        if (c->checkable) {
+            act->setChecked(commands_->isChecked(c->id));
+        }
+        const QList<QKeySequence> keys = commands_->effectiveShortcuts(c->id);
+        if (act->shortcuts() != keys) {
+            act->setShortcuts(keys);
+        }
+        QString plain = c->title;
+        plain.remove(QLatin1Char('&')).remove(QStringLiteral("…"));
+        act->setToolTip(c->stage > 0 ? tr("«%1» появится в версии 0.%2").arg(plain).arg(c->stage) : plain);
     }
-    if (d == nullptr) {
-        return;
+}
+
+void MainWindow::setSingleKeyAccelerators(bool on) {
+    QSettings(app::settingsPath(), QSettings::IniFormat)
+        .setValue(QLatin1String(CommandRegistry::kSingleKeyKey), on);
+    commands_->setSingleKeysEnabled(on);
+    for (int i = 0; i < documentCount(); ++i) {
+        if (auto* quick = qobject_cast<QuickBar*>(document(i)->floatingBar())) {
+            quick->setSingleKeyHints(on);
+        }
     }
-    const UndoState undo = d->session().undoState();
-    a.undo->setEnabled(undo.canUndo && !d->isViewOnly());
-    a.redo->setEnabled(undo.canRedo && !d->isViewOnly());
-    const PageView& v = d->view();
-    QAction* mode = v.pageMode() == PageMode::SinglePage   ? a.single
-                    : v.pageMode() == PageMode::Continuous ? a.continuous
-                    : v.pageMode() == PageMode::Facing     ? a.facing
-                                                           : a.facingContinuous;
-    mode->setChecked(true);
-    const QSignalBlocker block(a.cover);
-    a.cover->setChecked(v.coverPage());
+}
+
+bool MainWindow::singleKeyAccelerators() const { return commands_->singleKeysEnabled(); }
+
+// F8: левая панель и плавающие панели документов (правая навигация и строка состояния — 2.4) скрыты или
+// видны.
+void MainWindow::setPanelsHidden(bool hidden) {
+    panelsHidden_ = hidden;
+    toolPanel_->setVisible(!hidden && !isHomeShown());
+    for (int i = 0; i < documentCount(); ++i) {
+        if (QWidget* bar = document(i)->floatingBar()) {
+            bar->setVisible(!hidden);
+        }
+    }
+    updateActions();
 }
 
 }  // namespace ot::ui

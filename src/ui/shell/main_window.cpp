@@ -25,6 +25,7 @@
 #include <exception>
 
 #include "services/app_info.h"
+#include "services/commands.h"
 #include "services/convert_ops.h"
 #include "services/document_registry.h"
 #include "services/recent.h"
@@ -40,6 +41,7 @@
 #include "ui/theme/theme.h"
 #include "ui/tools/tool_registry.h"
 #include "ui/view/page_view.h"
+#include "ui/view/tool_controller.h"
 #include "ui/widgets/toast.h"
 
 namespace ot::ui {
@@ -123,6 +125,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(globalBar_, &GlobalBar::settingsClicked, this, [this] { notifyLater(tr("Установки"), 2); });
     connect(globalBar_, &GlobalBar::searchRequested, this, [this] { notifyLater(tr("Поиск"), 2); });
 
+    commands_ = new CommandRegistry(this);
     buildMenus();
     menuBar()->hide();
     showHome();
@@ -184,7 +187,10 @@ bool MainWindow::openFile(const QString& path, int page) {
             Qt::QueuedConnection);
     auto* quick = new QuickBar();
     quick->attach(&view->view());
+    quick->setSingleKeyHints(commands_->singleKeysEnabled());
     view->setFloatingBar(quick);
+    quick->setVisible(!panelsHidden_);
+    connect(&view->view().tools(), &ToolController::toolChanged, this, &MainWindow::updateActions);
     if (page >= 0) {
         view->setInitialPage(page);
     } else if (restoreLastViewEnabled()) {
@@ -261,7 +267,7 @@ void MainWindow::showDocument(int index) {
     tabs().setCurrentIndex(index);
     documents_->setCurrentWidget(view);
     center_->setCurrentWidget(documents_);
-    toolPanel_->show();
+    toolPanel_->setVisible(!panelsHidden_);
     ToolRegistry::instance().setView(view);
     globalBar_->setHomeActive(false);
     view->setFocus();
@@ -364,9 +370,12 @@ void MainWindow::showAllTools() {
     if (isHomeShown() && documentCount() > 0) {
         showDocument(tabs().currentIndex());
     }
+    if (panelsHidden_) {
+        setPanelsHidden(false);
+    }
     toolPanel_->setCollapsed(false);
     toolPanel_->showList();
-    toolPanel_->show();
+    toolPanel_->setVisible(!isHomeShown() || documentCount() == 0);
 }
 
 // Вкладка уходит: инструмент, включённый на ней, выключается до удаления вида.

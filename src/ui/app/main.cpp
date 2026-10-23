@@ -5,6 +5,7 @@
 #include <QApplication>
 #include <QCoreApplication>
 #include <QFileInfo>
+#include <QJsonDocument>
 #include <QTimer>
 
 #include <cstdio>
@@ -16,6 +17,7 @@
 #include <spdlog/spdlog.h>
 
 #include "services/app_info.h"
+#include "services/commands.h"
 #include "services/i18n.h"
 #include "services/session_store.h"
 #include "services/single_instance.h"
@@ -114,6 +116,19 @@ int main(int argc, char** argv) {
     registerBuiltinTools(ToolRegistry::instance());
     // Язык до первого окна: --lang, иначе настройка, иначе системный (эталон 5.7).
     ot::i18n::install(opts.lang.isEmpty() ? ot::i18n::fromSettings() : opts.lang);
+    if (opts.commandsList) {  // страж клавиш: окно не показывается, данные человека не читаются
+                              // (OTTISK_DATA_DIR)
+        attachParentConsole();
+        if (qEnvironmentVariableIsEmpty("OTTISK_INSTANCE")) {
+            qputenv("OTTISK_INSTANCE", "test");
+        }
+        spdlog::set_level(spdlog::level::off);  // в stdout — только JSON
+        MainWindow window;
+        printUtf8(
+            QString::fromUtf8(QJsonDocument(window.commands().toJson()).toJson(QJsonDocument::Compact)));
+        std::fflush(stdout);
+        return 0;
+    }
     if (!opts.shots.isEmpty()) {
         attachParentConsole();
         if (qEnvironmentVariableIsEmpty("OTTISK_INSTANCE")) {

@@ -92,6 +92,7 @@ private slots:
             menus << a->text().remove(QLatin1Char('&'));
         }
         QCOMPARE(menus, (QStringList{QStringLiteral("Файл"), QStringLiteral("Правка"), QStringLiteral("Вид"),
+                                     QStringLiteral("Инструменты"), QStringLiteral("Подпись"),
                                      QStringLiteral("Окно"), QStringLiteral("Справка")}));
         action(w, "view.menuBar")->trigger();  // F9
         QVERIFY(w.menuBar()->isVisible());

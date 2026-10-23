@@ -4,6 +4,8 @@
 // документов: вкладки не помещаются (◀ ▶), у второй — точка «несохранено» (правка рамки записки — шаг
 // истории). Кадр снимается, когда видимые тайлы готовы.
 #include <QFileInfo>
+#include <QMenu>
+#include <QTimer>
 #include <QWidget>
 
 #include <vector>
@@ -13,6 +15,7 @@
 #include "services/thumbnails.h"
 #include "ui/shell/document_tabs.h"
 #include "ui/shell/document_view.h"
+#include "ui/shell/global_bar.h"
 #include "ui/shell/home/home_page.h"
 #include "ui/shell/main_window.h"
 #include "ui/shell/tool_panel.h"
@@ -170,6 +173,37 @@ std::vector<Scene> shellScenes() {
     });
     quick.ready = documentReady;
     scenes.push_back(quick);
+
+    // «Меню ▾» открыто, в нём — «Вид» (план 2.3, пункт 4). Всплывающее меню — отдельное окно и в снимок окна
+    // не попадает: меню на время снимка встраиваются в окно обычными виджетами на тех же местах.
+    Scene menu;
+    menu.name = QStringLiteral("menu-open");
+    menu.make = withMainWindow([](MainWindow& w) {
+        w.openFile(sceneFixture(QStringLiteral("demo/report.pdf")));
+        QTimer::singleShot(0, &w, [&w] {
+            auto* main = w.findChild<QMenu*>(QStringLiteral("mainMenu"));
+            auto* view = w.findChild<QMenu*>(QStringLiteral("menu.view"));
+            if (main == nullptr || view == nullptr) {
+                return;
+            }
+            const QWidget* button = w.globalBar().menuButton();
+            const QPoint at = button->mapTo(&w, QPoint(0, button->height()));
+            for (QMenu* m : {main, view}) {
+                m->setParent(&w, Qt::Widget);
+                m->adjustSize();
+            }
+            main->move(at);
+            main->setActiveAction(view->menuAction());
+            main->show();
+            main->raise();
+            const QRect item = main->actionGeometry(view->menuAction());
+            view->move(at + QPoint(main->width() - 2, item.top()));
+            view->show();
+            view->raise();
+        });
+    });
+    menu.ready = documentReady;
+    scenes.push_back(menu);
     return scenes;
 }
 

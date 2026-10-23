@@ -30,6 +30,8 @@ CliOptions parseCli(const QStringList& arguments) {
             o.shots = v.split(QLatin1Char(','), Qt::SkipEmptyParts);
         } else if (a == QLatin1String("--shots-list")) {
             o.shotsList = true;
+        } else if (a == QLatin1String("--commands-list")) {
+            o.commandsList = true;
         } else if (a == QLatin1String("--lang")) {
             if (!next(o.lang)) break;
             if (o.lang != QLatin1String("ru") && o.lang != QLatin1String("en") &&

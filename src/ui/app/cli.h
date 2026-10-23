@@ -3,6 +3,8 @@
 //   --self-check              самопроверка без окна (QCoreApplication), код 0 — всё в порядке
 //   --shots <имя[,имя]|all>   снимки сцен в PNG без экрана (--out <каталог>, --size WxH; эталон 6.10)
 //   --shots-list              имена сцен, по одному в строке
+//   --commands-list           реестр команд окна одной строкой JSON (id, title, keys, when…) — страж
+//                             unit.guard.hotkeys сверяет его с таблицей эталона 6.8
 //   --lang ru|en|system       язык интерфейса (эталон 5.7; иначе — настройка, иначе — системный)
 //   --theme system|light|dark|contrast   тема (эталон 6.4; по умолчанию — системная, у снимков — светлая)
 //   --scale 1|1.25            «Крупные элементы» (ocr-42)
@@ -27,6 +29,7 @@ struct CliOptions {
     bool registerNotify = false;
     QStringList shots;  // имена сцен; "all" — все
     bool shotsList = false;
+    bool commandsList = false;
     QString shotsOut;  // каталог для PNG
     QSize shotsSize{1440, 900};
     QString theme;       // пусто — по умолчанию (окно — system, снимки — light)

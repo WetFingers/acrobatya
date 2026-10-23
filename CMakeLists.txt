@@ -279,6 +279,12 @@ add_test(NAME unit.guard.icons
   COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/copy_icons.py" --check --root "${CMAKE_SOURCE_DIR}"
   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 set_tests_properties(unit.guard.icons PROPERTIES LABELS "unit;guard" SKIP_RETURN_CODE 77 TIMEOUT 120)
+# Клавиши (план 2.3): реестр команд AcroBatya.exe --commands-list ⊆ таблица эталона 6.8 (exe этого каталога сборки).
+add_test(NAME unit.guard.hotkeys
+  COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/hotkeys_guard.py" --root "${CMAKE_SOURCE_DIR}"
+    --exe "$<TARGET_FILE:AcroBatya>"
+  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+set_tests_properties(unit.guard.hotkeys PROPERTIES LABELS "unit;guard" SKIP_RETURN_CODE 77 TIMEOUT 120)
 
 add_test(NAME build.install
   COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tests/build/install_test.py" --root "${CMAKE_SOURCE_DIR}"

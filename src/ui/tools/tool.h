@@ -9,29 +9,19 @@
 #pragma once
 
 #include <QCursor>
-#include <QKeySequence>
-#include <QList>
 #include <QPointF>
 #include <QString>
 
-#include <functional>
 #include <optional>
 #include <vector>
+
+#include "services/commands.h"
 
 class QWidget;
 
 namespace ot::ui {
 
 class DocumentView;
-
-// Команда инструмента (id `группа.действие`, клавиши — из таблицы эталона 6.8; однобуквенные — singleKey).
-struct ToolCommand {
-    QString id;
-    QString title;
-    QList<QKeySequence> shortcuts;
-    std::function<void()> run;
-    bool singleKey = false;
-};
 
 class Tool {
 public:
@@ -50,7 +40,7 @@ public:
     virtual void activate(DocumentView& view) { (void)view; }
     virtual void deactivate() {}
     virtual QWidget* panel() { return nullptr; }
-    virtual std::vector<ToolCommand> commands() const { return {}; }
+    virtual std::vector<ot::Command> commands() const { return {}; }
     virtual std::optional<QCursor> cursorFor(const DocumentView& view, QPointF viewportPoint) const {
         (void)view;
         (void)viewportPoint;
