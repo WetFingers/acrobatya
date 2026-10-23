@@ -1,0 +1,181 @@
+{
+  "generator": "tools/gen/make_scans.py",
+  "note": "rotation_cw — на сколько градусов по часовой повёрнуто содержимое; чтобы выпрямить, повернуть против часовой. skew_deg_ccw — перекос против часовой. Эталон — scan-NN.txt.",
+  "plan_names": {
+    "scan-ru.pdf": "scan-01.pdf (план 8.1: русский, 300 dpi, без поворота; эталон scan-01.txt)",
+    "перекос 3°": "scan-03.pdf (+3,0° против часовой, без поворота; fz_detect_skew ≈ 3)",
+    "повороты 90/180/270": "90 — scan-04, scan-09; 180 — scan-05, scan-08; 270 — scan-06, scan-10"
+  },
+  "scans": [
+    {
+      "file": "scan-01.pdf",
+      "truth": "scan-01.txt",
+      "lang": "ru",
+      "tesseract": "rus",
+      "font": "arial",
+      "rotation_cw": 0,
+      "skew_deg_ccw": 1.0,
+      "mode": "gray",
+      "dpi": 300,
+      "pixels": [
+        2481,
+        3508
+      ],
+      "words": 130,
+      "bytes": 500666
+    },
+    {
+      "file": "scan-02.pdf",
+      "truth": "scan-02.txt",
+      "lang": "en",
+      "tesseract": "eng",
+      "font": "times",
+      "rotation_cw": 0,
+      "skew_deg_ccw": -2.0,
+      "mode": "gray",
+      "dpi": 300,
+      "pixels": [
+        2481,
+        3508
+      ],
+      "words": 153,
+      "bytes": 458789
+    },
+    {
+      "file": "scan-03.pdf",
+      "truth": "scan-03.txt",
+      "lang": "de",
+      "tesseract": "deu",
+      "font": "arial",
+      "rotation_cw": 0,
+      "skew_deg_ccw": 3.0,
+      "mode": "gray",
+      "dpi": 300,
+      "pixels": [
+        2481,
+        3508
+      ],
+      "words": 134,
+      "bytes": 489842
+    },
+    {
+      "file": "scan-04.pdf",
+      "truth": "scan-04.txt",
+      "lang": "ru",
+      "tesseract": "rus",
+      "font": "times",
+      "rotation_cw": 90,
+      "skew_deg_ccw": -1.5,
+      "mode": "gray",
+      "dpi": 300,
+      "pixels": [
+        3508,
+        2481
+      ],
+      "words": 132,
+      "bytes": 485003
+    },
+    {
+      "file": "scan-05.pdf",
+      "truth": "scan-05.txt",
+      "lang": "en",
+      "tesseract": "eng",
+      "font": "arial",
+      "rotation_cw": 180,
+      "skew_deg_ccw": 2.5,
+      "mode": "gray",
+      "dpi": 300,
+      "pixels": [
+        2481,
+        3508
+      ],
+      "words": 158,
+      "bytes": 477076
+    },
+    {
+      "file": "scan-06.pdf",
+      "truth": "scan-06.txt",
+      "lang": "de",
+      "tesseract": "deu",
+      "font": "times",
+      "rotation_cw": 270,
+      "skew_deg_ccw": -3.0,
+      "mode": "gray",
+      "dpi": 300,
+      "pixels": [
+        3508,
+        2481
+      ],
+      "words": 133,
+      "bytes": 475013
+    },
+    {
+      "file": "scan-07.pdf",
+      "truth": "scan-07.txt",
+      "lang": "ru+en",
+      "tesseract": "rus+eng",
+      "font": "arial",
+      "rotation_cw": 0,
+      "skew_deg_ccw": -0.5,
+      "mode": "bw",
+      "dpi": 300,
+      "pixels": [
+        2481,
+        3508
+      ],
+      "words": 169,
+      "bytes": 59453
+    },
+    {
+      "file": "scan-08.pdf",
+      "truth": "scan-08.txt",
+      "lang": "ru",
+      "tesseract": "rus",
+      "font": "times",
+      "rotation_cw": 180,
+      "skew_deg_ccw": 1.5,
+      "mode": "bw",
+      "dpi": 300,
+      "pixels": [
+        2481,
+        3508
+      ],
+      "words": 129,
+      "bytes": 54735
+    },
+    {
+      "file": "scan-09.pdf",
+      "truth": "scan-09.txt",
+      "lang": "de+en",
+      "tesseract": "deu+eng",
+      "font": "arial",
+      "rotation_cw": 90,
+      "skew_deg_ccw": 0.8,
+      "mode": "rgb",
+      "dpi": 300,
+      "pixels": [
+        3508,
+        2481
+      ],
+      "words": 180,
+      "bytes": 543629
+    },
+    {
+      "file": "scan-10.pdf",
+      "truth": "scan-10.txt",
+      "lang": "ru",
+      "tesseract": "rus",
+      "font": "arial",
+      "rotation_cw": 270,
+      "skew_deg_ccw": -2.2,
+      "mode": "rgb",
+      "dpi": 300,
+      "pixels": [
+        3508,
+        2481
+      ],
+      "words": 130,
+      "bytes": 536963
+    }
+  ]
+}

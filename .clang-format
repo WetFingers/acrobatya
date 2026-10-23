@@ -1,0 +1,56 @@
+# «Оттиск» — стиль C++ (эталон 9.5). clang-format 19.1.5 из Build Tools (tools/vcenv.cmd кладёт его в PATH).
+# Проверка: tools/format_guard.py (ctest unit.guard.format) и tools/verify.py — clang-format --dry-run --Werror.
+---
+Language: Cpp
+BasedOnStyle: Google
+Standard: c++20
+ColumnLimit: 110
+IndentWidth: 4
+ContinuationIndentWidth: 4
+AccessModifierOffset: -4
+UseTab: Never
+PointerAlignment: Left
+ReferenceAlignment: Pointer
+DerivePointerAlignment: false
+IncludeBlocks: Preserve
+SortIncludes: CaseSensitive
+# Как в Google, но <winsock2.h>, затем <windows.h> — первыми в своём блоке: <shlobj.h> и прочие без них не собираются.
+IncludeCategories:
+  - Regex: '^<winsock2\.h>$'
+    Priority: 1
+    SortPriority: 1
+  - Regex: '^<windows\.h>$'
+    Priority: 1
+    SortPriority: 2
+  - Regex: '^<ext/.*\.h>'
+    Priority: 2
+    SortPriority: 4
+  - Regex: '^<.*\.h>'
+    Priority: 1
+    SortPriority: 3
+  - Regex: '^<.*'
+    Priority: 2
+    SortPriority: 4
+  - Regex: '.*'
+    Priority: 3
+    SortPriority: 5
+# fz_try/fz_always/fz_catch (MuPDF, src/core/mu/call.h) — как if: блок на отдельных строках, без пробела перед «(».
+IfMacros:
+  - fz_try
+  - fz_always
+  - fz_catch
+SpaceBeforeParens: ControlStatementsExceptControlMacros
+InsertNewlineAtEOF: true
+LineEnding: DeriveLF
+# Макросы Qt без точки с запятой — отдельные операторы, а не начало объявления.
+StatementMacros:
+  - Q_OBJECT
+  - Q_GADGET
+  - Q_UNUSED
+  - QT_REQUIRE_VERSION
+  - Q_ENUM
+  - Q_FLAG
+  - Q_DISABLE_COPY
+  - Q_DISABLE_COPY_MOVE
+  - Q_DECLARE_TR_FUNCTIONS
+...

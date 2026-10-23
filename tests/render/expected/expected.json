@@ -1,0 +1,1580 @@
+{
+  "build": "release",
+  "date": "2026-10-23T02:14:33Z",
+  "defaults": {
+    "fuzzy": {
+      "max_delta": 3,
+      "mse": 0.05,
+      "ssim": 0.98,
+      "wmse": 15
+    }
+  },
+  "items": [
+    {
+      "fuzzy": null,
+      "id": "pdfium_resources/hello_world",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 200,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/hello_world.1.72.png",
+          "sha256": "0c1dfb273079dc00293065fd493776c83c970c5e309c0fb0a28fe95c6b5a0a8b",
+          "width": 200
+        },
+        {
+          "dpi": 150,
+          "height": 417,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/hello_world.1.150.png",
+          "sha256": "6cb64940b695415429ed44a0b6619b82857828b41453e5fdb3ec9a6c5e830fa9",
+          "width": 417
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/hello_world.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/en_foxit",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/en_foxit.1.72.png",
+          "sha256": "8a6777d95e5f91fdad18df66cb2ecaee663b7e9b37327cc0c09d56f0dff4b4c2",
+          "width": 596
+        },
+        {
+          "dpi": 150,
+          "height": 1754,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/en_foxit.1.150.png",
+          "sha256": "80b1ec229eb915a4cc266a2fee0526cfb4e3a8713b66dcf424c9a1da038ca358",
+          "width": 1241
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/text/en_foxit.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/ch_1",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 666,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/ch_1.1.72.png",
+          "sha256": "466dd94ba9606d78b4d8a7168d6f7eda7641804e2f9d970b1935d381b877ccb0",
+          "width": 531
+        },
+        {
+          "dpi": 150,
+          "height": 1388,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/ch_1.1.150.png",
+          "sha256": "4d37d724b966c8ed3de071c3fca301fe1a44f751c3f8db7f7cb327ef02404a33",
+          "width": 1107
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/text/ch_1.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/quick_start_guide",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/quick_start_guide.1.72.png",
+          "sha256": "1a78983a22b1531e2a674cb65dffedcb327293c7c02d0a68ff245aef5877c30e",
+          "width": 596
+        },
+        {
+          "dpi": 150,
+          "height": 1754,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/quick_start_guide.1.150.png",
+          "sha256": "3d0f35c5ab2cd8e49956265ef0cad9f7efb264dace28a36d41bdf1894991427e",
+          "width": 1241
+        },
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 2,
+          "png": "tests/render/expected/pdfium_tests/quick_start_guide.2.72.png",
+          "sha256": "2131a7403e89a67c41dccd7cb0b8b453fdabd8dc3b03e9022062ed849426c14f",
+          "width": 596
+        },
+        {
+          "dpi": 150,
+          "height": 1754,
+          "page": 2,
+          "png": "tests/render/expected/pdfium_tests/quick_start_guide.2.150.png",
+          "sha256": "afb1a04b5fcea6f8f8a58bebdcb5a76100f661eeba0dbf736758d780c783e499",
+          "width": 1241
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/text/quick_start_guide.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "safedocs/unicode-test",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 1,
+          "png": "tests/render/expected/safedocs/unicode-test.1.72.png",
+          "sha256": "acbbee553291c47cca58df25484150ec2cb7eda2aaa0bed144b86cd672716dad",
+          "width": 595
+        },
+        {
+          "dpi": 150,
+          "height": 1755,
+          "page": 1,
+          "png": "tests/render/expected/safedocs/unicode-test.1.150.png",
+          "sha256": "cb513c453afca4ac6860d02bc9187917c90ffb96f947eeecd3aa2a4e60bc70c5",
+          "width": 1240
+        }
+      ],
+      "source": "tests/fixtures/pick/safedocs/Unicode_passwords/baseline/unicode-test.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/zh_page",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/zh_page.1.72.png",
+          "sha256": "5ae7fa4b6ee27cc05f82df3fdea0f5b1bbe75fdb80de9171e20ac925beffaf14",
+          "width": 596
+        },
+        {
+          "dpi": 150,
+          "height": 1754,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/zh_page.1.150.png",
+          "sha256": "2d5e885342bf36a3a58514b0614e379a7fc08a0087411318bdc8fcef293b83da",
+          "width": 1241
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/text/zh_page.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/font_1_embedded_font_en_feature",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/font_1_embedded_font_en_feature.1.72.png",
+          "sha256": "7cff8d5c7b94e549273e7a8b500da66b400040b7bec55d9029de1a438b13ef5e",
+          "width": 596
+        },
+        {
+          "dpi": 150,
+          "height": 1754,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/font_1_embedded_font_en_feature.1.150.png",
+          "sha256": "b0086f7d3f199e3f4fc7e73956f181ab6bbd236c2e464b869253a462d7cb5844",
+          "width": 1240
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/font/font_1_embedded_font_en_feature.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_resources/bug_642",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 200,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/bug_642.1.72.png",
+          "sha256": "ecc0507acb174c62831e013e2ce2babe5ec85a9b6629e14ccd60af2947e9b7ab",
+          "width": 200
+        },
+        {
+          "dpi": 150,
+          "height": 417,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/bug_642.1.150.png",
+          "sha256": "f4ea3afb185628e97fbe202a3027635c662f5850415dc9454f72b8f741d11f88",
+          "width": 417
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/bug_642.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "mini/cyr-cid",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 1,
+          "png": "tests/render/expected/mini/cyr-cid.1.72.png",
+          "sha256": "7f9f81d5a571d330d89393690791064b6b7122c8e633e81bc978f23dd6ed29c3",
+          "width": 596
+        },
+        {
+          "dpi": 150,
+          "height": 1754,
+          "page": 1,
+          "png": "tests/render/expected/mini/cyr-cid.1.150.png",
+          "sha256": "236d9cec8185f219490bda6a492d43aa29e1abb55fa0393f2f6393b3cf00830e",
+          "width": 1241
+        }
+      ],
+      "source": "tests/data/mini/cyr-cid.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_resources/vertical_text",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 200,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/vertical_text.1.72.png",
+          "sha256": "6a6e13e96e54a3da60f067f6e883abf05043333837144c31c56df57d302fea10",
+          "width": 200
+        },
+        {
+          "dpi": 150,
+          "height": 417,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/vertical_text.1.150.png",
+          "sha256": "eee4e053a222262aaaed007779cf90ac6e6ca5c2e709869068dd9dffbf11e116",
+          "width": 417
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/vertical_text.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_resources/text_render_mode",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 446,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/text_render_mode.1.72.png",
+          "sha256": "a75318ddecb30dadc30571ec1f52eda99cc52e3589f1dced2831360569293d6b",
+          "width": 612
+        },
+        {
+          "dpi": 150,
+          "height": 930,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/text_render_mode.1.150.png",
+          "sha256": "88db429ab1c0b782fc468399e7955706f10324ada7fa8ac50a44059eea83a64c",
+          "width": 1275
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/text_render_mode.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_resources/rotated_text_90",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 200,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/rotated_text_90.1.72.png",
+          "sha256": "81f781359790a31d877cf75f5ba48ec1e28557601c47357d11809245d5747e6d",
+          "width": 200
+        },
+        {
+          "dpi": 150,
+          "height": 417,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/rotated_text_90.1.150.png",
+          "sha256": "b3ed68ee0981f17667adc4fcf6484660a89f72f48feed986bc8f0bb68fcc4fe5",
+          "width": 417
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/rotated_text_90.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdf-differences/VerticalText",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 792,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/VerticalText.1.72.png",
+          "sha256": "5cbae6a9a7041ec6252dfee54122209713f6bd519f3a1c679d65ff73e9a6769a",
+          "width": 612
+        },
+        {
+          "dpi": 150,
+          "height": 1650,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/VerticalText.1.150.png",
+          "sha256": "3883cf2ceb23430dd1140fd198be99605a1ba0722efe633ac534f3bcaed81efb",
+          "width": 1275
+        }
+      ],
+      "source": "tests/fixtures/pick/pdf-differences/VerticalText/VerticalText.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdf-differences/Type3Test",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 80,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/Type3Test.1.72.png",
+          "sha256": "48f76a4a42cb9495ecd996af4bb42003730f2f453bf5c91c566aa3d0a8453b64",
+          "width": 300
+        },
+        {
+          "dpi": 150,
+          "height": 167,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/Type3Test.1.150.png",
+          "sha256": "94b8f481de438539658a38c29e915b3b64d5c803b01c63ba0ab5c0799583ee35",
+          "width": 625
+        }
+      ],
+      "source": "tests/fixtures/pick/pdf-differences/Type3WordSpacing/Type3Test.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdf-differences/NegativeFontSize",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 1000,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/NegativeFontSize.1.72.png",
+          "sha256": "34156898de7c188053e430a29d568d4d430c3fa28a06616b0c5a06bf23a066ac",
+          "width": 1500
+        },
+        {
+          "dpi": 150,
+          "height": 2084,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/NegativeFontSize.1.150.png",
+          "sha256": "0cbd499ff87130b3ff2f53de4461749d3fd5d3f88d69ca003e7d1108af69c50e",
+          "width": 3125
+        }
+      ],
+      "source": "tests/fixtures/pick/pdf-differences/NegativeFontSize/NegativeFontSize.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdf-differences/TextClippingModeChanges",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 800,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/TextClippingModeChanges.1.72.png",
+          "sha256": "69bf225dd61f21cfda20b07ae346a6942b1eb349287881822b3b693ef2debd4e",
+          "width": 600
+        },
+        {
+          "dpi": 150,
+          "height": 1667,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/TextClippingModeChanges.1.150.png",
+          "sha256": "70859b1b9b5a6b10ea96645de49512fc4f0001ebe28e41838a311f30812e202b",
+          "width": 1250
+        }
+      ],
+      "source": "tests/fixtures/pick/pdf-differences/TextClipModeChanges/TextClippingModeChanges.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdf-differences/OverlappingGlyphClipping",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 800,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/OverlappingGlyphClipping.1.72.png",
+          "sha256": "d260806920139f5f50e698aec3e92b17a4e5c69162aaf122a4306ad009bdc043",
+          "width": 800
+        },
+        {
+          "dpi": 150,
+          "height": 1667,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/OverlappingGlyphClipping.1.150.png",
+          "sha256": "489722d019a86e2cd4b9c365f94e7b5832120edc3a37f481716d818e38ea6937",
+          "width": 1667
+        }
+      ],
+      "source": "tests/fixtures/pick/pdf-differences/OverlappingGlyphClipping/OverlappingGlyphClipping.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "safedocs/utf16LE-test",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 1,
+          "png": "tests/render/expected/safedocs/utf16LE-test.1.72.png",
+          "sha256": "8aaae0d3743edc18d244c267217d3c8b7513a345bb7d9bc12e3c3774879d9ed5",
+          "width": 596
+        },
+        {
+          "dpi": 150,
+          "height": 1754,
+          "page": 1,
+          "png": "tests/render/expected/safedocs/utf16LE-test.1.150.png",
+          "sha256": "c51cc44ae8e802563dd332a6bf709b89d6119b1779de497f41e64284d23b02af",
+          "width": 1241
+        }
+      ],
+      "source": "tests/fixtures/pick/safedocs/Miscellaneous_Targeted_Test_PDFs/utf16LE-test.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "safedocs/FontinsideType3insideType3",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 840,
+          "page": 1,
+          "png": "tests/render/expected/safedocs/FontinsideType3insideType3.1.72.png",
+          "sha256": "cccc42f0afb6b6e889ca6c6d2005e610b421b9deb44c9d3a5ae2376bdd4cd3bc",
+          "width": 600
+        },
+        {
+          "dpi": 150,
+          "height": 1750,
+          "page": 1,
+          "png": "tests/render/expected/safedocs/FontinsideType3insideType3.1.150.png",
+          "sha256": "b03a41be772bfcc65ce45930d04bc962ee56bc5d14b27a26ba682a1d51f54e43",
+          "width": 1250
+        }
+      ],
+      "source": "tests/fixtures/pick/safedocs/Miscellaneous_Targeted_Test_PDFs/FontinsideType3insideType3.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "commons-ru/zakon-chuvashiya-simvoly",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 1,
+          "png": "tests/render/expected/commons-ru/zakon-chuvashiya-simvoly.1.72.png",
+          "sha256": "ac9b95acb1af54ac898b8eada682552eba1a0766cdc752e5eb96e20c0a27e27d",
+          "width": 595
+        },
+        {
+          "dpi": 150,
+          "height": 1755,
+          "page": 1,
+          "png": "tests/render/expected/commons-ru/zakon-chuvashiya-simvoly.1.150.png",
+          "sha256": "2457391539ed6096cc85f91bdbc13e3732558f056d4cff95683ad410db23292f",
+          "width": 1240
+        },
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 2,
+          "png": "tests/render/expected/commons-ru/zakon-chuvashiya-simvoly.2.72.png",
+          "sha256": "6dcab41427211213a279c6c3fcf3af01c5be1be39c47d686709fa71eb875e428",
+          "width": 595
+        },
+        {
+          "dpi": 150,
+          "height": 1755,
+          "page": 2,
+          "png": "tests/render/expected/commons-ru/zakon-chuvashiya-simvoly.2.150.png",
+          "sha256": "c3797be19b2ac4fb92b0e7451dcfd092272e18c1fe474caecf1a12569512efdc",
+          "width": 1240
+        }
+      ],
+      "source": "corpus:commons-ru/zakon-chuvashiya-simvoly.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/image_8bit_devicergb_dctdecode",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 792,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/image_8bit_devicergb_dctdecode.1.72.png",
+          "sha256": "2db3492784f82d9a9ec7b149905dbd06fc90a81f60159e9ef88a29cc809f346c",
+          "width": 612
+        },
+        {
+          "dpi": 150,
+          "height": 1650,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/image_8bit_devicergb_dctdecode.1.150.png",
+          "sha256": "b924d6ef4eeabeb0b4c1585e11bebd5487c791f6be68b675db382e35b45f3be2",
+          "width": 1275
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/image/image_8bit_devicergb_dctdecode.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/123",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/123.1.72.png",
+          "sha256": "5afb4f08ecd89d1c0d0eedc68c54e731dc3918cfecf2bdfdff41e370ab858b2b",
+          "width": 596
+        },
+        {
+          "dpi": 150,
+          "height": 1754,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/123.1.150.png",
+          "sha256": "537d60c451f7b9659ad52dd810dec13b2ffacc6234451cca2fedbff5ec15c915",
+          "width": 1241
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/action/123.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_resources/jpx_lzw",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 792,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/jpx_lzw.1.72.png",
+          "sha256": "3fa7d8919def6a6bc5fa17b9ea992a8a6a52d53cbd74d8435f04988f5c2e8fc7",
+          "width": 612
+        },
+        {
+          "dpi": 150,
+          "height": 1650,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/jpx_lzw.1.150.png",
+          "sha256": "fb3cf27d7cda7e805711f555d4f02f66fe5601f82e0a7b75062ebc25e321495d",
+          "width": 1275
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/jpx_lzw.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/bitmap-symbol-manysyms",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 400,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/bitmap-symbol-manysyms.1.72.png",
+          "sha256": "70dd0e0e52880f03d7714ca20633133d163ee9e08b1e12137607db96a48458c7",
+          "width": 399
+        },
+        {
+          "dpi": 150,
+          "height": 834,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/bitmap-symbol-manysyms.1.150.png",
+          "sha256": "6462b65b42aa01efdfcec381e22fe69f9e71efb48fe873d016f657845fabfc03",
+          "width": 832
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/third_party/jbig2/bitmap-symbol-manysyms.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/bitmap-halftone",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 400,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/bitmap-halftone.1.72.png",
+          "sha256": "70dd0e0e52880f03d7714ca20633133d163ee9e08b1e12137607db96a48458c7",
+          "width": 399
+        },
+        {
+          "dpi": 150,
+          "height": 834,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/bitmap-halftone.1.150.png",
+          "sha256": "6462b65b42aa01efdfcec381e22fe69f9e71efb48fe873d016f657845fabfc03",
+          "width": 832
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/third_party/jbig2/bitmap-halftone.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "commons-ru/scan-zakon-bo-116-z-2018",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 846,
+          "page": 1,
+          "png": "tests/render/expected/commons-ru/scan-zakon-bo-116-z-2018.1.72.png",
+          "sha256": "50b4d35542dd94ba41bf80eaca646e2da351accd3c4fe978eb6201b79880cee4",
+          "width": 602
+        },
+        {
+          "dpi": 150,
+          "height": 1763,
+          "page": 1,
+          "png": "tests/render/expected/commons-ru/scan-zakon-bo-116-z-2018.1.150.png",
+          "sha256": "f382c048538e866fe3bcc857eed235d0229b8031667b6edf9d10084a0b4772e6",
+          "width": 1253
+        }
+      ],
+      "source": "corpus:commons-ru/scan-zakon-bo-116-z-2018.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/11",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 666,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/11.1.72.png",
+          "sha256": "fc458e518c36cdf61d872eed54f5c134529d8173d1ed58f7a55bb2525be41bb8",
+          "width": 531
+        },
+        {
+          "dpi": 150,
+          "height": 1388,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/11.1.150.png",
+          "sha256": "ecbc15f5bef9e92aa6fc778e823ff2a1e96b52460540b4078af92b9e7e1faa59",
+          "width": 1107
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/path/11.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_resources/bug_343075986",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 60,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/bug_343075986.1.72.png",
+          "sha256": "4ff24d7622cb6cadf07c00c8cfc27c62698e79df74cdd223f77ccde651b81e45",
+          "width": 40
+        },
+        {
+          "dpi": 150,
+          "height": 125,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/bug_343075986.1.150.png",
+          "sha256": "957f09a26e6785b445592be06a0bda0870c0a74cfcdddcb0ec04d970f667e6a6",
+          "width": 84
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/bug_343075986.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_resources/rotated_image",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 200,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/rotated_image.1.72.png",
+          "sha256": "c7b5af00303077f2fa55e8922d965cf3374701ca245a10bffc4598467d43e665",
+          "width": 200
+        },
+        {
+          "dpi": 150,
+          "height": 417,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/rotated_image.1.150.png",
+          "sha256": "9bc28fd974931945908ac36e3339c848b8eccd7d9367e9a75622c7cdf3a60ab9",
+          "width": 417
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/rotated_image.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/colorspace",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 700,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/colorspace.1.72.png",
+          "sha256": "acd39c6ee90b9d3c5f89d53b4c539a551f23a5a1b39eec336671f34c22b18a59",
+          "width": 600
+        },
+        {
+          "dpi": 150,
+          "height": 1459,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/colorspace.1.150.png",
+          "sha256": "e0f03f84c8c1320772fd956f800466b3a4be6bb28f622947a31978ad7b0403f8",
+          "width": 1250
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/color/colorspace.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/path_1",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 792,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/path_1.1.72.png",
+          "sha256": "db7bd26618617d34ae9804618abd6ab11f300a6407493a18bc45814d44aa3299",
+          "width": 612
+        },
+        {
+          "dpi": 150,
+          "height": 1650,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/path_1.1.150.png",
+          "sha256": "11ac0b5e40dcf654cb86acae2b044fdccbb39a0d39bdbbbc85413a28f95e1bfe",
+          "width": 1275
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/path/path_1.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/catering_1",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 666,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/catering_1.1.72.png",
+          "sha256": "9e8e3b729d296d419d1a590a5546d50e993cd2e964aca7b357d09aa8b4c610f7",
+          "width": 531
+        },
+        {
+          "dpi": 150,
+          "height": 1388,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/catering_1.1.150.png",
+          "sha256": "bd6ddcf4ab7fa381f8ea6236c85ea9c791a8c150a5e6996561219c91e8b395c0",
+          "width": 1107
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/path/catering_1.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdf-differences/IndexedCS_negative_and_high",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 100,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/IndexedCS_negative_and_high.1.72.png",
+          "sha256": "5edc7707873a6bbe53b21c872c0d93532addcea79e0f4febe56d469aa215c459",
+          "width": 500
+        },
+        {
+          "dpi": 150,
+          "height": 209,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/IndexedCS_negative_and_high.1.150.png",
+          "sha256": "d77bb5c704f3cd688c51cbda9a9521bf50b737da4ce2660e90488f8c3d39b808",
+          "width": 1042
+        }
+      ],
+      "source": "tests/fixtures/pick/pdf-differences/IndexedColor/IndexedCS_negative_and_high.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/transparent",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/transparent.1.72.png",
+          "sha256": "51a2c8996a8709e577b7864bb8b315bcd1cb44e7cf1bcfc96ec9056ef2763c21",
+          "width": 596
+        },
+        {
+          "dpi": 150,
+          "height": 1755,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/transparent.1.150.png",
+          "sha256": "2345a7fe0c6a226ae9403f264e5502fab2f6393805aa1f353261155f713724b3",
+          "width": 1241
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/path/transparent.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdf-differences/ColorBurn",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 500,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/ColorBurn.1.72.png",
+          "sha256": "aa6fe4c65813170ef0573782c9d73f61f5ff283629b9395088ad53d0ed0180d7",
+          "width": 500
+        },
+        {
+          "dpi": 150,
+          "height": 1042,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/ColorBurn.1.150.png",
+          "sha256": "d3a9d05840209e4278bb5479f73cfe55a8740bc625df74319962186d5c988e64",
+          "width": 1042
+        }
+      ],
+      "source": "tests/fixtures/pick/pdf-differences/ColorBurn-ColorDodge/ColorBurn.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdf-differences/SelfIntersecting-Transparency",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 1000,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/SelfIntersecting-Transparency.1.72.png",
+          "sha256": "a84f86e6de6d02289c7f73220498357791e4e46f0f8ee5690d6a5749cc54eef1",
+          "width": 1500
+        },
+        {
+          "dpi": 150,
+          "height": 2084,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/SelfIntersecting-Transparency.1.150.png",
+          "sha256": "0f2fc81673101791f090444caf61a7284a863e5f1a5c246aef1c10500a27eecd",
+          "width": 3125
+        }
+      ],
+      "source": "tests/fixtures/pick/pdf-differences/Atomic-Fill+Stroke/SelfIntersecting-Transparency.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/transparent1",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 666,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/transparent1.1.72.png",
+          "sha256": "719a84a1abe477cfd37c29237dbbe9d0cfe471d207bef0b80aea5754dedb6657",
+          "width": 531
+        },
+        {
+          "dpi": 150,
+          "height": 1388,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/transparent1.1.150.png",
+          "sha256": "1295de3a0ea44d5e5474d234f52fb468b8b0741a6d125b2a4c9df9123481580c",
+          "width": 1107
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/path/transparent1.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/shading",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 666,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/shading.1.72.png",
+          "sha256": "4b40a23dc4b7d8b072a35c2d5ad5c95a520ce5a37007f7c72b514bb93a206cb0",
+          "width": 531
+        },
+        {
+          "dpi": 150,
+          "height": 1388,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/shading.1.150.png",
+          "sha256": "c936cc092ac717c8dc72b93db3cca3d3bbbaacefbde040015919a7214f0d61db",
+          "width": 1107
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/new/shading_2/shading.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/shading2",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 666,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/shading2.1.72.png",
+          "sha256": "18095c8a998376100882ae25b1cf76ed0f09ab591324d044ae0f11b62806e8e3",
+          "width": 531
+        },
+        {
+          "dpi": 150,
+          "height": 1388,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/shading2.1.150.png",
+          "sha256": "83e40174bacdd15150890b5d0953e77f99abf7cd178b36fd0f49d477d2e419cd",
+          "width": 1107
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/new/shading_2/shading2.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_resources/bug_1302355",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 200,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/bug_1302355.1.72.png",
+          "sha256": "acb9d440b3c215a97f077f8d02c0facaa9528f4a417652306df47cd8743e9c19",
+          "width": 200
+        },
+        {
+          "dpi": 150,
+          "height": 417,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/bug_1302355.1.150.png",
+          "sha256": "c6eefa7658348298f6d2ecb7dc15ed2ffc143edf13955ed6cae3fa11bb6c16a7",
+          "width": 417
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/bug_1302355.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_resources/pattern_fill_uncolored",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 300,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/pattern_fill_uncolored.1.72.png",
+          "sha256": "39f36635c92852645ec49f925e02e90fcc7adf20768e7eff69e78719ac8dbaef",
+          "width": 200
+        },
+        {
+          "dpi": 150,
+          "height": 625,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/pattern_fill_uncolored.1.150.png",
+          "sha256": "57cf33b83dfe4a7150a2a4efeeb653e2d68aae512d9217ae59acd6e0258b7e07",
+          "width": 417
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/pattern_fill_uncolored.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_resources/matte",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 150,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/matte.1.72.png",
+          "sha256": "4680f76a2be03b83b14b14789c6bd95e677a2febf302f0de75245d3b0e3b8225",
+          "width": 100
+        },
+        {
+          "dpi": 150,
+          "height": 313,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/matte.1.150.png",
+          "sha256": "0412b763860d36aef05d517c6ad4bba941c261b498421b02346ec6acbeddcad5",
+          "width": 209
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/matte.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_resources/pattern_fill",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 300,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/pattern_fill.1.72.png",
+          "sha256": "a79e0b98b09768d290b87a3d6a9e6d4aa9dbcfefd4e8d5e449e0fdb94bf19bf3",
+          "width": 200
+        },
+        {
+          "dpi": 150,
+          "height": 625,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/pattern_fill.1.150.png",
+          "sha256": "bdee8d5fa68cfa3e080c363daf9a1079fbb4881c6cea823e82394ffd6ca7edf0",
+          "width": 417
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/pattern_fill.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdf-differences/LargeMitreLimit",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 1200,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/LargeMitreLimit.1.72.png",
+          "sha256": "8db0470681ab74381d99fbcb59f5a4f71854949b5c6b576bf53541df8266aff3",
+          "width": 1000
+        },
+        {
+          "dpi": 150,
+          "height": 2500,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/LargeMitreLimit.1.150.png",
+          "sha256": "179fe625242b32693c7e1d23eff56042ed554770d0651236613d2ac3cbea858f",
+          "width": 2084
+        }
+      ],
+      "source": "tests/fixtures/pick/pdf-differences/LargeMitreLimit/LargeMitreLimit.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdf-differences/Dashing-EndBeforeBend",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/Dashing-EndBeforeBend.1.72.png",
+          "sha256": "c19190afb2cbbbd2ec97508b87e089551ee2ea03a10f749c03119318d648dcd3",
+          "width": 596
+        },
+        {
+          "dpi": 150,
+          "height": 1754,
+          "page": 1,
+          "png": "tests/render/expected/pdf-differences/Dashing-EndBeforeBend.1.150.png",
+          "sha256": "40f44988592ab05bc8de8edd67a7236b0c809664d7be07168c92146f27330903",
+          "width": 1241
+        }
+      ],
+      "source": "tests/fixtures/pick/pdf-differences/Dashing-EndBeforeBend/Dashing-EndBeforeBend.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_resources/image_clipped",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 100,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/image_clipped.1.72.png",
+          "sha256": "3bad8d0c2098013a7aba0d48d41194678c8f3c7a27233f24e73124bfa7b459d5",
+          "width": 100
+        },
+        {
+          "dpi": 150,
+          "height": 209,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/image_clipped.1.150.png",
+          "sha256": "bf79fda3c373ca77b5a8eeadc86cfe7ef260f55c4850f04dfb78382a8ee773f4",
+          "width": 209
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/image_clipped.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/annotation_highlight",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 792,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/annotation_highlight.1.72.png",
+          "sha256": "a4c7515cc36938e37cd5a3a0d1d002399695e81d5618eb3d9d469255ca50f34b",
+          "width": 612
+        },
+        {
+          "dpi": 150,
+          "height": 1650,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/annotation_highlight.1.150.png",
+          "sha256": "c2470b8283158dcf2d566daa10c8bd64fb39689b692d8f72006a1d1f3900ea84",
+          "width": 1275
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/pdfium/annots/annotation_highlight.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/annotation_ink",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 792,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/annotation_ink.1.72.png",
+          "sha256": "3daf64a917e88dee66952ed4e94ee6188a9a3626cdeb66e3744d5dfba7f01350",
+          "width": 612
+        },
+        {
+          "dpi": 150,
+          "height": 1650,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/annotation_ink.1.150.png",
+          "sha256": "4d290703b059e4f9dc711263430881372c4133063e73a6a365268b964c1a9d61",
+          "width": 1275
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/pdfium/annots/annotation_ink.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/annotation_freetext",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 792,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/annotation_freetext.1.72.png",
+          "sha256": "86b5c2ff35a9746b7f8777635d6c260d7d680e940e03dcc25db6772e82972aec",
+          "width": 612
+        },
+        {
+          "dpi": 150,
+          "height": 1650,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/annotation_freetext.1.150.png",
+          "sha256": "be80ee973f597be5d1be1c0dbade974ca02349f9b7d06daf9aea4369724db524",
+          "width": 1275
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/pdfium/annots/annotation_freetext.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/new_polygon",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 792,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/new_polygon.1.72.png",
+          "sha256": "7c1196d2e354a1f1eb74cd98420496268add3e51b16772ef73ea3fc19afee942",
+          "width": 612
+        },
+        {
+          "dpi": 150,
+          "height": 1650,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/new_polygon.1.150.png",
+          "sha256": "d29c49511f9f0c9958adf5317ff35222d1146f8e9e7027f8c3448d2c43bdea8e",
+          "width": 1275
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/mulobj/new/comments/new_polygon.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "safedocs/LinkAnnot-appearances",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 500,
+          "page": 1,
+          "png": "tests/render/expected/safedocs/LinkAnnot-appearances.1.72.png",
+          "sha256": "2e37d4e8bbd1b64c7f501fc01dc76c1dde84aa740e834ba97fc812fb7b976db6",
+          "width": 500
+        },
+        {
+          "dpi": 150,
+          "height": 1042,
+          "page": 1,
+          "png": "tests/render/expected/safedocs/LinkAnnot-appearances.1.150.png",
+          "sha256": "ba8abc0a296314e3d048e76b34ef2db674bf6f798b5e70830044dac0c0f2b4eb",
+          "width": 1042
+        }
+      ],
+      "source": "tests/fixtures/pick/safedocs/Miscellaneous_Targeted_Test_PDFs/LinkAnnot-appearances.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/text_field",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/text_field.1.72.png",
+          "sha256": "3ee2db04c77fe5496823583f692599a07e32cb794bbae4eddb531adbb9132e7a",
+          "width": 596
+        },
+        {
+          "dpi": 150,
+          "height": 1754,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/text_field.1.150.png",
+          "sha256": "5dde1af09cc5433b7632eef72ac1a4d401e0b198b90eb4deb97e9c3dd153d12d",
+          "width": 1240
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/form/text_field.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/check_box",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/check_box.1.72.png",
+          "sha256": "418ccc1dfaffc531ceebdf42522978e56d968e9ff62bbcaf2d3991d78e792ba7",
+          "width": 596
+        },
+        {
+          "dpi": 150,
+          "height": 1754,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/check_box.1.150.png",
+          "sha256": "4275566ebf5f4d870497d2c312ae022f76a92156e690afe4e2bc3cb922c0ae3f",
+          "width": 1240
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/form/check_box.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "irs/fw4",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 792,
+          "page": 1,
+          "png": "tests/render/expected/irs/fw4.1.72.png",
+          "sha256": "aa01c15f1814d8328638c23f7ea3f8e2241405e15e021b783b5bddc14bd51c26",
+          "width": 612
+        },
+        {
+          "dpi": 150,
+          "height": 1650,
+          "page": 1,
+          "png": "tests/render/expected/irs/fw4.1.150.png",
+          "sha256": "9f69b6b49841aeca2806466e6bbb14d6a5fbff5aad209e9abc336544fa07c22a",
+          "width": 1275
+        }
+      ],
+      "source": "tests/fixtures/pick/irs/fw4.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_resources/rectangles_multi_pages",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 250,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/rectangles_multi_pages.1.72.png",
+          "sha256": "0d3e0d570014152c53116425d40dd1fa8a7d7792734ff19df8434ff38fd35bfe",
+          "width": 200
+        },
+        {
+          "dpi": 150,
+          "height": 521,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/rectangles_multi_pages.1.150.png",
+          "sha256": "1c533cec3d6fc2448baf495b9898ed142cee34fd8ca9a53c22112949a3ae1493",
+          "width": 417
+        },
+        {
+          "dpi": 72,
+          "height": 200,
+          "page": 2,
+          "png": "tests/render/expected/pdfium_resources/rectangles_multi_pages.2.72.png",
+          "sha256": "9a4abe29ab885c8319579ef4383c45fc44ea3b202c67bec78b4665784cb8e53f",
+          "width": 250
+        },
+        {
+          "dpi": 150,
+          "height": 417,
+          "page": 2,
+          "png": "tests/render/expected/pdfium_resources/rectangles_multi_pages.2.150.png",
+          "sha256": "7a3c06fb75a6528dc949b72fc63f6374feffa87216e5c8f60f01990720fab18b",
+          "width": 521
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/rectangles_multi_pages.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_resources/bug_713197",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 600,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/bug_713197.1.72.png",
+          "sha256": "649e145cbcaab44625e7a8749c56f72cdb3a2706fa6e1f1fbe6e5226861e05eb",
+          "width": 800
+        },
+        {
+          "dpi": 150,
+          "height": 1250,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/bug_713197.1.150.png",
+          "sha256": "2f294e10639174a75ed76d0b68a6ad38b4ec993d31df05da5f407cd32949cc01",
+          "width": 1667
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/bug_713197.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_resources/bug_40162073",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 200,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/bug_40162073.1.72.png",
+          "sha256": "c37ce638aa1d4c27e63b502e5f35105eff93c3007d988219d9070c6f47fcacd8",
+          "width": 200
+        },
+        {
+          "dpi": 150,
+          "height": 417,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_resources/bug_40162073.1.150.png",
+          "sha256": "ed97a92a91f06e4ecc21691ad04961da3ce44ea2a69d132d71b743cbd5073e14",
+          "width": 417
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/bug_40162073.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "enc/enc-aes-256-emptyuser",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 1,
+          "png": "tests/render/expected/enc/enc-aes-256-emptyuser.1.72.png",
+          "sha256": "40a48686d72d7c194fef3f0f355d15300ca9ae8c69ae7dc5210ef6621564433a",
+          "width": 596
+        },
+        {
+          "dpi": 150,
+          "height": 1754,
+          "page": 1,
+          "png": "tests/render/expected/enc/enc-aes-256-emptyuser.1.150.png",
+          "sha256": "24a0688e81c985a997bbee7034b85d1bcdde1df47beb9c879bd091927762bd1d",
+          "width": 1241
+        }
+      ],
+      "source": "tests/fixtures/enc/enc-aes-256-emptyuser.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "adobe-spec/PDF32000_2008",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 1,
+          "png": "tests/render/expected/adobe-spec/PDF32000_2008.1.72.png",
+          "sha256": "5c94e85334e921ae868bed4b266e861870aa6868b34f4c2a70f9b950143fe448",
+          "width": 595
+        },
+        {
+          "dpi": 150,
+          "height": 1755,
+          "page": 1,
+          "png": "tests/render/expected/adobe-spec/PDF32000_2008.1.150.png",
+          "sha256": "30c3ce4613a09ddf7a725bb178aede6bd5ed6897213fcf8c149f088c65bf39c3",
+          "width": 1240
+        },
+        {
+          "dpi": 72,
+          "height": 842,
+          "page": 2,
+          "png": "tests/render/expected/adobe-spec/PDF32000_2008.2.72.png",
+          "sha256": "8a61d0d7654205c82f819ccb421869241ab864a265ea877e774d2c05d78c44c0",
+          "width": 595
+        },
+        {
+          "dpi": 150,
+          "height": 1755,
+          "page": 2,
+          "png": "tests/render/expected/adobe-spec/PDF32000_2008.2.150.png",
+          "sha256": "df6684bc7b608ddbdd36124b37723c5132bce7ca919cdc40727bc7ece281942e",
+          "width": 1240
+        }
+      ],
+      "source": "corpus:adobe-spec/PDF32000_2008.pdf"
+    },
+    {
+      "fuzzy": null,
+      "id": "pdfium_tests/new_textmarkup5",
+      "release_only": false,
+      "release_only_reason": "",
+      "renders": [
+        {
+          "dpi": 72,
+          "height": 792,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/new_textmarkup5.1.72.png",
+          "sha256": "0d617e41b703485b9eff426d0f40619c7f9a4ba29dd2e9f8b93e4c99aa4d024d",
+          "width": 612
+        },
+        {
+          "dpi": 150,
+          "height": 1650,
+          "page": 1,
+          "png": "tests/render/expected/pdfium_tests/new_textmarkup5.1.150.png",
+          "sha256": "84996c6d22159512e445a75a304433aa0a611c6984ab4b544b503a26ca22651a",
+          "width": 1275
+        }
+      ],
+      "source": "tests/fixtures/pick/pdfium_tests/fx/mulobj/new/text_markup/new_textmarkup5.pdf"
+    }
+  ],
+  "mupdf": "1.28.5",
+  "reason": "MuPDF 1.28.5, этап 0: первые эталоны (Release без LTCG)"
+}

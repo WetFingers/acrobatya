@@ -1,0 +1,38 @@
+# Скрипты Windows — CRLF в рабочей копии (PowerShell 5.1, Inno Setup и cmd.exe)
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+*.iss text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Двоичное — без преобразований концов строк и без текстового diff
+# (на машине core.autocrlf=true: без «binary» фикстура могла бы получить другие байты и другой sha256)
+*.pdf binary
+*.png binary
+*.ico binary
+*.traineddata binary
+*.jpg binary
+*.jpeg binary
+*.tif binary
+*.tiff binary
+*.bmp binary
+*.gif binary
+*.webp binary
+*.jp2 binary
+*.ttf binary
+*.otf binary
+*.qm binary
+*.lib binary
+*.pfx binary
+*.p12 binary
+*.der binary
+*.cer binary
+*.fdf binary
+*.docx binary
+*.xlsx binary
+*.pptx binary
+*.odt binary
+*.rtf binary
+*.zip binary
+*.gz binary
+*.7z binary

@@ -1,0 +1,19 @@
+Mitteilung / Memo № 9
+Jede Seite wird beim Ändern der Vergrößerung neu gezeichnet, damit kleine
+Schrift scharf bleibt. Größere Dokumente lassen sich flüssig blättern, weil die
+Seiten erst beim Lesen geladen werden.
+Ein Formular lässt sich ausfüllen und speichern; die Summe im Feld wird
+selbst berechnet. Zwölf Boxkämpfer jagen Viktor quer über den großen Sylter
+Deich bei frischem Wind.
+Die Straße führt über die Brücke zum Bahnhof, wo der Zug um acht Uhr
+abfährt. Kommentare werden direkt im Dokument gespeichert: Notizen,
+Markierungen und Zeichnungen.
+The quick brown fox jumps over the lazy dog while the river flows past the old
+mill. Text recognition turns a picture of a page into a document that search
+can work with.
+A form can be filled in, saved and sent; the total field recalculates on its own.
+Every page is redrawn when the zoom level changes, so small print stays
+sharp and readable.
+A signature proves that the document has not changed since signing and who
+signed it. Ottisk opens documents, shows their pages and lets you work with
+them without extra windows.

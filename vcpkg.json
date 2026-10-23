@@ -1,0 +1,37 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "ottisk",
+  "version": "0.0.1",
+  "description": "Оттиск — настольный PDF-редактор уровня Acrobat Standard (C++20, Qt 6, MuPDF)",
+  "builtin-baseline": "857036234d15fbed8f30fed66e898d7725446c0c",
+  "dependencies": [
+    "openssl",
+    {
+      "name": "tiff",
+      "default-features": false
+    },
+    "fmt",
+    "spdlog",
+    "nlohmann-json",
+    {
+      "name": "sqlite3",
+      "features": [
+        "fts5"
+      ]
+    }
+  ],
+  "features": {
+    "tests": {
+      "description": "GoogleTest для unit/engine/render/e2e",
+      "dependencies": [
+        "gtest"
+      ]
+    }
+  },
+  "overrides": [
+    {
+      "name": "openssl",
+      "version": "3.5.4"
+    }
+  ]
+}

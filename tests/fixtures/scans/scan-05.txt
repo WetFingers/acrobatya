@@ -1,0 +1,16 @@
+Office memo № 5
+Ottisk opens documents, shows their pages and lets you work with them
+without extra windows. Every page is redrawn when the zoom level changes,
+so small print stays sharp and readable.
+When a file is damaged, the program tries to rebuild the object table and
+reports it quietly. A signature proves that the document has not changed since
+signing and who signed it.
+A form can be filled in, saved and sent; the total field recalculates on its own.
+Comments live inside the document: notes, highlights, underlines and
+freehand drawings.
+Text recognition turns a picture of a page into a document that search can
+work with. The quick brown fox jumps over the lazy dog while the river flows
+past the old mill.
+Ottisk opens documents, shows their pages and lets you work with them
+without extra windows. Every page is redrawn when the zoom level changes,
+so small print stays sharp and readable.

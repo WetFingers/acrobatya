@@ -1,0 +1,35 @@
+# «Оттиск» — clang-tidy 19.1.5 (эталон 9.5). Запуск: tools/lint.ps1 -Changed (по git diff) или -All (рубеж).
+# Отключены шумные проверки:
+#   bugprone-easily-swappable-parameters — срабатывает на любые два соседних int/QString;
+#   cert-err58-cpp — статические QString/std::string в пространствах имён;
+#   modernize-use-trailing-return-type — чужой стиль объявлений;
+#   modernize-use-nodiscard — требует [[nodiscard]] на каждом const-геттере;
+#   modernize-use-designated-initializers — шум на структурах MuPDF/WinAPI;
+#   modernize-use-std-print — это C++23, проект на C++20.
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  cert-*,
+  -cert-err58-cpp,
+  clang-analyzer-*,
+  performance-*,
+  modernize-use-*,
+  -modernize-use-trailing-return-type,
+  -modernize-use-nodiscard,
+  -modernize-use-designated-initializers,
+  -modernize-use-std-print,
+  readability-container-size-empty
+WarningsAsErrors: ''
+# Только наши заголовки (src/core|services|ui); Qt, vcpkg и MuPDF — мимо: MuPDF лежит в C:\src\mupdf,
+# поэтому просто «/src/» не годится. Оба разделителя пути — для Windows (llvm::Regex без lookahead).
+HeaderFilterRegex: '^.*[/\\]src[/\\](core|services|ui)[/\\].*'
+SystemHeaders: false
+FormatStyle: file
+CheckOptions:
+  - key: performance-unnecessary-value-param.AllowedTypes
+    value: 'QString;QByteArray;QStringList;QVariant;QImage;QPixmap'
+  - key: performance-unnecessary-copy-initialization.AllowedTypes
+    value: 'QString;QByteArray;QStringList;QVariant'
+  - key: bugprone-unused-return-value.AllowCastToVoid
+    value: true

@@ -1,0 +1,49 @@
+{
+  "generator": "tools/gen/make_mini.py",
+  "files": {
+    "blank-a4.pdf": {
+      "pages": 1,
+      "size_pt": [
+        595.2756,
+        841.8898
+      ],
+      "text": ""
+    },
+    "cyr-cid.pdf": {
+      "pages": 1,
+      "text_contains": [
+        "Привет, мир",
+        "Съешь же ещё"
+      ],
+      "font": "Type0/CIDFontType2 Identity-H + ToUnicode (подмножество Arial)"
+    },
+    "type1-diff.pdf": {
+      "pages": 1,
+      "text_contains": [
+        "Differences: Type1 Helvetica",
+        "Привет, мир — Ёлка, ёж, щука.",
+        "Hello, world! WinAnsi: 5 € ± 2 § ©."
+      ],
+      "font": "Type1 Helvetica base-14, не встроен, /WinAnsiEncoding + /Differences"
+    },
+    "enc-r6.pdf": {
+      "pages": 1,
+      "encryption": "AES-256 V5/R6",
+      "user_password": "user",
+      "owner_password": "owner",
+      "text_contains": [
+        "Зашифровано: AES-256"
+      ]
+    },
+    "truncated.pdf": {
+      "pages": 3,
+      "repair": true,
+      "full_size": 21547,
+      "truncated_at": 21069,
+      "text_contains": [
+        "Страница 1 из 3",
+        "Страница 3 из 3"
+      ]
+    }
+  }
+}

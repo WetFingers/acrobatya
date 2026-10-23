@@ -1,0 +1,19 @@
+# Python-окружение тестов и генераторов «Оттиска»: C:\Tools\venv-test (py -3.14 -m venv).
+# Только тесты, генераторы фикстур и проверки совместимости — в поставку не входит.
+# Запуск всех скриптов над PDF и корпусами: "$env:OTTISK_PYTHON" -X utf8 -I <скрипт>.
+scikit-image==0.26.0
+opencv-python-headless==5.0.0.93
+imagehash==4.3.2
+pillow==13.0.0
+numpy==2.5.4
+scipy==1.18.1
+pypdfium2==5.14.0
+pikepdf==10.17.0
+pyhanko==0.38.0
+# CLI «pyhanko sign validate» (compat, 4.x): в pyHanko 0.38 вынесен в отдельный пакет
+pyhanko-cli==0.6.0
+pypdf==6.21.1
+# генераторы Office-фикстур (версии закреплены ради детерминизма байтов)
+openpyxl==3.1.5
+python-pptx==1.0.2
+odfpy==1.4.1

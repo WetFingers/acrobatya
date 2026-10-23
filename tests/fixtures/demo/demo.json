@@ -1,0 +1,131 @@
+{
+  "generator": "tools/gen/make_demo.py",
+  "report.pdf": {
+    "pages": 12,
+    "outline_top": 7,
+    "page_labels": [
+      "i",
+      "ii",
+      "1..10"
+    ],
+    "links": 5,
+    "images": [
+      "photo.jpg (DCT)",
+      "chart.png (Flate)",
+      "logo.png (Flate + SMask)"
+    ]
+  },
+  "form.pdf": {
+    "pages": 1,
+    "fields": [
+      "fio",
+      "dept",
+      "visit_date",
+      "guests",
+      "parking",
+      "purpose",
+      "signature"
+    ]
+  },
+  "comments.pdf": {
+    "pages": 3,
+    "annots": 11,
+    "authors": [
+      "Анна Смирнова",
+      "Борис Петров"
+    ],
+    "reply": {
+      "nm": "demo-reply-1",
+      "irt": "demo-note-1"
+    }
+  },
+  "mixed-sizes.pdf": {
+    "pages": 7,
+    "pages_info": [
+      {
+        "page": 1,
+        "name": "A4 книжная",
+        "mediabox": [
+          0,
+          0,
+          595.2756,
+          841.8898
+        ],
+        "rotate": 0,
+        "cropbox_inset": 0
+      },
+      {
+        "page": 2,
+        "name": "A4 альбомная",
+        "mediabox": [
+          0,
+          0,
+          841.8898,
+          595.2756
+        ],
+        "rotate": 0,
+        "cropbox_inset": 0
+      },
+      {
+        "page": 3,
+        "name": "A3",
+        "mediabox": [
+          0,
+          0,
+          841.8898,
+          1190.5512
+        ],
+        "rotate": 0,
+        "cropbox_inset": 0
+      },
+      {
+        "page": 4,
+        "name": "Letter",
+        "mediabox": [
+          0,
+          0,
+          612.0,
+          792.0
+        ],
+        "rotate": 0,
+        "cropbox_inset": 0
+      },
+      {
+        "page": 5,
+        "name": "A5",
+        "mediabox": [
+          0,
+          0,
+          419.5276,
+          595.2756
+        ],
+        "rotate": 0,
+        "cropbox_inset": 0
+      },
+      {
+        "page": 6,
+        "name": "A4, /Rotate 90",
+        "mediabox": [
+          0,
+          0,
+          595.2756,
+          841.8898
+        ],
+        "rotate": 90,
+        "cropbox_inset": 0
+      },
+      {
+        "page": 7,
+        "name": "A4, /CropBox с полями 72 pt",
+        "mediabox": [
+          0,
+          0,
+          595.2756,
+          841.8898
+        ],
+        "rotate": 0,
+        "cropbox_inset": 72
+      }
+    ]
+  }
+}

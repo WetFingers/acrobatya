@@ -1,0 +1,37 @@
+{
+  "generator": "tools/gen/make_sig.py",
+  "key": "key.pem",
+  "cert": "cert.pem",
+  "cert_subject": "C=RU, O=Оттиск, CN=Оттиск тест",
+  "cert_serial": "0x07715EA1",
+  "cert_valid": [
+    "2026-01-01T00:00:00Z",
+    "2035-12-30T00:00:00Z"
+  ],
+  "files": {
+    "unsigned.pdf": {
+      "pages": 1,
+      "signatures": 0
+    },
+    "signed-bb.pdf": {
+      "pages": 1,
+      "signatures": 1,
+      "field": "Signature1",
+      "level": "PAdES B-B",
+      "subfilter": "ETSI.CAdES.detached",
+      "digest": "sha256",
+      "signing_time": "2026-01-01T12:00:00Z",
+      "visible": true,
+      "box": [
+        72,
+        90,
+        332,
+        160
+      ],
+      "expect_untrusted": "INTACT:UNTRUSTED (самоподписанный, вне доверия)",
+      "expect_with_trust_cert_pem": "INTACT:TRUSTED",
+      "pyhanko_status_untrusted": "INTACT:UNTRUSTED,UNTOUCHED",
+      "pyhanko_status_trusted": "INTACT:TRUSTED,UNTOUCHED"
+    }
+  }
+}

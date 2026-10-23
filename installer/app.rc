@@ -1,0 +1,61 @@
+// Ресурсы Ottisk.exe: значок и сведения о версии (Проводник → Свойства → Подробно).
+// Файл в UTF-8 (без BOM) — отсюда #pragma code_page(65001): rc.exe иначе читает кириллицу в ACP.
+// Версию передаёт CMake дефайнами OTTISK_VERSION_MAJOR/MINOR/PATCH (из cmake/product.cmake) —
+// общими для цели (target_compile_definitions) или только для .rc (set_property(SOURCE … COMPILE_DEFINITIONS)).
+// Манифест здесь НЕ подключается: installer/Ottisk.manifest входит в исходники цели Ottisk
+// (add_executable в CMakeLists.txt); второй ресурс RT_MANIFEST с тем же ID дал бы CVT1100 при линковке.
+#pragma code_page(65001)
+
+#include <winver.h>
+
+#ifndef OTTISK_VERSION_MAJOR
+#define OTTISK_VERSION_MAJOR 0
+#endif
+#ifndef OTTISK_VERSION_MINOR
+#define OTTISK_VERSION_MINOR 0
+#endif
+#ifndef OTTISK_VERSION_PATCH
+#define OTTISK_VERSION_PATCH 0
+#endif
+
+#define OTTISK_STR_(x) #x
+#define OTTISK_STR(x) OTTISK_STR_(x)
+#define OTTISK_VERSION_STRING \
+    OTTISK_STR(OTTISK_VERSION_MAJOR) "." OTTISK_STR(OTTISK_VERSION_MINOR) "." OTTISK_STR(OTTISK_VERSION_PATCH)
+
+// Имя ресурса — строка "IDI_ICON1" (без #define): платформенный плагин Qt для Windows берёт
+// значок окна по умолчанию именно из ресурса с этим именем.
+IDI_ICON1 ICON "app.ico"
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION OTTISK_VERSION_MAJOR, OTTISK_VERSION_MINOR, OTTISK_VERSION_PATCH, 0
+ PRODUCTVERSION OTTISK_VERSION_MAJOR, OTTISK_VERSION_MINOR, OTTISK_VERSION_PATCH, 0
+ FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+#ifdef _DEBUG
+ FILEFLAGS VS_FF_DEBUG
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_APP
+ FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "041904b0"  // русский, Unicode (кодовая страница 1200)
+        BEGIN
+            VALUE "CompanyName", ""
+            VALUE "FileDescription", "Оттиск — PDF-редактор"
+            VALUE "FileVersion", OTTISK_VERSION_STRING
+            VALUE "InternalName", "Ottisk"
+            VALUE "LegalCopyright", "© авторы «Оттиска». Сторонние компоненты — licenses\\THIRD-PARTY-NOTICES.md"
+            VALUE "OriginalFilename", "Ottisk.exe"
+            VALUE "ProductName", "Оттиск"
+            VALUE "ProductVersion", OTTISK_VERSION_STRING
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0419, 1200
+    END
+END

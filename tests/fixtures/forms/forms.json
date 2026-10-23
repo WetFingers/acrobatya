@@ -1,0 +1,257 @@
+{
+  "generator": "tools/gen/make_forms.py",
+  "forms-all.pdf": {
+    "pages": 1,
+    "fields": [
+      {
+        "name": "name",
+        "type": "Tx",
+        "ff": 0,
+        "value": "Ivan Petrov",
+        "tooltip": "ФИО",
+        "dv": "Ivan Petrov"
+      },
+      {
+        "name": "comment",
+        "type": "Tx",
+        "ff": 4096,
+        "value": "First line\nSecond line",
+        "tooltip": "Комментарий"
+      },
+      {
+        "name": "comment_ru",
+        "type": "Tx",
+        "ff": 0,
+        "value": "Привет, мир",
+        "tooltip": "Поле с кириллицей",
+        "dv": "Привет, мир"
+      },
+      {
+        "name": "date",
+        "type": "Tx",
+        "ff": 0,
+        "value": "01.01.2026",
+        "tooltip": "Дата",
+        "js": {
+          "F": "AFDate_FormatEx(\"dd.mm.yyyy\");",
+          "K": "AFDate_KeystrokeEx(\"dd.mm.yyyy\");"
+        },
+        "dv": "01.01.2026"
+      },
+      {
+        "name": "a",
+        "type": "Tx",
+        "ff": 0,
+        "value": "1200.5",
+        "tooltip": "Сумма a",
+        "js": {
+          "F": "AFNumber_Format(2, 0, 0, 0, \"\", true);",
+          "K": "AFNumber_Keystroke(2, 0, 0, 0, \"\", true);",
+          "V": "AFRange_Validate(true, 0, true, 1000000);"
+        },
+        "dv": "1200.5"
+      },
+      {
+        "name": "b",
+        "type": "Tx",
+        "ff": 0,
+        "value": "799.5",
+        "tooltip": "Сумма b",
+        "js": {
+          "F": "AFNumber_Format(2, 0, 0, 0, \"\", true);",
+          "K": "AFNumber_Keystroke(2, 0, 0, 0, \"\", true);"
+        },
+        "dv": "799.5"
+      },
+      {
+        "name": "total",
+        "type": "Tx",
+        "ff": 1,
+        "value": "2000",
+        "tooltip": "Итого",
+        "js": {
+          "C": "AFSimple_Calculate(\"SUM\", new Array (\"a\", \"b\"));",
+          "F": "AFNumber_Format(2, 0, 0, 0, \"\", true);",
+          "K": "AFNumber_Keystroke(2, 0, 0, 0, \"\", true);"
+        },
+        "dv": "2000"
+      },
+      {
+        "name": "secret",
+        "type": "Tx",
+        "ff": 8192,
+        "value": "",
+        "tooltip": "Пароль",
+        "dv": ""
+      },
+      {
+        "name": "pin",
+        "type": "Tx",
+        "ff": 16777216,
+        "value": "123456",
+        "tooltip": "Код",
+        "dv": "123456",
+        "maxlen": 6
+      },
+      {
+        "name": "agree",
+        "type": "Btn",
+        "ff": 0,
+        "value": "Yes",
+        "tooltip": "Согласен",
+        "dv": "Yes"
+      },
+      {
+        "name": "color",
+        "type": "Btn",
+        "ff": 49152,
+        "value": "green",
+        "tooltip": "Цвет",
+        "dv": "green",
+        "widgets": 3,
+        "exports": [
+          "red",
+          "green",
+          "blue"
+        ]
+      },
+      {
+        "name": "city",
+        "type": "Ch",
+        "ff": 131072,
+        "value": "Kazan",
+        "tooltip": "Город",
+        "dv": "Kazan",
+        "options": [
+          "Moscow",
+          "Kazan",
+          "Sochi"
+        ]
+      },
+      {
+        "name": "country",
+        "type": "Ch",
+        "ff": 393216,
+        "value": "Russia",
+        "tooltip": "Страна (можно вписать своё)",
+        "dv": "Russia",
+        "options": [
+          "Russia",
+          "Germany",
+          "France"
+        ]
+      },
+      {
+        "name": "qty",
+        "type": "Tx",
+        "ff": 0,
+        "value": "3",
+        "tooltip": "Количество (только цифры)",
+        "js": {
+          "V": "if (event.value != \"\" && !/^[0-9]+$/.test(event.value)) { app.alert(\"Количество: только цифры, а не \" + event.value); event.rc = false; }"
+        },
+        "dv": "3"
+      },
+      {
+        "name": "langs",
+        "type": "Ch",
+        "ff": 2097152,
+        "value": [
+          "ru",
+          "de"
+        ],
+        "tooltip": "Языки",
+        "dv": [
+          "ru",
+          "de"
+        ],
+        "options": [
+          [
+            "ru",
+            "Russian"
+          ],
+          [
+            "en",
+            "English"
+          ],
+          [
+            "de",
+            "German"
+          ]
+        ]
+      },
+      {
+        "name": "reset",
+        "type": "Btn",
+        "ff": 65536,
+        "tooltip": "Сбросить форму",
+        "action": "ResetForm"
+      },
+      {
+        "name": "hello",
+        "type": "Btn",
+        "ff": 65536,
+        "tooltip": "Показать сообщение",
+        "action": "JavaScript"
+      },
+      {
+        "name": "sig",
+        "type": "Sig",
+        "ff": 0,
+        "tooltip": "Подпись"
+      },
+      {
+        "name": "submit_mail",
+        "type": "Btn",
+        "ff": 65536,
+        "tooltip": "Отправить по почте (FDF)",
+        "action": "SubmitForm",
+        "submit_url": "mailto:forms@example.org?subject=Ottisk%20form",
+        "submit_flags": 0,
+        "submit_format": "FDF"
+      },
+      {
+        "name": "submit_http",
+        "type": "Btn",
+        "ff": 65536,
+        "tooltip": "Отправить на сервер (POST)",
+        "action": "SubmitForm",
+        "submit_url": "https://example.org/ottisk/submit",
+        "submit_flags": 4,
+        "submit_format": "HTML POST"
+      }
+    ],
+    "calculation_order": [
+      "total"
+    ],
+    "need_appearances": false,
+    "tabs": "R",
+    "document_js": [
+      "ottisk-init"
+    ],
+    "expect_total_after_recalc": "2,000.00",
+    "expect_validate_rejects": {
+      "qty": "abc"
+    },
+    "reset_note": "сброс возвращает /DV (= исходное /V); у comment /DV нет — очищается"
+  },
+  "fields-all.pdf": {
+    "copy_of": "forms-all.pdf",
+    "note": "байт в байт копия: имя из задания этапа 0, план (4.4, 4.5, 6.1–6.3) называет файл forms-all.pdf"
+  },
+  "xfa-stub.pdf": {
+    "pages": 1,
+    "xfa": true,
+    "xfa_packets": [
+      "preamble",
+      "config",
+      "template",
+      "datasets",
+      "postamble"
+    ],
+    "acroform_fallback_fields": [
+      "form1[0].page1[0].name[0]"
+    ],
+    "note": "заглушка: статическая XFA-форма с запасным AcroForm, NeedsRendering false"
+  }
+}

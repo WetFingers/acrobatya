@@ -1,0 +1,67 @@
+#include "ui/app/cli.h"
+
+#include <cstring>
+
+namespace ot::ui {
+
+CliOptions parseCli(const QStringList& arguments) {
+    CliOptions o;
+    for (int i = 1; i < arguments.size(); ++i) {
+        const QString& a = arguments.at(i);
+        auto next = [&](QString& target) {
+            if (i + 1 >= arguments.size()) {
+                o.error = QStringLiteral("missing value for ") + a;
+                return false;
+            }
+            target = arguments.at(++i);
+            return true;
+        };
+        if (a == QLatin1String("--version")) {
+            o.version = true;
+        } else if (a == QLatin1String("--self-check")) {
+            o.selfCheck = true;
+        } else if (a == QLatin1String("--register-notify")) {
+            o.registerNotify = true;
+        } else if (a == QLatin1String("--shots")) {
+            QString v;
+            if (!next(v)) break;
+            o.shots = v.split(QLatin1Char(','), Qt::SkipEmptyParts);
+        } else if (a == QLatin1String("--out")) {
+            if (!next(o.shotsOut)) break;
+        } else if (a == QLatin1String("--size")) {
+            QString v;
+            if (!next(v)) break;
+            const QStringList wh = v.split(QLatin1Char('x'));
+            if (wh.size() == 2 && wh[0].toInt() > 0 && wh[1].toInt() > 0) {
+                o.shotsSize = QSize(wh[0].toInt(), wh[1].toInt());
+            } else {
+                o.error = QStringLiteral("bad --size ") + v;
+            }
+        } else if (a == QLatin1String("--theme")) {
+            if (!next(o.theme)) break;
+        } else if (a == QLatin1String("--smoke")) {
+            QString v;
+            if (!next(v)) break;
+            o.smokeSeconds = v.toInt();
+            if (o.smokeSeconds <= 0) {
+                o.error = QStringLiteral("bad --smoke ") + v;
+            }
+        } else if (a.startsWith(QLatin1String("--"))) {
+            o.error = QStringLiteral("unknown option ") + a;
+        } else if (!a.startsWith(QLatin1Char('-'))) {
+            o.files << a;
+        }
+    }
+    return o;
+}
+
+bool hasArg(int argc, char** argv, const char* name) {
+    for (int i = 1; i < argc; ++i) {
+        if (std::strcmp(argv[i], name) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+}  // namespace ot::ui

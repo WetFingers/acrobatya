@@ -1,0 +1,14 @@
+# Иконки Lucide (lucide-static 1.50, ISC), которые нужны «Оттиску» (эталон 5.4, 6.5).
+# Одно имя на строку, без .svg. После правки: "%OTTISK_PYTHON%" -X utf8 -I tools/copy_icons.py
+# Источник — bny-studio/app/assets/icons; лишние SVG в assets/icons не держим (copy_icons.py --check).
+# Этап 0 — базовые; сессия 2.1 дополняет список под панели и инструменты.
+file
+folder-open
+save
+printer
+search
+zoom-in
+zoom-out
+rotate-cw
+home
+settings

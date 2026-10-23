@@ -1,0 +1,99 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static-md-release",
+        "VCPKG_HOST_TRIPLET": "x64-windows-static-md-release",
+        "VCPKG_MANIFEST_FEATURES": "tests",
+        "OTTISK_VCPKG_ROOT": "$env{VCPKG_ROOT}",
+        "OTTISK_QT_ROOT": "$env{QT_ROOT}",
+        "OTTISK_MUPDF_ROOT": "$env{MUPDF_ROOT}",
+        "OTTISK_PYTHON": "$env{OTTISK_PYTHON}"
+      },
+      "environment": { "VCPKG_MAX_CONCURRENCY": "10" }
+    },
+    {
+      "name": "msvc-debug",
+      "displayName": "Debug (/MD, MuPDF Debug) — рабочий цикл очереди",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/debug",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "msvc-release",
+      "displayName": "Release (/O2, MuPDF Release /GL) — рубежи, эталоны, выпуски",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "msvc-asan",
+      "displayName": "Debug + AddressSanitizer",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/asan",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "OTTISK_ASAN": "ON" }
+    },
+    {
+      "name": "msvc-fuzz",
+      "displayName": "Debug + ASan + libFuzzer (pdf_open_fuzzer)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/fuzz",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "OTTISK_ASAN": "ON", "OTTISK_FUZZ": "ON" }
+    },
+    {
+      "name": "msvc-analyze",
+      "displayName": "Debug + cl /analyze + CppCoreCheck (SARIF)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/analyze",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "OTTISK_ANALYZE": "ON" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "msvc-debug", "configurePreset": "msvc-debug", "jobs": 10 },
+    { "name": "msvc-release", "configurePreset": "msvc-release", "jobs": 10, "targets": ["Ottisk", "render_refs", "render_tests", "bench"] },
+    { "name": "msvc-asan", "configurePreset": "msvc-asan", "jobs": 10 },
+    { "name": "msvc-fuzz", "configurePreset": "msvc-fuzz", "jobs": 10, "targets": ["pdf_open_fuzzer"] },
+    { "name": "msvc-analyze", "configurePreset": "msvc-analyze", "jobs": 10 }
+  ],
+  "testPresets": [
+    {
+      "name": "offscreen",
+      "hidden": true,
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "timeout": 60 },
+      "environment": {
+        "QT_QPA_PLATFORM": "offscreen",
+        "QT_QPA_FONTDIR": "C:/Windows/Fonts",
+        "QT_FORCE_STDERR_LOGGING": "1"
+      }
+    },
+    {
+      "name": "msvc-debug",
+      "inherits": "offscreen",
+      "configurePreset": "msvc-debug",
+      "filter": { "include": { "label": "^(unit|ui)$" }, "exclude": { "label": "slow" } },
+      "execution": { "jobs": 12 }
+    },
+    {
+      "name": "msvc-release-render",
+      "inherits": "offscreen",
+      "configurePreset": "msvc-release",
+      "filter": { "include": { "label": "^render$" } },
+      "execution": { "timeout": 900 }
+    },
+    {
+      "name": "msvc-asan",
+      "inherits": "offscreen",
+      "configurePreset": "msvc-asan",
+      "filter": { "include": { "label": "^(unit|engine)$" } }
+    }
+  ]
+}

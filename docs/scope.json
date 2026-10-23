@@ -1,0 +1,60 @@
+{
+  "full": [
+    "view-01", "view-03", "view-04", "view-05", "view-06", "view-07", "view-08", "view-09", "view-10",
+    "view-11", "view-13", "view-15", "view-17", "view-18", "view-19", "view-21", "view-22", "view-25",
+    "view-26", "view-27", "view-29", "view-30", "view-31", "view-32", "view-37", "view-38", "view-39",
+    "view-40", "view-41", "view-42", "view-45", "view-46", "view-47", "comment-01", "comment-02",
+    "comment-03", "comment-04", "comment-05", "comment-06", "comment-07", "comment-08", "comment-09",
+    "comment-10", "comment-11", "comment-12", "comment-14", "comment-18", "comment-19", "comment-20",
+    "comment-21", "comment-24", "comment-25", "comment-27", "comment-29", "comment-30", "comment-43",
+    "edit-01", "edit-02", "edit-03", "edit-05", "edit-06", "edit-07", "edit-13", "edit-14", "edit-15",
+    "edit-16", "edit-17", "edit-18", "edit-19", "edit-20", "edit-22", "edit-23", "edit-24", "edit-27",
+    "edit-28", "edit-29", "edit-30", "edit-33", "edit-34", "edit-37", "edit-44", "create-01", "create-03",
+    "create-09", "create-13", "create-14", "create-16", "create-18", "create-25", "create-26", "create-28",
+    "create-31", "create-33", "create-34", "forms-01", "forms-02", "forms-03", "forms-05", "forms-06",
+    "forms-07", "forms-08", "forms-09", "forms-10", "forms-11", "forms-12", "forms-13", "forms-14",
+    "forms-15", "forms-17", "forms-19", "forms-20", "forms-21", "forms-22", "forms-23", "forms-24",
+    "forms-25", "forms-26", "forms-27", "forms-28", "forms-29", "forms-30", "forms-31", "forms-35",
+    "forms-36", "forms-37", "forms-46", "sign-01", "sign-02", "sign-05", "sign-06", "sign-08", "sign-10",
+    "sign-11", "sign-12", "sign-13", "sign-15", "sign-16", "sign-18", "sign-19", "sign-21", "sign-25",
+    "sign-26", "sign-27", "sign-28", "sign-30", "sign-32", "sign-33", "sign-34", "security-01",
+    "security-02", "security-03", "security-04", "security-05", "security-07", "security-08", "security-09",
+    "security-15", "security-17", "security-35", "security-37", "security-39", "security-40", "security-42",
+    "security-43", "ocr-01", "ocr-03", "ocr-04", "ocr-05", "ocr-06", "ocr-07", "ocr-08", "ocr-09", "ocr-11",
+    "ocr-12", "ocr-14", "ocr-18", "ocr-32", "ocr-36", "ocr-37", "ocr-38", "pro-28", "pro-45", "pro-47",
+    "cloud-08", "cloud-38", "cloud-44"
+  ],
+  "partial": [
+    "view-36", "comment-13", "create-40", "create-41", "forms-33", "sign-31", "security-36", "ocr-40"
+  ],
+  "nice": [
+    "view-33", "view-43", "view-50", "view-51", "comment-40", "comment-41", "comment-42", "comment-44",
+    "edit-36", "edit-46", "edit-49", "edit-50", "create-12", "create-32", "create-36", "forms-43",
+    "forms-47", "sign-14", "sign-17", "sign-20", "sign-22", "security-06", "ocr-02", "ocr-35", "ocr-41",
+    "ocr-42", "ocr-45", "cloud-60"
+  ],
+  "out": [
+    "create-15", "create-17", "create-21", "create-29", "create-30", "forms-49", "sign-07", "security-11",
+    "security-34", "cloud-01", "cloud-03", "cloud-04", "cloud-05", "cloud-06", "cloud-07", "cloud-09",
+    "cloud-10", "cloud-11", "cloud-12", "cloud-15", "cloud-16", "cloud-17", "cloud-18", "cloud-19",
+    "cloud-22", "cloud-23", "cloud-32", "cloud-36", "cloud-42", "cloud-43"
+  ],
+  "notes": {
+    "source": "docs/design.md §1.2–1.6 (эталон 0.1 от 22.10.2026): full — таблица 1.3, partial — 1.4, nice — 1.5, out — 1.6",
+    "counts": "full 186 + partial 8 + nice 28 + out 30 = 252; full ∪ partial ∪ out = все 224 ID Reader/Standard с важностью core/important из docs/features.json, nice — только importance=nice",
+    "nice_extra": {
+      "ocr-35": "«Доступный текст» в экспорте — тот же text_export (сессия 7.2) и порядок чтения (8.3), только порядок по тегам и альт-тексты (эталон 1.5)",
+      "forms-47": "консоль JavaScript — один QPlainTextEdit с выводом console.println; это инструмент 16 «Использовать JavaScript» (эталон 6.2), отладчика нет; единственный Pro-ID в объёме — подтверждает человек в этапе 0, иначе убрать из nice и из сессии 6.3 (эталон 1.5)"
+    },
+    "nice_rule": "остальные 26 nice — дешёвые (S) и нужны соседним пунктам или ожидаются «по умолчанию»; доводы — таблица эталона 1.5",
+    "out_rule": "30 ID таблицы эталона 1.6: по тексту 1.2 — 24 исключены решениями человека 3–5 и 7 от 22.10.2026, остальные — разделом 1.6; подтверждения человека в этапе 0 ждут security-11, security-34, create-21, cloud-43 (в 1.2 названы только эти 4, хотя 30 − 24 = 6 — неточность текста эталона, таблица 1.6 даёт ровно 30); в отчётах scope_report.py они out, не потеря; OT_FEATURE на них не ставится",
+    "confirm_in_stage_0": [
+      "security-11",
+      "security-34",
+      "create-21",
+      "cloud-43",
+      "forms-47"
+    ],
+    "guards": "tools/scope_check.py (ctest unit.guard.scope) сверяет списки с docs/features.json и с ID пунктов и строк **Закрывает:** docs/plan.md; tools/scope_report.py считает покрытие по build/<пресет>/features-covered.json"
+  }
+}

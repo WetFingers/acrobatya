@@ -1,0 +1,2156 @@
+{
+ "version": 1,
+ "created": "2026-10-23",
+ "updated": "2026-10-23",
+ "reason": "этап 0: база на каркасе (358, в основном CppCoreCheck от макросов gtest в tests/)",
+ "entries": [
+  {
+   "rule": "C26485",
+   "file": "src/core/mu/call.h",
+   "line": 32,
+   "message": "Выражение \"result.fz_push_try\": не допускайте вырождения массива в указатель (bounds.3)."
+  },
+  {
+   "rule": "C26485",
+   "file": "src/core/mu/call.h",
+   "line": 38,
+   "message": "Выражение \"message\": не допускайте вырождения массива в указатель (bounds.3)."
+  },
+  {
+   "rule": "C26485",
+   "file": "src/core/mu/call.h",
+   "line": 42,
+   "message": "Выражение \"message\": не допускайте вырождения массива в указатель (bounds.3)."
+  },
+  {
+   "rule": "C26440",
+   "file": "src/core/render/bitmap.h",
+   "line": 22,
+   "message": "Функция \"ot::Bitmap::row\" может быть объявлена как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26481",
+   "file": "src/core/render/bitmap.h",
+   "line": 23,
+   "message": "Не используйте арифметику указателей; вместо этого используйте 'span' (bounds.1)."
+  },
+  {
+   "rule": "C26440",
+   "file": "src/core/render/bitmap.h",
+   "line": 25,
+   "message": "Функция \"ot::Bitmap::row\" может быть объявлена как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26481",
+   "file": "src/core/render/bitmap.h",
+   "line": 25,
+   "message": "Не используйте арифметику указателей; вместо этого используйте 'span' (bounds.1)."
+  },
+  {
+   "rule": "C26440",
+   "file": "src/services/document_session.h",
+   "line": 29,
+   "message": "Функция \"ot::DocumentSession::path\" может быть объявлена как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26440",
+   "file": "src/services/document_session.h",
+   "line": 30,
+   "message": "Функция \"ot::DocumentSession::errorString\" может быть объявлена как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26451",
+   "file": "src/ui/app/cli.cpp",
+   "line": 12,
+   "message": "Арифметическое переполнение: использование оператора \"+\" на байтовом значении 4 и приведение результата к байтовому значению 8. Приведите значение к более широкому типу перед вызовом оператора \"+\", чтобы избежать переполнения (io.2)."
+  },
+  {
+   "rule": "C26446",
+   "file": "src/ui/app/cli.cpp",
+   "line": 35,
+   "message": "Использовать gsl::at() вместо непроверенного оператора с нижним индексом (bounds.4)."
+  },
+  {
+   "rule": "C26446",
+   "file": "src/ui/app/cli.cpp",
+   "line": 36,
+   "message": "Использовать gsl::at() вместо непроверенного оператора с нижним индексом (bounds.4)."
+  },
+  {
+   "rule": "C26429",
+   "file": "src/ui/app/cli.cpp",
+   "line": 58,
+   "message": "Символ \"argv\" никогда не проверяется на равенство null, он может быть помечен как not_null (f.23)."
+  },
+  {
+   "rule": "C26440",
+   "file": "src/ui/app/cli.cpp",
+   "line": 58,
+   "message": "Функция \"ot::ui::hasArg\" может быть объявлена как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26461",
+   "file": "src/ui/app/cli.cpp",
+   "line": 58,
+   "message": "Аргумент указателя \"argv\" для функции \"ot::ui::hasArg\" может быть помечен как указатель на const (con.3)."
+  },
+  {
+   "rule": "C26481",
+   "file": "src/ui/app/cli.cpp",
+   "line": 60,
+   "message": "Не используйте арифметику указателей; вместо этого используйте 'span' (bounds.1)."
+  },
+  {
+   "rule": "C26440",
+   "file": "src/ui/app/main.cpp",
+   "line": 21,
+   "message": "Функция \"`anonymous namespace'::attachParentConsole\" может быть объявлена как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26472",
+   "file": "src/ui/app/main.cpp",
+   "line": 35,
+   "message": "Не используйте static_cast для арифметических преобразований. Используйте скобки инициализации, gsl::narrow_cast или gsl::narrow (type.1)."
+  },
+  {
+   "rule": "C26409",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 24,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26455",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 24,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26409",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 29,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26409",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 33,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26409",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 37,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26409",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 44,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26429",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 52,
+   "message": "Символ \"file\" никогда не проверяется на равенство null, он может быть помечен как not_null (f.23)."
+  },
+  {
+   "rule": "C26429",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 53,
+   "message": "Символ \"open\" никогда не проверяется на равенство null, он может быть помечен как not_null (f.23)."
+  },
+  {
+   "rule": "C26429",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 55,
+   "message": "Символ \"close\" никогда не проверяется на равенство null, он может быть помечен как not_null (f.23)."
+  },
+  {
+   "rule": "C26429",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 61,
+   "message": "Символ \"quit\" никогда не проверяется на равенство null, он может быть помечен как not_null (f.23)."
+  },
+  {
+   "rule": "C26429",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 64,
+   "message": "Символ \"view\" никогда не проверяется на равенство null, он может быть помечен как not_null (f.23)."
+  },
+  {
+   "rule": "C26429",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 65,
+   "message": "Символ \"next\" никогда не проверяется на равенство null, он может быть помечен как not_null (f.23)."
+  },
+  {
+   "rule": "C26429",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 67,
+   "message": "Символ \"prev\" никогда не проверяется на равенство null, он может быть помечен как not_null (f.23)."
+  },
+  {
+   "rule": "C26429",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 72,
+   "message": "Символ \"help\" никогда не проверяется на равенство null, он может быть помечен как not_null (f.23)."
+  },
+  {
+   "rule": "C26403",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 77,
+   "message": "Сбросьте или явным образом удалите указатель owner<T> \"page\" (r.3)."
+  },
+  {
+   "rule": "C26409",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 77,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26403",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 79,
+   "message": "Сбросьте или явным образом удалите указатель owner<T> \"layout\" (r.3)."
+  },
+  {
+   "rule": "C26409",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 79,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26403",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 83,
+   "message": "Сбросьте или явным образом удалите указатель owner<T> \"title\" (r.3)."
+  },
+  {
+   "rule": "C26409",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 83,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26403",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 91,
+   "message": "Сбросьте или явным образом удалите указатель owner<T> \"hint\" (r.3)."
+  },
+  {
+   "rule": "C26409",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 91,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26403",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 96,
+   "message": "Сбросьте или явным образом удалите указатель owner<T> \"row\" (r.3)."
+  },
+  {
+   "rule": "C26409",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 96,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26403",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 97,
+   "message": "Сбросьте или явным образом удалите указатель owner<T> \"openButton\" (r.3)."
+  },
+  {
+   "rule": "C26409",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 97,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26403",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 104,
+   "message": "Сбросьте или явным образом удалите указатель owner<T> \"recent\" (r.3)."
+  },
+  {
+   "rule": "C26409",
+   "file": "src/ui/shell/main_window.cpp",
+   "line": 104,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26440",
+   "file": "src/ui/shell/main_window.h",
+   "line": 25,
+   "message": "Функция \"ot::ui::MainWindow::currentPage\" может быть объявлена как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26440",
+   "file": "src/ui/shell/main_window.h",
+   "line": 26,
+   "message": "Функция \"ot::ui::MainWindow::session\" может быть объявлена как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26403",
+   "file": "src/ui/shots/scenes.cpp",
+   "line": 29,
+   "message": "Сбросьте или явным образом удалите указатель owner<T> \"w\" (r.3)."
+  },
+  {
+   "rule": "C26409",
+   "file": "src/ui/shots/scenes.cpp",
+   "line": 29,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26474",
+   "file": "src/ui/shots/scenes.cpp",
+   "line": 31,
+   "message": "Не используйте приведение типов указателя, если преобразование может быть неявным (type.1)."
+  },
+  {
+   "rule": "C26472",
+   "file": "src/ui/shots/scenes.cpp",
+   "line": 39,
+   "message": "Не используйте static_cast для арифметических преобразований. Используйте скобки инициализации, gsl::narrow_cast или gsl::narrow (type.1)."
+  },
+  {
+   "rule": "C26497",
+   "file": "tests/bench/bench_main.cpp",
+   "line": 20,
+   "message": "Вы можете создать constexpr \"`anonymous namespace'::median\", если он не содержит неопределенное поведение (f.4)."
+  },
+  {
+   "rule": "C26446",
+   "file": "tests/bench/bench_main.cpp",
+   "line": 22,
+   "message": "Использовать gsl::at() вместо непроверенного оператора с нижним индексом (bounds.4)."
+  },
+  {
+   "rule": "C26429",
+   "file": "tests/bench/bench_main.cpp",
+   "line": 27,
+   "message": "Символ \"argv\" никогда не проверяется на равенство null, он может быть помечен как not_null (f.23)."
+  },
+  {
+   "rule": "C26481",
+   "file": "tests/bench/bench_main.cpp",
+   "line": 32,
+   "message": "Не используйте арифметику указателей; вместо этого используйте 'span' (bounds.1)."
+  },
+  {
+   "rule": "C26481",
+   "file": "tests/bench/bench_main.cpp",
+   "line": 37,
+   "message": "Не используйте арифметику указателей; вместо этого используйте 'span' (bounds.1)."
+  },
+  {
+   "rule": "C26481",
+   "file": "tests/bench/bench_main.cpp",
+   "line": 39,
+   "message": "Не используйте арифметику указателей; вместо этого используйте 'span' (bounds.1)."
+  },
+  {
+   "rule": "C26481",
+   "file": "tests/bench/bench_main.cpp",
+   "line": 41,
+   "message": "Не используйте арифметику указателей; вместо этого используйте 'span' (bounds.1)."
+  },
+  {
+   "rule": "C26481",
+   "file": "tests/bench/bench_main.cpp",
+   "line": 43,
+   "message": "Не используйте арифметику указателей; вместо этого используйте 'span' (bounds.1)."
+  },
+  {
+   "rule": "C26429",
+   "file": "tests/ui/main_window_test.cpp",
+   "line": 28,
+   "message": "Символ \"a\" никогда не проверяется на равенство null, он может быть помечен как not_null (f.23)."
+  },
+  {
+   "rule": "C26462",
+   "file": "tests/ui/main_window_test.cpp",
+   "line": 28,
+   "message": "Значение, на которое указывает \"a\", назначается только один раз. Пометьте его как указатель на const (con.4)."
+  },
+  {
+   "rule": "C26462",
+   "file": "tests/ui/main_window_test.cpp",
+   "line": 33,
+   "message": "Значение, на которое указывает \"home\", назначается только один раз. Пометьте его как указатель на const (con.4)."
+  },
+  {
+   "rule": "C26462",
+   "file": "tests/ui/main_window_test.cpp",
+   "line": 51,
+   "message": "Значение, на которое указывает \"image\", назначается только один раз. Пометьте его как указатель на const (con.4)."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 16,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 16,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 16,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 16,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 16,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 16,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 16,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 19,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 19,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 20,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 20,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 21,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 21,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 23,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 23,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 24,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 24,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 27,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 27,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 27,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 27,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 27,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 27,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 27,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 34,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 34,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 35,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 35,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 38,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 38,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 38,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 38,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 38,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 38,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 38,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 41,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 41,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 44,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 44,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 44,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 44,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 44,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 44,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 44,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 46,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 46,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 49,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 49,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 49,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 49,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 49,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 49,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 49,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 54,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 54,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 57,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 57,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 57,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 57,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 57,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 57,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 57,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 60,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 60,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 62,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 62,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 63,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 63,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 65,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 65,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 68,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 68,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 68,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 68,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 68,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 68,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 68,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 75,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 75,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 78,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 78,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 79,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 79,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 80,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 80,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 81,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/document_open_test.cpp",
+   "line": 81,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/features_test.cpp",
+   "line": 9,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/features_test.cpp",
+   "line": 9,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/features_test.cpp",
+   "line": 9,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/features_test.cpp",
+   "line": 9,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/features_test.cpp",
+   "line": 9,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/features_test.cpp",
+   "line": 9,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/features_test.cpp",
+   "line": 9,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/features_test.cpp",
+   "line": 13,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/features_test.cpp",
+   "line": 13,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 23,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 23,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 23,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 23,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 23,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 23,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 23,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 26,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 26,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 27,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 27,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 28,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 28,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 29,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 29,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 30,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 30,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 31,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 31,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 34,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 34,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 34,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 34,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 34,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 34,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 34,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26481",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 37,
+   "message": "Не используйте арифметику указателей; вместо этого используйте 'span' (bounds.1)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 39,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 39,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 40,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 40,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 41,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 41,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 44,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 44,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 44,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 44,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 44,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 44,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 44,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26481",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 49,
+   "message": "Не используйте арифметику указателей; вместо этого используйте 'span' (bounds.1)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 54,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 54,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 55,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 55,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 56,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 56,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 57,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 57,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 58,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 58,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 59,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 59,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 62,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 62,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 62,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 62,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 62,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 62,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 62,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 64,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 64,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 65,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 65,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 66,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/image_compare_test.cpp",
+   "line": 66,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 16,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 16,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 16,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 16,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 16,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 16,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 16,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 18,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 18,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 19,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 19,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 22,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 22,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 22,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 22,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 22,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 22,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 22,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 25,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 25,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 26,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 26,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26440",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 30,
+   "message": "Функция \"``mu_context_clone_works_in_other_thread_Test::TestBody'::`2'::<lambda_1>::operator()'::`2'::<lambda_1>::operator()\" может быть объявлена как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 37,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 37,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 40,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 40,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 40,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 40,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 40,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 40,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 40,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26440",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 44,
+   "message": "Функция \"`mu_context_error_becomes_exception_with_code_Test::TestBody'::`3'::<lambda_1>::operator()\" может быть объявлена как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 47,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 47,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 48,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 48,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 53,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/mu_context_test.cpp",
+   "line": 53,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 9,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 9,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 9,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 9,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 9,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 9,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 9,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 11,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 11,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 12,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 12,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 13,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 13,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 16,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 16,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 16,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 16,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 16,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 16,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 16,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 21,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 21,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 23,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/paths_test.cpp",
+   "line": 23,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26481",
+   "file": "tests/unit/render_test.cpp",
+   "line": 18,
+   "message": "Не используйте арифметику указателей; вместо этого используйте 'span' (bounds.1)."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/render_test.cpp",
+   "line": 22,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/render_test.cpp",
+   "line": 22,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/render_test.cpp",
+   "line": 22,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/render_test.cpp",
+   "line": 22,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/render_test.cpp",
+   "line": 22,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/render_test.cpp",
+   "line": 22,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/render_test.cpp",
+   "line": 22,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/render_test.cpp",
+   "line": 27,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/render_test.cpp",
+   "line": 27,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/render_test.cpp",
+   "line": 28,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/render_test.cpp",
+   "line": 28,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/render_test.cpp",
+   "line": 29,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/render_test.cpp",
+   "line": 29,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/render_test.cpp",
+   "line": 31,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/render_test.cpp",
+   "line": 31,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/render_test.cpp",
+   "line": 32,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/render_test.cpp",
+   "line": 32,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/render_test.cpp",
+   "line": 35,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/render_test.cpp",
+   "line": 35,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/render_test.cpp",
+   "line": 35,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/render_test.cpp",
+   "line": 35,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/render_test.cpp",
+   "line": 35,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/render_test.cpp",
+   "line": 35,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/render_test.cpp",
+   "line": 35,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/render_test.cpp",
+   "line": 39,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/render_test.cpp",
+   "line": 39,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/render_test.cpp",
+   "line": 40,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/render_test.cpp",
+   "line": 40,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/render_test.cpp",
+   "line": 41,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/render_test.cpp",
+   "line": 41,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/render_test.cpp",
+   "line": 42,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/render_test.cpp",
+   "line": 42,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26409",
+   "file": "tests/unit/render_test.cpp",
+   "line": 45,
+   "message": "Избегайте явного вызова операторов new и delete; вместо этого используйте std::make_unique<T> (r.11)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/render_test.cpp",
+   "line": 45,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"operator new\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/render_test.cpp",
+   "line": 45,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetTearDownCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/render_test.cpp",
+   "line": 45,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::SuiteApiResolver<testing::Test>::GetSetUpCaseOrSuite\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/render_test.cpp",
+   "line": 45,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::GetTestTypeId\" (i.22)."
+  },
+  {
+   "rule": "C26426",
+   "file": "tests/unit/render_test.cpp",
+   "line": 45,
+   "message": "Глобальный инициализатор вызывает функцию, не являющуюся constexpr \"testing::internal::MakeAndRegisterTestInfo\" (i.22)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/render_test.cpp",
+   "line": 45,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/render_test.cpp",
+   "line": 54,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/render_test.cpp",
+   "line": 54,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/render_test.cpp",
+   "line": 55,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/render_test.cpp",
+   "line": 55,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26818",
+   "file": "tests/unit/render_test.cpp",
+   "line": 56,
+   "message": "Оператор switch охватывает не все случаи. Попробуйте добавить метку \"default\" (es.79)."
+  },
+  {
+   "rule": "C6326",
+   "file": "tests/unit/render_test.cpp",
+   "line": 56,
+   "message": "Возможное сравнение константы с другой константой."
+  },
+  {
+   "rule": "C26460",
+   "file": "tests/unit/support/test_pdf.cpp",
+   "line": 18,
+   "message": "Ссылка на аргумент \"mu\" для функции \"ot::test::makePdf\" может быть помечена как const (con.3)."
+  },
+  {
+   "rule": "C26440",
+   "file": "tests/unit/support/test_pdf.cpp",
+   "line": 28,
+   "message": "Функция \"`ot::test::makePdf'::`2'::<lambda_1>::operator()\" может быть объявлена как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26490",
+   "file": "tests/unit/support/test_pdf.cpp",
+   "line": 61,
+   "message": "Не используйте reinterpret_cast (type.1)."
+  },
+  {
+   "rule": "C26455",
+   "file": "tests/unit/support/test_pdf.cpp",
+   "line": 72,
+   "message": "Конструктор по умолчанию не может выдавать исключения (throw). Объявите его как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26432",
+   "file": "tests/unit/support/test_pdf.cpp",
+   "line": 81,
+   "message": "Если вы определяете или удаляете какие-либо операции по умолчанию в типе \"class ot::test::TempDir\", определите или удалите их все (c.21)."
+  },
+  {
+   "rule": "C26447",
+   "file": "tests/unit/support/test_pdf.cpp",
+   "line": 83,
+   "message": "Функция объявлена как \"noexcept\", но вызывает функцию \"remove_all()\", которая может порождать исключения (f.6)."
+  },
+  {
+   "rule": "C26440",
+   "file": "tests/unit/support/test_pdf.h",
+   "line": 23,
+   "message": "Функция \"ot::test::TempDir::path\" может быть объявлена как \"noexcept\" (f.6)."
+  },
+  {
+   "rule": "C26494",
+   "file": "tools/render_refs.cpp",
+   "line": 56,
+   "message": "Переменная \"md\" не инициализирована. Всегда инициализируйте объект (type.5)."
+  },
+  {
+   "rule": "C26485",
+   "file": "tools/render_refs.cpp",
+   "line": 58,
+   "message": "Выражение \"md\": не допускайте вырождения массива в указатель (bounds.3)."
+  },
+  {
+   "rule": "C26446",
+   "file": "tools/render_refs.cpp",
+   "line": 62,
+   "message": "Использовать gsl::at() вместо непроверенного оператора с нижним индексом (bounds.4)."
+  },
+  {
+   "rule": "C26481",
+   "file": "tools/render_refs.cpp",
+   "line": 62,
+   "message": "Не используйте арифметику указателей; вместо этого используйте 'span' (bounds.1)."
+  },
+  {
+   "rule": "C26482",
+   "file": "tools/render_refs.cpp",
+   "line": 62,
+   "message": "В качестве индексов массивов используйте только константные выражения (bounds.2)."
+  },
+  {
+   "rule": "C26446",
+   "file": "tools/render_refs.cpp",
+   "line": 63,
+   "message": "Использовать gsl::at() вместо непроверенного оператора с нижним индексом (bounds.4)."
+  },
+  {
+   "rule": "C26481",
+   "file": "tools/render_refs.cpp",
+   "line": 63,
+   "message": "Не используйте арифметику указателей; вместо этого используйте 'span' (bounds.1)."
+  },
+  {
+   "rule": "C26482",
+   "file": "tools/render_refs.cpp",
+   "line": 63,
+   "message": "В качестве индексов массивов используйте только константные выражения (bounds.2)."
+  },
+  {
+   "rule": "C26485",
+   "file": "tools/render_refs.cpp",
+   "line": 73,
+   "message": "Выражение \"buf\": не допускайте вырождения массива в указатель (bounds.3)."
+  },
+  {
+   "rule": "C26485",
+   "file": "tools/render_refs.cpp",
+   "line": 74,
+   "message": "Выражение \"buf\": не допускайте вырождения массива в указатель (bounds.3)."
+  },
+  {
+   "rule": "C26496",
+   "file": "tools/render_refs.cpp",
+   "line": 129,
+   "message": "Переменная \"it\" не изменяется после создания, пометьте ее как const (con.4)."
+  },
+  {
+   "rule": "C26429",
+   "file": "tools/render_refs.cpp",
+   "line": 216,
+   "message": "Символ \"argv\" никогда не проверяется на равенство null, он может быть помечен как not_null (f.23)."
+  },
+  {
+   "rule": "C26461",
+   "file": "tools/render_refs.cpp",
+   "line": 216,
+   "message": "Аргумент указателя \"argv\" для функции \"wmain\" может быть помечен как указатель на const (con.3)."
+  },
+  {
+   "rule": "C26481",
+   "file": "tools/render_refs.cpp",
+   "line": 219,
+   "message": "Не используйте арифметику указателей; вместо этого используйте 'span' (bounds.1)."
+  },
+  {
+   "rule": "C26446",
+   "file": "tools/render_refs.cpp",
+   "line": 224,
+   "message": "Использовать gsl::at() вместо непроверенного оператора с нижним индексом (bounds.4)."
+  },
+  {
+   "rule": "C26446",
+   "file": "tools/render_refs.cpp",
+   "line": 225,
+   "message": "Использовать gsl::at() вместо непроверенного оператора с нижним индексом (bounds.4)."
+  }
+ ]
+}

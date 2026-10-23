@@ -1,0 +1,9 @@
+# Файлы, которые check_determinism.ps1 не сравнивает между двумя прогонами (шаблоны -like,
+# пути относительно корня вывода, через «/»). Строки с # и пустые — пропускаются.
+#
+# Сейчас список пуст: Word-файлы (cyr/word-truetype.pdf, office/проба.docx, office/заметка.rtf)
+# после tools/gen/normalize_word.py совпадают байт в байт (проверено 2026-10-23, Word 16.0.20430).
+# Если после обновления Word они начнут различаться — дописать сюда с пометкой «недетерминирован: Word»:
+#   tests/fixtures/cyr/word-truetype.pdf
+#   tests/fixtures/office/проба.docx
+#   tests/fixtures/office/заметка.rtf

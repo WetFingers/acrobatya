@@ -1,0 +1,670 @@
+{
+  "generator": "tools/gen/make_annots.py",
+  "pdf": "matrix-28.pdf",
+  "page": 1,
+  "aliases": {
+    "annots-all.pdf": "байт в байт копия matrix-28.pdf — имя из плана (сессии 5.1, 5.2)"
+  },
+  "pdf_version": "2.0",
+  "annots_total": 28,
+  "subtypes_total": 28,
+  "order_in_annots": [
+    "Text",
+    "Popup",
+    "Link",
+    "FreeText",
+    "Line",
+    "Square",
+    "Circle",
+    "Polygon",
+    "PolyLine",
+    "Highlight",
+    "Underline",
+    "Squiggly",
+    "StrikeOut",
+    "Caret",
+    "Ink",
+    "FileAttachment",
+    "Sound",
+    "Stamp",
+    "Redact",
+    "Widget",
+    "Screen",
+    "PrinterMark",
+    "Watermark",
+    "3D",
+    "RichMedia",
+    "Projection",
+    "Movie",
+    "TrapNet"
+  ],
+  "annots": [
+    {
+      "n": 1,
+      "subtype": "Text",
+      "ru": "заметка",
+      "nm": "ottisk-01-text",
+      "rect": [
+        38.0,
+        735.89,
+        58.0,
+        755.89
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Заметка с всплывающим окном в ячейке 15",
+      "parent": null,
+      "cell": [
+        28.0,
+        677.62,
+        162.82,
+        785.89
+      ]
+    },
+    {
+      "n": 2,
+      "subtype": "Link",
+      "ru": "ссылка",
+      "nm": "ottisk-02-link",
+      "rect": [
+        172.82,
+        711.75,
+        287.64,
+        731.75
+      ],
+      "created_by": "mupdf",
+      "appearance": "none",
+      "contents": "",
+      "parent": null,
+      "cell": [
+        162.82,
+        677.62,
+        297.64,
+        785.89
+      ],
+      "notes": "без /AP (обычно для ссылок); /A URI https://example.org/ottisk/link, рамка /Border [0 0 1]"
+    },
+    {
+      "n": 3,
+      "subtype": "FreeText",
+      "ru": "надпись",
+      "nm": "ottisk-03-freetext",
+      "rect": [
+        307.14,
+        697.12,
+        422.96,
+        756.39
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Надпись FreeText: Hello, PDF",
+      "parent": null,
+      "cell": [
+        297.64,
+        677.62,
+        432.46,
+        785.89
+      ]
+    },
+    {
+      "n": 4,
+      "subtype": "Line",
+      "ru": "линия",
+      "nm": "ottisk-04-line",
+      "rect": [
+        440.46,
+        689.27,
+        559.28,
+        753.89
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Аннотация Line (линия)",
+      "parent": null,
+      "cell": [
+        432.46,
+        677.62,
+        567.28,
+        785.89
+      ]
+    },
+    {
+      "n": 5,
+      "subtype": "Square",
+      "ru": "прямоугольник",
+      "nm": "ottisk-05-square",
+      "rect": [
+        36.5,
+        582.85,
+        154.32,
+        649.12
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Аннотация Square (прямоугольник)",
+      "parent": null,
+      "cell": [
+        28.0,
+        569.35,
+        162.82,
+        677.62
+      ]
+    },
+    {
+      "n": 6,
+      "subtype": "Circle",
+      "ru": "эллипс",
+      "nm": "ottisk-06-circle",
+      "rect": [
+        171.32,
+        582.85,
+        289.14,
+        649.12
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Аннотация Circle (эллипс)",
+      "parent": null,
+      "cell": [
+        162.82,
+        569.35,
+        297.64,
+        677.62
+      ]
+    },
+    {
+      "n": 7,
+      "subtype": "Polygon",
+      "ru": "многоугольник",
+      "nm": "ottisk-07-polygon",
+      "rect": [
+        333.11,
+        589.33,
+        396.98,
+        642.98
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Аннотация Polygon (многоугольник)",
+      "parent": null,
+      "cell": [
+        297.64,
+        569.35,
+        432.46,
+        677.62
+      ]
+    },
+    {
+      "n": 8,
+      "subtype": "PolyLine",
+      "ru": "ломаная",
+      "nm": "ottisk-08-polyline",
+      "rect": [
+        445.46,
+        593.48,
+        554.28,
+        633.48
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Аннотация PolyLine (ломаная)",
+      "parent": null,
+      "cell": [
+        432.46,
+        569.35,
+        567.28,
+        677.62
+      ]
+    },
+    {
+      "n": 9,
+      "subtype": "Highlight",
+      "ru": "выделение",
+      "nm": "ottisk-09-highlight",
+      "rect": [
+        35.1,
+        497.98,
+        121.13,
+        511.81
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Аннотация Highlight (выделение)",
+      "parent": null,
+      "cell": [
+        28.0,
+        461.08,
+        162.82,
+        569.35
+      ]
+    },
+    {
+      "n": 10,
+      "subtype": "Underline",
+      "ru": "подчёркивание",
+      "nm": "ottisk-10-underline",
+      "rect": [
+        172.05,
+        497.98,
+        253.82,
+        511.81
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Аннотация Underline (подчёркивание)",
+      "parent": null,
+      "cell": [
+        162.82,
+        461.08,
+        297.64,
+        569.35
+      ]
+    },
+    {
+      "n": 11,
+      "subtype": "Squiggly",
+      "ru": "волнистая черта",
+      "nm": "ottisk-11-squiggly",
+      "rect": [
+        306.87,
+        497.98,
+        388.64,
+        511.81
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Аннотация Squiggly (волнистая черта)",
+      "parent": null,
+      "cell": [
+        297.64,
+        461.08,
+        432.46,
+        569.35
+      ]
+    },
+    {
+      "n": 12,
+      "subtype": "StrikeOut",
+      "ru": "зачёркивание",
+      "nm": "ottisk-12-strikeout",
+      "rect": [
+        441.69,
+        497.98,
+        523.46,
+        511.81
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Аннотация StrikeOut (зачёркивание)",
+      "parent": null,
+      "cell": [
+        432.46,
+        461.08,
+        567.28,
+        569.35
+      ]
+    },
+    {
+      "n": 13,
+      "subtype": "Caret",
+      "ru": "знак вставки",
+      "nm": "ottisk-13-caret",
+      "rect": [
+        85.41,
+        389.94,
+        105.41,
+        403.94
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Аннотация Caret (знак вставки)",
+      "parent": null,
+      "cell": [
+        28.0,
+        352.81,
+        162.82,
+        461.08
+      ]
+    },
+    {
+      "n": 14,
+      "subtype": "Ink",
+      "ru": "рисунок от руки",
+      "nm": "ottisk-14-ink",
+      "rect": [
+        169.82,
+        364.96,
+        284.82,
+        424.85
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Аннотация Ink (рисунок от руки)",
+      "parent": null,
+      "cell": [
+        162.82,
+        352.81,
+        297.64,
+        461.08
+      ]
+    },
+    {
+      "n": 15,
+      "subtype": "Popup",
+      "ru": "всплывающее окно",
+      "nm": "ottisk-15-popup",
+      "rect": [
+        305.64,
+        360.81,
+        424.46,
+        433.08
+      ],
+      "created_by": "mupdf",
+      "appearance": "none",
+      "contents": "Всплывающее окно заметки из ячейки 1",
+      "parent": "ottisk-01-text",
+      "cell": [
+        297.64,
+        352.81,
+        432.46,
+        461.08
+      ],
+      "notes": "без /AP; /Parent — Text из ячейки 1, /Open true"
+    },
+    {
+      "n": 16,
+      "subtype": "FileAttachment",
+      "ru": "вложение",
+      "nm": "ottisk-16-fileattachment",
+      "rect": [
+        489.87,
+        388.94,
+        509.87,
+        408.94
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Аннотация FileAttachment (вложение)",
+      "parent": null,
+      "cell": [
+        432.46,
+        352.81,
+        567.28,
+        461.08
+      ],
+      "notes": "вложение заметка.txt (text/plain)"
+    },
+    {
+      "n": 17,
+      "subtype": "Sound",
+      "ru": "звук",
+      "nm": "ottisk-17-sound",
+      "rect": [
+        85.41,
+        278.67,
+        105.41,
+        298.67
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Аннотация Sound (звук)",
+      "parent": null,
+      "cell": [
+        28.0,
+        244.54,
+        162.82,
+        352.81
+      ],
+      "notes": "поток /Sound 8 кГц, 8 бит, 0,1 с"
+    },
+    {
+      "n": 18,
+      "subtype": "Stamp",
+      "ru": "штамп",
+      "nm": "ottisk-18-stamp",
+      "rect": [
+        172.82,
+        273.57,
+        287.64,
+        303.78
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Аннотация Stamp (штамп)",
+      "parent": null,
+      "cell": [
+        162.82,
+        244.54,
+        297.64,
+        352.81
+      ]
+    },
+    {
+      "n": 19,
+      "subtype": "Redact",
+      "ru": "скрытие",
+      "nm": "ottisk-19-redact",
+      "rect": [
+        306.64,
+        281.21,
+        406.65,
+        295.5
+      ],
+      "created_by": "mupdf",
+      "appearance": "mupdf",
+      "contents": "Помечено для скрытия (не применено)",
+      "parent": null,
+      "cell": [
+        297.64,
+        244.54,
+        432.46,
+        352.81
+      ],
+      "notes": "не применена (applyRedactions не вызывался)"
+    },
+    {
+      "n": 20,
+      "subtype": "Widget",
+      "ru": "виджет поля",
+      "nm": "ottisk-20-widget",
+      "rect": [
+        442.46,
+        278.67,
+        557.28,
+        298.67
+      ],
+      "created_by": "pikepdf",
+      "appearance": "custom",
+      "contents": "",
+      "parent": null,
+      "cell": [
+        432.46,
+        244.54,
+        567.28,
+        352.81
+      ],
+      "notes": "текстовое поле matrix_text, /AcroForm с /Helv"
+    },
+    {
+      "n": 21,
+      "subtype": "Screen",
+      "ru": "экран (медиа)",
+      "nm": "ottisk-21-screen",
+      "rect": [
+        38.0,
+        146.27,
+        152.82,
+        214.54
+      ],
+      "created_by": "pikepdf",
+      "appearance": "custom",
+      "contents": "",
+      "parent": null,
+      "cell": [
+        28.0,
+        136.27,
+        162.82,
+        244.54
+      ]
+    },
+    {
+      "n": 22,
+      "subtype": "PrinterMark",
+      "ru": "метка печати",
+      "nm": "ottisk-22-printermark",
+      "rect": [
+        172.82,
+        146.27,
+        287.64,
+        214.54
+      ],
+      "created_by": "pikepdf",
+      "appearance": "custom",
+      "contents": "",
+      "parent": null,
+      "cell": [
+        162.82,
+        136.27,
+        297.64,
+        244.54
+      ]
+    },
+    {
+      "n": 23,
+      "subtype": "TrapNet",
+      "ru": "сеть треппинга",
+      "nm": "ottisk-23-trapnet",
+      "rect": [
+        307.64,
+        146.27,
+        422.46,
+        214.54
+      ],
+      "created_by": "pikepdf",
+      "appearance": "custom",
+      "contents": "",
+      "parent": null,
+      "cell": [
+        297.64,
+        136.27,
+        432.46,
+        244.54
+      ],
+      "notes": "флаги Print|ReadOnly, последний в /Annots"
+    },
+    {
+      "n": 24,
+      "subtype": "Watermark",
+      "ru": "водяной знак",
+      "nm": "ottisk-24-watermark",
+      "rect": [
+        442.46,
+        146.27,
+        557.28,
+        214.54
+      ],
+      "created_by": "pikepdf",
+      "appearance": "custom",
+      "contents": "",
+      "parent": null,
+      "cell": [
+        432.46,
+        136.27,
+        567.28,
+        244.54
+      ]
+    },
+    {
+      "n": 25,
+      "subtype": "3D",
+      "ru": "3D",
+      "nm": "ottisk-25-3d",
+      "rect": [
+        38.0,
+        38.0,
+        152.82,
+        106.27
+      ],
+      "created_by": "pikepdf",
+      "appearance": "custom",
+      "contents": "3D-заглушка",
+      "parent": null,
+      "cell": [
+        28.0,
+        28.0,
+        162.82,
+        136.27
+      ],
+      "notes": "/3DD — заглушка (не настоящий U3D), видим только постер /AP"
+    },
+    {
+      "n": 26,
+      "subtype": "RichMedia",
+      "ru": "мультимедиа",
+      "nm": "ottisk-26-richmedia",
+      "rect": [
+        172.82,
+        38.0,
+        287.64,
+        106.27
+      ],
+      "created_by": "pikepdf",
+      "appearance": "custom",
+      "contents": "",
+      "parent": null,
+      "cell": [
+        162.82,
+        28.0,
+        297.64,
+        136.27
+      ],
+      "notes": "вложение clip.mp4 — заглушка (не видео)"
+    },
+    {
+      "n": 27,
+      "subtype": "Projection",
+      "ru": "проекция (PDF 2.0)",
+      "nm": "ottisk-27-projection",
+      "rect": [
+        307.64,
+        38.0,
+        422.46,
+        106.27
+      ],
+      "created_by": "pikepdf",
+      "appearance": "none",
+      "contents": "Проекция без внешнего вида",
+      "parent": null,
+      "cell": [
+        297.64,
+        28.0,
+        432.46,
+        136.27
+      ],
+      "notes": "PDF 2.0, без /AP и без /ExData"
+    },
+    {
+      "n": 28,
+      "subtype": "Movie",
+      "ru": "фильм",
+      "nm": "ottisk-28-movie",
+      "rect": [
+        442.46,
+        38.0,
+        557.28,
+        106.27
+      ],
+      "created_by": "pikepdf",
+      "appearance": "custom",
+      "contents": "",
+      "parent": null,
+      "cell": [
+        432.46,
+        28.0,
+        567.28,
+        136.27
+      ],
+      "notes": "внешний clip.mov не существует"
+    }
+  ]
+}

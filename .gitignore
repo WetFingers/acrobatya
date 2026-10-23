@@ -1,0 +1,22 @@
+# Сборка, выпуск и служебное очереди — только в корне: «build/» без «/» спрятал бы и tests/build/
+# (install_test.py, метка build), а он в Git.
+/build/
+/dist/
+/.queue/
+
+# Локальное: пути машины и настройки Claude Code (свежему клону settings.local.json нужен — run-queue.ps1 -Setup)
+/CMakeUserPresets.json
+.claude/settings.local.json
+*.user
+.vs/
+__pycache__/
+*.pyc
+# Журнал aqtinstall, который aqt пишет в текущий каталог
+aqtinstall.log
+
+# Большие фикстуры (big-1200, images-200 и т. п.) в Git не кладутся — их пересоздают генераторы tools/gen/
+tests/fixtures/big/
+tests/fixtures/**/big-*.pdf
+tests/fixtures/**/images-200*.pdf
+
+Thumbs.db

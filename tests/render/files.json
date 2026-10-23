@@ -1,0 +1,491 @@
+{
+  "version": 1,
+  "about": "Исходные файлы эталонов рендера (эталон 9.3): render_refs рисует каждую страницу из pages при 72 и 150 dpi (RGB, AA 8, без ICC) в tests/render/expected/<id>.<страница>.<dpi>.png. source — путь от корня репозитория или corpus:<запись>/<путь> (каталог корпусов: %OTTISK_CORPUS% или %LOCALAPPDATA%/ottisk/corpus; нет файла — тест пропускается). Все файлы открываются без пароля (шифрованные — с пустым паролем пользователя): поля password в формате нет. Список составлен по tests/corpus/manifest.json и tests/fixtures/pick (лицензии — tests/fixtures/LICENSES.md).",
+  "mupdf": "1.28.5",
+  "files": [
+    {
+      "id": "pdfium_resources/hello_world",
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/hello_world.pdf",
+      "pages": [
+        1
+      ],
+      "why": "простейший текст, стандартный шрифт Type1 без встраивания"
+    },
+    {
+      "id": "pdfium_tests/en_foxit",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/text/en_foxit.pdf",
+      "pages": [
+        1
+      ],
+      "why": "текстовый документ, встроенные TrueType"
+    },
+    {
+      "id": "pdfium_tests/ch_1",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/text/ch_1.pdf",
+      "pages": [
+        1
+      ],
+      "why": "многострочный текст с заголовками"
+    },
+    {
+      "id": "pdfium_tests/quick_start_guide",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/text/quick_start_guide.pdf",
+      "pages": [
+        1,
+        2
+      ],
+      "why": "руководство: TrueType и CID, градиентные узоры"
+    },
+    {
+      "id": "safedocs/unicode-test",
+      "source": "tests/fixtures/pick/safedocs/Unicode_passwords/baseline/unicode-test.pdf",
+      "pages": [
+        1
+      ],
+      "why": "CIDFontType0 (Type0), Unicode-текст"
+    },
+    {
+      "id": "pdfium_tests/zh_page",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/text/zh_page.pdf",
+      "pages": [
+        1
+      ],
+      "why": "CJK, CIDFontType2 Identity-H"
+    },
+    {
+      "id": "pdfium_tests/font_1_embedded_font_en_feature",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/font/font_1_embedded_font_en_feature.pdf",
+      "pages": [
+        1
+      ],
+      "why": "встроенный шрифт"
+    },
+    {
+      "id": "pdfium_resources/bug_642",
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/bug_642.pdf",
+      "pages": [
+        1
+      ],
+      "why": "шрифт Type3"
+    },
+    {
+      "id": "mini/cyr-cid",
+      "source": "tests/data/mini/cyr-cid.pdf",
+      "pages": [
+        1
+      ],
+      "why": "кириллица CIDFontType2 Identity-H (свой генератор tools/gen/make_mini.py)"
+    },
+    {
+      "id": "pdfium_resources/vertical_text",
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/vertical_text.pdf",
+      "pages": [
+        1
+      ],
+      "why": "вертикальный текст"
+    },
+    {
+      "id": "pdfium_resources/text_render_mode",
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/text_render_mode.pdf",
+      "pages": [
+        1
+      ],
+      "why": "режимы рендера текста Tr (заливка, обводка, отсечение)"
+    },
+    {
+      "id": "pdfium_resources/rotated_text_90",
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/rotated_text_90.pdf",
+      "pages": [
+        1
+      ],
+      "why": "текст, повёрнутый матрицей на 90°"
+    },
+    {
+      "id": "pdf-differences/VerticalText",
+      "source": "tests/fixtures/pick/pdf-differences/VerticalText/VerticalText.pdf",
+      "pages": [
+        1
+      ],
+      "why": "вертикальное письмо, CIDFontType0 Identity-V"
+    },
+    {
+      "id": "pdf-differences/Type3Test",
+      "source": "tests/fixtures/pick/pdf-differences/Type3WordSpacing/Type3Test.pdf",
+      "pages": [
+        1
+      ],
+      "why": "Type3 и межсловный интервал Tw"
+    },
+    {
+      "id": "pdf-differences/NegativeFontSize",
+      "source": "tests/fixtures/pick/pdf-differences/NegativeFontSize/NegativeFontSize.pdf",
+      "pages": [
+        1
+      ],
+      "why": "отрицательный размер шрифта"
+    },
+    {
+      "id": "pdf-differences/TextClippingModeChanges",
+      "source": "tests/fixtures/pick/pdf-differences/TextClipModeChanges/TextClippingModeChanges.pdf",
+      "pages": [
+        1
+      ],
+      "why": "отсечение текстом (Tr 4–7)"
+    },
+    {
+      "id": "pdf-differences/OverlappingGlyphClipping",
+      "source": "tests/fixtures/pick/pdf-differences/OverlappingGlyphClipping/OverlappingGlyphClipping.pdf",
+      "pages": [
+        1
+      ],
+      "why": "перекрывающиеся глифы при отсечении"
+    },
+    {
+      "id": "safedocs/utf16LE-test",
+      "source": "tests/fixtures/pick/safedocs/Miscellaneous_Targeted_Test_PDFs/utf16LE-test.pdf",
+      "pages": [
+        1
+      ],
+      "why": "Type1 и слои OCG"
+    },
+    {
+      "id": "safedocs/FontinsideType3insideType3",
+      "source": "tests/fixtures/pick/safedocs/Miscellaneous_Targeted_Test_PDFs/FontinsideType3insideType3.pdf",
+      "pages": [
+        1
+      ],
+      "why": "вложенные Type3"
+    },
+    {
+      "id": "commons-ru/zakon-chuvashiya-simvoly",
+      "source": "corpus:commons-ru/zakon-chuvashiya-simvoly.pdf",
+      "pages": [
+        1,
+        2
+      ],
+      "why": "реальный документ: кириллица TrueType (общественное достояние, только корпус)"
+    },
+    {
+      "id": "pdfium_tests/image_8bit_devicergb_dctdecode",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/image/image_8bit_devicergb_dctdecode.pdf",
+      "pages": [
+        1
+      ],
+      "why": "картинка JPEG (DCTDecode), DeviceRGB"
+    },
+    {
+      "id": "pdfium_tests/123",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/action/123.pdf",
+      "pages": [
+        1
+      ],
+      "why": "картинка JPEG 2000 (JPXDecode)"
+    },
+    {
+      "id": "pdfium_resources/jpx_lzw",
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/jpx_lzw.pdf",
+      "pages": [
+        1
+      ],
+      "why": "JPX под LZW и ASCIIHex"
+    },
+    {
+      "id": "pdfium_tests/bitmap-symbol-manysyms",
+      "source": "tests/fixtures/pick/pdfium_tests/third_party/jbig2/bitmap-symbol-manysyms.pdf",
+      "pages": [
+        1
+      ],
+      "why": "JBIG2, словарь символов"
+    },
+    {
+      "id": "pdfium_tests/bitmap-halftone",
+      "source": "tests/fixtures/pick/pdfium_tests/third_party/jbig2/bitmap-halftone.pdf",
+      "pages": [
+        1
+      ],
+      "why": "JBIG2, полутоновая область"
+    },
+    {
+      "id": "commons-ru/scan-zakon-bo-116-z-2018",
+      "source": "corpus:commons-ru/scan-zakon-bo-116-z-2018.pdf",
+      "pages": [
+        1
+      ],
+      "why": "скан CCITT G4 (общественное достояние, только корпус)"
+    },
+    {
+      "id": "pdfium_tests/11",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/path/11.pdf",
+      "pages": [
+        1
+      ],
+      "why": "маска изображения /ImageMask"
+    },
+    {
+      "id": "pdfium_resources/bug_343075986",
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/bug_343075986.pdf",
+      "pages": [
+        1
+      ],
+      "why": "маска цветового ключа /Mask [..]"
+    },
+    {
+      "id": "pdfium_resources/rotated_image",
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/rotated_image.pdf",
+      "pages": [
+        1
+      ],
+      "why": "повёрнутая картинка"
+    },
+    {
+      "id": "pdfium_tests/colorspace",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/color/colorspace.pdf",
+      "pages": [
+        1
+      ],
+      "why": "Lab, CalRGB, CalGray, Indexed, осевой узор"
+    },
+    {
+      "id": "pdfium_tests/path_1",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/path/path_1.pdf",
+      "pages": [
+        1
+      ],
+      "why": "контуры DeviceGray/DeviceRGB с полупрозрачностью ExtGState (обводка и заливка)"
+    },
+    {
+      "id": "pdfium_tests/catering_1",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/path/catering_1.pdf",
+      "pages": [
+        1
+      ],
+      "why": "плашечный цвет Separation"
+    },
+    {
+      "id": "pdf-differences/IndexedCS_negative_and_high",
+      "source": "tests/fixtures/pick/pdf-differences/IndexedColor/IndexedCS_negative_and_high.pdf",
+      "pages": [
+        1
+      ],
+      "why": "Indexed с индексами вне диапазона"
+    },
+    {
+      "id": "pdfium_tests/transparent",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/path/transparent.pdf",
+      "pages": [
+        1
+      ],
+      "why": "прозрачность заливки и обводки"
+    },
+    {
+      "id": "pdf-differences/ColorBurn",
+      "source": "tests/fixtures/pick/pdf-differences/ColorBurn-ColorDodge/ColorBurn.pdf",
+      "pages": [
+        1
+      ],
+      "why": "режим наложения ColorBurn"
+    },
+    {
+      "id": "pdf-differences/SelfIntersecting-Transparency",
+      "source": "tests/fixtures/pick/pdf-differences/Atomic-Fill+Stroke/SelfIntersecting-Transparency.pdf",
+      "pages": [
+        1
+      ],
+      "why": "самопересечения и прозрачность (атомарность fill+stroke)"
+    },
+    {
+      "id": "pdfium_tests/transparent1",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/path/transparent1.pdf",
+      "pages": [
+        1
+      ],
+      "why": "полупрозрачные контуры и заливки"
+    },
+    {
+      "id": "pdfium_tests/shading",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/new/shading_2/shading.pdf",
+      "pages": [
+        1
+      ],
+      "why": "осевой градиент ShadingType 2"
+    },
+    {
+      "id": "pdfium_tests/shading2",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/new/shading_2/shading2.pdf",
+      "pages": [
+        1
+      ],
+      "why": "радиальный градиент ShadingType 3"
+    },
+    {
+      "id": "pdfium_resources/bug_1302355",
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/bug_1302355.pdf",
+      "pages": [
+        1
+      ],
+      "why": "режим наложения /BM"
+    },
+    {
+      "id": "pdfium_resources/pattern_fill_uncolored",
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/pattern_fill_uncolored.pdf",
+      "pages": [
+        1
+      ],
+      "why": "неокрашенный узор-мозаика"
+    },
+    {
+      "id": "pdfium_resources/matte",
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/matte.pdf",
+      "pages": [
+        1
+      ],
+      "why": "мягкая маска /SMask с /Matte"
+    },
+    {
+      "id": "pdfium_resources/pattern_fill",
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/pattern_fill.pdf",
+      "pages": [
+        1
+      ],
+      "why": "окрашенный узор-мозаика PatternType 1"
+    },
+    {
+      "id": "pdf-differences/LargeMitreLimit",
+      "source": "tests/fixtures/pick/pdf-differences/LargeMitreLimit/LargeMitreLimit.pdf",
+      "pages": [
+        1
+      ],
+      "why": "большой предел среза углов"
+    },
+    {
+      "id": "pdf-differences/Dashing-EndBeforeBend",
+      "source": "tests/fixtures/pick/pdf-differences/Dashing-EndBeforeBend/Dashing-EndBeforeBend.pdf",
+      "pages": [
+        1
+      ],
+      "why": "штрихи, кончающиеся перед изломом"
+    },
+    {
+      "id": "pdfium_resources/image_clipped",
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/image_clipped.pdf",
+      "pages": [
+        1
+      ],
+      "why": "картинка под отсечением контуром"
+    },
+    {
+      "id": "pdfium_tests/annotation_highlight",
+      "source": "tests/fixtures/pick/pdfium_tests/pdfium/annots/annotation_highlight.pdf",
+      "pages": [
+        1
+      ],
+      "why": "аннотация Highlight"
+    },
+    {
+      "id": "pdfium_tests/annotation_ink",
+      "source": "tests/fixtures/pick/pdfium_tests/pdfium/annots/annotation_ink.pdf",
+      "pages": [
+        1
+      ],
+      "why": "аннотация Ink"
+    },
+    {
+      "id": "pdfium_tests/annotation_freetext",
+      "source": "tests/fixtures/pick/pdfium_tests/pdfium/annots/annotation_freetext.pdf",
+      "pages": [
+        1
+      ],
+      "why": "аннотация FreeText"
+    },
+    {
+      "id": "pdfium_tests/new_polygon",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/mulobj/new/comments/new_polygon.pdf",
+      "pages": [
+        1
+      ],
+      "why": "аннотация Polygon"
+    },
+    {
+      "id": "safedocs/LinkAnnot-appearances",
+      "source": "tests/fixtures/pick/safedocs/Miscellaneous_Targeted_Test_PDFs/LinkAnnot-appearances.pdf",
+      "pages": [
+        1
+      ],
+      "why": "внешний вид аннотаций Link"
+    },
+    {
+      "id": "pdfium_tests/text_field",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/form/text_field.pdf",
+      "pages": [
+        1
+      ],
+      "why": "форма: текстовые поля"
+    },
+    {
+      "id": "pdfium_tests/check_box",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/form/check_box.pdf",
+      "pages": [
+        1
+      ],
+      "why": "форма: флажки"
+    },
+    {
+      "id": "irs/fw4",
+      "source": "tests/fixtures/pick/irs/fw4.pdf",
+      "pages": [
+        1
+      ],
+      "why": "реальная форма IRS W-4 (AcroForm + XFA)"
+    },
+    {
+      "id": "pdfium_resources/rectangles_multi_pages",
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/rectangles_multi_pages.pdf",
+      "pages": [
+        1,
+        2
+      ],
+      "why": "повёрнутые страницы: стр. 1 без поворота, стр. 2 /Rotate 90"
+    },
+    {
+      "id": "pdfium_resources/bug_713197",
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/bug_713197.pdf",
+      "pages": [
+        1
+      ],
+      "why": "страница с /Rotate -90 (= 270)"
+    },
+    {
+      "id": "pdfium_resources/bug_40162073",
+      "source": "tests/fixtures/pick/pdfium_resources/testing/resources/bug_40162073.pdf",
+      "pages": [
+        1
+      ],
+      "why": "слои OCG"
+    },
+    {
+      "id": "enc/enc-aes-256-emptyuser",
+      "source": "tests/fixtures/enc/enc-aes-256-emptyuser.pdf",
+      "pages": [
+        1
+      ],
+      "why": "шифрование AES-256 R6 с пустым паролем пользователя (открывается без пароля), кириллица; свой генератор tools/gen/make_enc.py"
+    },
+    {
+      "id": "adobe-spec/PDF32000_2008",
+      "source": "corpus:adobe-spec/PDF32000_2008.pdf",
+      "pages": [
+        1,
+        2
+      ],
+      "why": "большой документ: 756 страниц, 22 МБ (только корпус)"
+    },
+    {
+      "id": "pdfium_tests/new_textmarkup5",
+      "source": "tests/fixtures/pick/pdfium_tests/fx/mulobj/new/text_markup/new_textmarkup5.pdf",
+      "pages": [
+        1
+      ],
+      "why": "разметка текста StrikeOut и Caret с готовым /AP"
+    }
+  ]
+}

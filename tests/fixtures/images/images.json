@@ -1,0 +1,57 @@
+{
+  "chart.png": {
+    "size": [
+      800,
+      500
+    ],
+    "mode": "RGB",
+    "frames": 1,
+    "bytes": 10695
+  },
+  "cmyk.jpg": {
+    "size": [
+      600,
+      400
+    ],
+    "mode": "CMYK",
+    "frames": 1,
+    "bytes": 137356
+  },
+  "logo.png": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGBA",
+    "frames": 1,
+    "bytes": 14340
+  },
+  "multipage-g4.tif": {
+    "size": [
+      1654,
+      2339
+    ],
+    "mode": "1",
+    "frames": 2,
+    "bytes": 14256
+  },
+  "page-gray.png": {
+    "size": [
+      1240,
+      1754
+    ],
+    "mode": "L",
+    "frames": 1,
+    "bytes": 37132
+  },
+  "photo.jpg": {
+    "size": [
+      1200,
+      800
+    ],
+    "mode": "RGB",
+    "frames": 1,
+    "bytes": 162680
+  },
+  "_purpose": "photo/logo/chart — вставка в Office-файлы и демо; page-gray — снимок страницы; cmyk.jpg — CMYK JPEG с маркером Adobe; multipage-g4.tif — многостраничный TIFF G4 для «PDF из картинок»"
+}

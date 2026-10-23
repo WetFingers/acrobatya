@@ -1,0 +1,2732 @@
+{
+  "version": 1,
+  "root": "%LOCALAPPDATA%/ottisk/corpus",
+  "snapshot": "2026-10-23",
+  "about": "Внешние корпуса тестовых PDF (эталон design.md 9.2). Файлы — вне репозитория, в <root>/<id>/; качает и сверяет tools/fetch_corpus.py; gen/ — каталог генераторов tools/gen/. Теги — только из списка 9.2.",
+  "tags": {
+    "annots": "аннотации разных подтипов (XFDF/FDF, рендер, 5.x)",
+    "forms": "AcroForm: поля, JS, формат/расчёт (IRS, pdfium fx/form)",
+    "xfa": "документы с /AcroForm /XFA — полоса «XFA не поддерживается» (6.1)",
+    "enc-r2": "стандартное шифрование R2 (RC4-40)",
+    "enc-r3": "R3 (RC4-128)",
+    "enc-r4": "R4 (крипто-фильтры V4: RC4-128 или AES-128)",
+    "enc-r5": "R5 (AES-256, черновик Adobe Extension Level 3)",
+    "enc-r6": "R6 (AES-256, PDF 2.0)",
+    "sig-b": "PAdES B-B (подпись без штампа времени)",
+    "sig-t": "PAdES B-T (штамп времени подписи)",
+    "sig-lt": "PAdES B-LT (DSS с OCSP/CRL)",
+    "sig-lta": "PAdES B-LTA (штамп документа поверх DSS)",
+    "pdfa-pass": "PDF/A, валидные по имени файла (veraPDF-corpus, BFO)",
+    "pdfa-fail": "PDF/A, невалидные по имени файла (veraPDF-corpus с Isartor, BFO)",
+    "big": "большие документы (сотни и тысячи страниц)",
+    "cyr": "кириллица (официальные документы РФ — общественное достояние)",
+    "fuzz": "семена фаззинга и битые файлы (OSS-Fuzz MuPDF, мутанты)",
+    "office": "исходники Office для конвертации (docx/xlsx/pptx/odt/rtf)",
+    "scan": "сканы без текстового слоя (OCR, 8.x)",
+    "text-edit": "документы с текстом для редактора (3.x, Р2)",
+    "tagged": "тегированные PDF (структура, PDF/UA)",
+    "trust": "списки доверия: Adobe AATL/EUTL, EU LOTL, национальный TL (DE) — снимок"
+  },
+  "expect_values": {
+    "open": "открывается без пароля",
+    "password:<p>": "нужен пароль <p> (пусто — пустой пароль пользователя)",
+    "broken-ok": "может не открыться или потребовать ремонта; процесс жив, ошибка — FORMAT/SYNTAX/LIMIT/UNSUPPORTED",
+    "sig:<СТАТУС>[|<СТАТУС>]": "вердикт проверки подписи без доверия (INTACT, INVALID, …)",
+    "data": "не PDF — данные (списки доверия, Office)"
+  },
+  "entries": [
+    {
+      "id": "pdfium_tests",
+      "git": "https://pdfium.googlesource.com/pdfium_tests",
+      "rev": "86219637fec25a23f5f87252b3bd156ff9ca848e",
+      "sparse": [
+        "/LICENSE",
+        "*.pdf",
+        "/third_party/jbig2/LICENSE",
+        "/third_party/tcpdf/LICENSE"
+      ],
+      "license": "BSD-3-Clause",
+      "license_note": "third_party/jbig2 — BSD-2-Clause (SerenityOS), third_party/tcpdf — LGPL-3.0 (только по манифесту), third_party/skia — BSD-3-Clause (Skia)",
+      "tags": [],
+      "expect": "open",
+      "count": 843,
+      "size": 382416139
+    },
+    {
+      "id": "pdfium_resources",
+      "git": "https://pdfium.googlesource.com/pdfium",
+      "rev": "43d55e429cf72c21e9a1e60475b50feefa16fda9",
+      "sparse": [
+        "/LICENSE",
+        "/testing/resources/*.pdf"
+      ],
+      "license": "BSD-3-Clause",
+      "tags": [],
+      "expect": "open",
+      "count": 299,
+      "size": 1334071
+    },
+    {
+      "id": "verapdf",
+      "git": "https://github.com/veraPDF/veraPDF-corpus",
+      "rev": "bb75f4f0073d9350dfd058c0162a367e6fadf25e",
+      "sparse": [
+        "/README.md",
+        "*.pdf"
+      ],
+      "license": "CC-BY-4.0",
+      "tags": [],
+      "expect": "open",
+      "note": "ветка staging; Isartor — внутри",
+      "count": 2907,
+      "size": 167346059
+    },
+    {
+      "id": "bfo",
+      "git": "https://github.com/bfocom/pdfa-testsuite",
+      "rev": "c22d80260c7ec975a511f9bfcc6590b7ceb1cf18",
+      "sparse": [
+        "/README.md",
+        "/description.txt",
+        "*.pdf",
+        "/pdfa1-6-5-3-bfo-t01-fail-pdf"
+      ],
+      "license": "CC-BY-3.0",
+      "tags": [],
+      "expect": "open",
+      "note": "бывший bfosupport/pdfa-testsuite; один файл без расширения .pdf",
+      "count": 36,
+      "size": 9345710
+    },
+    {
+      "id": "pdf-differences",
+      "git": "https://github.com/pdf-association/pdf-differences",
+      "rev": "907fe96e52b73e491489eee545c47b119bf9989b",
+      "sparse": [
+        "/LICENSE",
+        "/README.md",
+        "*.pdf",
+        "*.docx",
+        "*.xlsx"
+      ],
+      "license": "CC-BY-4.0",
+      "license_note": "PDF — CC BY 4.0, код — Apache-2.0",
+      "tags": [],
+      "expect": "open",
+      "count": 41,
+      "size": 1307337
+    },
+    {
+      "id": "safedocs",
+      "git": "https://github.com/pdf-association/safedocs",
+      "rev": "68f730ab8c39204844112c499c5707b79878533b",
+      "sparse": [
+        "/LICENSE",
+        "/NOTICE.txt",
+        "*.md",
+        "*.pdf"
+      ],
+      "license": "Apache-2.0",
+      "tags": [],
+      "expect": "open",
+      "count": 39,
+      "size": 631804
+    },
+    {
+      "id": "pdfjs",
+      "git": "https://github.com/mozilla/pdf.js",
+      "rev": "9f1775cd63021d0d135433bce6d10227a54946d3",
+      "sparse": [
+        "/LICENSE",
+        "/test/test_manifest.json",
+        "/test/pdfs/*.pdf"
+      ],
+      "license": "unspecified",
+      "license_note": "test/pdfs без собственной лицензии (репозиторий Apache-2.0) — только по манифесту, в Git не копировать",
+      "tags": [],
+      "expect": "open",
+      "count": 1007,
+      "size": 125016877
+    },
+    {
+      "id": "dss",
+      "git": "https://github.com/esig/dss",
+      "rev": "9f3af8f2ca672b8948e0a3ee8687e53adf9f5c33",
+      "sparse": [
+        "/LICENSE",
+        "/dss-pades/src/test/resources/validation/"
+      ],
+      "license": "unspecified",
+      "license_note": "репозиторий LGPL-2.1; лицензия тестовых файлов не оговорена — только по манифесту",
+      "tags": [],
+      "expect": "sig:ANY",
+      "count": 148,
+      "size": 51323372
+    },
+    {
+      "id": "mupdf-fuzz",
+      "url": "https://storage.googleapis.com/mupdf-backup.clusterfuzz-external.appspot.com/corpus/libFuzzer/mupdf_pdf_fuzzer/public.zip",
+      "file": "public.zip",
+      "unpack": "zip",
+      "mutable": true,
+      "snapshot": "2026-10-23",
+      "license": "unspecified",
+      "license_note": "публичный корпус OSS-Fuzz (ClusterFuzz) для mupdf_pdf_fuzzer — только по манифесту",
+      "tags": [
+        "fuzz"
+      ],
+      "expect": "broken-ok",
+      "sha256": "1564102c7c924f299a15f3a33889dfa8acf28c08cf1113e8beabc46bf8ff50cd",
+      "size": 232221233,
+      "unpacked_count": 21520,
+      "unpacked_size": 333502325
+    },
+    {
+      "id": "irs",
+      "items": [
+        {
+          "url": "https://www.irs.gov/pub/irs-pdf/f1040.pdf",
+          "file": "f1040.pdf",
+          "tags": [
+            "forms",
+            "tagged"
+          ],
+          "mirror": "tests/fixtures/pick/irs/f1040.pdf",
+          "sha256": "3d31c226df0d189ced80e039d01cf0f8820c1019681a0f0ca6264de277b7e982",
+          "size": 220237
+        },
+        {
+          "url": "https://www.irs.gov/pub/irs-pdf/fw4.pdf",
+          "file": "fw4.pdf",
+          "tags": [
+            "forms",
+            "tagged"
+          ],
+          "mirror": "tests/fixtures/pick/irs/fw4.pdf",
+          "sha256": "92444d8856ce55d9e25dca8b6d1420634fc68b11e1ab1f760916ea29ddd312b2",
+          "size": 208845
+        },
+        {
+          "url": "https://www.irs.gov/pub/irs-pdf/i1040gi.pdf",
+          "file": "i1040gi.pdf",
+          "tags": [
+            "text-edit",
+            "tagged"
+          ],
+          "sha256": "482e9c487c608f1bbeaceef35bc3c0933e8b35443cfff447e4279d590468364a",
+          "size": 4434643
+        }
+      ],
+      "mutable": true,
+      "snapshot": "2026-10-23",
+      "license": "public-domain",
+      "license_note": "произведения правительства США (17 U.S.C. §105)",
+      "tags": [],
+      "expect": "open"
+    },
+    {
+      "id": "adobe-spec",
+      "items": [
+        {
+          "url": "https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf",
+          "file": "PDF32000_2008.pdf",
+          "sha256": "9de0ca9e8570d6209e8bd48a355be8eb6ec376acfc3fc3ae97cd8730351417ff",
+          "size": 22491828
+        },
+        {
+          "url": "https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/pdfreference1.7old.pdf",
+          "file": "pdfreference1.7old.pdf",
+          "sha256": "4aa598e7e2cc88867565fae793db38c140a10ca2b5551dccdb45e2124282ce29",
+          "size": 32453129
+        }
+      ],
+      "license": "Adobe-free-distribution",
+      "license_note": "Adobe распространяет копии свободно; в Git не копировать",
+      "tags": [
+        "big"
+      ],
+      "expect": "open"
+    },
+    {
+      "id": "trust",
+      "items": [
+        {
+          "url": "https://trustlist.adobe.com/tl12.acrobatsecuritysettings",
+          "file": "tl12.acrobatsecuritysettings",
+          "sha256": "f9f18defd1adebe9048245824bb587f1b94374efe1cea22d944f6e15472dea17",
+          "size": 423333
+        },
+        {
+          "url": "https://trustlist.adobe.com/eutl12.acrobatsecuritysettings",
+          "file": "eutl12.acrobatsecuritysettings",
+          "sha256": "d8a90c7f0722581d46a02698ecff30f58a7e5f133451126865af2fa927e527d0",
+          "size": 4550731
+        },
+        {
+          "url": "https://ec.europa.eu/tools/lotl/eu-lotl.xml",
+          "file": "eu-lotl.xml",
+          "sha256": "a36d0053df1afa96c88ede817a585b3168afeba84c1984a0e6cc5642453e70e6",
+          "size": 483294
+        },
+        {
+          "url": "https://tl.bundesnetzagentur.de/TL-DE.xml",
+          "file": "TL-DE.xml",
+          "sha256": "bed0356c0edb30bfa177bcf9d67b9f8709fd930dc298b9881ffe75e27e6bc7ad",
+          "size": 5367120
+        }
+      ],
+      "mutable": true,
+      "snapshot": "2026-10-23",
+      "license": "public-data",
+      "license_note": "списки доверия Adobe и ЕС — публичные данные; только по манифесту",
+      "tags": [
+        "trust"
+      ],
+      "expect": "data",
+      "note": "снимок с датой snapshot; адрес TL-DE взят из eu-lotl.xml (TSLLocation)"
+    },
+    {
+      "id": "commons-ru",
+      "items": [
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/e/ea/2021_%D0%9F%D0%B0%D1%82%D0%B5%D0%BD%D1%82_%D1%81%D0%BF%D0%BE%D1%81%D0%BE%D0%B1_%D0%BF%D1%80%D0%B5%D0%B4%D0%BE%D1%82%D0%B2%D1%80%D0%B0%D1%89%D0%B5%D0%BD%D0%B8%D1%8F_%D0%BE%D0%B1%D1%80%D0%B0%D0%B7%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F_%D0%BA%D0%B8%D1%81%D0%BB%D1%8B%D1%85_%D1%81%D1%82%D0%BE%D0%BA%D0%BE%D0%B2.pdf",
+          "file": "patent-2021-kislye-stoki.pdf",
+          "sha256": "21f3e2348814b731dc3c5950b32547775016d6b9e394e793ec0618b372844bdb",
+          "size": 1228001,
+          "tags": [
+            "cyr",
+            "text-edit"
+          ],
+          "title": "File:2021 Патент способ предотвращения образования кислых стоков.pdf",
+          "page": "https://commons.wikimedia.org/wiki/File%3A2021_%D0%9F%D0%B0%D1%82%D0%B5%D0%BD%D1%82_%D1%81%D0%BF%D0%BE%D1%81%D0%BE%D0%B1_%D0%BF%D1%80%D0%B5%D0%B4%D0%BE%D1%82%D0%B2%D1%80%D0%B0%D1%89%D0%B5%D0%BD%D0%B8%D1%8F_%D0%BE%D0%B1%D1%80%D0%B0%D0%B7%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F_%D0%BA%D0%B8%D1%81%D0%BB%D1%8B%D1%85_%D1%81%D1%82%D0%BE%D0%BA%D0%BE%D0%B2.pdf"
+        },
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/b/b5/2022_%D0%A1%D0%BF%D0%BE%D1%81%D0%BE%D0%B1_%D0%BD%D0%B5%D0%B9%D1%82%D1%80%D0%B0%D0%BB%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D0%B8_%D0%BA%D0%B8%D1%81%D0%BB%D1%8B%D1%85_%D1%88%D0%B0%D1%85%D1%82%D0%BD%D1%8B%D1%85_%D0%B2%D0%BE%D0%B4.pdf",
+          "file": "patent-2022-shakhtnye-vody.pdf",
+          "sha256": "86f99c022b4f845b7bf4b785b4518ffbbc24c5b21beb3ed4b6101eb30343b311",
+          "size": 1224600,
+          "tags": [
+            "cyr",
+            "text-edit"
+          ],
+          "title": "File:2022 Способ нейтрализации кислых шахтных вод.pdf",
+          "page": "https://commons.wikimedia.org/wiki/File%3A2022_%D0%A1%D0%BF%D0%BE%D1%81%D0%BE%D0%B1_%D0%BD%D0%B5%D0%B9%D1%82%D1%80%D0%B0%D0%BB%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D0%B8_%D0%BA%D0%B8%D1%81%D0%BB%D1%8B%D1%85_%D1%88%D0%B0%D1%85%D1%82%D0%BD%D1%8B%D1%85_%D0%B2%D0%BE%D0%B4.pdf"
+        },
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/6/6d/Zakon_simvol_chuvashiya.pdf",
+          "file": "zakon-chuvashiya-simvoly.pdf",
+          "sha256": "f0bb9deb49d9faf318e1030b64920dd1ca369f8550f470ee1db695d107acec69",
+          "size": 232103,
+          "tags": [
+            "cyr",
+            "text-edit"
+          ],
+          "title": "File:Zakon simvol chuvashiya.pdf",
+          "page": "https://commons.wikimedia.org/wiki/File%3AZakon_simvol_chuvashiya.pdf"
+        },
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/9/92/%D0%91%D0%BB%D0%B0%D0%BD%D0%BA_%D0%BF%D0%BB%D0%B0%D1%82%D0%B5%D0%B6%D0%BD%D0%BE%D0%B3%D0%BE_%D0%BF%D0%BE%D1%80%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D1%8F.pdf",
+          "file": "blank-platezhnogo-porucheniya.pdf",
+          "sha256": "60203c3674cfb1f267f77002fd28013957cd269edc9978d63b229c6abbe089ba",
+          "size": 49054,
+          "tags": [
+            "cyr",
+            "text-edit"
+          ],
+          "title": "File:Бланк платежного поручения.pdf",
+          "page": "https://commons.wikimedia.org/wiki/File%3A%D0%91%D0%BB%D0%B0%D0%BD%D0%BA_%D0%BF%D0%BB%D0%B0%D1%82%D0%B5%D0%B6%D0%BD%D0%BE%D0%B3%D0%BE_%D0%BF%D0%BE%D1%80%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D1%8F.pdf"
+        },
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/8/82/%D0%97%D0%B0%D0%BA%D0%BE%D0%BD_%D0%A1%D1%82%D0%B0%D0%B2%D1%80%D0%BE%D0%BF%D0%BE%D0%BB%D1%8C%D1%81%D0%BA%D0%BE%D0%B3%D0%BE_%D0%BA%D1%80%D0%B0%D1%8F_%D0%BE%D1%82_30.05.2023_%E2%84%96_47-%D0%BA%D0%B7.pdf",
+          "file": "zakon-stavropol-47-kz-2023.pdf",
+          "sha256": "e4fa35bcd9eece2629986c89e25a2083c2180394b2b5562225ae5f964749f4ea",
+          "size": 81113,
+          "tags": [
+            "cyr",
+            "text-edit"
+          ],
+          "title": "File:Закон Ставропольского края от 30.05.2023 № 47-кз.pdf",
+          "page": "https://commons.wikimedia.org/wiki/File%3A%D0%97%D0%B0%D0%BA%D0%BE%D0%BD_%D0%A1%D1%82%D0%B0%D0%B2%D1%80%D0%BE%D0%BF%D0%BE%D0%BB%D1%8C%D1%81%D0%BA%D0%BE%D0%B3%D0%BE_%D0%BA%D1%80%D0%B0%D1%8F_%D0%BE%D1%82_30.05.2023_%E2%84%96_47-%D0%BA%D0%B7.pdf"
+        },
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/5/51/%D0%97%D0%B0%D0%BA%D0%BE%D0%BD_%D0%A1%D1%82%D0%B0%D0%B2%D1%80%D0%BE%D0%BF%D0%BE%D0%BB%D1%8C%D1%81%D0%BA%D0%BE%D0%B3%D0%BE_%D0%BA%D1%80%D0%B0%D1%8F_%D0%BE%D1%82_30.05.2023_%E2%84%96_51-%D0%BA%D0%B7.pdf",
+          "file": "zakon-stavropol-51-kz-2023.pdf",
+          "sha256": "74f0af0b23b7ddb443b2b44e81987d6adcd43d2cde150666f7da5102aed3cb69",
+          "size": 80824,
+          "tags": [
+            "cyr",
+            "text-edit"
+          ],
+          "title": "File:Закон Ставропольского края от 30.05.2023 № 51-кз.pdf",
+          "page": "https://commons.wikimedia.org/wiki/File%3A%D0%97%D0%B0%D0%BA%D0%BE%D0%BD_%D0%A1%D1%82%D0%B0%D0%B2%D1%80%D0%BE%D0%BF%D0%BE%D0%BB%D1%8C%D1%81%D0%BA%D0%BE%D0%B3%D0%BE_%D0%BA%D1%80%D0%B0%D1%8F_%D0%BE%D1%82_30.05.2023_%E2%84%96_51-%D0%BA%D0%B7.pdf"
+        },
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/4/40/%D0%98%D0%B7%D0%BC%D0%B5%D0%BD%D0%B5%D0%BD%D0%B8%D1%8F_%D0%B3%D0%B5%D0%BE%D0%B3%D1%80%D0%B0%D1%84%D0%B8%D1%87%D0%B5%D1%81%D0%BA%D0%B8%D1%85_%D0%BD%D0%B0%D0%B7%D0%B2%D0%B0%D0%BD%D0%B8%D0%B9_%D0%B3%D0%BE%D1%81%D1%83%D0%B4%D0%B0%D1%80%D1%81%D1%82%D0%B2-%D1%83%D1%87%D0%B0%D1%81%D1%82%D0%BD%D0%B8%D0%BA%D0%BE%D0%B2_%D0%A1%D0%9D%D0%93_%28%D0%A0%D0%B5%D1%81%D0%BF%D1%83%D0%B1%D0%BB%D0%B8%D0%BA%D0%B0_%D0%9C%D0%BE%D0%BB%D0%B4%D0%BE%D0%B2%D0%B0_2019%29.pdf",
+          "file": "izmeneniya-geonazvaniy-sng-2019.pdf",
+          "sha256": "bed27da99bd526b3faeaec49013e27d6742b17a04f235cc6095785724a4e3bf1",
+          "size": 192960,
+          "tags": [
+            "cyr",
+            "text-edit",
+            "tagged"
+          ],
+          "title": "File:Изменения географических названий государств-участников СНГ (Республика Молдова 2019).pdf",
+          "page": "https://commons.wikimedia.org/wiki/File%3A%D0%98%D0%B7%D0%BC%D0%B5%D0%BD%D0%B5%D0%BD%D0%B8%D1%8F_%D0%B3%D0%B5%D0%BE%D0%B3%D1%80%D0%B0%D1%84%D0%B8%D1%87%D0%B5%D1%81%D0%BA%D0%B8%D1%85_%D0%BD%D0%B0%D0%B7%D0%B2%D0%B0%D0%BD%D0%B8%D0%B9_%D0%B3%D0%BE%D1%81%D1%83%D0%B4%D0%B0%D1%80%D1%81%D1%82%D0%B2-%D1%83%D1%87%D0%B0%D1%81%D1%82%D0%BD%D0%B8%D0%BA%D0%BE%D0%B2_%D0%A1%D0%9D%D0%93_%28%D0%A0%D0%B5%D1%81%D0%BF%D1%83%D0%B1%D0%BB%D0%B8%D0%BA%D0%B0_%D0%9C%D0%BE%D0%BB%D0%B4%D0%BE%D0%B2%D0%B0_2019%29.pdf"
+        },
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/9/93/%D0%9E_%D1%80%D0%B0%D0%B7%D0%B3%D1%80%D0%B0%D0%BD%D0%B8%D1%87%D0%B5%D0%BD%D0%B8%D0%B8_%D0%BF%D0%BE%D0%BB%D0%BD%D0%BE%D0%BC%D0%BE%D1%87%D0%B8%D0%B9_%D0%B2_%D1%81%D1%84%D0%B5%D1%80%D0%B5_%D1%80%D0%B0%D0%B7%D0%B2%D0%B8%D1%82%D0%B8%D1%8F_%D0%BF%D1%87%D0%B5%D0%BB%D0%BE%D0%B2%D0%BE%D0%B4%D1%81%D1%82%D0%B2%D0%B0_%D0%BC%D0%B5%D0%B6%D0%B4%D1%83_%D0%BE%D1%80%D0%B3%D0%B0%D0%BD%D0%B0%D0%BC%D0%B8_%D0%B3%D0%BE%D1%81%D1%83%D0%B4%D0%B0%D1%80%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9_%D0%B2%D0%BB%D0%B0%D1%81%D1%82%D0%B8_%D0%98%D0%B2%D0%B0%D0%BD%D0%BE%D0%B2%D1%81%D0%BA%D0%BE%D0%B9_%D0%BE%D0%B1%D0%BB%D0%B0%D1%81%D1%82%D0%B8.pdf",
+          "file": "pchelovodstvo-razgranichenie-polnomochiy.pdf",
+          "sha256": "c97175ad365eb0eccc3d21c0c3abaf1af0c4945b4fb06f5cfddf0ae7acbfdd44",
+          "size": 89452,
+          "tags": [
+            "cyr",
+            "text-edit"
+          ],
+          "title": "File:О разграничении полномочий в сфере развития пчеловодства между органами государственной власти Ивановской области.pdf",
+          "page": "https://commons.wikimedia.org/wiki/File%3A%D0%9E_%D1%80%D0%B0%D0%B7%D0%B3%D1%80%D0%B0%D0%BD%D0%B8%D1%87%D0%B5%D0%BD%D0%B8%D0%B8_%D0%BF%D0%BE%D0%BB%D0%BD%D0%BE%D0%BC%D0%BE%D1%87%D0%B8%D0%B9_%D0%B2_%D1%81%D1%84%D0%B5%D1%80%D0%B5_%D1%80%D0%B0%D0%B7%D0%B2%D0%B8%D1%82%D0%B8%D1%8F_%D0%BF%D1%87%D0%B5%D0%BB%D0%BE%D0%B2%D0%BE%D0%B4%D1%81%D1%82%D0%B2%D0%B0_%D0%BC%D0%B5%D0%B6%D0%B4%D1%83_%D0%BE%D1%80%D0%B3%D0%B0%D0%BD%D0%B0%D0%BC%D0%B8_%D0%B3%D0%BE%D1%81%D1%83%D0%B4%D0%B0%D1%80%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9_%D0%B2%D0%BB%D0%B0%D1%81%D1%82%D0%B8_%D0%98%D0%B2%D0%B0%D0%BD%D0%BE%D0%B2%D1%81%D0%BA%D0%BE%D0%B9_%D0%BE%D0%B1%D0%BB%D0%B0%D1%81%D1%82%D0%B8.pdf"
+        },
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/0/04/%D0%9E%D0%B1%D0%B7%D0%BE%D1%80_%D1%81%D1%83%D0%B4%D0%B5%D0%B1%D0%BD%D0%BE%D0%B9_%D0%BF%D1%80%D0%B0%D0%BA%D1%82%D0%B8%D0%BA%D0%B8_%D0%92%D0%B5%D1%80%D1%85%D0%BE%D0%B2%D0%BD%D0%BE%D0%B3%D0%BE_%D0%A1%D1%83%D0%B4%D0%B0_%D0%A0%D0%A4_%E2%84%96_1_%282026%29.pdf",
+          "file": "obzor-praktiki-vs-rf-2026-1.pdf",
+          "sha256": "f18f2c750794ded4321a244a53145ab8e4986f5349324fb82da8513cae6353f3",
+          "size": 1165618,
+          "tags": [
+            "cyr",
+            "text-edit",
+            "tagged"
+          ],
+          "title": "File:Обзор судебной практики Верховного Суда РФ № 1 (2026).pdf",
+          "page": "https://commons.wikimedia.org/wiki/File%3A%D0%9E%D0%B1%D0%B7%D0%BE%D1%80_%D1%81%D1%83%D0%B4%D0%B5%D0%B1%D0%BD%D0%BE%D0%B9_%D0%BF%D1%80%D0%B0%D0%BA%D1%82%D0%B8%D0%BA%D0%B8_%D0%92%D0%B5%D1%80%D1%85%D0%BE%D0%B2%D0%BD%D0%BE%D0%B3%D0%BE_%D0%A1%D1%83%D0%B4%D0%B0_%D0%A0%D0%A4_%E2%84%96_1_%282026%29.pdf"
+        },
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/1/1e/1938._%D0%9F%D1%80%D0%B8%D0%B1%D0%BE%D1%80_%D0%B4%D0%BB%D1%8F_%D0%BE%D0%BF%D1%80%D0%B5%D0%B4%D0%B5%D0%BB%D0%B5%D0%BD%D0%B8%D1%8F_%D1%8D%D0%BB%D0%B5%D0%BC%D0%B5%D0%BD%D1%82%D0%BE%D0%B2_%D1%81%D1%83%D1%82%D0%BE%D0%BA.pdf",
+          "file": "scan-1938-pribor-elementov-sutok.pdf",
+          "sha256": "06386a9bdedbdcde6355b4a24babaca84d54a556e2d5b55d41673f789dadda9c",
+          "size": 184443,
+          "tags": [
+            "scan"
+          ],
+          "title": "File:1938. Прибор для определения элементов суток.pdf",
+          "page": "https://commons.wikimedia.org/wiki/File%3A1938._%D0%9F%D1%80%D0%B8%D0%B1%D0%BE%D1%80_%D0%B4%D0%BB%D1%8F_%D0%BE%D0%BF%D1%80%D0%B5%D0%B4%D0%B5%D0%BB%D0%B5%D0%BD%D0%B8%D1%8F_%D1%8D%D0%BB%D0%B5%D0%BC%D0%B5%D0%BD%D1%82%D0%BE%D0%B2_%D1%81%D1%83%D1%82%D0%BE%D0%BA.pdf"
+        },
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Zakon-bo-116-z-ot-24122018.pdf",
+          "file": "scan-zakon-bo-116-z-2018.pdf",
+          "sha256": "f1960bd3826ff8dc6988ac276f59a9478eb4f47d95b061301640c52cdef19afc",
+          "size": 252927,
+          "tags": [
+            "scan"
+          ],
+          "title": "File:Zakon-bo-116-z-ot-24122018.pdf",
+          "page": "https://commons.wikimedia.org/wiki/File%3AZakon-bo-116-z-ot-24122018.pdf"
+        },
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/1/19/%D0%94%D0%B8%D0%BD%D0%B0%D0%BC%D0%B8%D0%BA%D0%B0_%D0%BD%D0%B0%D0%BF%D1%80%D1%8F%D0%B6%D0%B5%D0%BD%D0%BD%D0%BE%D1%81%D1%82%D0%B8_%D0%BD%D0%B0_%D1%80%D1%8B%D0%BD%D0%BA%D0%B5_%D1%82%D1%80%D1%83%D0%B4%D0%B0_%D0%A1%D0%B2%D0%B5%D1%80%D0%B4%D0%BB%D0%BE%D0%B2%D1%81%D0%BA%D0%BE%D0%B9_%D0%BE%D0%B1%D0%BB%D0%B0%D1%81%D1%82%D0%B8_%D0%BD%D0%BE%D1%8F%D0%B1%D1%80%D1%8C_%D0%B4%D0%B5%D0%BA%D0%B0%D0%B1%D1%80%D1%8C_2020_%D0%B3%D0%BE%D0%B4%D0%B0.pdf",
+          "file": "scan-rynok-truda-sverdlovsk-2020.pdf",
+          "sha256": "129b054a555c8b2116372a3c7985daf48c9871119a563467a3e5e90c2c02eb7b",
+          "size": 110869,
+          "tags": [
+            "scan"
+          ],
+          "title": "File:Динамика напряженности на рынке труда Свердловской области ноябрь декабрь 2020 года.pdf",
+          "page": "https://commons.wikimedia.org/wiki/File%3A%D0%94%D0%B8%D0%BD%D0%B0%D0%BC%D0%B8%D0%BA%D0%B0_%D0%BD%D0%B0%D0%BF%D1%80%D1%8F%D0%B6%D0%B5%D0%BD%D0%BD%D0%BE%D1%81%D1%82%D0%B8_%D0%BD%D0%B0_%D1%80%D1%8B%D0%BD%D0%BA%D0%B5_%D1%82%D1%80%D1%83%D0%B4%D0%B0_%D0%A1%D0%B2%D0%B5%D1%80%D0%B4%D0%BB%D0%BE%D0%B2%D1%81%D0%BA%D0%BE%D0%B9_%D0%BE%D0%B1%D0%BB%D0%B0%D1%81%D1%82%D0%B8_%D0%BD%D0%BE%D1%8F%D0%B1%D1%80%D1%8C_%D0%B4%D0%B5%D0%BA%D0%B0%D0%B1%D1%80%D1%8C_2020_%D0%B3%D0%BE%D0%B4%D0%B0.pdf"
+        },
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/6/6f/%D0%97%D0%B0%D0%BA%D0%BE%D0%BD_%D0%97%D0%B0%D0%B1%D0%B0%D0%B9%D0%BA%D0%B0%D0%BB%D1%8C%D1%81%D0%BA%D0%BE%D0%B3%D0%BE_%D0%BA%D1%80%D0%B0%D1%8F_%D0%BE%D1%82_05.06.2023_%E2%84%96_2220-%D0%97%D0%97%D0%9A.pdf",
+          "file": "scan-zakon-zabaykalye-2220-zzk-2023.pdf",
+          "sha256": "d89e468c27a6fe2b9c7f44551cfe57b98e48a2ed79639331c403f904f97fc18d",
+          "size": 478115,
+          "tags": [
+            "scan"
+          ],
+          "title": "File:Закон Забайкальского края от 05.06.2023 № 2220-ЗЗК.pdf",
+          "page": "https://commons.wikimedia.org/wiki/File%3A%D0%97%D0%B0%D0%BA%D0%BE%D0%BD_%D0%97%D0%B0%D0%B1%D0%B0%D0%B9%D0%BA%D0%B0%D0%BB%D1%8C%D1%81%D0%BA%D0%BE%D0%B3%D0%BE_%D0%BA%D1%80%D0%B0%D1%8F_%D0%BE%D1%82_05.06.2023_%E2%84%96_2220-%D0%97%D0%97%D0%9A.pdf"
+        },
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/8/81/%D0%97%D0%B0%D0%BA%D0%BE%D0%BD_%D0%A0%D0%B5%D1%81%D0%BF%D1%83%D0%B1%D0%BB%D0%B8%D0%BA%D0%B8_%D0%9C%D0%BE%D1%80%D0%B4%D0%BE%D0%B2%D0%B8%D1%8F_%D0%BE%D1%82_27.02.2023_%E2%84%96_9-%D0%97.pdf",
+          "file": "scan-zakon-mordoviya-9-z-2023.pdf",
+          "sha256": "63d0b18dcf453df86b913a30f647ba0420fce549875bac722aa7ee0b9390eac9",
+          "size": 807770,
+          "tags": [
+            "scan"
+          ],
+          "title": "File:Закон Республики Мордовия от 27.02.2023 № 9-З.pdf",
+          "page": "https://commons.wikimedia.org/wiki/File%3A%D0%97%D0%B0%D0%BA%D0%BE%D0%BD_%D0%A0%D0%B5%D1%81%D0%BF%D1%83%D0%B1%D0%BB%D0%B8%D0%BA%D0%B8_%D0%9C%D0%BE%D1%80%D0%B4%D0%BE%D0%B2%D0%B8%D1%8F_%D0%BE%D1%82_27.02.2023_%E2%84%96_9-%D0%97.pdf"
+        },
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/e/ec/%D0%9E%D0%B1_%D1%83%D1%82%D0%B2%D0%B5%D1%80%D0%B6%D0%B4%D0%B5%D0%BD%D0%B8%D0%B8_%D0%BD%D0%BE%D1%80%D0%BC%D0%B0%D1%82%D0%B8%D0%B2%D0%BE%D0%B2_%D0%BE%D0%B1%D0%B5%D1%81%D0%BF%D0%B5%D1%87%D0%B5%D0%BD%D0%B8%D1%8F_%D1%81%D1%80%D0%B5%D0%B4%D1%81%D1%82%D0%B2%D0%B0%D0%BC%D0%B8_%D0%BA%D0%BE%D0%BB%D0%BB%D0%B5%D0%BA%D1%82%D0%B8%D0%B2%D0%BD%D0%BE%D0%B9_%D0%B8_%D0%B8%D0%BD%D0%B4%D0%B8%D0%B2%D0%B8%D0%B4%D1%83%D0%B0%D0%BB%D1%8C%D0%BD%D0%BE%D0%B9_%D0%B7%D0%B0%D1%89%D0%B8%D1%82%D1%8B_%D0%BE%D0%BB%D0%B5%D0%BD%D0%B5%D0%B2%D0%BE%D0%B4%D0%BE%D0%B2.pdf",
+          "file": "scan-normativy-sredstv-zashchity.pdf",
+          "sha256": "3361ef139bfe257a97e7daac164e967ecda7085255cd3bf5955e6fc77b6eb61e",
+          "size": 142815,
+          "tags": [
+            "scan"
+          ],
+          "title": "File:Об утверждении нормативов обеспечения средствами коллективной и индивидуальной защиты оленеводов.pdf",
+          "page": "https://commons.wikimedia.org/wiki/File%3A%D0%9E%D0%B1_%D1%83%D1%82%D0%B2%D0%B5%D1%80%D0%B6%D0%B4%D0%B5%D0%BD%D0%B8%D0%B8_%D0%BD%D0%BE%D1%80%D0%BC%D0%B0%D1%82%D0%B8%D0%B2%D0%BE%D0%B2_%D0%BE%D0%B1%D0%B5%D1%81%D0%BF%D0%B5%D1%87%D0%B5%D0%BD%D0%B8%D1%8F_%D1%81%D1%80%D0%B5%D0%B4%D1%81%D1%82%D0%B2%D0%B0%D0%BC%D0%B8_%D0%BA%D0%BE%D0%BB%D0%BB%D0%B5%D0%BA%D1%82%D0%B8%D0%B2%D0%BD%D0%BE%D0%B9_%D0%B8_%D0%B8%D0%BD%D0%B4%D0%B8%D0%B2%D0%B8%D0%B4%D1%83%D0%B0%D0%BB%D1%8C%D0%BD%D0%BE%D0%B9_%D0%B7%D0%B0%D1%89%D0%B8%D1%82%D1%8B_%D0%BE%D0%BB%D0%B5%D0%BD%D0%B5%D0%B2%D0%BE%D0%B4%D0%BE%D0%B2.pdf"
+        },
+        {
+          "url": "https://upload.wikimedia.org/wikipedia/commons/1/1c/%D0%9F%D0%BE%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5_%D0%98%D0%BD%D1%81%D0%BF%D0%B5%D0%BA%D1%86%D0%B8%D0%B8_%D0%BF%D0%BE_%D0%BE%D1%85%D1%80%D0%B0%D0%BD%D0%B5_%D0%BE%D0%B1%D1%8A%D0%B5%D0%BA%D1%82%D0%BE%D0%B2_%D0%BA%D1%83%D0%BB%D1%8C%D1%82%D1%83%D1%80%D0%BD%D0%BE%D0%B3%D0%BE_%D0%BD%D0%B0%D1%81%D0%BB%D0%B5%D0%B4%D0%B8%D1%8F_%D0%90%D1%80%D1%85%D0%B0%D0%BD%D0%B3%D0%B5%D0%BB%D1%8C%D1%81%D0%BA%D0%BE%D0%B9_%D0%BE%D0%B1%D0%BB%D0%B0%D1%81%D1%82%D0%B8_%D0%BE%D1%82_12.08.2022_%E2%84%96_54-%D0%BF.pdf",
+          "file": "scan-postanovlenie-okn-arkhangelsk.pdf",
+          "sha256": "19be29a7afa29dbebf331b61ce793b58c3671fb627f98172dbf1159c03cfb2fd",
+          "size": 79094,
+          "tags": [
+            "scan"
+          ],
+          "title": "File:Постановление Инспекции по охране объектов культурного наследия Архангельской области от 12.08.2022 № 54-п.pdf",
+          "page": "https://commons.wikimedia.org/wiki/File%3A%D0%9F%D0%BE%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5_%D0%98%D0%BD%D1%81%D0%BF%D0%B5%D0%BA%D1%86%D0%B8%D0%B8_%D0%BF%D0%BE_%D0%BE%D1%85%D1%80%D0%B0%D0%BD%D0%B5_%D0%BE%D0%B1%D1%8A%D0%B5%D0%BA%D1%82%D0%BE%D0%B2_%D0%BA%D1%83%D0%BB%D1%8C%D1%82%D1%83%D1%80%D0%BD%D0%BE%D0%B3%D0%BE_%D0%BD%D0%B0%D1%81%D0%BB%D0%B5%D0%B4%D0%B8%D1%8F_%D0%90%D1%80%D1%85%D0%B0%D0%BD%D0%B3%D0%B5%D0%BB%D1%8C%D1%81%D0%BA%D0%BE%D0%B9_%D0%BE%D0%B1%D0%BB%D0%B0%D1%81%D1%82%D0%B8_%D0%BE%D1%82_12.08.2022_%E2%84%96_54-%D0%BF.pdf"
+        }
+      ],
+      "pace": 8,
+      "license": "public-domain",
+      "license_note": "Wikimedia Commons, шаблон PD-RU-exempt: официальные документы государственных органов не охраняются (ГК РФ ст. 1259 п. 6); только по манифесту",
+      "tags": [],
+      "expect": "open",
+      "note": "upload.wikimedia.org отвечает 429 (Retry-After 600) после ~8 запросов подряд — pace 8 с, загрузчик ждёт Retry-After"
+    },
+    {
+      "id": "pdfium_resources-forms",
+      "from": "pdfium_resources",
+      "license": "BSD-3-Clause",
+      "files": [
+        "testing/resources/344775293.pdf",
+        "testing/resources/annot_javascript.pdf",
+        "testing/resources/annotiter.pdf",
+        "testing/resources/annots.pdf",
+        "testing/resources/bad_annots_entry.pdf",
+        "testing/resources/bug_1302455.pdf",
+        "testing/resources/bug_487928.pdf",
+        "testing/resources/bug_498010830_shared_annots.pdf",
+        "testing/resources/bug_498010830_shared_widget.pdf",
+        "testing/resources/bug_507316.pdf",
+        "testing/resources/bug_551248.pdf",
+        "testing/resources/bug_572871.pdf",
+        "testing/resources/bug_620428.pdf",
+        "testing/resources/bug_634394.pdf",
+        "testing/resources/bug_634716.pdf",
+        "testing/resources/bug_679649.pdf",
+        "testing/resources/bug_707673.pdf",
+        "testing/resources/bug_821454.pdf",
+        "testing/resources/bug_861842.pdf",
+        "testing/resources/bug_889099.pdf",
+        "testing/resources/bug_890322.pdf",
+        "testing/resources/bug_896366.pdf",
+        "testing/resources/calculate.pdf",
+        "testing/resources/click_form.pdf",
+        "testing/resources/combobox_form.pdf",
+        "testing/resources/docmdp.pdf",
+        "testing/resources/document_aactions.pdf",
+        "testing/resources/links_highlights_annots.pdf",
+        "testing/resources/listbox_form.pdf",
+        "testing/resources/multiple_form_types.pdf",
+        "testing/resources/signature_no_sub_filter.pdf",
+        "testing/resources/signature_reason.pdf",
+        "testing/resources/text_form.pdf",
+        "testing/resources/text_form_color.pdf",
+        "testing/resources/text_form_multiline.pdf",
+        "testing/resources/text_form_multiple.pdf",
+        "testing/resources/text_form_negative_fontsize.pdf",
+        "testing/resources/two_signatures.pdf"
+      ],
+      "tags": [
+        "forms"
+      ],
+      "expect": "open",
+      "note": "AcroForm с полями (перепись pikepdf), без XFA и шифрования",
+      "count": 38
+    },
+    {
+      "id": "pdfium_tests-forms",
+      "from": "pdfium_tests",
+      "license": "BSD-3-Clause",
+      "files": [
+        "fx/FRC_8.4_part1/FRC_8.4.1_Annotations_AP_N_R.D_.pdf",
+        "fx/FRC_8.4_part1/FRC_8.4.1_Annotations_AS_Off_.pdf",
+        "fx/FRC_8.4_part1/FRC_8.4.1_Annotations_AS_Yes_.pdf",
+        "fx/FRC_8.5_part1/FRC_8.5_Page_PI_ResetForm_Phantom.pdf",
+        "fx/FRC_8.5_part1/FRC_8.5_Widget_C.pdf",
+        "fx/FRC_8.5_part1/FRC_8.5_Widget_F.pdf",
+        "fx/FRC_8.5_part1/FRC_8.5_Widget_K.pdf",
+        "fx/FRC_8.5_part1/FRC_8.5_Widget_V.pdf",
+        "fx/FRC_8.5_part2/FRC_8.5_Bl_Hide.pdf",
+        "fx/FRC_8.5_part2/FRC_8.5_E&X.pdf",
+        "fx/FRC_8.5_part2/FRC_8.5_E_GoTo_D.pdf",
+        "fx/FRC_8.5_part2/FRC_8.5_Fo_URI_Base.pdf",
+        "fx/FRC_8.5_part2/FRC_8.5_U_GoToR_NewWindow.pdf",
+        "fx/FRC_8.5_part2/FRC_8.5_U_GoToR_NewWindow_2.pdf",
+        "fx/FRC_8.5_part2/FRC_8.5_X_GoToR_D.pdf",
+        "fx/action/action_execute_a_menu_item.pdf",
+        "fx/action/action_go_to_a_page_view_the_original_file_name_go_to_tections_.pdf",
+        "fx/action/action_hide_show_form.pdf",
+        "fx/action/action_reset.pdf",
+        "fx/action/action_run_javascript.pdf",
+        "fx/action/all_trigger_alert.pdf",
+        "fx/action/all_trigger_browsefordoc.pdf",
+        "fx/action/all_trigger_mailmsg.pdf",
+        "fx/action/all_trigger_newdoc.pdf",
+        "fx/action/all_trigger_print.pdf",
+        "fx/action/all_trigger_run_js_lunchurl.pdf",
+        "fx/action/all_trigger_run_js_maildoc.pdf",
+        "fx/form/action.pdf",
+        "fx/form/action_submit_a_form.pdf",
+        "fx/form/bookmark.pdf",
+        "fx/form/calcorderindex_test.pdf",
+        "fx/form/calculate_order.pdf",
+        "fx/form/calculate_validate.pdf",
+        "fx/form/check_box.pdf",
+        "fx/form/check_box_no_color.pdf",
+        "fx/form/combo_box.pdf",
+        "fx/form/combo_box_format.pdf",
+        "fx/form/date.pdf",
+        "fx/form/event.change.pdf",
+        "fx/form/event.changeex.pdf",
+        "fx/form/event.keydown.pdf",
+        "fx/form/event.keydown_1_.pdf",
+        "fx/form/event.shift.pdf",
+        "fx/form/event.type_name.pdf",
+        "fx/form/event.value.pdf",
+        "fx/form/event_fieldfull.pdf",
+        "fx/form/event_fieldfull_1_.pdf",
+        "fx/form/form_same.pdf",
+        "fx/form/format_alert_box.pdf",
+        "fx/form/format_combo_box.pdf",
+        "fx/form/format_custom_format.pdf",
+        "fx/form/format_custom_keystroke.pdf",
+        "fx/form/format_date.pdf",
+        "fx/form/format_number.pdf",
+        "fx/form/format_percentage.pdf",
+        "fx/form/format_special.pdf",
+        "fx/form/format_text_color.pdf",
+        "fx/form/formfield.pdf",
+        "fx/form/getarray.pdf",
+        "fx/form/js_calculate.pdf",
+        "fx/form/js_value_chack_box.pdf",
+        "fx/form/list_box.pdf",
+        "fx/form/negative.pdf",
+        "fx/form/none.pdf",
+        "fx/form/number.pdf",
+        "fx/form/open_a_weblink.pdf",
+        "fx/form/percentage.pdf",
+        "fx/form/push_button.pdf",
+        "fx/form/radio_button.pdf",
+        "fx/form/run_custom_validate_script.pdf",
+        "fx/form/signature.pdf",
+        "fx/form/signature_4.pdf",
+        "fx/form/simplified_field_notation.pdf",
+        "fx/form/special.pdf",
+        "fx/form/text_field.pdf",
+        "fx/form/text_field_font_input_decimal_point.pdf",
+        "fx/form/text_field_multiline_line_spacing.pdf",
+        "fx/form/time.pdf",
+        "fx/form/validate_alert_box.pdf",
+        "fx/image/bi.pdf",
+        "fx/js/action_on_focus.pdf",
+        "fx/js/app_launchurl.pdf",
+        "fx/js/calculate_average.pdf",
+        "fx/js/calculate_sum_a_b_c.pdf",
+        "fx/js/event_change.pdf",
+        "fx/js/javascriptaction.pdf",
+        "fx/js/submit_form.pdf",
+        "fx/js/test_app_beep.pdf",
+        "fx/js/test_control.pdf",
+        "fx/js/widget_javascript.pdf",
+        "fx/layer/show_1.pdf",
+        "fx/mulobj/2/2_10_signature.pdf",
+        "fx/mulobj/new/signature/new_certify1.pdf",
+        "fx/mulobj/new/signature/new_certify2.pdf",
+        "fx/mulobj/new/signature/new_signature1.pdf",
+        "fx/mulobj/new/signature/new_signature2.pdf",
+        "fx/new/form/form_action_trigger.pdf",
+        "fx/new/form/form_button0.pdf",
+        "fx/new/form/form_button1.pdf",
+        "fx/new/form/form_button10.pdf",
+        "fx/new/form/form_button2.pdf",
+        "fx/new/form/form_button3.pdf",
+        "fx/new/form/form_button4.pdf",
+        "fx/new/form/form_button5.pdf",
+        "fx/new/form/form_button7.pdf",
+        "fx/new/form/form_button8.pdf",
+        "fx/new/form/form_button9.pdf",
+        "fx/new/form/form_button_sign_url.pdf",
+        "fx/new/form/form_checkbox.pdf",
+        "fx/new/form/form_checkbox1.pdf",
+        "fx/new/form/form_checkbox2.pdf",
+        "fx/new/form/form_checkbox3.pdf",
+        "fx/new/form/form_combo_sign_url.pdf",
+        "fx/new/form/form_combobox0.pdf",
+        "fx/new/form/form_combobox_actioin_goto.pdf",
+        "fx/new/form/form_combobox_date.pdf",
+        "fx/new/form/form_combobox_date1.pdf",
+        "fx/new/form/form_combobox_date2.pdf",
+        "fx/new/form/form_combobox_importform.pdf",
+        "fx/new/form/form_combobox_num.pdf",
+        "fx/new/form/form_combobox_per.pdf",
+        "fx/new/form/form_combobox_plus.pdf",
+        "fx/new/form/form_combobox_product.pdf",
+        "fx/new/form/form_combobox_resetform.pdf",
+        "fx/new/form/form_combobox_time.pdf",
+        "fx/new/form/form_list.pdf",
+        "fx/new/form/form_list1.pdf",
+        "fx/new/form/form_radio.pdf",
+        "fx/new/form/form_sign_url.pdf",
+        "fx/new/form/form_signature.pdf",
+        "fx/new/form/form_text_sign_url.pdf",
+        "pdfium/bug_440132.pdf",
+        "third_party/tcpdf/example_014.pdf",
+        "third_party/tcpdf/example_052.pdf",
+        "third_party/tcpdf/example_054.pdf"
+      ],
+      "tags": [
+        "forms"
+      ],
+      "expect": "open",
+      "note": "AcroForm с полями (перепись pikepdf), без XFA и шифрования",
+      "count": 135
+    },
+    {
+      "id": "pdfium_tests-forms-edge",
+      "from": "pdfium_tests",
+      "license": "BSD-3-Clause",
+      "files": [
+        "fx/new/form/fillform.pdf"
+      ],
+      "tags": [
+        "forms"
+      ],
+      "expect": "open",
+      "edge": true,
+      "note": "валидный файл (qpdf --check чист, pdfium рисует), но mutool 1.28.5 падает на загрузке страницы: «argument error: key is not a name (dictionary)» — граничный случай движка",
+      "count": 1
+    },
+    {
+      "id": "pdfjs-forms",
+      "from": "pdfjs",
+      "license": "unspecified",
+      "files": [
+        "test/pdfs/160F-2019.pdf",
+        "test/pdfs/PDFBOX-3148-2-fuzzed.pdf",
+        "test/pdfs/acroform_calculation_order.pdf",
+        "test/pdfs/annotation-tx.pdf",
+        "test/pdfs/annotation-tx2.pdf",
+        "test/pdfs/annotation-tx3.pdf",
+        "test/pdfs/annotation_hidden_noview.pdf",
+        "test/pdfs/autoprint_will_print.pdf",
+        "test/pdfs/bug1669097.pdf",
+        "test/pdfs/bug1669099.pdf",
+        "test/pdfs/bug1675139.pdf",
+        "test/pdfs/bug1724918.pdf",
+        "test/pdfs/bug1770750.pdf",
+        "test/pdfs/bug1782564.pdf",
+        "test/pdfs/bug1796741.pdf",
+        "test/pdfs/bug1802506.pdf",
+        "test/pdfs/bug1802888.pdf",
+        "test/pdfs/bug1811510.pdf",
+        "test/pdfs/bug1811694.pdf",
+        "test/pdfs/bug1825002.pdf",
+        "test/pdfs/bug1844576.pdf",
+        "test/pdfs/bug1844583.pdf",
+        "test/pdfs/bug1863910.pdf",
+        "test/pdfs/bug1883609.pdf",
+        "test/pdfs/bug1889122.pdf",
+        "test/pdfs/bug1918115.pdf",
+        "test/pdfs/bug1922766.pdf",
+        "test/pdfs/bug1934157.pdf",
+        "test/pdfs/bug1947248_forms.pdf",
+        "test/pdfs/bug1963407.pdf",
+        "test/pdfs/bug2026037.pdf",
+        "test/pdfs/bug2035197_1.pdf",
+        "test/pdfs/bug2035197_2.pdf",
+        "test/pdfs/bug2055455.pdf",
+        "test/pdfs/bug2065923.pdf",
+        "test/pdfs/bug854315.pdf",
+        "test/pdfs/checkbox-bad-appearance.pdf",
+        "test/pdfs/checkbox_no_appearance.pdf",
+        "test/pdfs/dates.pdf",
+        "test/pdfs/dates_save.pdf",
+        "test/pdfs/doc_actions.pdf",
+        "test/pdfs/evaljs.pdf",
+        "test/pdfs/fields_order.pdf",
+        "test/pdfs/file_pdfjs_form.pdf",
+        "test/pdfs/form_two_pages.pdf",
+        "test/pdfs/issue12504.pdf",
+        "test/pdfs/issue12706.pdf",
+        "test/pdfs/issue12750.pdf",
+        "test/pdfs/issue13003.pdf",
+        "test/pdfs/issue13269.pdf",
+        "test/pdfs/issue13271.pdf",
+        "test/pdfs/issue14023.pdf",
+        "test/pdfs/issue14307.pdf",
+        "test/pdfs/issue14502.pdf",
+        "test/pdfs/issue14705.pdf",
+        "test/pdfs/issue14862.pdf",
+        "test/pdfs/issue15053.pdf",
+        "test/pdfs/issue15092.pdf",
+        "test/pdfs/issue15096.pdf",
+        "test/pdfs/issue15262.pdf",
+        "test/pdfs/issue15557.pdf",
+        "test/pdfs/issue15753.pdf",
+        "test/pdfs/issue15815.pdf",
+        "test/pdfs/issue15818.pdf",
+        "test/pdfs/issue16067.pdf",
+        "test/pdfs/issue16473.pdf",
+        "test/pdfs/issue16500.pdf",
+        "test/pdfs/issue16553.pdf",
+        "test/pdfs/issue17064_readonly.pdf",
+        "test/pdfs/issue17492.pdf",
+        "test/pdfs/issue17540.pdf",
+        "test/pdfs/issue17998.pdf",
+        "test/pdfs/issue18036.pdf",
+        "test/pdfs/issue18072.pdf",
+        "test/pdfs/issue18305.pdf",
+        "test/pdfs/issue18536.pdf",
+        "test/pdfs/issue18561.pdf",
+        "test/pdfs/issue19083.pdf",
+        "test/pdfs/issue19389.pdf",
+        "test/pdfs/issue19505.pdf",
+        "test/pdfs/issue21068.pdf",
+        "test/pdfs/issue6127.pdf",
+        "test/pdfs/js-authors.pdf",
+        "test/pdfs/js-buttons.pdf",
+        "test/pdfs/js-colors.pdf",
+        "test/pdfs/listbox_actions.pdf",
+        "test/pdfs/multiline.pdf",
+        "test/pdfs/opt_demo.pdf",
+        "test/pdfs/pr12828.pdf",
+        "test/pdfs/prefilled_f1040.pdf",
+        "test/pdfs/resetform.pdf",
+        "test/pdfs/resetform_parent.pdf",
+        "test/pdfs/signed_verified.pdf",
+        "test/pdfs/text_field_own_canvas_calc.pdf",
+        "test/pdfs/textfields.pdf",
+        "test/pdfs/widget_hidden_print.pdf"
+      ],
+      "tags": [
+        "forms"
+      ],
+      "expect": "open",
+      "note": "AcroForm с полями (перепись pikepdf), без XFA и шифрования",
+      "count": 96
+    },
+    {
+      "id": "pdfium_resources-xfa",
+      "from": "pdfium_resources",
+      "license": "BSD-3-Clause",
+      "files": [
+        "testing/resources/bug_1055869.pdf",
+        "testing/resources/bug_1058653.pdf",
+        "testing/resources/bug_1265.pdf",
+        "testing/resources/bug_1301.pdf",
+        "testing/resources/bug_1333298.pdf",
+        "testing/resources/bug_306123.pdf",
+        "testing/resources/bug_504416752.pdf",
+        "testing/resources/bug_765384.pdf",
+        "testing/resources/bug_773229.pdf",
+        "testing/resources/bug_972518.pdf",
+        "testing/resources/rectangles_multi_page_xfa.pdf",
+        "testing/resources/simple_xfa.pdf"
+      ],
+      "tags": [
+        "xfa"
+      ],
+      "expect": "open",
+      "note": "/AcroForm /XFA (pdfium_tests: xfa_specific/)",
+      "count": 12
+    },
+    {
+      "id": "pdfium_tests-xfa",
+      "from": "pdfium_tests",
+      "license": "BSD-3-Clause",
+      "files": [
+        "xfa_specific/fx/test_case_0001/Choose.pdf",
+        "xfa_specific/fx/test_case_0002/data_binding.pdf",
+        "xfa_specific/fx/test_case_0003/Date_FormCale.pdf",
+        "xfa_specific/fx/test_case_0004/Line_Stroke.pdf",
+        "xfa_specific/fx/test_case_0005/MouseEvents_enter.pdf",
+        "xfa_specific/fx/test_case_0005/MouseEvents_exit.pdf",
+        "xfa_specific/fx/test_case_0006/Oneof1.pdf",
+        "xfa_specific/fx/test_case_0006/Oneof2.pdf",
+        "xfa_specific/fx/test_case_0006/Oneof3.pdf",
+        "xfa_specific/fx/test_case_0007/PagePosition_any_rest.pdf",
+        "xfa_specific/fx/test_case_0008/PagePosition_first.pdf",
+        "xfa_specific/fx/test_case_0009/PagePosition_last.pdf",
+        "xfa_specific/fx/test_case_0010/PagePosition_no_any.pdf",
+        "xfa_specific/fx/test_case_0011/PagePosition_rest.pdf",
+        "xfa_specific/fx/test_case_0012/PagePosition_rest_any.pdf",
+        "xfa_specific/fx/test_case_0013/rotate.pdf",
+        "xfa_specific/fx/test_case_0014/Sum.pdf",
+        "xfa_specific/fx/test_case_0015/TimeField.pdf",
+        "xfa_specific/fx/test_case_0016/Test_CheckBox.pdf",
+        "xfa_specific/fx/test_case_0017/Test_DateField_locale_en_CA.pdf",
+        "xfa_specific/fx/test_case_0018/Test_DateField_locale_en_GB.pdf",
+        "xfa_specific/fx/test_case_0019/Test_DateField_locale_en_US.pdf",
+        "xfa_specific/fx/test_case_0020/Test_DateField_locale_fr_CA.pdf",
+        "xfa_specific/fx/test_case_0021/Test_DateField_locale_fr_FR.pdf",
+        "xfa_specific/fx/test_case_0022/Test_DateField_locale_nl_NL.pdf",
+        "xfa_specific/fx/test_case_0023/Test_DateField_locale_zh_CN.pdf",
+        "xfa_specific/fx/test_case_0024/Test_DateField_locale_zh_HK.pdf",
+        "xfa_specific/fx/test_case_0025/Test_Drop_downList.pdf",
+        "xfa_specific/fx/test_case_0026/Test_NumericField.pdf",
+        "xfa_specific/fx/test_case_0027/Test_PasswordField.pdf",
+        "xfa_specific/fx/test_case_0028/Test_RadioButton.pdf",
+        "xfa_specific/fx/test_case_0029/Test_ResetButton.pdf",
+        "xfa_specific/fx/test_case_0030/Test_TextField.pdf",
+        "xfa_specific/pdfium/barcode_test.pdf",
+        "xfa_specific/pdfium/bug_434.pdf"
+      ],
+      "tags": [
+        "xfa"
+      ],
+      "expect": "open",
+      "note": "/AcroForm /XFA (pdfium_tests: xfa_specific/)",
+      "count": 35
+    },
+    {
+      "id": "pdfjs-xfa",
+      "from": "pdfjs",
+      "license": "unspecified",
+      "files": [
+        "test/pdfs/annotation-button-widget.pdf",
+        "test/pdfs/annotation-choice-widget.pdf",
+        "test/pdfs/annotation-text-widget.pdf",
+        "test/pdfs/issue14130.pdf",
+        "test/pdfs/xfa_filled_imm1344e.pdf",
+        "test/pdfs/xfa_issue14315.pdf"
+      ],
+      "tags": [
+        "xfa"
+      ],
+      "expect": "open",
+      "note": "/AcroForm /XFA (pdfium_tests: xfa_specific/)",
+      "count": 6
+    },
+    {
+      "id": "pdfium_resources-annots",
+      "from": "pdfium_resources",
+      "license": "BSD-3-Clause",
+      "files": [
+        "testing/resources/annotation_fileattachment.pdf",
+        "testing/resources/annotation_highlight_long_content.pdf",
+        "testing/resources/annotation_highlight_rollover_ap.pdf",
+        "testing/resources/annotation_highlight_square_with_ap.pdf",
+        "testing/resources/annotation_ink_multiple.pdf",
+        "testing/resources/annotation_markup_multiline_no_ap.pdf",
+        "testing/resources/annotation_stamp_with_ap.pdf",
+        "testing/resources/annots.pdf",
+        "testing/resources/bad_annots_entry.pdf",
+        "testing/resources/bug_1206.pdf",
+        "testing/resources/bug_1658.pdf",
+        "testing/resources/bug_664284.pdf",
+        "testing/resources/freetext_annotation_without_da.pdf",
+        "testing/resources/ink_annot.pdf",
+        "testing/resources/line_annot.pdf",
+        "testing/resources/linearized.pdf",
+        "testing/resources/linearized_bug_1055.pdf",
+        "testing/resources/links_highlights_annots.pdf",
+        "testing/resources/polygon_annot.pdf",
+        "testing/resources/redact_annot.pdf",
+        "testing/resources/shared_form_xobject_matrix.pdf"
+      ],
+      "tags": [
+        "annots"
+      ],
+      "expect": "open",
+      "note": "аннотации кроме Link/Widget/Popup на первых 50 страницах",
+      "count": 21
+    },
+    {
+      "id": "pdfium_tests-annots",
+      "from": "pdfium_tests",
+      "license": "BSD-3-Clause",
+      "files": [
+        "fx/FRC_8.2.2_part1/FRC_1_8.2.2__Title_edit.pdf",
+        "fx/FRC_8.2.2_part1/FRC_3_8.2.2__Title_remove_all.pdf",
+        "fx/FRC_8.4_part1/FRC_8.4.1_Annotations_AP_N_.pdf",
+        "fx/FRC_8.4_part1/FRC_8.4.1_Annotations_AP_N_R_.pdf",
+        "fx/FRC_8.4_part1/FRC_8.4.1_Annotations_Border.pdf",
+        "fx/FRC_8.4_part1/FRC_8.4.1_Annotations_C.pdf",
+        "fx/FRC_8.4_part1/FRC_8.4.1_Annotations_M.pdf",
+        "fx/FRC_8.4_part1/FRC_8.4.1_Annotations_NM.pdf",
+        "fx/FRC_8.4_part1/FRC_8.4.1_Annotations_P.pdf",
+        "fx/FRC_8.4_part1/FRC_8.4.1_Annotations_Rect.pdf",
+        "fx/FRC_8.4_part1/FRC_8.4.1_Annotations_Type.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.1_Annotations_M_text_string_.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.2_Annotation_Flags_F_Hidden.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.2_Annotation_Flags_F_Invisible.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.2_Annotation_Flags_F_Locked.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.2_Annotation_Flags_F_LockedContents.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.2_Annotation_Flags_F_NoRotate.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.2_Annotation_Flags_F_NoView.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.2_Annotation_Flags_F_NoZoom.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.2_Annotation_Flags_F_Print.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.2_Annotation_Flags_F_ReadOnly.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.2_Annotation_Flags_F_ToggleNoView.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.3_Border_Stypes_D_different_values.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.3_Border_Stypes_D_remove.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.3_Border_Stypes_I_different_values.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.3_Border_Stypes_I_remove.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.3_Border_Stypes_S_different_values_BE_.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.3_Border_Stypes_S_different_values_BS_.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.3_Border_Stypes_S_not_exist_BS_.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.3_Border_Stypes_S_remove_BE_.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.3_Border_Stypes_S_remove_BS_.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.3_Border_Stypes_Type_add.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.3_Border_Stypes_Type_not_exist_default_.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.3_Border_Stypes_W_different_values.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.3_Border_Stypes_W_remove.pdf",
+        "fx/FRC_8.5_part1/FRC_8.5_Screen_Fo_JavaScript.pdf",
+        "fx/FRC_8.5_part1/FRC_8.5_Screen_Img_D_Launch.pdf",
+        "fx/FRC_8.5_part1/FRC_8.5_Screen_Rendition.pdf",
+        "fx/FRC_8.5_part2/FRC_8.5_O&PO_GoToE.pdf",
+        "fx/FRC_8.5_part2/FRC_8.5_PC&C_GoToE_T_T.pdf",
+        "fx/FRC_8.5_part2/FRC_8.5_PC_GoToE_T_R&P&A.pdf",
+        "fx/FRC_8.5_part2/FRC_8.5_PO_GoToE_T_R&N.pdf",
+        "fx/FRC_8.5_part2/FRC_8.5_URI_IsMap.pdf",
+        "fx/action/all_trigger_browsefordoc.pdf",
+        "fx/action/all_trigger_print.pdf",
+        "fx/font/font_1_embedded_font_en_feature.pdf",
+        "fx/form/action.pdf",
+        "fx/form/calcorderindex_test.pdf",
+        "fx/form/combo_box.pdf",
+        "fx/form/combo_box_format.pdf",
+        "fx/form/form_same.pdf",
+        "fx/form/format_text_color.pdf",
+        "fx/form/formfield.pdf",
+        "fx/form/list_box.pdf",
+        "fx/form/push_button.pdf",
+        "fx/form/text_field.pdf",
+        "fx/js/action_on_focus.pdf",
+        "fx/js/app_launchurl.pdf",
+        "fx/js/submit_form.pdf",
+        "fx/js/widget_javascript.pdf",
+        "fx/layer/ocg.pdf",
+        "fx/mulobj/1/1_1_textbox.pdf",
+        "fx/mulobj/1/1_2_typewriter.pdf",
+        "fx/mulobj/1/1_3_callout.pdf",
+        "fx/mulobj/2/2_0_distance.pdf",
+        "fx/mulobj/2/2_11_stamp3.pdf",
+        "fx/mulobj/2/2_2_area.pdf",
+        "fx/mulobj/2/2_3_pencil.pdf",
+        "fx/mulobj/2/2_6_textbox.pdf",
+        "fx/mulobj/2/2_7_note.pdf",
+        "fx/mulobj/2/2_8_stamp1.pdf",
+        "fx/mulobj/2/2_9_stamp2.pdf",
+        "fx/mulobj/3/3_0_cloud.pdf",
+        "fx/mulobj/3/3_4_textbox.pdf",
+        "fx/mulobj/3/3_5_note.pdf",
+        "fx/mulobj/new/comments/new_arrow.pdf",
+        "fx/mulobj/new/comments/new_attachment.pdf",
+        "fx/mulobj/new/comments/new_distance.pdf",
+        "fx/mulobj/new/comments/new_line.pdf",
+        "fx/mulobj/new/comments/new_oval.pdf",
+        "fx/mulobj/new/comments/new_perimeter.pdf",
+        "fx/mulobj/new/comments/new_polygon.pdf",
+        "fx/mulobj/new/comments/new_polyline.pdf",
+        "fx/mulobj/new/comments/new_rectangle.pdf",
+        "fx/mulobj/new/image_video/image_bmp.pdf",
+        "fx/mulobj/new/image_video/image_gif.pdf",
+        "fx/mulobj/new/image_video/image_ico.pdf",
+        "fx/mulobj/new/image_video/image_jpg.pdf",
+        "fx/mulobj/new/image_video/image_png.pdf",
+        "fx/mulobj/new/image_video/image_tif.pdf",
+        "fx/mulobj/new/image_video/video_mpg.pdf",
+        "fx/mulobj/new/image_video/video_swf.pdf",
+        "fx/mulobj/new/image_video/video_wmv.pdf",
+        "fx/mulobj/new/stamp/new_stamp1.pdf",
+        "fx/mulobj/new/stamp/new_stamp2.pdf",
+        "fx/mulobj/new/stamp/new_stamp3.pdf",
+        "fx/mulobj/new/stamp/new_stamp4.pdf",
+        "fx/mulobj/new/stamp/new_stamp5.pdf",
+        "fx/mulobj/new/stamp/new_stamp6.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup1.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup1_hidden.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup2.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup2_hidden.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup4.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup4_hidden.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup5.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup5_hidden.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup6.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup7.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup7_hidden.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup8.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup8_hidden.pdf",
+        "fx/new/form/form_combobox_plus.pdf",
+        "fx/new/form/form_combobox_product.pdf",
+        "fx/path/lines.pdf",
+        "fx/text/en_diy.pdf",
+        "pdfium/annots/annotation_circle.pdf",
+        "pdfium/annots/annotation_circle_dash.pdf",
+        "pdfium/annots/annotation_circle_fill_opacity.pdf",
+        "pdfium/annots/annotation_circle_hidden.pdf",
+        "pdfium/annots/annotation_ellipse.pdf",
+        "pdfium/annots/annotation_ellipse_fill.pdf",
+        "pdfium/annots/annotation_ellipse_fill_dash.pdf",
+        "pdfium/annots/annotation_ellipse_hidden.pdf",
+        "pdfium/annots/annotation_freetext.pdf",
+        "pdfium/annots/annotation_highlight.pdf",
+        "pdfium/annots/annotation_highlight_author_content.pdf",
+        "pdfium/annots/annotation_highlight_empty_content.pdf",
+        "pdfium/annots/annotation_highlight_hidden.pdf",
+        "pdfium/annots/annotation_highlight_long_content.pdf",
+        "pdfium/annots/annotation_highlight_no_author.pdf",
+        "pdfium/annots/annotation_highlight_no_author_no_content.pdf",
+        "pdfium/annots/annotation_highlight_no_content.pdf",
+        "pdfium/annots/annotation_highlight_opacity.pdf",
+        "pdfium/annots/annotation_ink.pdf",
+        "pdfium/annots/annotation_ink_dash.pdf",
+        "pdfium/annots/annotation_ink_dot.pdf",
+        "pdfium/annots/annotation_ink_hidden.pdf",
+        "pdfium/annots/annotation_ink_multiple.pdf",
+        "pdfium/annots/annotation_polygon.pdf",
+        "pdfium/annots/annotation_square.pdf",
+        "pdfium/annots/annotation_square_dash.pdf",
+        "pdfium/annots/annotation_square_fill_negative_border.pdf",
+        "pdfium/annots/annotation_square_fill_opacity.pdf",
+        "pdfium/annots/annotation_square_fill_opacity_dash.pdf",
+        "pdfium/annots/annotation_square_hidden.pdf",
+        "pdfium/annots/annotation_squiggly.pdf",
+        "pdfium/annots/annotation_squiggly_hidden.pdf",
+        "pdfium/annots/annotation_squiggly_opacity.pdf",
+        "pdfium/annots/annotation_stamp.pdf",
+        "pdfium/annots/annotation_strikeout.pdf",
+        "pdfium/annots/annotation_strikeout_hidden.pdf",
+        "pdfium/annots/annotation_strikeout_opacity.pdf",
+        "pdfium/annots/annotation_text.pdf",
+        "pdfium/annots/annotation_underline.pdf",
+        "pdfium/annots/annotation_underline_hidden.pdf",
+        "pdfium/annots/annotation_underline_opacity.pdf",
+        "third_party/tcpdf/example_015.pdf",
+        "third_party/tcpdf/example_036.pdf",
+        "third_party/tcpdf/example_041.pdf"
+      ],
+      "tags": [
+        "annots"
+      ],
+      "expect": "open",
+      "note": "аннотации кроме Link/Widget/Popup на первых 50 страницах",
+      "count": 160
+    },
+    {
+      "id": "pdfjs-annots",
+      "from": "pdfjs",
+      "license": "unspecified",
+      "files": [
+        "test/pdfs/ZapfDingbats.pdf",
+        "test/pdfs/annotation-caret-ink.pdf",
+        "test/pdfs/annotation-fileattachment.pdf",
+        "test/pdfs/annotation-freetext.pdf",
+        "test/pdfs/annotation-highlight-without-appearance.pdf",
+        "test/pdfs/annotation-highlight.pdf",
+        "test/pdfs/annotation-ink-without-appearance.pdf",
+        "test/pdfs/annotation-line-without-appearance-empty-Rect.pdf",
+        "test/pdfs/annotation-line-without-appearance.pdf",
+        "test/pdfs/annotation-line.pdf",
+        "test/pdfs/annotation-link-text-popup.pdf",
+        "test/pdfs/annotation-polyline-polygon-without-appearance.pdf",
+        "test/pdfs/annotation-polyline-polygon.pdf",
+        "test/pdfs/annotation-square-circle-without-appearance.pdf",
+        "test/pdfs/annotation-square-circle.pdf",
+        "test/pdfs/annotation-squiggly-without-appearance.pdf",
+        "test/pdfs/annotation-squiggly.pdf",
+        "test/pdfs/annotation-stamp.pdf",
+        "test/pdfs/annotation-strikeout-without-appearance.pdf",
+        "test/pdfs/annotation-strikeout.pdf",
+        "test/pdfs/annotation-text-without-popup.pdf",
+        "test/pdfs/annotation-underline-without-appearance.pdf",
+        "test/pdfs/annotation-underline.pdf",
+        "test/pdfs/annotation_hidden_print.pdf",
+        "test/pdfs/bug1365930.pdf",
+        "test/pdfs/bug1538111.pdf",
+        "test/pdfs/bug1811510.pdf",
+        "test/pdfs/bug1851498.pdf",
+        "test/pdfs/bug1865341.pdf",
+        "test/pdfs/bug1871353.1.pdf",
+        "test/pdfs/bug1871353.pdf",
+        "test/pdfs/bug1883609.pdf",
+        "test/pdfs/bug1885505.pdf",
+        "test/pdfs/bug1992868.pdf",
+        "test/pdfs/bug2082236.pdf",
+        "test/pdfs/comments.pdf",
+        "test/pdfs/file_pdfjs_test.pdf",
+        "test/pdfs/firefox_logo.pdf",
+        "test/pdfs/firefox_stamp.pdf",
+        "test/pdfs/freetext_no_appearance.pdf",
+        "test/pdfs/freetexts.pdf",
+        "test/pdfs/highlight.pdf",
+        "test/pdfs/highlight_popup.pdf",
+        "test/pdfs/highlights.pdf",
+        "test/pdfs/inks.pdf",
+        "test/pdfs/inks_basic.pdf",
+        "test/pdfs/issue11362.pdf",
+        "test/pdfs/issue12337.pdf",
+        "test/pdfs/issue12504.pdf",
+        "test/pdfs/issue13003.pdf",
+        "test/pdfs/issue13242.pdf",
+        "test/pdfs/issue13447.pdf",
+        "test/pdfs/issue14046.pdf",
+        "test/pdfs/issue14438.pdf",
+        "test/pdfs/issue14565.pdf",
+        "test/pdfs/issue15012.pdf",
+        "test/pdfs/issue16021.pdf",
+        "test/pdfs/issue16633.pdf",
+        "test/pdfs/issue17492.pdf",
+        "test/pdfs/issue17904.pdf",
+        "test/pdfs/issue18911.pdf",
+        "test/pdfs/issue19239.pdf",
+        "test/pdfs/issue19424.pdf",
+        "test/pdfs/issue20062.pdf",
+        "test/pdfs/issue20504.pdf",
+        "test/pdfs/issue20504_skia.pdf",
+        "test/pdfs/issue21126.pdf",
+        "test/pdfs/issue22124.pdf",
+        "test/pdfs/issue3885.pdf",
+        "test/pdfs/issue5946.pdf",
+        "test/pdfs/issue7014.pdf",
+        "test/pdfs/issue7446.pdf",
+        "test/pdfs/issue7821.pdf",
+        "test/pdfs/multimedia_annotations.pdf",
+        "test/pdfs/pr12564.pdf",
+        "test/pdfs/pr20043.pdf",
+        "test/pdfs/pr7352.pdf",
+        "test/pdfs/quadpoints.pdf",
+        "test/pdfs/rc_annotation.pdf",
+        "test/pdfs/red_stamp.pdf",
+        "test/pdfs/rotated_freetexts.pdf",
+        "test/pdfs/rotated_ink.pdf",
+        "test/pdfs/stamps.pdf",
+        "test/pdfs/tagged_stamp.pdf",
+        "test/pdfs/tracemonkey_a11y.pdf",
+        "test/pdfs/tracemonkey_annotation_on_page_8.pdf",
+        "test/pdfs/tracemonkey_freetext.pdf",
+        "test/pdfs/tracemonkey_with_annotations.pdf",
+        "test/pdfs/tracemonkey_with_editable_annotations.pdf"
+      ],
+      "tags": [
+        "annots"
+      ],
+      "expect": "open",
+      "note": "аннотации кроме Link/Widget/Popup на первых 50 страницах",
+      "count": 89
+    },
+    {
+      "id": "pdfium_resources-text",
+      "from": "pdfium_resources",
+      "license": "BSD-3-Clause",
+      "files": [
+        "testing/resources/annotation_stamp_with_ap.pdf",
+        "testing/resources/annots.pdf",
+        "testing/resources/bug_1029.pdf",
+        "testing/resources/bug_650.pdf",
+        "testing/resources/bug_707673.pdf",
+        "testing/resources/bug_921.pdf",
+        "testing/resources/latin_extended.pdf",
+        "testing/resources/weblinks.pdf",
+        "testing/resources/weblinks_across_lines.pdf"
+      ],
+      "tags": [
+        "text-edit"
+      ],
+      "expect": "open",
+      "note": "≥ 200 символов текста на стр. 1, шрифты, без шифрования и XFA",
+      "count": 9
+    },
+    {
+      "id": "pdfium_tests-text",
+      "from": "pdfium_tests",
+      "license": "BSD-3-Clause",
+      "files": [
+        "fx/FRC_8.2.2_part1/FRC_10_8.2.2_Prev_remove_all.pdf",
+        "fx/FRC_8.2.2_part1/FRC_10_8.2.2__T8.3_original_file.pdf",
+        "fx/FRC_8.2.2_part1/FRC_11_8.2.2_Prev_remove_obj.pdf",
+        "fx/FRC_8.2.2_part1/FRC_11_8.2.2__T8.3_first_last_exchange.pdf",
+        "fx/FRC_8.2.2_part1/FRC_12_8.2.2__Next_remove_value.pdf",
+        "fx/FRC_8.2.2_part1/FRC_12_8.2.2__T8.3_first_outline_obj_ID.pdf",
+        "fx/FRC_8.2.2_part1/FRC_13_8.2.2__Next_remove_all.pdf",
+        "fx/FRC_8.2.2_part1/FRC_13_8.2.2__T8.3_Count_edit300.pdf",
+        "fx/FRC_8.2.2_part1/FRC_14_8.2.2__Next_remove_obj.pdf",
+        "fx/FRC_8.2.2_part1/FRC_14_8.2.2__T8.3_Count_edit0.pdf",
+        "fx/FRC_8.2.2_part1/FRC_15_8.2.2__Next_exchange.pdf",
+        "fx/FRC_8.2.2_part1/FRC_15_8.2.2__T8.3_Count_edit1.pdf",
+        "fx/FRC_8.2.2_part1/FRC_16_8.2.2__Next_add.pdf",
+        "fx/FRC_8.2.2_part1/FRC_16_8.2.2__T8.3_Count_edit_1.pdf",
+        "fx/FRC_8.2.2_part1/FRC_17_8.2.2__T8.4_First_remove_value.pdf",
+        "fx/FRC_8.2.2_part1/FRC_18_8.2.2__T8.4_First_remove_all.pdf",
+        "fx/FRC_8.2.2_part1/FRC_19_8.2.2__T8.4_First_remove_obj.pdf",
+        "fx/FRC_8.2.2_part1/FRC_1_8.2.2__T8.3_First_empty.pdf",
+        "fx/FRC_8.2.2_part1/FRC_1_8.2.2__Title_edit.pdf",
+        "fx/FRC_8.2.2_part1/FRC_20_8.2.2__T8.4_First_remove_value2.pdf",
+        "fx/FRC_8.2.2_part1/FRC_21_8.2.2__T8.4_First_remove_all2.pdf",
+        "fx/FRC_8.2.2_part1/FRC_22_8.2.2__T8.4_First_remove_obj2.pdf",
+        "fx/FRC_8.2.2_part1/FRC_23_8.2.2__T8.4_Last_remove_value.pdf",
+        "fx/FRC_8.2.2_part1/FRC_24_8.2.2__T8.4_Last_remove_all.pdf",
+        "fx/FRC_8.2.2_part1/FRC_25_8.2.2__T8.4_Last_remove_obj.pdf",
+        "fx/FRC_8.2.2_part1/FRC_26_8.2.2__T8.4_Last_remove_value2.pdf",
+        "fx/FRC_8.2.2_part1/FRC_27_8.2.2__T8.4_Last_remove_all2.pdf",
+        "fx/FRC_8.2.2_part1/FRC_28_8.2.2__T8.4_Last_remove_obj2.pdf",
+        "fx/FRC_8.2.2_part1/FRC_29_8.2.2__T8.4_First_Last_exchange.pdf",
+        "fx/FRC_8.2.2_part1/FRC_2_8.2.2__T8.3_Last_empty.pdf",
+        "fx/FRC_8.2.2_part1/FRC_2_8.2.2__Title_remove_value.pdf",
+        "fx/FRC_8.2.2_part1/FRC_31_8.2.2_add_dest_entry.pdf",
+        "fx/FRC_8.2.2_part1/FRC_32_8.2.2_A_Support_action.pdf",
+        "fx/FRC_8.2.2_part1/FRC_33_8.2.2_A_empty.pdf",
+        "fx/FRC_8.2.2_part1/FRC_34_8.2.2_A_remove.pdf",
+        "fx/FRC_8.2.2_part1/FRC_35_8.2.2_A_remove_A_item.pdf",
+        "fx/FRC_8.2.2_part1/FRC_36_8.2.2_Dest.pdf",
+        "fx/FRC_8.2.2_part1/FRC_37_8.2.2_Dest_empty.pdf",
+        "fx/FRC_8.2.2_part1/FRC_38_8.2.2_Dest_remove.pdf",
+        "fx/FRC_8.2.2_part1/FRC_39_8.2.2_C_edit.pdf",
+        "fx/FRC_8.2.2_part1/FRC_3_8.2.2_Type_empty.pdf",
+        "fx/FRC_8.2.2_part1/FRC_3_8.2.2__Title_remove_all.pdf",
+        "fx/FRC_8.2.2_part1/FRC_40_8.2.2_C_empty1.pdf",
+        "fx/FRC_8.2.2_part1/FRC_41_8.2.2_C_empty2.pdf",
+        "fx/FRC_8.2.2_part1/FRC_42_8.2.2_C_empty3.pdf",
+        "fx/FRC_8.2.2_part1/FRC_43_8.2.2_C_empty.pdf",
+        "fx/FRC_8.2.2_part1/FRC_44_8.2.2_C_remove.pdf",
+        "fx/FRC_8.2.2_part1/FRC_45_8.2.2_F_edit_F_1_2_3.pdf",
+        "fx/FRC_8.2.2_part1/FRC_46_8.2.2_F_edit_F__1__2__3.pdf",
+        "fx/FRC_8.2.2_part1/FRC_47_8.2.2_F_edit_F_32__32.pdf",
+        "fx/FRC_8.2.2_part1/FRC_48_8.2.2_F_edit_F_100__100.pdf",
+        "fx/FRC_8.2.2_part1/FRC_49_8.2.2_F_empty.pdf",
+        "fx/FRC_8.2.2_part1/FRC_4_8.2.2_Parent_edit2.pdf",
+        "fx/FRC_8.2.2_part1/FRC_4_8.2.2__T8.3_Count_empty.pdf",
+        "fx/FRC_8.2.2_part1/FRC_50_8.2.2_F_remove.pdf",
+        "fx/FRC_8.2.2_part1/FRC_52_8.2.2_T_8.4__Count_edit_count_0.pdf",
+        "fx/FRC_8.2.2_part1/FRC_53_8.2.2_T_8.4__Count_empty.pdf",
+        "fx/FRC_8.2.2_part1/FRC_54_8.2.2_T_8.4__Count_empty1.pdf",
+        "fx/FRC_8.2.2_part1/FRC_55_8.2.2_T_8.4__Count_remove.pdf",
+        "fx/FRC_8.2.2_part1/FRC_5_8.2.2_Parent_remove_value.pdf",
+        "fx/FRC_8.2.2_part1/FRC_5_8.2.2__T8.3_First_remove.pdf",
+        "fx/FRC_8.2.2_part1/FRC_6_8.2.2_Parent_remove_all.pdf",
+        "fx/FRC_8.2.2_part1/FRC_6_8.2.2__T8.3_Last_remove.pdf",
+        "fx/FRC_8.2.2_part1/FRC_7_8.2.2_Parent_remove_obj.pdf",
+        "fx/FRC_8.2.2_part1/FRC_7_8.2.2_Type_remove.pdf",
+        "fx/FRC_8.2.2_part1/FRC_8_8.2.2_Parent_edit.pdf",
+        "fx/FRC_8.2.2_part1/FRC_8_8.2.2__T8.3_Count_remove.pdf",
+        "fx/FRC_8.2.2_part1/FRC_9_8.2.2_Prev_remove_value.pdf",
+        "fx/FRC_8.2.2_part1/FRC_9_8.2.2__T8.3_remove_first_item.pdf",
+        "fx/FRC_8.2.2_part1/outline.pdf",
+        "fx/FRC_8.2.2_part2/FRC_56_8.2.2_C_edit_C__1.pdf",
+        "fx/FRC_8.2.2_part2/FRC_57_8.2.2_C_edit_C_2.pdf",
+        "fx/FRC_8.2.2_part2/FRC_58_8.2.2_Count_edit_count__2.pdf",
+        "fx/FRC_8.4_part1/FRC_8.4.1_Annotations_C.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.2_Annotation_Flags_F_Hidden.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.2_Annotation_Flags_F_Invisible.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.2_Annotation_Flags_F_NoRotate.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.2_Annotation_Flags_F_NoZoom.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.2_Annotation_Flags_F_Print.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.2_Annotation_Flags_F_ToggleNoView.pdf",
+        "fx/FRC_8.4_part2/FRC_8.4.3_Border_Stypes_W_different_values.pdf",
+        "fx/FRC_8.5_part2/FRC_8.5_E_GoTo_D.pdf",
+        "fx/FRC_8.5_part2/FRC_8.5_PC&C_GoToE_T_T.pdf",
+        "fx/FRC_8.5_part2/FRC_8.5_X_GoToR_D.pdf",
+        "fx/font/font_1_embedded_font_en_feature.pdf",
+        "fx/font/font_2_embedded_font_en_size14.pdf",
+        "fx/form/bookmark.pdf",
+        "fx/form/calculate_order.pdf",
+        "fx/form/check_box.pdf",
+        "fx/form/combo_box.pdf",
+        "fx/form/date.pdf",
+        "fx/form/list_box.pdf",
+        "fx/form/push_button.pdf",
+        "fx/form/radio_button.pdf",
+        "fx/form/signature.pdf",
+        "fx/form/signature_4.pdf",
+        "fx/form/text_field.pdf",
+        "fx/layer/octest.pdf",
+        "fx/matrix/transformation.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup1.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup1_hidden.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup2.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup2_hidden.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup4.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup4_hidden.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup5.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup5_hidden.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup6.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup7.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup7_hidden.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup8.pdf",
+        "fx/mulobj/new/text_markup/new_textmarkup8_hidden.pdf",
+        "fx/other/3bigpreview.pdf",
+        "fx/other/foxittext.pdf",
+        "fx/path/bug_0_length_line.pdf",
+        "fx/path/edit_transform.pdf",
+        "fx/path/path_10_jd.pdf",
+        "fx/path/path_7.pdf",
+        "fx/path/path_9.pdf",
+        "fx/text/5.2.pdf",
+        "fx/text/appstoredescription3.1_en_updated.pdf",
+        "fx/text/ch_9_android.pdf",
+        "fx/text/en_14_foxit_products.pdf",
+        "fx/text/en_contact.pdf",
+        "fx/text/en_foxit.pdf",
+        "fx/text/en_fqa2.pdf",
+        "fx/text/en_introduce.pdf",
+        "fx/text/en_uicase_.pdf",
+        "fx/text/en_uicase_2_.pdf",
+        "fx/text/quick_start_guide.pdf",
+        "fx/text/whats_new_in_v3.0.pdf",
+        "fx/text/zh_file1.pdf",
+        "fx/text/zh_file_structure.pdf",
+        "fx/text/zh_function_list.pdf",
+        "fx/text/zh_page.pdf",
+        "fx/text/zh_shared_document.pdf",
+        "fx/text/zh_webdav.pdf",
+        "third_party/skia/20180916_098c1355/xfermodes.pdf",
+        "third_party/skia/20180916_098c1355/xfermodes2.pdf",
+        "third_party/skia/20180916_098c1355/xfermodes3.pdf",
+        "third_party/tcpdf/example_001.pdf",
+        "third_party/tcpdf/example_003.pdf",
+        "third_party/tcpdf/example_004.pdf",
+        "third_party/tcpdf/example_005.pdf",
+        "third_party/tcpdf/example_006.pdf",
+        "third_party/tcpdf/example_007.pdf",
+        "third_party/tcpdf/example_008.pdf",
+        "third_party/tcpdf/example_010.pdf",
+        "third_party/tcpdf/example_011.pdf",
+        "third_party/tcpdf/example_013.pdf",
+        "third_party/tcpdf/example_014.pdf",
+        "third_party/tcpdf/example_015.pdf",
+        "third_party/tcpdf/example_017.pdf",
+        "third_party/tcpdf/example_018.pdf",
+        "third_party/tcpdf/example_019.pdf",
+        "third_party/tcpdf/example_020.pdf",
+        "third_party/tcpdf/example_021.pdf",
+        "third_party/tcpdf/example_022.pdf",
+        "third_party/tcpdf/example_024.pdf",
+        "third_party/tcpdf/example_026.pdf",
+        "third_party/tcpdf/example_027.pdf",
+        "third_party/tcpdf/example_032.pdf",
+        "third_party/tcpdf/example_033.pdf",
+        "third_party/tcpdf/example_036.pdf",
+        "third_party/tcpdf/example_037.pdf",
+        "third_party/tcpdf/example_038.pdf",
+        "third_party/tcpdf/example_039.pdf",
+        "third_party/tcpdf/example_042.pdf",
+        "third_party/tcpdf/example_045.pdf",
+        "third_party/tcpdf/example_046.pdf",
+        "third_party/tcpdf/example_047.pdf",
+        "third_party/tcpdf/example_048.pdf",
+        "third_party/tcpdf/example_049.pdf",
+        "third_party/tcpdf/example_050.pdf",
+        "third_party/tcpdf/example_052.pdf",
+        "third_party/tcpdf/example_053.pdf",
+        "third_party/tcpdf/example_054.pdf",
+        "third_party/tcpdf/example_055.pdf",
+        "third_party/tcpdf/example_057.pdf",
+        "third_party/tcpdf/example_058.pdf",
+        "third_party/tcpdf/example_059.pdf",
+        "third_party/tcpdf/example_061.pdf",
+        "third_party/tcpdf/example_063.pdf",
+        "third_party/tcpdf/example_064.pdf",
+        "third_party/tcpdf/example_065.pdf"
+      ],
+      "tags": [
+        "text-edit"
+      ],
+      "expect": "open",
+      "note": "≥ 200 символов текста на стр. 1, шрифты, без шифрования и XFA",
+      "count": 185
+    },
+    {
+      "id": "pdf-differences-text",
+      "from": "pdf-differences",
+      "license": "CC-BY-4.0",
+      "files": [
+        "Dashing-Degenerate/DegenerateDashing.pdf",
+        "DefaultColorSpaces/DefaultRGBColourSpaces-inherit.pdf",
+        "DefaultColorSpaces/DefaultRGBColourSpaces.pdf",
+        "Negative-DashPhase/Negative-DashPhase.pdf",
+        "NegativeFontSize/NegativeFontSize.pdf",
+        "UnknownFilter/4387ba480c6f935b8e97749d40b3c001ad584b7bda66ca2c040be67337669497.pdf"
+      ],
+      "tags": [
+        "text-edit"
+      ],
+      "expect": "open",
+      "note": "≥ 200 символов текста на стр. 1, шрифты, без шифрования и XFA",
+      "count": 6
+    },
+    {
+      "id": "pdfjs-text",
+      "from": "pdfjs",
+      "license": "unspecified",
+      "files": [
+        "test/pdfs/160F-2019.pdf",
+        "test/pdfs/TAMReview.pdf",
+        "test/pdfs/ThuluthFeatures.pdf",
+        "test/pdfs/XiaoBiaoSong.pdf",
+        "test/pdfs/ZapfDingbats.pdf",
+        "test/pdfs/bigboundingbox.pdf",
+        "test/pdfs/blendmode.pdf",
+        "test/pdfs/bug1019475_1.pdf",
+        "test/pdfs/bug1529502.pdf",
+        "test/pdfs/bug1669099.pdf",
+        "test/pdfs/bug1771477.pdf",
+        "test/pdfs/bug1868759.pdf",
+        "test/pdfs/bug1873345.pdf",
+        "test/pdfs/bug1883609.pdf",
+        "test/pdfs/bug1885505.pdf",
+        "test/pdfs/bug1978317.pdf",
+        "test/pdfs/bug1992868.pdf",
+        "test/pdfs/bug1997343.pdf",
+        "test/pdfs/bug2013793.pdf",
+        "test/pdfs/bug2014080.pdf",
+        "test/pdfs/bug886717.pdf",
+        "test/pdfs/bug946506.pdf",
+        "test/pdfs/calgray.pdf",
+        "test/pdfs/calrgb.pdf",
+        "test/pdfs/canvas.pdf",
+        "test/pdfs/chrome-text-selection-markedContent.pdf",
+        "test/pdfs/comments.pdf",
+        "test/pdfs/complex_ttf_font.pdf",
+        "test/pdfs/file_pdfjs_test.pdf",
+        "test/pdfs/highlights.pdf",
+        "test/pdfs/issue1002.pdf",
+        "test/pdfs/issue10640.pdf",
+        "test/pdfs/issue11913.pdf",
+        "test/pdfs/issue12295.pdf",
+        "test/pdfs/issue12337.pdf",
+        "test/pdfs/issue12706.pdf",
+        "test/pdfs/issue12963.pdf",
+        "test/pdfs/issue13201.pdf",
+        "test/pdfs/issue13211.pdf",
+        "test/pdfs/issue13242.pdf",
+        "test/pdfs/issue13447.pdf",
+        "test/pdfs/issue1350.pdf",
+        "test/pdfs/issue13931.pdf",
+        "test/pdfs/issue14117.pdf",
+        "test/pdfs/issue14297.pdf",
+        "test/pdfs/issue14415.pdf",
+        "test/pdfs/issue14438.pdf",
+        "test/pdfs/issue14497.pdf",
+        "test/pdfs/issue14821.pdf",
+        "test/pdfs/issue14847.pdf",
+        "test/pdfs/issue15012.pdf",
+        "test/pdfs/issue16063.pdf",
+        "test/pdfs/issue16263.pdf",
+        "test/pdfs/issue16316.pdf",
+        "test/pdfs/issue16500.pdf",
+        "test/pdfs/issue16538.pdf",
+        "test/pdfs/issue17056.pdf",
+        "test/pdfs/issue17492.pdf",
+        "test/pdfs/issue17730.pdf",
+        "test/pdfs/issue18911.pdf",
+        "test/pdfs/issue1905.pdf",
+        "test/pdfs/issue19239.pdf",
+        "test/pdfs/issue19800.pdf",
+        "test/pdfs/issue19802.pdf",
+        "test/pdfs/issue19971.pdf",
+        "test/pdfs/issue20232.pdf",
+        "test/pdfs/issue20489.pdf",
+        "test/pdfs/issue269_2.pdf",
+        "test/pdfs/issue5747.pdf",
+        "test/pdfs/issue5874.pdf",
+        "test/pdfs/issue6127.pdf",
+        "test/pdfs/issue6132.pdf",
+        "test/pdfs/issue6387.pdf",
+        "test/pdfs/issue6410.pdf",
+        "test/pdfs/issue6605.pdf",
+        "test/pdfs/issue6931_reduced.pdf",
+        "test/pdfs/issue7014.pdf",
+        "test/pdfs/issue7426.pdf",
+        "test/pdfs/issue7454.pdf",
+        "test/pdfs/issue840.pdf",
+        "test/pdfs/issue8424.pdf",
+        "test/pdfs/issue8702.pdf",
+        "test/pdfs/issue918.pdf",
+        "test/pdfs/knockout_groups_test.pdf",
+        "test/pdfs/mixedfonts.pdf",
+        "test/pdfs/opt_demo.pdf",
+        "test/pdfs/pdfjs_wikipedia.pdf",
+        "test/pdfs/pdkids.pdf",
+        "test/pdfs/pr12564.pdf",
+        "test/pdfs/prefilled_f1040.pdf",
+        "test/pdfs/quadpoints.pdf",
+        "test/pdfs/shading_extend.pdf",
+        "test/pdfs/signed_verified.pdf",
+        "test/pdfs/standard_fonts.pdf",
+        "test/pdfs/tracemonkey.pdf",
+        "test/pdfs/tracemonkey_a11y.pdf",
+        "test/pdfs/tracemonkey_annotation_on_page_8.pdf",
+        "test/pdfs/tracemonkey_freetext.pdf",
+        "test/pdfs/tracemonkey_with_annotations.pdf",
+        "test/pdfs/tracemonkey_with_editable_annotations.pdf"
+      ],
+      "tags": [
+        "text-edit"
+      ],
+      "expect": "open",
+      "note": "≥ 200 символов текста на стр. 1, шрифты, без шифрования и XFA",
+      "count": 100
+    },
+    {
+      "id": "safedocs-text",
+      "from": "safedocs",
+      "license": "Apache-2.0",
+      "files": [
+        "CompactedSyntax/CompactedPDFSyntaxMatrix.pdf",
+        "Miscellaneous Targeted Test PDFs/list-of-uri-actions-with-base.pdf"
+      ],
+      "tags": [
+        "text-edit"
+      ],
+      "expect": "open",
+      "note": "≥ 200 символов текста на стр. 1, шрифты, без шифрования и XFA",
+      "count": 2
+    },
+    {
+      "id": "pdfium_resources-tagged",
+      "from": "pdfium_resources",
+      "license": "BSD-3-Clause",
+      "files": [
+        "testing/resources/bug_1296920.pdf",
+        "testing/resources/bug_1768.pdf",
+        "testing/resources/bug_717.pdf",
+        "testing/resources/feature_linearized_loading.pdf",
+        "testing/resources/marked_content_id.pdf",
+        "testing/resources/raw_type_text.pdf",
+        "testing/resources/tagged_actual_text.pdf",
+        "testing/resources/tagged_alt_text.pdf",
+        "testing/resources/tagged_expansion.pdf",
+        "testing/resources/tagged_marked_content.pdf",
+        "testing/resources/tagged_mcr_multipage.pdf",
+        "testing/resources/tagged_mcr_objr.pdf",
+        "testing/resources/tagged_nested.pdf",
+        "testing/resources/tagged_table.pdf",
+        "testing/resources/tagged_table_bad_elem.pdf",
+        "testing/resources/tagged_table_bad_parent.pdf"
+      ],
+      "tags": [
+        "tagged"
+      ],
+      "expect": "open",
+      "note": "есть /StructTreeRoot",
+      "count": 16
+    },
+    {
+      "id": "pdfium_tests-tagged",
+      "from": "pdfium_tests",
+      "license": "BSD-3-Clause",
+      "files": [
+        "fx/FRC_8.2.4_part1/FRC_10_8.2.4_View_C.pdf",
+        "fx/form/action.pdf",
+        "fx/form/action_submit_a_form.pdf",
+        "fx/form/calculate_validate.pdf",
+        "fx/form/check_box_no_color.pdf",
+        "fx/form/combo_box_format.pdf",
+        "fx/form/event.change.pdf",
+        "fx/form/event.changeex.pdf",
+        "fx/form/event.keydown.pdf",
+        "fx/form/event.keydown_1_.pdf",
+        "fx/form/event.shift.pdf",
+        "fx/form/event.type_name.pdf",
+        "fx/form/event.value.pdf",
+        "fx/form/event_fieldfull.pdf",
+        "fx/form/event_fieldfull_1_.pdf",
+        "fx/form/format_alert_box.pdf",
+        "fx/form/format_combo_box.pdf",
+        "fx/form/format_date.pdf",
+        "fx/form/format_number.pdf",
+        "fx/form/format_percentage.pdf",
+        "fx/form/format_special.pdf",
+        "fx/form/format_text_color.pdf",
+        "fx/form/getarray.pdf",
+        "fx/form/js_value_chack_box.pdf",
+        "fx/form/list_box.pdf",
+        "fx/form/negative.pdf",
+        "fx/form/open_a_weblink.pdf",
+        "fx/form/push_button.pdf",
+        "fx/form/validate_alert_box.pdf",
+        "fx/js/action_on_focus.pdf",
+        "fx/js/app_launchurl.pdf",
+        "fx/js/submit_form.pdf",
+        "fx/js/widget_javascript.pdf",
+        "fx/path/lines.pdf",
+        "fx/path/transparent.pdf",
+        "fx/text/quick_start_guide.pdf",
+        "fx/text/whats_new_in_v3.0.pdf",
+        "pdfium/bug_440132.pdf",
+        "xfa_specific/fx/test_case_0001/Choose.pdf",
+        "xfa_specific/fx/test_case_0002/data_binding.pdf",
+        "xfa_specific/fx/test_case_0003/Date_FormCale.pdf",
+        "xfa_specific/fx/test_case_0004/Line_Stroke.pdf",
+        "xfa_specific/fx/test_case_0005/MouseEvents_enter.pdf",
+        "xfa_specific/fx/test_case_0005/MouseEvents_exit.pdf",
+        "xfa_specific/fx/test_case_0006/Oneof1.pdf",
+        "xfa_specific/fx/test_case_0006/Oneof2.pdf",
+        "xfa_specific/fx/test_case_0006/Oneof3.pdf",
+        "xfa_specific/fx/test_case_0007/PagePosition_any_rest.pdf",
+        "xfa_specific/fx/test_case_0008/PagePosition_first.pdf",
+        "xfa_specific/fx/test_case_0009/PagePosition_last.pdf",
+        "xfa_specific/fx/test_case_0010/PagePosition_no_any.pdf",
+        "xfa_specific/fx/test_case_0011/PagePosition_rest.pdf",
+        "xfa_specific/fx/test_case_0012/PagePosition_rest_any.pdf",
+        "xfa_specific/fx/test_case_0013/rotate.pdf",
+        "xfa_specific/fx/test_case_0014/Sum.pdf",
+        "xfa_specific/fx/test_case_0015/TimeField.pdf",
+        "xfa_specific/fx/test_case_0016/Test_CheckBox.pdf",
+        "xfa_specific/fx/test_case_0017/Test_DateField_locale_en_CA.pdf",
+        "xfa_specific/fx/test_case_0018/Test_DateField_locale_en_GB.pdf",
+        "xfa_specific/fx/test_case_0019/Test_DateField_locale_en_US.pdf",
+        "xfa_specific/fx/test_case_0020/Test_DateField_locale_fr_CA.pdf",
+        "xfa_specific/fx/test_case_0021/Test_DateField_locale_fr_FR.pdf",
+        "xfa_specific/fx/test_case_0022/Test_DateField_locale_nl_NL.pdf",
+        "xfa_specific/fx/test_case_0023/Test_DateField_locale_zh_CN.pdf",
+        "xfa_specific/fx/test_case_0024/Test_DateField_locale_zh_HK.pdf",
+        "xfa_specific/fx/test_case_0025/Test_Drop_downList.pdf",
+        "xfa_specific/fx/test_case_0026/Test_NumericField.pdf",
+        "xfa_specific/fx/test_case_0027/Test_PasswordField.pdf",
+        "xfa_specific/fx/test_case_0028/Test_RadioButton.pdf",
+        "xfa_specific/fx/test_case_0029/Test_ResetButton.pdf",
+        "xfa_specific/fx/test_case_0030/Test_TextField.pdf",
+        "xfa_specific/pdfium/barcode_test.pdf",
+        "xfa_specific/pdfium/bug_434.pdf"
+      ],
+      "tags": [
+        "tagged"
+      ],
+      "expect": "open",
+      "note": "есть /StructTreeRoot",
+      "count": 73
+    },
+    {
+      "id": "pdfjs-tagged",
+      "from": "pdfjs",
+      "license": "unspecified",
+      "files": [
+        "test/pdfs/160F-2019.pdf",
+        "test/pdfs/annotation-border-styles.pdf",
+        "test/pdfs/annotation-button-widget.pdf",
+        "test/pdfs/annotation-caret-ink.pdf",
+        "test/pdfs/annotation-choice-widget.pdf",
+        "test/pdfs/annotation-fileattachment.pdf",
+        "test/pdfs/annotation-freetext.pdf",
+        "test/pdfs/annotation-highlight.pdf",
+        "test/pdfs/annotation-line.pdf",
+        "test/pdfs/annotation-link-text-popup.pdf",
+        "test/pdfs/annotation-polyline-polygon-without-appearance.pdf",
+        "test/pdfs/annotation-polyline-polygon.pdf",
+        "test/pdfs/annotation-square-circle.pdf",
+        "test/pdfs/annotation-squiggly.pdf",
+        "test/pdfs/annotation-stamp.pdf",
+        "test/pdfs/annotation-strikeout.pdf",
+        "test/pdfs/annotation-text-widget.pdf",
+        "test/pdfs/annotation-underline.pdf",
+        "test/pdfs/bug1365930.pdf",
+        "test/pdfs/bug1703683_page2_reduced.pdf",
+        "test/pdfs/bug1708040.pdf",
+        "test/pdfs/bug1721218_reduced.pdf",
+        "test/pdfs/bug1755507.pdf",
+        "test/pdfs/bug1868759.pdf",
+        "test/pdfs/bug1937438_af_from_latex.pdf",
+        "test/pdfs/bug1937438_from_word.pdf",
+        "test/pdfs/bug1937438_mml_from_latex.pdf",
+        "test/pdfs/bug1974436.pdf",
+        "test/pdfs/bug1978317.pdf",
+        "test/pdfs/bug1997343.pdf",
+        "test/pdfs/bug2004951.pdf",
+        "test/pdfs/bug2009627.pdf",
+        "test/pdfs/bug2013793.pdf",
+        "test/pdfs/bug2014080.pdf",
+        "test/pdfs/bug2025674.pdf",
+        "test/pdfs/bug793632.pdf",
+        "test/pdfs/bug816075.pdf",
+        "test/pdfs/chrome-text-selection-markedContent.pdf",
+        "test/pdfs/comments.pdf",
+        "test/pdfs/find_all.pdf",
+        "test/pdfs/issue10301.pdf",
+        "test/pdfs/issue11656.pdf",
+        "test/pdfs/issue12706.pdf",
+        "test/pdfs/issue14046.pdf",
+        "test/pdfs/issue14130.pdf",
+        "test/pdfs/issue14165.pdf",
+        "test/pdfs/issue14497.pdf",
+        "test/pdfs/issue14627.pdf",
+        "test/pdfs/issue15262.pdf",
+        "test/pdfs/issue15340.pdf",
+        "test/pdfs/issue15367.pdf",
+        "test/pdfs/issue15372.pdf",
+        "test/pdfs/issue16176.pdf",
+        "test/pdfs/issue16263.pdf",
+        "test/pdfs/issue16287.pdf",
+        "test/pdfs/issue16500.pdf",
+        "test/pdfs/issue16553.pdf",
+        "test/pdfs/issue17671.pdf",
+        "test/pdfs/issue18694.pdf",
+        "test/pdfs/issue20324.pdf",
+        "test/pdfs/issue20516.pdf",
+        "test/pdfs/issue21346.pdf",
+        "test/pdfs/issue5481.pdf",
+        "test/pdfs/issue6782.pdf",
+        "test/pdfs/issue8702.pdf",
+        "test/pdfs/outlines_se.pdf",
+        "test/pdfs/page_with_number.pdf",
+        "test/pdfs/page_with_number_and_link.pdf",
+        "test/pdfs/paragraph_and_link.pdf",
+        "test/pdfs/pdfjs_wikipedia.pdf",
+        "test/pdfs/pr20043.pdf",
+        "test/pdfs/prefilled_f1040.pdf",
+        "test/pdfs/smaskdim.pdf",
+        "test/pdfs/stamps.pdf",
+        "test/pdfs/structure_no_parent_tree.pdf",
+        "test/pdfs/structure_simple.pdf",
+        "test/pdfs/tagged_stamp.pdf",
+        "test/pdfs/three_pages_with_number.pdf",
+        "test/pdfs/tracemonkey_with_annotations.pdf",
+        "test/pdfs/tracemonkey_with_editable_annotations.pdf",
+        "test/pdfs/two_pages.pdf",
+        "test/pdfs/two_paragraphs.pdf",
+        "test/pdfs/type4psfunc.pdf",
+        "test/pdfs/xfa_filled_imm1344e.pdf",
+        "test/pdfs/xfa_issue14315.pdf",
+        "test/pdfs/zero_descent.pdf"
+      ],
+      "tags": [
+        "tagged"
+      ],
+      "expect": "open",
+      "note": "есть /StructTreeRoot",
+      "count": 86
+    },
+    {
+      "id": "safedocs-tagged",
+      "from": "safedocs",
+      "license": "Apache-2.0",
+      "files": [
+        "CompactedSyntax/CompactedPDFSyntaxMatrix.pdf",
+        "Miscellaneous Targeted Test PDFs/utf16LE-test.pdf"
+      ],
+      "tags": [
+        "tagged"
+      ],
+      "expect": "open",
+      "note": "есть /StructTreeRoot",
+      "count": 2
+    },
+    {
+      "id": "verapdf-ua-pass",
+      "from": "verapdf",
+      "license": "CC-BY-4.0",
+      "include": [
+        "PDF_UA-1/**/*-pass-*.pdf",
+        "PDF_UA-2/**/*-pass-*.pdf"
+      ],
+      "tags": [
+        "tagged"
+      ],
+      "expect": "open",
+      "note": "PDF/UA-1 и PDF/UA-2, валидные по имени",
+      "count": 195
+    },
+    {
+      "id": "pdfium_resources-cyr",
+      "from": "pdfium_resources",
+      "license": "BSD-3-Clause",
+      "files": [
+        "testing/resources/bug_921.pdf"
+      ],
+      "tags": [
+        "cyr"
+      ],
+      "expect": "open",
+      "note": "≥ 50 кириллических символов на стр. 1",
+      "count": 1
+    },
+    {
+      "id": "pdfjs-cyr",
+      "from": "pdfjs",
+      "license": "unspecified",
+      "files": [
+        "test/pdfs/ThuluthFeatures.pdf",
+        "test/pdfs/complex_ttf_font.pdf"
+      ],
+      "tags": [
+        "cyr"
+      ],
+      "expect": "open",
+      "note": "≥ 50 кириллических символов на стр. 1",
+      "count": 2
+    },
+    {
+      "id": "pdfjs-scan",
+      "from": "pdfjs",
+      "license": "unspecified",
+      "files": [
+        "test/pdfs/cmykjpeg.pdf",
+        "test/pdfs/issue12841_reduced.pdf",
+        "test/pdfs/issue13372.pdf",
+        "test/pdfs/issue5481.pdf",
+        "test/pdfs/issue7229.pdf"
+      ],
+      "tags": [
+        "scan"
+      ],
+      "expect": "open",
+      "note": "страницы-картинки без текста (CCITT, JPEG, JPX)",
+      "count": 5
+    },
+    {
+      "id": "pdfium_tests-scan",
+      "from": "pdfium_tests",
+      "license": "BSD-3-Clause",
+      "files": [
+        "fx/new/ch_7/ch_7_5.pdf",
+        "fx/new/ch_7/ch_7_6.pdf",
+        "fx/new/ch_7/ch_7_7.pdf",
+        "fx/other/1.pdf",
+        "third_party/jbig2/bitmap-symbol-manysyms.pdf",
+        "third_party/jbig2/bitmap-symbol-symhuff-texthuff-manysyms.pdf"
+      ],
+      "tags": [
+        "scan"
+      ],
+      "expect": "open",
+      "note": "страницы-картинки без текста (JPEG, JBIG2)",
+      "count": 6
+    },
+    {
+      "id": "pdfium_resources-scan",
+      "from": "pdfium_resources",
+      "license": "BSD-3-Clause",
+      "files": [
+        "testing/resources/jpeg_reduced_size.pdf",
+        "testing/resources/jpeg_reduced_size_with_smask.pdf",
+        "testing/resources/jpeg_unaligned_no_reduce.pdf"
+      ],
+      "tags": [
+        "scan"
+      ],
+      "expect": "open",
+      "note": "одна JPEG-картинка без текста",
+      "count": 3
+    },
+    {
+      "id": "verapdf-pdfa-pass",
+      "from": "verapdf",
+      "license": "CC-BY-4.0",
+      "include": [
+        "PDF_A-*/**/*-pass-*.pdf"
+      ],
+      "tags": [
+        "pdfa-pass"
+      ],
+      "expect": "open",
+      "note": "veraPDF-corpus: PDF/A-1…4, «-pass-» в имени",
+      "count": 832
+    },
+    {
+      "id": "verapdf-pdfa-fail",
+      "from": "verapdf",
+      "license": "CC-BY-4.0",
+      "include": [
+        "PDF_A-*/**/*-fail-*.pdf",
+        "Isartor test files/**/*-fail-*.pdf"
+      ],
+      "tags": [
+        "pdfa-fail"
+      ],
+      "expect": "broken-ok",
+      "note": "veraPDF-corpus с Isartor: «-fail-» в имени; часть файлов нарочно битые по структуре",
+      "count": 1537
+    },
+    {
+      "id": "bfo-pdfa-pass",
+      "from": "bfo",
+      "license": "CC-BY-3.0",
+      "include": [
+        "*-pass.pdf"
+      ],
+      "tags": [
+        "pdfa-pass"
+      ],
+      "expect": "open",
+      "count": 9
+    },
+    {
+      "id": "bfo-pdfa-fail",
+      "from": "bfo",
+      "license": "CC-BY-3.0",
+      "include": [
+        "*-fail.pdf"
+      ],
+      "files": [
+        "pdfa1-6-5-3-bfo-t01-fail-pdf"
+      ],
+      "tags": [
+        "pdfa-fail"
+      ],
+      "expect": "broken-ok",
+      "note": "один файл без расширения .pdf",
+      "count": 25
+    },
+    {
+      "id": "pdf-differences-office",
+      "from": "pdf-differences",
+      "license": "CC-BY-4.0",
+      "files": [
+        "LargeMitreLimit/PDF-MitreLimit-Calculator.xlsx",
+        "PageLabels-UX/PageLabels.docx"
+      ],
+      "tags": [
+        "office"
+      ],
+      "expect": "data",
+      "note": "исходники Office (CC BY 4.0)",
+      "count": 2
+    },
+    {
+      "id": "pdfium_tests-enc-r2",
+      "from": "pdfium_tests",
+      "license": "BSD-3-Clause",
+      "files": [
+        "fx/FRC_3.5_part1/FRC_3.5_v_1_length_40_Filter_standard.pdf"
+      ],
+      "tags": [
+        "enc-r2"
+      ],
+      "expect": "open",
+      "note": "стандартное шифрование R2; open — пустой пароль пользователя; R2–R4 — пароль в PDFDocEncoding (MuPDF переводит из UTF-8)",
+      "count": 1
+    },
+    {
+      "id": "pdfium_resources-enc-r2",
+      "from": "pdfium_resources",
+      "license": "BSD-3-Clause",
+      "files": [
+        "testing/resources/encrypted_hello_world_r2.pdf"
+      ],
+      "tags": [
+        "enc-r2"
+      ],
+      "expect": "open",
+      "expect_files": {
+        "testing/resources/encrypted_hello_world_r2.pdf": "password:hôtel"
+      },
+      "note": "стандартное шифрование R2; open — пустой пароль пользователя; R2–R4 — пароль в PDFDocEncoding (MuPDF переводит из UTF-8)",
+      "count": 1
+    },
+    {
+      "id": "pdfjs-enc-r2",
+      "from": "pdfjs",
+      "license": "unspecified",
+      "files": [
+        "test/pdfs/bug900822.pdf"
+      ],
+      "tags": [
+        "enc-r2"
+      ],
+      "expect": "open",
+      "note": "стандартное шифрование R2; open — пустой пароль пользователя; R2–R4 — пароль в PDFDocEncoding (MuPDF переводит из UTF-8)",
+      "count": 1
+    },
+    {
+      "id": "pdfium_resources-enc-r3",
+      "from": "pdfium_resources",
+      "license": "BSD-3-Clause",
+      "files": [
+        "testing/resources/bug_1124998.pdf",
+        "testing/resources/encrypted_hello_world_r3.pdf"
+      ],
+      "tags": [
+        "enc-r3"
+      ],
+      "expect": "open",
+      "expect_files": {
+        "testing/resources/bug_1124998.pdf": "password:test",
+        "testing/resources/encrypted_hello_world_r3.pdf": "password:hôtel"
+      },
+      "note": "стандартное шифрование R3; open — пустой пароль пользователя; R2–R4 — пароль в PDFDocEncoding (MuPDF переводит из UTF-8)",
+      "count": 2
+    },
+    {
+      "id": "dss-enc-r3",
+      "from": "dss",
+      "license": "unspecified",
+      "files": [
+        "dss-pades/src/test/resources/validation/encrypted.pdf"
+      ],
+      "tags": [
+        "enc-r3"
+      ],
+      "expect": "open",
+      "note": "стандартное шифрование R3; open — пустой пароль пользователя; R2–R4 — пароль в PDFDocEncoding (MuPDF переводит из UTF-8)",
+      "count": 1
+    },
+    {
+      "id": "pdfjs-enc-r3",
+      "from": "pdfjs",
+      "license": "unspecified",
+      "files": [
+        "test/pdfs/issue15893_reduced.pdf",
+        "test/pdfs/issue17215.pdf"
+      ],
+      "tags": [
+        "enc-r3"
+      ],
+      "expect": "open",
+      "expect_files": {
+        "test/pdfs/issue15893_reduced.pdf": "password:test"
+      },
+      "note": "стандартное шифрование R3; open — пустой пароль пользователя; R2–R4 — пароль в PDFDocEncoding (MuPDF переводит из UTF-8)",
+      "count": 2
+    },
+    {
+      "id": "pdfium_resources-enc-r4",
+      "from": "pdfium_resources",
+      "license": "BSD-3-Clause",
+      "files": [
+        "testing/resources/encrypted.pdf"
+      ],
+      "tags": [
+        "enc-r4"
+      ],
+      "expect": "open",
+      "expect_files": {
+        "testing/resources/encrypted.pdf": "password:1234"
+      },
+      "note": "стандартное шифрование R4; open — пустой пароль пользователя; R2–R4 — пароль в PDFDocEncoding (MuPDF переводит из UTF-8)",
+      "count": 1
+    },
+    {
+      "id": "pdfjs-enc-r4",
+      "from": "pdfjs",
+      "license": "unspecified",
+      "files": [
+        "test/pdfs/bug1782186.pdf",
+        "test/pdfs/bug1815476.pdf",
+        "test/pdfs/issue17069.pdf",
+        "test/pdfs/issue3371.pdf",
+        "test/pdfs/issue9972-1.pdf",
+        "test/pdfs/issue9972-2.pdf",
+        "test/pdfs/issue9972-3.pdf"
+      ],
+      "tags": [
+        "enc-r4"
+      ],
+      "expect": "open",
+      "expect_files": {
+        "test/pdfs/bug1782186.pdf": "password:Hello",
+        "test/pdfs/issue3371.pdf": "password:ELXRTQWS"
+      },
+      "note": "стандартное шифрование R4; open — пустой пароль пользователя; R2–R4 — пароль в PDFDocEncoding (MuPDF переводит из UTF-8)",
+      "count": 7
+    },
+    {
+      "id": "pdfium_tests-enc-r4",
+      "from": "pdfium_tests",
+      "license": "BSD-3-Clause",
+      "files": [
+        "fx/FRC_3.5_part1/FRC_3.5_CFM_AESV2__EncryptMetadata_F.pdf",
+        "fx/FRC_3.5_part1/FRC_3.5_EncryptMetadata_None.pdf",
+        "fx/FRC_3.5_part1/FRC_3.5_V_4_CFM_V2_.pdf",
+        "fx/FRC_3.5_part1/FRC_3.5_v_2_length_128_AuthEvent_DocOpen_.pdf",
+        "fx/FRC_3.5_part2/FRC_3.5_P_4_Password_1.pdf",
+        "fx/FRC_3.5_part2/FRC_3.5_P__1852_Password_1.pdf",
+        "fx/FRC_3.5_part2/FRC_3.5_P__2584_Password_1.pdf",
+        "fx/FRC_3.5_part2/FRC_3.5_P__2616_Password_1.pdf",
+        "fx/FRC_3.5_part2/FRC_3.5_P__2880_Password_1.pdf",
+        "fx/FRC_3.5_part2/FRC_3.5_P__3376_Password_1.pdf",
+        "fx/FRC_3.5_part2/FRC_3.5_P__3392_Password_1.pdf",
+        "fx/FRC_3.5_part2/FRC_3.5_P__3608_Password_1.pdf",
+        "fx/FRC_3.5_part2/FRC_3.5_P__3616_Password_1.pdf",
+        "fx/FRC_3.5_part2/FRC_3.5_P__3648_Password_1.pdf",
+        "fx/FRC_3.5_part2/FRC_3.5_P__3900_Password_1.pdf"
+      ],
+      "tags": [
+        "enc-r4"
+      ],
+      "expect": "open",
+      "note": "стандартное шифрование R4; open — пустой пароль пользователя; R2–R4 — пароль в PDFDocEncoding (MuPDF переводит из UTF-8)",
+      "count": 15
+    },
+    {
+      "id": "pdfium_tests-enc-r5",
+      "from": "pdfium_tests",
+      "license": "BSD-3-Clause",
+      "files": [
+        "fx/FRC_3.5_part1/FRC_3.5_CF_Strf_stmf_StdCF.pdf",
+        "fx/FRC_3.5_part1/FRC_3.5_V_5_CFM_AESV3.pdf"
+      ],
+      "tags": [
+        "enc-r5"
+      ],
+      "expect": "open",
+      "note": "стандартное шифрование R5; open — пустой пароль пользователя; R2–R4 — пароль в PDFDocEncoding (MuPDF переводит из UTF-8)",
+      "count": 2
+    },
+    {
+      "id": "pdfium_resources-enc-r5",
+      "from": "pdfium_resources",
+      "license": "BSD-3-Clause",
+      "files": [
+        "testing/resources/encrypted_hello_world_r5.pdf"
+      ],
+      "tags": [
+        "enc-r5"
+      ],
+      "expect": "open",
+      "expect_files": {
+        "testing/resources/encrypted_hello_world_r5.pdf": "password:hôtel"
+      },
+      "note": "стандартное шифрование R5; open — пустой пароль пользователя; R2–R4 — пароль в PDFDocEncoding (MuPDF переводит из UTF-8)",
+      "count": 1
+    },
+    {
+      "id": "pdfjs-enc-r5",
+      "from": "pdfjs",
+      "license": "unspecified",
+      "files": [
+        "test/pdfs/issue21579.pdf"
+      ],
+      "tags": [
+        "enc-r5"
+      ],
+      "expect": "open",
+      "expect_files": {
+        "test/pdfs/issue21579.pdf": "password:pässwört"
+      },
+      "note": "стандартное шифрование R5; open — пустой пароль пользователя; R2–R4 — пароль в PDFDocEncoding (MuPDF переводит из UTF-8)",
+      "count": 1
+    },
+    {
+      "id": "pdfium_resources-enc-r6",
+      "from": "pdfium_resources",
+      "license": "BSD-3-Clause",
+      "files": [
+        "testing/resources/encrypted_hello_world_r6.pdf"
+      ],
+      "tags": [
+        "enc-r6"
+      ],
+      "expect": "open",
+      "expect_files": {
+        "testing/resources/encrypted_hello_world_r6.pdf": "password:hôtel"
+      },
+      "note": "стандартное шифрование R6; open — пустой пароль пользователя; R2–R4 — пароль в PDFDocEncoding (MuPDF переводит из UTF-8)",
+      "count": 1
+    },
+    {
+      "id": "pdfjs-enc-r6",
+      "from": "pdfjs",
+      "license": "unspecified",
+      "files": [
+        "test/pdfs/empty_protected.pdf",
+        "test/pdfs/issue6010_1.pdf",
+        "test/pdfs/issue6010_2.pdf",
+        "test/pdfs/issue7665.pdf",
+        "test/pdfs/pr6531_1.pdf",
+        "test/pdfs/print_protection.pdf",
+        "test/pdfs/secHandler.pdf"
+      ],
+      "tags": [
+        "enc-r6"
+      ],
+      "expect": "open",
+      "expect_files": {
+        "test/pdfs/issue6010_1.pdf": "password:abc",
+        "test/pdfs/issue6010_2.pdf": "password:æøå",
+        "test/pdfs/pr6531_1.pdf": "password:asdfasdf",
+        "test/pdfs/print_protection.pdf": "password:password"
+      },
+      "note": "стандартное шифрование R6; open — пустой пароль пользователя; R2–R4 — пароль в PDFDocEncoding (MuPDF переводит из UTF-8)",
+      "count": 7
+    },
+    {
+      "id": "safedocs-enc-unicode",
+      "from": "safedocs",
+      "license": "Apache-2.0",
+      "files": [
+        "Unicode passwords/corrigendum4/unicode-test-U2F874-correct.pdf",
+        "Unicode passwords/corrigendum5/unicode-corrigendum5-fixed.pdf",
+        "Unicode passwords/corrigendum5/unicode-corrigendum5-unicode32-twice.pdf"
+      ],
+      "tags": [
+        "enc-r6"
+      ],
+      "expect": "open",
+      "expect_files": {
+        "Unicode passwords/corrigendum4/unicode-test-U2F874-correct.pdf": "password:Password当!",
+        "Unicode passwords/corrigendum5/unicode-corrigendum5-fixed.pdf": "password:ᄀ̀ᅡ̣",
+        "Unicode passwords/corrigendum5/unicode-corrigendum5-unicode32-twice.pdf": "password:가̣̀"
+      },
+      "edge": true,
+      "note": "Unicode-пароли R6 (SASLprep, Unicode 3.2) — граничные случаи; mutool 1.28.5 их не принимает: ожидание по спецификации (safedocs README)",
+      "count": 3
+    },
+    {
+      "id": "pdfjs-enc-r4-edge",
+      "from": "pdfjs",
+      "license": "unspecified",
+      "files": [
+        "test/pdfs/crypt_filters.pdf"
+      ],
+      "tags": [
+        "enc-r4"
+      ],
+      "expect": "open",
+      "edge": true,
+      "note": "крипто-фильтр с нестандартным именем: pdf.js и qpdf открывают, mutool 1.28.5 — «Crypt Filter not Identity or StdCF»",
+      "count": 1
+    },
+    {
+      "id": "pdfjs-enc-r6-edge",
+      "from": "pdfjs",
+      "license": "unspecified",
+      "files": [
+        "test/pdfs/pr6531_2.pdf"
+      ],
+      "tags": [
+        "enc-r6"
+      ],
+      "expect": "open",
+      "edge": true,
+      "note": "R6 с пустым паролем пользователя (pdf.js PR 6531): pdf.js и qpdf открывают, mutool 1.28.5 — «cannot authenticate password»",
+      "count": 1
+    },
+    {
+      "id": "pdfjs-enc-unicode",
+      "from": "pdfjs",
+      "license": "unspecified",
+      "files": [
+        "test/pdfs/saslprep-r6.pdf"
+      ],
+      "tags": [
+        "enc-r6"
+      ],
+      "expect": "password:SªSL­prep",
+      "edge": true,
+      "note": "пароль до SASLprep (pdf.js test_manifest); mutool 1.28.5 без SASLprep его не принимает",
+      "count": 1
+    },
+    {
+      "id": "dss-sig-b",
+      "from": "dss",
+      "license": "unspecified",
+      "files": [
+        "dss-pades/src/test/resources/validation/DSS-1683.pdf",
+        "dss-pades/src/test/resources/validation/DSS-2025.pdf",
+        "dss-pades/src/test/resources/validation/DSS-3226.pdf",
+        "dss-pades/src/test/resources/validation/DSS-3567.pdf",
+        "dss-pades/src/test/resources/validation/adbe_ocsp_signed.pdf",
+        "dss-pades/src/test/resources/validation/dss-1188/Test.pdf",
+        "dss-pades/src/test/resources/validation/dss-1376/DSS1376-rev_n-1.pdf",
+        "dss-pades/src/test/resources/validation/dss-1376/DSS1376-rev_n-2.pdf",
+        "dss-pades/src/test/resources/validation/dss-1376/DSS1376-rev_n-3.pdf",
+        "dss-pades/src/test/resources/validation/dss-1376/DSS1376-rev_n-4.pdf",
+        "dss-pades/src/test/resources/validation/dss-1376/DSS1376-rev_n-5.pdf",
+        "dss-pades/src/test/resources/validation/dss-1376/DSS1376-rev_n.pdf",
+        "dss-pades/src/test/resources/validation/dss-1420/PAdES-BpB-att-SHA256-SHA3_224withRSA.pdf",
+        "dss-pades/src/test/resources/validation/dss-1420/PAdES-BpB-att-SHA256-SHA3_256withRSA.pdf",
+        "dss-pades/src/test/resources/validation/dss-2236/hide.pdf",
+        "dss-pades/src/test/resources/validation/dss-2236/replace.pdf",
+        "dss-pades/src/test/resources/validation/dss-2554/certified-changes-permitted.pdf",
+        "dss-pades/src/test/resources/validation/dss-2554/fieldmdp-include.pdf",
+        "dss-pades/src/test/resources/validation/dss-818/Signature-P-DE_CRY-2 (HASH_FAILURE).pdf",
+        "dss-pades/src/test/resources/validation/dss-818/Signature-P-IT_ADO-1 (HASH_FAILURE) (ECDSA).pdf",
+        "dss-pades/src/test/resources/validation/dss-PLAIN-ECDSA/TeleSec_PKS_eIDAS_QES_CA_1-baseline-b.pdf",
+        "dss-pades/src/test/resources/validation/evidence-record/PAdES_with_er.pdf",
+        "dss-pades/src/test/resources/validation/evidence-record/Signature-P-B-7da49953-d837-4f0b-8f38-aa5aa4181e3c.pdf",
+        "dss-pades/src/test/resources/validation/hello_signed_INCSAVE_signed.pdf",
+        "dss-pades/src/test/resources/validation/hello_signed_INCSAVE_signed_EDITED.pdf",
+        "dss-pades/src/test/resources/validation/malformed-rsa-digestinfo.pdf",
+        "dss-pades/src/test/resources/validation/modified_after_signature.pdf",
+        "dss-pades/src/test/resources/validation/pades-alter-signature-appearance-modify-stream.pdf",
+        "dss-pades/src/test/resources/validation/pades-alter-signature-appearance-new-stream.pdf",
+        "dss-pades/src/test/resources/validation/pades-bes-no-certificates.pdf",
+        "dss-pades/src/test/resources/validation/pades-bes.pdf",
+        "dss-pades/src/test/resources/validation/pades-enveloping-cms.pdf",
+        "dss-pades/src/test/resources/validation/pades-epes.pdf",
+        "dss-pades/src/test/resources/validation/pades-level-b-sig-policy-invalid-digest-algo.pdf",
+        "dss-pades/src/test/resources/validation/pades-not-epes.pdf",
+        "dss-pades/src/test/resources/validation/pades-ocsp-archiveCutOff-invalid.pdf",
+        "dss-pades/src/test/resources/validation/pades-signed-annot-added.pdf",
+        "dss-pades/src/test/resources/validation/pades-signed-filled-form.pdf",
+        "dss-pades/src/test/resources/validation/pades-spoofing-replaced-reason.pdf",
+        "dss-pades/src/test/resources/validation/pades-unsupported-signature-algorithm.pdf",
+        "dss-pades/src/test/resources/validation/pdf-byterange-overlap.pdf",
+        "dss-pades/src/test/resources/validation/pdf-signed-added-page.pdf",
+        "dss-pades/src/test/resources/validation/pdf-signed-original.pdf",
+        "dss-pades/src/test/resources/validation/pdf-signed-out-of-byteRange.pdf",
+        "dss-pades/src/test/resources/validation/pdf-structtreeroot-changes.pdf",
+        "dss-pades/src/test/resources/validation/pkcs7-no-message-digest.pdf",
+        "dss-pades/src/test/resources/validation/pkcs7_sha1.pdf",
+        "dss-pades/src/test/resources/validation/self-issued-qesig.pdf",
+        "dss-pades/src/test/resources/validation/signature-referenced-from-multiple-fields.pdf",
+        "dss-pades/src/test/resources/validation/siwa.pdf"
+      ],
+      "tags": [
+        "sig-b"
+      ],
+      "expect": "sig:INTACT",
+      "expect_files": {
+        "dss-pades/src/test/resources/validation/hello_signed_INCSAVE_signed_EDITED.pdf": "sig:INVALID",
+        "dss-pades/src/test/resources/validation/pades-bes-no-certificates.pdf": "sig:UNKNOWN",
+        "dss-pades/src/test/resources/validation/pades-enveloping-cms.pdf": "sig:UNKNOWN",
+        "dss-pades/src/test/resources/validation/pdf-byterange-overlap.pdf": "sig:INVALID",
+        "dss-pades/src/test/resources/validation/pdf-signed-out-of-byteRange.pdf": "sig:INVALID",
+        "dss-pades/src/test/resources/validation/dss-2236/hide.pdf": "sig:UNKNOWN"
+      },
+      "note": "уровень по структуре (pyHanko 0.38: штамп подписи, /DSS, DocTimeStamp); ожидание — целостность без доверия по pyHanko; UNKNOWN — pyHanko не смог проверить",
+      "count": 50
+    },
+    {
+      "id": "dss-sig-t",
+      "from": "dss",
+      "license": "unspecified",
+      "files": [
+        "dss-pades/src/test/resources/validation/AD-RB.pdf",
+        "dss-pades/src/test/resources/validation/BadEncodedCMS.pdf",
+        "dss-pades/src/test/resources/validation/DSS-2155.pdf",
+        "dss-pades/src/test/resources/validation/DSS-3577.pdf",
+        "dss-pades/src/test/resources/validation/Signature-P-BG_BOR-1.pdf",
+        "dss-pades/src/test/resources/validation/Signature-P-HU_MIC-1.pdf",
+        "dss-pades/src/test/resources/validation/Signature-P-HU_NET-2.pdf",
+        "dss-pades/src/test/resources/validation/Signature-P-PK7-2.pdf",
+        "dss-pades/src/test/resources/validation/TestToSignPDFSHA256_TST_SIG_NOT_FOUND.pdf",
+        "dss-pades/src/test/resources/validation/doc-firmado-T.pdf",
+        "dss-pades/src/test/resources/validation/dss-2236/annotation-and-visible-change.pdf",
+        "dss-pades/src/test/resources/validation/dss-2554/certified-no-change-permitted.pdf",
+        "dss-pades/src/test/resources/validation/dss-818/Signature-P-SK-1 (HASH_FAILURE).pdf",
+        "dss-pades/src/test/resources/validation/pades-t-duplicated-sigtst.pdf",
+        "dss-pades/src/test/resources/validation/pades-t-level-extended.pdf",
+        "dss-pades/src/test/resources/validation/pades-two-sig-copied-tst.pdf",
+        "dss-pades/src/test/resources/validation/pdf-removed-pages.pdf",
+        "dss-pades/src/test/resources/validation/pdf-with-eof-cr.pdf",
+        "dss-pades/src/test/resources/validation/pkcs7.pdf",
+        "dss-pades/src/test/resources/validation/timestamped_and_signed.pdf"
+      ],
+      "tags": [
+        "sig-t"
+      ],
+      "expect": "sig:INTACT",
+      "expect_files": {
+        "dss-pades/src/test/resources/validation/BadEncodedCMS.pdf": "sig:UNKNOWN",
+        "dss-pades/src/test/resources/validation/Signature-P-HU_NET-2.pdf": "sig:UNKNOWN"
+      },
+      "note": "уровень по структуре (pyHanko 0.38: штамп подписи, /DSS, DocTimeStamp); ожидание — целостность без доверия по pyHanko; UNKNOWN — pyHanko не смог проверить",
+      "count": 20
+    },
+    {
+      "id": "dss-sig-lt",
+      "from": "dss",
+      "license": "unspecified",
+      "files": [
+        "dss-pades/src/test/resources/validation/51sigs.pdf",
+        "dss-pades/src/test/resources/validation/PAdESWithCrossCertificateOCSP.pdf",
+        "dss-pades/src/test/resources/validation/TEST2_signed_with_zero_policy_hash.pdf",
+        "dss-pades/src/test/resources/validation/belgian_pki_multiple_ocsps_lt.pdf",
+        "dss-pades/src/test/resources/validation/doc-firmado-LT.pdf",
+        "dss-pades/src/test/resources/validation/dss-2554/fieldmdp-exclude-signed.pdf",
+        "dss-pades/src/test/resources/validation/pades-enveloping-empty-bytes-cms.pdf",
+        "dss-pades/src/test/resources/validation/pades-same-border-annotations.pdf",
+        "dss-pades/src/test/resources/validation/pdf-eof.pdf"
+      ],
+      "tags": [
+        "sig-lt"
+      ],
+      "expect": "sig:INTACT",
+      "expect_files": {
+        "dss-pades/src/test/resources/validation/pades-enveloping-empty-bytes-cms.pdf": "sig:UNKNOWN",
+        "dss-pades/src/test/resources/validation/pades-same-border-annotations.pdf": "sig:UNKNOWN"
+      },
+      "note": "уровень по структуре (pyHanko 0.38: штамп подписи, /DSS, DocTimeStamp); ожидание — целостность без доверия по pyHanko; UNKNOWN — pyHanko не смог проверить",
+      "count": 9
+    },
+    {
+      "id": "dss-sig-lta",
+      "from": "dss",
+      "license": "unspecified",
+      "files": [
+        "dss-pades/src/test/resources/validation/DSS-1443.pdf",
+        "dss-pades/src/test/resources/validation/DSS-1983.pdf",
+        "dss-pades/src/test/resources/validation/DSS-2199.pdf",
+        "dss-pades/src/test/resources/validation/DSS-2601.pdf",
+        "dss-pades/src/test/resources/validation/DSS-2821.pdf",
+        "dss-pades/src/test/resources/validation/DSS-3298.pdf",
+        "dss-pades/src/test/resources/validation/PAdES-LT.pdf",
+        "dss-pades/src/test/resources/validation/PAdES-LTA.pdf",
+        "dss-pades/src/test/resources/validation/Signature-P-BG_BOR-2.pdf",
+        "dss-pades/src/test/resources/validation/Signature-P-DE_SCI-4.pdf",
+        "dss-pades/src/test/resources/validation/Signature-P-FR_CS-5.pdf",
+        "dss-pades/src/test/resources/validation/Signature-P-HU_MIC-3.pdf",
+        "dss-pades/src/test/resources/validation/Signature-P-HU_POL-3.pdf",
+        "dss-pades/src/test/resources/validation/Signature-P-HU_POL-7.pdf",
+        "dss-pades/src/test/resources/validation/Signature-P-SK-6.pdf",
+        "dss-pades/src/test/resources/validation/Test.signed_Certipost-2048-SHA512.extended-LTA.pdf",
+        "dss-pades/src/test/resources/validation/adbe_crl_signed.pdf",
+        "dss-pades/src/test/resources/validation/belgian_pki_multiple_ocsps.pdf",
+        "dss-pades/src/test/resources/validation/doc-firmado.pdf",
+        "dss-pades/src/test/resources/validation/dss-1696/Test.signed_Certipost-2048-SHA512.extended.extended-2019-07-02.pdf",
+        "dss-pades/src/test/resources/validation/dss-1696/Test.signed_Certipost-2048-SHA512.extended.extended-LTA-2019-07-02(DSS).pdf",
+        "dss-pades/src/test/resources/validation/dss-1696/Test.signed_Certipost-2048-SHA512.extended.extended-LTA-dss-5.4.pdf",
+        "dss-pades/src/test/resources/validation/dss-1696/Test.signed_Certipost-2048-SHA512.extended.pdf",
+        "dss-pades/src/test/resources/validation/dss-1959/pades-revoc-removed-from-dss-dict.pdf",
+        "dss-pades/src/test/resources/validation/dss-1959/pades-tst-with-orphan-refs.pdf",
+        "dss-pades/src/test/resources/validation/dss-2058/dss-2058-LTA-test.pdf",
+        "dss-pades/src/test/resources/validation/dss-2058/dss-2058-QC-LTA-test.pdf",
+        "dss-pades/src/test/resources/validation/evidence-record/Signature-P-LT-ef971596-8f2e-407d-a413-aae9cb9b8e4a.pdf",
+        "dss-pades/src/test/resources/validation/lt-short.pdf",
+        "dss-pades/src/test/resources/validation/muestra-firmado-firmado.pdf",
+        "dss-pades/src/test/resources/validation/pades-enveloping-other-pdf.pdf",
+        "dss-pades/src/test/resources/validation/pades-lt-extended-abde.pdf",
+        "dss-pades/src/test/resources/validation/pades-lt-extended-dss.pdf",
+        "dss-pades/src/test/resources/validation/pades-lta-copied-doctst.pdf",
+        "dss-pades/src/test/resources/validation/pades-ltv-from-epes.pdf",
+        "dss-pades/src/test/resources/validation/pades-ltv-with-reason.pdf",
+        "dss-pades/src/test/resources/validation/pades-ltv.pdf",
+        "dss-pades/src/test/resources/validation/pades-multiple-pages-annots-overlap.pdf",
+        "dss-pades/src/test/resources/validation/pades-ocsp-sign-cert.pdf",
+        "dss-pades/src/test/resources/validation/pades-t-duplicated-doctst.pdf",
+        "dss-pades/src/test/resources/validation/pades-tst-with-null-type.pdf",
+        "dss-pades/src/test/resources/validation/pades-tst-with-sig-type.pdf",
+        "dss-pades/src/test/resources/validation/pades3_Baseline_B.pdf",
+        "dss-pades/src/test/resources/validation/pades_with_orphan_ocsp_cert_refs.pdf",
+        "dss-pades/src/test/resources/validation/pdf-self-issued-ocsp.pdf"
+      ],
+      "tags": [
+        "sig-lta"
+      ],
+      "expect": "sig:INTACT",
+      "expect_files": {
+        "dss-pades/src/test/resources/validation/Signature-P-SK-6.pdf": "sig:UNKNOWN",
+        "dss-pades/src/test/resources/validation/pades-lt-extended-dss.pdf": "sig:UNKNOWN",
+        "dss-pades/src/test/resources/validation/pades-lta-copied-doctst.pdf": "sig:INVALID",
+        "dss-pades/src/test/resources/validation/pades-ltv-from-epes.pdf": "sig:UNKNOWN",
+        "dss-pades/src/test/resources/validation/pades-ltv-with-reason.pdf": "sig:UNKNOWN",
+        "dss-pades/src/test/resources/validation/pades-ltv.pdf": "sig:UNKNOWN",
+        "dss-pades/src/test/resources/validation/pades-t-duplicated-doctst.pdf": "sig:UNKNOWN",
+        "dss-pades/src/test/resources/validation/pades-tst-with-null-type.pdf": "sig:UNKNOWN",
+        "dss-pades/src/test/resources/validation/pades-tst-with-sig-type.pdf": "sig:UNKNOWN",
+        "dss-pades/src/test/resources/validation/pades_with_orphan_ocsp_cert_refs.pdf": "sig:UNKNOWN",
+        "dss-pades/src/test/resources/validation/evidence-record/Signature-P-LT-ef971596-8f2e-407d-a413-aae9cb9b8e4a.pdf": "sig:UNKNOWN"
+      },
+      "note": "уровень по структуре (pyHanko 0.38: штамп подписи, /DSS, DocTimeStamp); ожидание — целостность без доверия по pyHanko; UNKNOWN — pyHanko не смог проверить",
+      "count": 45
+    },
+    {
+      "id": "gen-annots",
+      "generated": true,
+      "generator": "tools/gen/make_annots.py",
+      "paths": [
+        "repo:tests/fixtures/annots/*.pdf"
+      ],
+      "tags": [
+        "annots"
+      ],
+      "expect": "open",
+      "license": "own"
+    },
+    {
+      "id": "gen-forms",
+      "generated": true,
+      "generator": "tools/gen/make_forms.py",
+      "paths": [
+        "repo:tests/fixtures/forms/forms-all.pdf",
+        "repo:tests/fixtures/forms/fields-all.pdf"
+      ],
+      "tags": [
+        "forms"
+      ],
+      "expect": "open",
+      "license": "own",
+      "note": "план (сессии 4.x, 6.x) называет фикстуру forms-all.pdf, генератор make_forms.py пишет fields-all.pdf; засчитывается любое из двух имён"
+    },
+    {
+      "id": "gen-xfa",
+      "generated": true,
+      "generator": "tools/gen/make_forms.py",
+      "paths": [
+        "repo:tests/fixtures/forms/xfa-stub.pdf"
+      ],
+      "tags": [
+        "xfa"
+      ],
+      "expect": "open",
+      "license": "own"
+    },
+    {
+      "id": "gen-mini-cyr",
+      "generated": true,
+      "generator": "tools/gen/make_mini.py",
+      "paths": [
+        "repo:tests/data/mini/cyr-cid.pdf"
+      ],
+      "tags": [
+        "cyr"
+      ],
+      "expect": "open",
+      "license": "own"
+    },
+    {
+      "id": "gen-mini-enc-r6",
+      "generated": true,
+      "generator": "tools/gen/make_mini.py",
+      "paths": [
+        "repo:tests/data/mini/enc-r6.pdf"
+      ],
+      "tags": [
+        "enc-r6"
+      ],
+      "expect": "password:user",
+      "license": "own"
+    },
+    {
+      "id": "gen-mini-truncated",
+      "generated": true,
+      "generator": "tools/gen/make_mini.py",
+      "paths": [
+        "repo:tests/data/mini/truncated.pdf"
+      ],
+      "tags": [
+        "fuzz"
+      ],
+      "expect": "broken-ok",
+      "license": "own"
+    },
+    {
+      "id": "gen-cyr",
+      "generated": true,
+      "generator": "tools/gen/make_cyr_fixtures.ps1",
+      "paths": [
+        "repo:tests/fixtures/cyr/*.pdf"
+      ],
+      "tags": [
+        "cyr",
+        "text-edit"
+      ],
+      "expect": "open",
+      "license": "own"
+    },
+    {
+      "id": "gen-enc-r2",
+      "generated": true,
+      "generator": "tools/gen/make_enc.py",
+      "paths": [
+        "repo:tests/fixtures/enc/enc-rc4-40.pdf"
+      ],
+      "tags": [
+        "enc-r2"
+      ],
+      "expect": "password:user",
+      "license": "own",
+      "note": "пароли — tests/fixtures/enc/passwords.json (владелец owner)"
+    },
+    {
+      "id": "gen-enc-r3",
+      "generated": true,
+      "generator": "tools/gen/make_enc.py",
+      "paths": [
+        "repo:tests/fixtures/enc/enc-rc4-128.pdf"
+      ],
+      "tags": [
+        "enc-r3"
+      ],
+      "expect": "password:user",
+      "license": "own",
+      "note": "пароли — tests/fixtures/enc/passwords.json (владелец owner)"
+    },
+    {
+      "id": "gen-enc-r4",
+      "generated": true,
+      "generator": "tools/gen/make_enc.py",
+      "paths": [
+        "repo:tests/fixtures/enc/enc-aes-128.pdf"
+      ],
+      "tags": [
+        "enc-r4"
+      ],
+      "expect": "password:user",
+      "license": "own",
+      "note": "пароли — tests/fixtures/enc/passwords.json (владелец owner)"
+    },
+    {
+      "id": "gen-enc-r6",
+      "generated": true,
+      "generator": "tools/gen/make_enc.py",
+      "paths": [
+        "repo:tests/fixtures/enc/enc-aes-256-*.pdf"
+      ],
+      "tags": [
+        "enc-r6"
+      ],
+      "expect": "password:user",
+      "license": "own",
+      "expect_files": {
+        "repo:tests/fixtures/enc/enc-aes-256-emptyuser.pdf": "open",
+        "repo:tests/fixtures/enc/enc-aes-256-unicode.pdf": "password:пароль"
+      },
+      "note": "пароли — tests/fixtures/enc/passwords.json (владелец owner)"
+    },
+    {
+      "id": "gen-sig-b",
+      "generated": true,
+      "generator": "tools/gen/make_sig.py",
+      "paths": [
+        "repo:tests/fixtures/sig/signed-*.pdf"
+      ],
+      "tags": [
+        "sig-b"
+      ],
+      "expect": "sig:INTACT",
+      "license": "own"
+    },
+    {
+      "id": "gen-scans",
+      "generated": true,
+      "generator": "tools/gen/make_scans.py",
+      "paths": [
+        "repo:tests/fixtures/scans/*.pdf"
+      ],
+      "tags": [
+        "scan"
+      ],
+      "expect": "open",
+      "license": "own"
+    },
+    {
+      "id": "gen-office",
+      "generated": true,
+      "generator": "tools/gen/make_office_fixtures.ps1 + make_office_fixtures.py",
+      "paths": [
+        "repo:tests/fixtures/office/*.docx",
+        "repo:tests/fixtures/office/*.rtf",
+        "repo:tests/fixtures/office/*.xlsx",
+        "repo:tests/fixtures/office/*.pptx",
+        "repo:tests/fixtures/office/*.odt"
+      ],
+      "tags": [
+        "office"
+      ],
+      "expect": "data",
+      "license": "own"
+    },
+    {
+      "id": "gen-big",
+      "generated": true,
+      "generator": "tools/gen/make_big.py",
+      "paths": [
+        "corpus:gen/**/big-1200*.pdf",
+        "corpus:gen/**/images-200*.pdf"
+      ],
+      "tags": [
+        "big"
+      ],
+      "expect": "open",
+      "license": "own"
+    },
+    {
+      "id": "gen-mutants",
+      "generated": true,
+      "generator": "tools/gen/make_mutants.py",
+      "paths": [
+        "corpus:gen/**/mutants/**/*.pdf",
+        "repo:tests/fixtures/mutants/**/*.pdf"
+      ],
+      "tags": [
+        "fuzz"
+      ],
+      "expect": "broken-ok",
+      "license": "own"
+    }
+  ]
+}
