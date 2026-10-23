@@ -69,6 +69,57 @@ std::string makePdf(MuContext& mu, int pages) {
     return bytes;
 }
 
+std::string makeHeavyPdf(MuContext& mu, int curves) {
+    fz_context* ctx = mu.get();
+    pdf_document* pdf = nullptr;
+    pdf_obj* page = nullptr;
+    pdf_obj* resources = nullptr;
+    fz_buffer* contents = nullptr;
+    fz_buffer* out = nullptr;
+    fz_output* stream = nullptr;
+    std::string bytes;
+    // Линейный конгруэнтный генератор: те же кривые при каждом запуске.
+    unsigned int seed = 1;
+    auto next = [&seed](int range) {
+        seed = seed * 1103515245u + 12345u;
+        return static_cast<int>((seed >> 8) % static_cast<unsigned int>(range));
+    };
+    std::string ops;
+    ops.reserve(static_cast<size_t>(curves) * 96);
+    ops += "3 w\n";
+    for (int i = 0; i < curves; ++i) {
+        ops += std::to_string(next(256)) + " " + std::to_string(next(256)) + " " + std::to_string(next(256)) +
+               " RG\n";
+        ops += std::to_string(next(595)) + " 0 m " + std::to_string(next(595)) + " " +
+               std::to_string(next(842)) + " " + std::to_string(next(595)) + " " + std::to_string(next(842)) +
+               " " + std::to_string(next(595)) + " 842 c S\n";
+    }
+    mu::call(ctx, [&] {
+        pdf = pdf_create_document(ctx);
+        resources = pdf_new_dict(ctx, pdf, 1);
+        contents = fz_new_buffer_from_copied_data(ctx, reinterpret_cast<const unsigned char*>(ops.data()),
+                                                  ops.size());
+        page = pdf_add_page(ctx, pdf, fz_make_rect(0, 0, 595, 842), 0, resources, contents);
+        pdf_insert_page(ctx, pdf, -1, page);
+        out = fz_new_buffer(ctx, 4096);
+        stream = fz_new_output_with_buffer(ctx, out);
+        pdf_write_options opts = pdf_default_write_options;
+        opts.do_compress = 1;
+        pdf_write_document(ctx, pdf, stream, &opts);
+        fz_close_output(ctx, stream);
+    });
+    unsigned char* data = nullptr;
+    const size_t len = fz_buffer_storage(ctx, out, &data);
+    bytes.assign(reinterpret_cast<const char*>(data), len);
+    fz_drop_output(ctx, stream);
+    fz_drop_buffer(ctx, out);
+    fz_drop_buffer(ctx, contents);
+    pdf_drop_obj(ctx, resources);
+    pdf_drop_obj(ctx, page);
+    pdf_drop_document(ctx, pdf);
+    return bytes;
+}
+
 TempDir::TempDir() {
     static std::atomic<int> counter{0};
     const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
