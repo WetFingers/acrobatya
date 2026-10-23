@@ -33,6 +33,7 @@ namespace ot::ui {
 class DocumentTabs;
 class DocumentView;
 class GlobalBar;
+class ToolPanel;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -60,6 +61,7 @@ public:
     DocumentView* document(int index) const;
     DocumentTabs& tabs() const;
     GlobalBar& globalBar() const { return *globalBar_; }
+    ToolPanel& toolPanel() const { return *toolPanel_; }
     DocumentRegistry& registry() const { return *registry_; }
     QWidget* homePage() const { return home_; }
     QString errorString() const { return error_; }
@@ -109,6 +111,8 @@ private:
     bool confirmClose(DocumentView& view);
     void onCurrentTabChanged(int index);
     void reportOpenError(const QString& path, const QString& reason);
+    void showAllTools();
+    void releaseView(DocumentView* view);
 
     std::unique_ptr<RenderPool> pool_;
     std::unique_ptr<TileCache> cache_;
@@ -116,6 +120,7 @@ private:
 
     GlobalBar* globalBar_ = nullptr;
     QSplitter* body_ = nullptr;
+    ToolPanel* toolPanel_ = nullptr;
     QStackedWidget* center_ = nullptr;
     QWidget* home_ = nullptr;
     QStackedWidget* documents_ = nullptr;

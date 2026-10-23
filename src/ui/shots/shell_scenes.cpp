@@ -11,9 +11,11 @@
 #include "ui/shell/document_tabs.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
+#include "ui/shell/tool_panel.h"
 #include "ui/shots/scenes.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tile_painter.h"
+#include "ui/view/tool_controller.h"
 
 namespace ot::ui {
 
@@ -66,6 +68,36 @@ std::vector<Scene> shellScenes() {
         return documentReady(w) && window->tabs().isModified(1);
     };
     scenes.push_back(tabs);
+
+    // «Все инструменты» (план 2.3, пункт 2): 16 строк эталона 6.2, будущие — серые с подсказкой.
+    Scene all;
+    all.name = QStringLiteral("all-tools");
+    all.make = withMainWindow([](MainWindow& w) {
+        w.openFile(sceneFixture(QStringLiteral("demo/report.pdf")));
+        w.toolPanel().setCollapsed(false);
+        w.toolPanel().showList();
+    });
+    all.ready = documentReady;
+    scenes.push_back(all);
+
+    Scene collapsed;
+    collapsed.name = QStringLiteral("all-tools-collapsed");
+    collapsed.make = withMainWindow([](MainWindow& w) {
+        w.openFile(sceneFixture(QStringLiteral("demo/report.pdf")));
+        w.toolPanel().setCollapsed(true);
+    });
+    collapsed.ready = documentReady;
+    scenes.push_back(collapsed);
+
+    // Плавающая панель внизу документа: «Рука» включена.
+    Scene quick;
+    quick.name = QStringLiteral("quick-bar");
+    quick.make = withMainWindow([](MainWindow& w) {
+        w.openFile(sceneFixture(QStringLiteral("demo/comments.pdf")));
+        w.currentDocument()->view().tools().setTool(ViewToolId::Hand);
+    });
+    quick.ready = documentReady;
+    scenes.push_back(quick);
     return scenes;
 }
 

@@ -47,10 +47,10 @@ private:
     bool interactive_ = false;
 };
 
-class ToolPanel : public QFrame {
+class ToolWindow : public QFrame {
     Q_OBJECT
 public:
-    ToolPanel(const QString& title, QWidget* host);
+    ToolWindow(const QString& title, QWidget* host);
     // В правый верхний угол вьюпорта хоста.
     void place();
 
@@ -68,7 +68,7 @@ private:
     PanelHeader* header_ = nullptr;
 };
 
-class LoupePanel : public ToolPanel {
+class LoupePanel : public ToolWindow {
     Q_OBJECT
 public:
     explicit LoupePanel(QWidget* host);
@@ -89,7 +89,7 @@ private:
     QLabel* label_ = nullptr;
 };
 
-class PanZoomPanel : public ToolPanel {
+class PanZoomPanel : public ToolWindow {
     Q_OBJECT
 public:
     explicit PanZoomPanel(QWidget* host);

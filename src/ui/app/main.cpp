@@ -23,6 +23,7 @@
 #include "ui/shell/main_window.h"
 #include "ui/shots/scenes.h"
 #include "ui/theme/theme.h"
+#include "ui/tools/tool_registry.h"
 #include "ui/widgets/showcase.h"
 
 namespace {
@@ -109,6 +110,8 @@ int main(int argc, char** argv) {
     if (!opts.logLevel.isEmpty()) {
         spdlog::set_level(spdlog::level::from_str(opts.logLevel.toStdString()));
     }
+    // Инструменты «Все инструменты» (эталон 6.2): 16 регистраций, будущие — заглушки с этапом.
+    registerBuiltinTools(ToolRegistry::instance());
     // Язык до первого окна: --lang, иначе настройка, иначе системный (эталон 5.7).
     ot::i18n::install(opts.lang.isEmpty() ? ot::i18n::fromSettings() : opts.lang);
     if (!opts.shots.isEmpty()) {

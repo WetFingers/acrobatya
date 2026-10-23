@@ -7,6 +7,7 @@
 
 #include "support/ui_test.h"
 #include "ui/theme/theme.h"
+#include "ui/tools/tool_registry.h"
 
 namespace ot::test {
 
@@ -21,6 +22,7 @@ int main(int argc, char** argv) {
     QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
     QApplication app(argc, argv);
     ot::ui::Theme::apply(app, ot::ui::ThemeChoice::Light);
+    ot::ui::registerBuiltinTools(ot::ui::ToolRegistry::instance());  // как main.cpp программы
     auto& suites = ot::test::uiSuites();
     if (argc > 1 && std::strcmp(argv[1], "--list") == 0) {
         for (const auto& s : suites) {

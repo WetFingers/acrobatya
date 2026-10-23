@@ -1,0 +1,47 @@
+// 16 инструментов «Все инструменты» в порядке эталона 6.2 (иконки — эталон 6.5, kToolIcons). Сессия, которая
+// делает инструмент, меняет его строку на registry.add(std::make_unique<<Имя>Tool>()) — оболочка не правится.
+#include <QCoreApplication>
+
+#include <memory>
+
+#include "ui/theme/icons.h"
+#include "ui/tools/stub_tool.h"
+#include "ui/tools/tool_registry.h"
+
+namespace ot::ui {
+
+StubTool::StubTool(QString id, const char* title, QString icon, int stage)
+    : id_(std::move(id)), title_(title), icon_(std::move(icon)), stage_(stage) {}
+
+QString StubTool::title() const { return QCoreApplication::translate("ot::ui::ToolRegistry", title_); }
+
+namespace {
+
+std::unique_ptr<Tool> stub(const char* id, const char* title, int stage) {
+    return std::make_unique<StubTool>(QLatin1String(id), title, QLatin1String(toolIconName(id)), stage);
+}
+
+}  // namespace
+
+void registerBuiltinTools(ToolRegistry& registry) {
+    registry.add(stub("edit", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Редактировать PDF"), 3));
+    registry.add(stub("organize", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Упорядочить страницы"), 7));
+    registry.add(stub("comment", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Добавить комментарии"), 5));
+    registry.add(stub("fillsign", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Заполнить и подписать"), 5));
+    registry.add(stub("prepareform", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Подготовить форму"), 6));
+    registry.add(stub("create", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Создать PDF"), 7));
+    registry.add(stub("combine", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Объединить файлы"), 7));
+    registry.add(stub("export", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Экспорт PDF"), 7));
+    registry.add(stub("protect", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Защитить"), 7));
+    registry.add(stub("compress", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Сжать PDF"), 9));
+    registry.add(
+        stub("certificate", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Использовать сертификат"), 4));
+    registry.add(stub("scan", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Сканировать и OCR"), 8));
+    registry.add(stub("print", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Печать"), 2));
+    registry.add(stub("measure", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Измерить"), 5));
+    registry.add(
+        stub("accessibility", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Специальные возможности"), 8));
+    registry.add(stub("javascript", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Использовать JavaScript"), 6));
+}
+
+}  // namespace ot::ui

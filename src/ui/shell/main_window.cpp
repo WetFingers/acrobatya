@@ -32,7 +32,10 @@
 #include "ui/shell/document_tabs.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/global_bar.h"
+#include "ui/shell/quick_bar.h"
+#include "ui/shell/tool_panel.h"
 #include "ui/theme/theme.h"
+#include "ui/tools/tool_registry.h"
 #include "ui/view/page_view.h"
 #include "ui/widgets/toast.h"
 
@@ -73,10 +76,19 @@ MainWindow::MainWindow(QWidget* parent)
     column->setSpacing(0);
     globalBar_ = new GlobalBar(shell);
     column->addWidget(globalBar_);
-    body_ = new QSplitter(Qt::Horizontal, shell);
+    // Левая панель фиксированной ширины (320/48) — рядом со сплиттером; в сплиттере — центр и правая
+    // навигация (2.4: её ширина тянется 220–480).
+    auto* row = new QWidget(shell);
+    auto* rowLayout = new QHBoxLayout(row);
+    rowLayout->setContentsMargins(0, 0, 0, 0);
+    rowLayout->setSpacing(0);
+    toolPanel_ = new ToolPanel(ToolRegistry::instance(), row);
+    rowLayout->addWidget(toolPanel_);
+    body_ = new QSplitter(Qt::Horizontal, row);
     body_->setObjectName(QStringLiteral("shellBody"));
     body_->setChildrenCollapsible(false);
     body_->setHandleWidth(1);
+    rowLayout->addWidget(body_, 1);
     center_ = new QStackedWidget(body_);
     center_->setObjectName(QStringLiteral("shellCenter"));
     home_ = buildHome();
@@ -86,7 +98,7 @@ MainWindow::MainWindow(QWidget* parent)
     center_->addWidget(documents_);
     body_->addWidget(center_);
     body_->setStretchFactor(body_->indexOf(center_), 1);
-    column->addWidget(body_, 1);
+    column->addWidget(row, 1);
     setCentralWidget(shell);
 
     DocumentTabs* bar = globalBar_->tabs();
@@ -98,6 +110,9 @@ MainWindow::MainWindow(QWidget* parent)
     connect(bar, &QTabBar::currentChanged, this, &MainWindow::onCurrentTabChanged);
     connect(bar, &QTabBar::tabCloseRequested, this, &MainWindow::closeDocument);
     connect(globalBar_, &GlobalBar::homeClicked, this, &MainWindow::showHome);
+    connect(globalBar_, &GlobalBar::allToolsClicked, this, &MainWindow::showAllTools);
+    connect(toolPanel_, &ToolPanel::toolRequested, this,
+            [this](const QString& id) { ToolRegistry::instance().activate(id, currentDocument()); });
     connect(globalBar_, &GlobalBar::settingsClicked, this, [this] { notifyLater(tr("Установки"), 2); });
     connect(globalBar_, &GlobalBar::searchRequested, this, [this] { notifyLater(tr("Поиск"), 2); });
 
@@ -111,6 +126,7 @@ MainWindow::~MainWindow() {
     while (documentCount() > 0) {
         DocumentView* view = document(0);
         const quint64 id = view->id();
+        releaseView(view);
         delete view;
         tabs().removeTab(0);
         registry_->close(id);
@@ -189,6 +205,9 @@ bool MainWindow::openFile(const QString& path, int page) {
     connect(view, &DocumentView::saveAsPdfRequested, this, [this, view] { saveAsPdf(view); });
     connect(&view->session(), &DocumentSession::undoStateChanged, this, &MainWindow::updateActions,
             Qt::QueuedConnection);
+    auto* quick = new QuickBar();
+    quick->attach(&view->view());
+    view->setFloatingBar(quick);
     if (page >= 0) {
         view->setInitialPage(page);
     }
@@ -216,6 +235,7 @@ bool MainWindow::closeDocument(int index) {
     }
     const quint64 id = view->id();
     const bool wasHome = isHomeShown();
+    releaseView(view);
     documents_->removeWidget(view);
     delete view;
     tabs().removeTab(tabs().indexOf(id));
@@ -239,6 +259,8 @@ bool MainWindow::closeAllDocuments() {
 
 void MainWindow::showHome() {
     center_->setCurrentWidget(home_);
+    toolPanel_->hide();
+    ToolRegistry::instance().setView(nullptr);
     globalBar_->setHomeActive(true);
     retranslateTitle();
     updateActions();
@@ -255,6 +277,8 @@ void MainWindow::showDocument(int index) {
     tabs().setCurrentIndex(index);
     documents_->setCurrentWidget(view);
     center_->setCurrentWidget(documents_);
+    toolPanel_->show();
+    ToolRegistry::instance().setView(view);
     globalBar_->setHomeActive(false);
     view->setFocus();
     retranslateTitle();
@@ -343,6 +367,24 @@ void MainWindow::handleRequest(const SingleInstance::Request& request) {
     raise();
     activateWindow();
     openFiles(request.files, request.page > 0 ? request.page - 1 : -1);
+}
+
+// «Все инструменты»: левая панель развёрнута и показывает список (активный инструмент выключается); с Главной
+// — к текущей вкладке.
+void MainWindow::showAllTools() {
+    if (isHomeShown() && documentCount() > 0) {
+        showDocument(tabs().currentIndex());
+    }
+    toolPanel_->setCollapsed(false);
+    toolPanel_->showList();
+    toolPanel_->show();
+}
+
+// Вкладка уходит: инструмент, включённый на ней, выключается до удаления вида.
+void MainWindow::releaseView(DocumentView* view) {
+    if (ToolRegistry::instance().view() == view) {
+        ToolRegistry::instance().setView(nullptr);
+    }
 }
 
 void MainWindow::notifyLater(const QString& what, int stage) {

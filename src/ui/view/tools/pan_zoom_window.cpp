@@ -23,7 +23,7 @@ namespace ot::ui {
 
 // ---------------------------------------------------------------- PanZoomPanel
 
-PanZoomPanel::PanZoomPanel(QWidget* host) : ToolPanel(tr("Панорамирование и масштаб"), host) {
+PanZoomPanel::PanZoomPanel(QWidget* host) : ToolWindow(tr("Панорамирование и масштаб"), host) {
     setObjectName(QStringLiteral("panZoomPanel"));
     const Metrics& m = Theme::sizes();
     thumb_ = new ToolImage(this);
@@ -99,7 +99,7 @@ void PanZoomTool::activate() {
     if (panel_ == nullptr) {
         panel_ = new PanZoomPanel(&view_);
         PanZoomPanel* panel = panel_;
-        QObject::connect(panel, &ToolPanel::closeRequested, &controller_,
+        QObject::connect(panel, &ToolWindow::closeRequested, &controller_,
                          [this] { controller_.setTool(ToolController::defaultTool()); });
         QObject::connect(panel, &PanZoomPanel::previousPage, &view_, &PageView::previousPage);
         QObject::connect(panel, &PanZoomPanel::nextPage, &view_, &PageView::nextPage);

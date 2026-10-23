@@ -63,3 +63,5 @@ rotate-ccw
 
 # Оболочка (2.3): глобальная панель
 grid-2x2
+panel-left-close
+panel-left-open

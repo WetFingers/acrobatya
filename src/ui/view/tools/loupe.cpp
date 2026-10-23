@@ -110,15 +110,15 @@ void ToolImage::mouseReleaseEvent(QMouseEvent* event) {
     QWidget::mouseReleaseEvent(event);
 }
 
-// ---------------------------------------------------------------- ToolPanel
+// ---------------------------------------------------------------- ToolWindow
 
-ToolPanel::ToolPanel(const QString& title, QWidget* host) : QFrame(host) {
+ToolWindow::ToolWindow(const QString& title, QWidget* host) : QFrame(host) {
     setAttribute(Qt::WA_StyledBackground, false);
     auto* layout = new QVBoxLayout(this);
     header_ = new PanelHeader(title, this);
     ToolButton* close = header_->addAction(QStringLiteral("x"), tr("Закрыть"));
     close->setObjectName(QStringLiteral("toolPanelClose"));
-    connect(close, &ToolButton::clicked, this, &ToolPanel::closeRequested);
+    connect(close, &ToolButton::clicked, this, &ToolWindow::closeRequested);
     layout->addWidget(header_);
     host->installEventFilter(this);
     applyMetrics();
@@ -130,18 +130,18 @@ ToolPanel::ToolPanel(const QString& title, QWidget* host) : QFrame(host) {
     hide();
 }
 
-void ToolPanel::applyMetrics() {
+void ToolWindow::applyMetrics() {
     const Metrics& m = Theme::sizes();
     layout()->setContentsMargins(m.grid * 2, m.grid, m.grid * 2, m.grid * 2);
     layout()->setSpacing(m.grid * 2);
     setFixedWidth(m.toolWindowWidth);
 }
 
-void ToolPanel::addBody(QWidget* body) { static_cast<QVBoxLayout*>(layout())->addWidget(body); }
+void ToolWindow::addBody(QWidget* body) { static_cast<QVBoxLayout*>(layout())->addWidget(body); }
 
-void ToolPanel::addFooter(QWidget* footer) { static_cast<QVBoxLayout*>(layout())->addWidget(footer); }
+void ToolWindow::addFooter(QWidget* footer) { static_cast<QVBoxLayout*>(layout())->addWidget(footer); }
 
-void ToolPanel::place() {
+void ToolWindow::place() {
     auto* view = qobject_cast<QAbstractScrollArea*>(parentWidget());
     if (view == nullptr) {
         return;
@@ -153,14 +153,14 @@ void ToolPanel::place() {
     raise();
 }
 
-bool ToolPanel::eventFilter(QObject* watched, QEvent* event) {
+bool ToolWindow::eventFilter(QObject* watched, QEvent* event) {
     if (watched == parentWidget() && event->type() == QEvent::Resize && isVisible()) {
         place();
     }
     return QFrame::eventFilter(watched, event);
 }
 
-void ToolPanel::paintEvent(QPaintEvent* /*event*/) {
+void ToolWindow::paintEvent(QPaintEvent* /*event*/) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
     const Palette& c = Theme::colors();
@@ -172,7 +172,7 @@ void ToolPanel::paintEvent(QPaintEvent* /*event*/) {
 
 // ---------------------------------------------------------------- LoupePanel
 
-LoupePanel::LoupePanel(QWidget* host) : ToolPanel(tr("Лупа"), host) {
+LoupePanel::LoupePanel(QWidget* host) : ToolWindow(tr("Лупа"), host) {
     setObjectName(QStringLiteral("loupePanel"));
     const Metrics& m = Theme::sizes();
     image_ = new ToolImage(this);
@@ -224,7 +224,7 @@ void LoupeTool::activate() {
     if (panel_ == nullptr) {
         panel_ = new LoupePanel(&view_);
         QObject::connect(panel_, &LoupePanel::percentChanged, &controller_, [this](int p) { setPercent(p); });
-        QObject::connect(panel_, &ToolPanel::closeRequested, &controller_,
+        QObject::connect(panel_, &ToolWindow::closeRequested, &controller_,
                          [this] { controller_.setTool(ToolController::defaultTool()); });
         // Вид листают и масштабируют — область на экране сдвигается вместе со страницей.
         QObject::connect(&view_, &PageView::layoutChanged, panel_, [this] { view_.viewport()->update(); });

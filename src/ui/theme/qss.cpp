@@ -453,6 +453,14 @@ std::vector<Rule> componentRules(const Palette& p, const Metrics& m) {
          {},
          QStringLiteral("border-color: %1;").arg(css(B))},
         {QStringLiteral("#shellBody::handle"), {}, {}, {}, B, {}, none},
+        {QStringLiteral("ot--ui--ToolPanel"),
+         QStringLiteral("ToolPanel"),
+         QStringLiteral("normal"),
+         T,
+         S,
+         {},
+         QStringLiteral("border-right: 1px solid %1;").arg(css(B))},
+        {QStringLiteral("ot--ui--ToolPanel #allToolsRows"), {}, {}, {}, S, {}, none},
     };
     // Тоны: полосы сообщений, тосты и чипы.
     const std::pair<const char*, Rgba> tones[] = {

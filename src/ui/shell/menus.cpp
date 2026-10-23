@@ -12,6 +12,7 @@
 #include "ui/shell/document_view.h"
 #include "ui/shell/global_bar.h"
 #include "ui/shell/main_window.h"
+#include "ui/shell/tool_panel.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
 
@@ -62,6 +63,7 @@ struct MainWindow::Actions {
     QAction* back = nullptr;
     QAction* forward = nullptr;
     QAction* menuBar = nullptr;
+    QAction* toolPanel = nullptr;
     QAction* nextTab = nullptr;
     QAction* previousTab = nullptr;
     QAction* about = nullptr;
@@ -226,6 +228,13 @@ void MainWindow::buildMenus() {
         make(this, a.navigate, QStringLiteral("view.forward"), {QKeySequence(Qt::ALT | Qt::Key_Right)});
     connect(a.forward, &QAction::triggered, this, onView([](PageView& v) { v.goForward(); }));
     a.view->addSeparator();
+    a.toolPanel =
+        make(this, a.view, QStringLiteral("view.toolPanel"), {QKeySequence(Qt::SHIFT | Qt::Key_F4)});
+    a.toolPanel->setCheckable(true);
+    a.toolPanel->setChecked(true);
+    connect(a.toolPanel, &QAction::triggered, this, [this](bool on) { toolPanel_->setCollapsed(!on); });
+    connect(toolPanel_, &ToolPanel::collapsedChanged, a.toolPanel,
+            [&a](bool collapsed) { a.toolPanel->setChecked(!collapsed); });
     a.menuBar = make(this, a.view, QStringLiteral("view.menuBar"), {QKeySequence(Qt::Key_F9)});
     a.menuBar->setCheckable(true);
     connect(a.menuBar, &QAction::toggled, menuBar(), &QWidget::setVisible);
@@ -368,6 +377,7 @@ void MainWindow::retranslateMenus() {
     a.last->setText(tr("П&оследняя страница"));
     a.back->setText(tr("Предыдущий &вид"));
     a.forward->setText(tr("Следующий в&ид"));
+    a.toolPanel->setText(tr("Панель &инструментов"));
     a.menuBar->setText(tr("&Строка меню"));
     a.nextTab->setText(tr("&Следующая вкладка"));
     a.previousTab->setText(tr("&Предыдущая вкладка"));
