@@ -57,9 +57,10 @@ private slots:
     void shotsSceneWritesPng() {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
-        QCOMPARE(
-            ot::ui::runShots({QStringLiteral("home")}, dir.path(), QSize(800, 600), QStringLiteral("light")),
-            0);
+        ot::ui::ShotOptions options;
+        options.outDir = dir.path();
+        options.size = QSize(800, 600);
+        QCOMPARE(ot::ui::runShots({QStringLiteral("home")}, options), 0);
         QImage img(QDir(dir.path()).filePath(QStringLiteral("home.png")));
         QCOMPARE(img.size(), QSize(800, 600));
     }

@@ -4,7 +4,13 @@
 
 .DESCRIPTION
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\shots.ps1 -Only home[,имя…] | -All
-        [-Preset msvc-debug] [-Out .queue\screenshots] [-Theme light|dark] [-Size 1440x900] [-TimeoutSeconds 600]
+        [-Preset msvc-debug] [-Out .queue\screenshots] [-Theme light|dark|contrast | -Dark] [-Large] [-Lang ru|en]
+        [-Size 1440x900] [-TimeoutSeconds 600]
+
+    -Only — названные сцены в одном варианте (тема -Theme/-Dark, «Крупные элементы» -Large, язык -Lang);
+    -All — все сцены во всех вариантах: светлая, тёмная, высокая контрастность, крупные элементы, английский
+    (файлы <сцена>[-dark|-contrast][-large][-en].png; сцены с закреплённой темой или масштабом — один раз).
+    Список сцен — AcroBatya.exe --shots-list; 30 главных для рубежа — tools/main_scenes.txt.
 
     Запускает build\<каталог пресета>\bin\AcroBatya.exe --shots <имена|all> --out <каталог> с окружением:
       PATH += C:\Qt\6.12.0\msvc2022_64\bin (DLL Qt в build не копируются), QT_QPA_PLATFORM=offscreen,
@@ -20,7 +26,10 @@ param(
     [switch]$All,
     [string]$Preset = 'msvc-debug',
     [string]$Out = '.queue\screenshots',
-    [ValidateSet('', 'light', 'dark')][string]$Theme = '',
+    [ValidateSet('', 'light', 'dark', 'contrast')][string]$Theme = '',
+    [switch]$Dark,
+    [switch]$Large,
+    [ValidateSet('', 'ru', 'en')][string]$Lang = '',
     [string]$Size = '',
     [int]$TimeoutSeconds = 600
 )
@@ -54,10 +63,26 @@ New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 $dataDir = Join-Path $root '.queue\shots-data'
 New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
 
+if ($Dark) { $Theme = 'dark' }
 $names = if ($All) { 'all' } else { (($Only -split ',') | ForEach-Object { $_.Trim() } | Where-Object { $_ }) -join ',' }
-$exeArgs = @('--shots', $names, '--out', $outDir)
-if ($Theme) { $exeArgs += @('--theme', $Theme) }
-if ($Size) { $exeArgs += @('--size', $Size) }
+$baseArgs = @('--shots', $names, '--out', $outDir)
+if ($Size) { $baseArgs += @('--size', $Size) }
+# Варианты запуска: -All — все темы, масштаб и язык; иначе один, из ключей.
+$variants = @()
+if ($All) {
+    $variants += , @()
+    $variants += , @('--theme', 'dark')
+    $variants += , @('--theme', 'contrast')
+    $variants += , @('--scale', '1.25')
+    $variants += , @('--lang', 'en')
+}
+else {
+    $one = @()
+    if ($Theme) { $one += @('--theme', $Theme) }
+    if ($Large) { $one += @('--scale', '1.25') }
+    if ($Lang) { $one += @('--lang', $Lang) }
+    $variants += , $one
+}
 
 function Get-PngSize([string]$path) {
     # ширина и высота — big-endian в IHDR (байты 16–23)
@@ -85,25 +110,29 @@ try {
     $env:QT_QPA_FONTDIR = 'C:/Windows/Fonts'
     $env:OTTISK_DATA_DIR = $dataDir
     $env:OTTISK_INSTANCE = 'test'
-    Write-Host "AcroBatya.exe $($exeArgs -join ' ')"
-    # AcroBatya.exe — GUI-приложение (WIN32): через & PowerShell его не ждёт и кода не даёт,
-    # поэтому Start-Process с ожиданием и выводом в файлы
-    $logBase = Join-Path $env:TEMP ("ottisk-shots-{0}" -f $PID)
-    $argLine = ($exeArgs | ForEach-Object { if ("$_" -match '[\s"]') { '"' + ("$_" -replace '"', '\"') + '"' } else { "$_" } }) -join ' '
-    $process = Start-Process -FilePath $exe -ArgumentList $argLine -NoNewWindow -PassThru `
-        -RedirectStandardOutput "$logBase.out.txt" -RedirectStandardError "$logBase.err.txt" -WorkingDirectory $root
-    $null = $process.Handle
-    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
-        & taskkill.exe /T /F /PID $process.Id 2>&1 | Out-Null
-        Write-Host "AcroBatya.exe не завершился за $TimeoutSeconds с — остановлен"
-    }
-    $process.WaitForExit()
-    $code = $process.ExitCode
-    foreach ($stream in 'out', 'err') {
-        $file = "$logBase.$stream.txt"
-        if (Test-Path -LiteralPath $file) {
-            Get-Content -LiteralPath $file -Encoding UTF8 | ForEach-Object { Write-Host "  $_" }
-            Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue
+    $code = 0
+    foreach ($variant in $variants) {
+        $exeArgs = $baseArgs + $variant
+        Write-Host "AcroBatya.exe $($exeArgs -join ' ')"
+        # AcroBatya.exe — GUI-приложение (WIN32): через & PowerShell его не ждёт и кода не даёт,
+        # поэтому Start-Process с ожиданием и выводом в файлы
+        $logBase = Join-Path $env:TEMP ("ottisk-shots-{0}" -f $PID)
+        $argLine = ($exeArgs | ForEach-Object { if ("$_" -match '[\s"]') { '"' + ("$_" -replace '"', '\"') + '"' } else { "$_" } }) -join ' '
+        $process = Start-Process -FilePath $exe -ArgumentList $argLine -NoNewWindow -PassThru `
+            -RedirectStandardOutput "$logBase.out.txt" -RedirectStandardError "$logBase.err.txt" -WorkingDirectory $root
+        $null = $process.Handle
+        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            & taskkill.exe /T /F /PID $process.Id 2>&1 | Out-Null
+            Write-Host "AcroBatya.exe не завершился за $TimeoutSeconds с — остановлен"
+        }
+        $process.WaitForExit()
+        if ($process.ExitCode -ne 0) { $code = $process.ExitCode }
+        foreach ($stream in 'out', 'err') {
+            $file = "$logBase.$stream.txt"
+            if (Test-Path -LiteralPath $file) {
+                Get-Content -LiteralPath $file -Encoding UTF8 | ForEach-Object { Write-Host "  $_" }
+                Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue
+            }
         }
     }
 }

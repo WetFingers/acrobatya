@@ -11,6 +11,8 @@
 если есть --prev (по умолчанию .queue/shots-prev — снимки прошлого рубежа), у каждой сцены считается
 pHash-расстояние (imagehash) к одноимённому прошлому снимку: > --phash-threshold (8) или «новая» —
 в списке «смотреть поштучно» (сигнал, не блокер; код не меняется).
+--main [<файл>] (с --shots) — ещё и список главных сцен (по умолчанию tools/main_scenes.txt) с путями к PNG:
+их рубеж смотрит поштучно; сцены без снимка — «нет снимка» (код не меняется).
 Листы — build/review/refs-NN.png или build/review/shots-NN.png. Код 0; 1 — нечего показывать.
 """
 
@@ -221,6 +223,21 @@ def render_shot_sheets(files: list[Path], per_sheet: int, cols: int, tw: int, ou
     return sheets
 
 
+def print_main_scenes(list_path: Path, shots_dir: Path) -> None:
+    """Главные сцены рубежа: путь к PNG или «нет снимка»."""
+    if not list_path.is_file():
+        print(f"главные сцены: нет {list_path}")
+        return
+    names = [line.split("#", 1)[0].strip() for line in list_path.read_text(encoding="utf-8-sig").splitlines()]
+    names = [n.removesuffix(".png") for n in names if n]
+    missing = [n for n in names if not (shots_dir / f"{n}.png").is_file()]
+    print(f"главные сцены ({len(names)}, без снимка {len(missing)}) — смотреть поштучно:")
+    for n in names:
+        png = shots_dir / f"{n}.png"
+        shown = png.relative_to(ROOT).as_posix() if png.is_relative_to(ROOT) else str(png)
+        print(f"  {shown}" if png.is_file() else f"  {n}: нет снимка")
+
+
 def main(argv: list[str]) -> int:
     global ROOT
     for stream in (sys.stdout, sys.stderr):
@@ -239,6 +256,8 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--prev", type=Path, default=Path(".queue/shots-prev"),
                     help="снимки прошлого рубежа для pHash (по умолчанию .queue/shots-prev)")
     ap.add_argument("--phash-threshold", type=int, default=8, help="pHash-расстояние «смотреть поштучно» (8)")
+    ap.add_argument("--main", type=Path, nargs="?", const=Path("tools/main_scenes.txt"),
+                    help="список главных сцен (с --shots; без значения — tools/main_scenes.txt)")
     ap.add_argument("--out", type=Path, default=Path("build") / "review")
     ap.add_argument("--root", type=Path, default=ROOT, help="корень репозитория")
     args = ap.parse_args(argv)
@@ -272,6 +291,8 @@ def main(argv: list[str]) -> int:
         print(f"записей {len(rows)}, с расхождением {changed}, листов {len(sheets)}:")
     for p in sheets:
         print(f"  {p.relative_to(ROOT).as_posix() if p.is_relative_to(ROOT) else p}")
+    if args.shots and args.main:
+        print_main_scenes(args.main if args.main.is_absolute() else ROOT / args.main, shots_dir)
     return 0
 
 

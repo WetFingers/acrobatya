@@ -1,0 +1,12 @@
+# 30 главных сцен рубежа (эталон 6.10, 9.6): рубеж смотрит их поштучно (Read) против эталона 6, остальные — на
+# контакт-листах tools/review_refs.py --shots --sheet 16. Одно имя PNG на строку (без .png, с суффиксом варианта
+# -dark/-contrast/-large/-en); «#» — комментарий. Сессия, построившая главный экран, дописывает его сюда (до 30).
+# Проверка списка: "%OTTISK_PYTHON%" -X utf8 -I tools/review_refs.py --shots --main
+
+# 2.1 — тема и компоненты
+home
+home-dark
+showcase
+showcase-dark
+showcase-contrast
+showcase-large

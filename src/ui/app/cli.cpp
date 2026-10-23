@@ -28,6 +28,14 @@ CliOptions parseCli(const QStringList& arguments) {
             QString v;
             if (!next(v)) break;
             o.shots = v.split(QLatin1Char(','), Qt::SkipEmptyParts);
+        } else if (a == QLatin1String("--shots-list")) {
+            o.shotsList = true;
+        } else if (a == QLatin1String("--lang")) {
+            if (!next(o.lang)) break;
+            if (o.lang != QLatin1String("ru") && o.lang != QLatin1String("en") &&
+                o.lang != QLatin1String("system")) {
+                o.error = QStringLiteral("bad --lang ") + o.lang + QStringLiteral(" (ru|en|system)");
+            }
         } else if (a == QLatin1String("--out")) {
             if (!next(o.shotsOut)) break;
         } else if (a == QLatin1String("--size")) {

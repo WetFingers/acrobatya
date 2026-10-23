@@ -235,7 +235,7 @@ target_compile_definitions(ui_tests PRIVATE OTTISK_SOURCE_DIR="${CMAKE_SOURCE_DI
 target_include_directories(ui_tests PRIVATE "${CMAKE_SOURCE_DIR}/tests/ui")
 ottisk_qt(ui_tests)
 ottisk_warnings(ui_tests)
-add_dependencies(ui_tests qt_runtime)
+add_dependencies(ui_tests qt_runtime AcroBatya)  # ui.shots зовёт AcroBatya.exe --shots-list
 # Набор QTest на файл: tests/ui/<имя>_test.cpp регистрирует OT_UI_TEST(Класс, "<имя>") → ctest ui.<имя>
 # (tests/ui/support/ui_main.cpp запускает набор по имени). Новый файл — новый ctest без правки CMake.
 file(GLOB OTTISK_UI_SUITES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/tests/ui/*_test.cpp")

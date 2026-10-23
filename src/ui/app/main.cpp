@@ -56,13 +56,20 @@ int main(int argc, char** argv) {
     using namespace ot::ui;
     defaultOffscreenFonts();
     if (hasArg(argc, argv, "--version") || hasArg(argc, argv, "--self-check") ||
-        hasArg(argc, argv, "--register-notify")) {
+        hasArg(argc, argv, "--register-notify") || hasArg(argc, argv, "--shots-list")) {
         attachParentConsole();
         QCoreApplication app(argc, argv);
         QCoreApplication::setApplicationName(QStringLiteral("AcroBatya"));
         const CliOptions opts = parseCli(QCoreApplication::arguments());
         if (opts.registerNotify) {
             SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nullptr, nullptr);
+            return 0;
+        }
+        if (opts.shotsList) {
+            for (const QString& name : sceneNames()) {
+                printUtf8(name);
+            }
+            std::fflush(stdout);
             return 0;
         }
         if (opts.version) {
@@ -90,7 +97,14 @@ int main(int argc, char** argv) {
     }
     if (!opts.shots.isEmpty()) {
         attachParentConsole();
-        return runShots(opts.shots, opts.shotsOut, opts.shotsSize, opts.theme);
+        ShotOptions shot;
+        shot.outDir = opts.shotsOut;
+        shot.size = opts.shotsSize;
+        shot.theme = parseThemeChoice(opts.theme).value_or(ThemeChoice::Light);
+        shot.scale = opts.scale;
+        shot.lang =
+            opts.lang.isEmpty() || opts.lang == QLatin1String("system") ? QStringLiteral("ru") : opts.lang;
+        return runShots(opts.shots, shot);
     }
 
     // Тема до создания окна: Fusion, палитра и шрифт из токенов (эталон 6.4); по умолчанию — «Системная».

@@ -1,5 +1,6 @@
 #include "ui/widgets/number_field.h"
 
+#include <QLineEdit>
 #include <QWheelEvent>
 
 #include "ui/theme/theme.h"
@@ -46,6 +47,7 @@ void NumberField::wheelEvent(QWheelEvent* event) {
 void NumberField::applyMetrics() {
     const Metrics& m = Theme::sizes();
     setMinimumHeight(m.row - m.grid * 2);
+    lineEdit()->setTextMargins(m.grid, 0, m.grid, 0);  // QSS-отступ спинбокса до поля ввода не доходит
 }
 
 }  // namespace ot::ui
