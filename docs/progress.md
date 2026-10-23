@@ -8,6 +8,16 @@
 Новые пункты — сверху, с номером сессии или рубежа. Ничего из этого не блокирует очередь: она работает на
 `Fake*`-реализациях и фикстурах, живая часть ждёт здесь (эталон 8.1 «Человек отдельно», 9.7).
 
+- **Сессия 1.2 · Корпус живёт в `C:\Tools\ottisk\corpus`** (`OTTISK_CORPUS` в `.claude/settings.local.json`; обнаружено
+  23.10.2026): все теги на месте (1,8 ГБ), но `index.json` хранит абсолютные пути под `%LOCALAPPDATA%\ottisk\corpus`
+  (старое место). Тесты теперь берут файл по `rel` от `OTTISK_CORPUS` (`tests/engine/support/probe.h` `corpusFile`),
+  шарды `big`, `cyr` и `engine.stress.render` проходят. Человеку: решить, где корпус живёт постоянно, и один раз
+  `"$env:OTTISK_PYTHON" -X utf8 -I tools/fetch_corpus.py --verify` (переписывает `index.json` с верными путями);
+  строку 1.1 про «нет корпуса» после этого можно убрать.
+- **Сессия 1.2 · «Мало памяти» вживую** — `MemoryGuard` сжимает store MuPDF и кеш тайлов при уходе программы в фон и
+  после 60 с простоя; проверено событиями без экрана. Когда окно (2.2–2.3) подключит его, проверить на экране: Alt+Tab
+  из большого документа → в журнале `low memory: MuPDF store shrunk to 50%`, страница перерисовывается без ошибок.
+
 - **Сессия 1.1 · Нет клона vcpkg и корпуса** (обнаружено 23.10.2026 в начале сессии): каталогов
   `%LOCALAPPDATA%\vcpkg` и `%LOCALAPPDATA%\ottisk\corpus` на диске нет (этап 0 их ставил), `build/debug` перестал
   конфигурироваться (`vcpkg.cmake` не найден). Обход сессии — без загрузок и правок репозитория: `build/{debug,release,
@@ -238,3 +248,81 @@
   покрытия, падений нет, RSS 595 МБ.
 - Проверки: `verify.py` зелёный; `ctest -L render` 130/130 в Debug и Release; `ctest -L "^(unit|engine)$"` под
   `msvc-asan` зелёный; `tools\fuzz.ps1 -Seconds 60` — 0 падений; экранов сессия не строила — сцен нет.
+
+### 2026-10-23 · Сессия 1.2 · Поток документа, кеш, рендер-пул и тайлы
+- Сделано:
+  1. **Поток документа:** `DocumentSession` — свой `QThread` с очередью `std::deque` и условной переменной, приоритеты
+     (Background…Urgent, FIFO среди равных; правки — Normal по порядку), `post`/`edit`/`postSync` → `QFuture` через
+     `QPromise` (исключение задачи — в `QFuture`), `cancelAll` (очередь — `MuError` ABORT, выполняемой — `abort = 1` в её
+     `fz_cookie`), `QFuture::cancel()` до начала — задача не выполняется, сигналы `opened`/`closed`/`pageChanged`/
+     `documentChanged`/`taskFailed(TaskFailed{task, code, kind, message, hint})`, `OpenSummary` (флаги и размеры
+     раскладки); `TaskContext` и `PageHandle` — в `services/task_context.h` (с MuPDF), `document_session.h` MuPDF не
+     включает; `DocumentRegistry` (id вкладки = id сессии, один файл — одна вкладка, закрытие после очереди). Окно
+     этапа 0 работает через синхронные `open`/`renderPage`.
+  2. **Кеш списков и рендер-пул:** `DisplayList` (`shared_ptr`, свой клон контекста документа для отдачи в любом потоке,
+     построение с cookie), `DisplayCache` (LRU 40, `invalidate`), `renderDisplayList`; `tiles.h` (`TileKey`, `hashValue`,
+     одна матрица `scale(zoom·dpr) × rotate × translate`, `pageDeviceRect` = `fz_round_rect` как у `deviceBounds`, тайлы
+     512 по целым device px, `tilesIntersecting`); `RenderPool` (`QThreadPool` idealThreadCount − 2, `thread_local` клон
+     `MuContext::forThisThread()`, `QImage` ARGB32_Premultiplied без копий, `tileReady` + колбэк через `invokeMethod`
+     (QueuedConnection), `cancel`/`cancelDocument`/`retarget`/`setPriority` — не начатые снимаются `tryTake`);
+     `TileCache` (`QCache` по байтам, 384 МБ).
+  3. **Превью, HiDPI, память:** `fit.h` — `fitZoom` (реальный размер по DPI, страница, ширина, высота, видимое по
+     `DisplayList::contentBounds`), проценты 1–6400 %, `layoutPageSize` (0 × 0 → Letter, > 14 400 pt — уменьшить с
+     сохранением пропорций; `OpenSummary` отдаёт размеры раскладки); превью 1/8 — `previewZoom`/`makePreviewKey`, одно на
+     1/8 октавы, отдельный `QCache` (1/8 лимита); `TileCache::limitFromMegabytes` (64–4096), `shrink`; `MemoryGuard`
+     (`ApplicationDeactivate`/неактивное состояние и простой 60 с → `fz_shrink_store` 50 % + `lowMemory`).
+  4. **Бенчмарк:** `tests/bench/bench.cpp` — открытие → первый растр, раскладка, смена страницы без кеша и из кеша
+     списков, первый тайл зума 200 %, тайлы стр. 1–50 при 100 и 200 % через `RenderPool`, `PeakWorkingSetSize`; ctest
+     `bench.engine.{hello,pdf32000,big-1200,images-200,enc-r6}` (только Release, `RUN_SERIAL`, SKIP 77 без файла) и
+     фикстура `bench.engine.generate` (`make_big.py --skip-existing`); `bench_compare.py` — цели 5.8 (`--strict-targets`)
+     и порог шума; база `docs/bench/baseline-1.2.json`.
+  5. **Стресс под ASan:** `engine.stress.render` — 20 потоков-заказчиков × 200 страниц корпуса (98 файлов: big, cyr,
+     annots, forms) через `DocumentSession` и общий `RenderPool`, случайные приоритеты и отмены (тайл, документ в пуле,
+     вся очередь сессии, `retarget`), закрытие одного документа и разрушение сессии другого посреди работы; проверки:
+     у каждого тайла ровно один результат, одинаковый ключ — одинаковые пиксели, ошибки только ожидаемые.
+- Решения:
+  - **Мозаика == целое — бит в бит только для текста и прямоугольников.** MuPDF режет рёбра контуров по scissor
+    (GEL: `clip_lerp` с целочисленной интерполяцией, DDA стартует с нового конца ребра) и считает шаг аффинной отрисовки
+    картинки от начала отсечения — у кривых отличия ≤ 17/255 на рёбрах (≤ 0,1 % пикселей), у растянутых картинок граница
+    тексела сдвигается на 1 px. Это не швы и не ошибка раскладки; без патча MuPDF не устранить. Тесты: текст и
+    прямоугольники — `pixels == 0` в 4 вариантах (поворот 0/90/270, dpr 1/1,25/1,5); кривые — maxΔ ≤ 24, доля < 0,2 %,
+    MSE ≤ 0,05; картинки — доля < 0,5 %, SSIM ≥ 0,999; параллельно == последовательно — бит в бит.
+  - `TileKey` дополнен полем `zoomMilli` (точный масштаб, тысячные): `zoomBucket` (1/8 октавы) из плана не задаёт растр
+    однозначно — тайл 100 % отдавался бы на запрос 104 % с другой сеткой. Корзина осталась: по ней — превью (одно на 1/8
+    октавы). Масштаб и dpr везде округляются до тысячных — матрица, рамка и ключ согласованы.
+  - Масштаб `zoom` — логические пиксели на пункт (матрица `scale(zoom·dpr)` эталона 4.2); проценты интерфейса —
+    относительно `dpi/72` (100 % = реальный размер при выбранном DPI экрана; DPI — системный или физический, решает ui).
+  - `DisplayList` держит свой клон контекста документа и отдаёт им список (последняя ссылка умирает в любом потоке);
+    «семья» контекстов (`MuContext::family()`) проверяется пулом — список документа с отдельного корня (`MuContext mu;
+    Document::open(mu, …)`) пулу нельзя: чужие store и замки. `MuContext::clone()` сериализован мьютексом семьи
+    (`fz_clone_context` копирует исходный контекст `memcpy`).
+  - Отмена посреди списка: draw-устройство не закрывается — `fz_close_device` бросал `FZ_ERROR_ARGUMENT` «items left
+    on stack» (clip/group на стеке), и отмена выглядела ошибкой; стек освобождает `drop`, `close_device = nullptr`
+    убирает предупреждение «dropping unclosed device». Найдено стрессом, тест `unit.render.cancel_inside_clip_*`.
+  - `TileCache` — общий лимит на тайлы (7/8) и превью (1/8): «кеш 64 МБ не превышается» считает их вместе.
+  - `bench_compare.py`: ухудшение меньше 5 мс / 5 МБ — шум (`noise`), не падение: повторный прогон дал +25,7 % у
+    `enc-r6/tiles_200_ms` (10,9 → 13,8 мс — планировщик); от 20 мс действует относительный порог +25 % эталона.
+  - Тесты `DocumentSession` — gtest в `unit_tests` с `QCoreApplication` из `support/qt_app.h` (план называл QTest; цель
+    `unit_tests` — gtest, `Qt6::Test` к ней не подключён, `QSignalSpy` не понадобился).
+  - `bench` связан с `ottisk_services` (тайлы — через настоящий `RenderPool`), `OTTISK_SOURCE_DIR`/`OTTISK_BINARY_DIR`
+    для поиска файлов; `bench_main.cpp` переименован в `bench.cpp` (имя плана).
+- Подводные камни:
+  - В unity-сборке одноимённые функции анонимных пространств двух `.cpp` конфликтуют (`toFz` в `renderer.cpp` и
+    `tiles.cpp`).
+  - `fz_cookie` — анонимная структура (`typedef struct {…} fz_cookie`): заранее не объявить — отсюда
+    `task_context.h` и `struct TaskCancel`.
+  - `signals` — макрос Qt: так нельзя называть переменную в тесте.
+  - `QFuture::waitForFinished()` в Qt 6 бросает исключение задачи — `postSync` и `close` на это опираются.
+  - Heredoc Git Bash превращает `\n` внутри строк Python в перевод строки — правки C++-литералов через Edit или файл.
+  - `make_big.py` уже сгенерировал `big-1200`/`images-200` в корпусе: фикстура `bench.engine.generate` их не трогает.
+- Замеры: сборка `unit_tests` инкрементально 6–14 с; Release `bench` 18 с, `render_tests`+`bench` 16 с; ASan
+  `engine_tests unit_tests` 17 с. Отмена: рендер 600 dpi в потоке документа — 10–24 мс, в пуле (140 тайлов) — 3–4 мс.
+  Стресс: Debug 6–8 с (200 страниц, ~5 900 тайлов, отменено ~60 %), ASan 21,7 с, ошибок ASan нет. Кеш 64 МБ на 200
+  страницах с картинками: вставлено 215 МБ, пик 59 МБ. **bench (Release, медиана из 5):** открытие → первый растр
+  hello 3,2 мс, enc-r6 22,8 мс (AES-256 R6), big-1200 7,1 мс, images-200 9,5 мс, PDF32000 19,4 мс; раскладка PDF32000
+  28 мс; смена страницы из кеша / без — big-1200 0,8 / 1,3 мс, PDF32000 0,8 / 3,2 мс; первый тайл 200 % ≤ 5 мс; тайлы
+  50 стр. 100 % / 200 % — big-1200 342 / 537 мс, PDF32000 435 / 657 мс, images-200 86 / 437 мс; пиковая память big-1200
+  54 МБ, images-200 335 МБ — все цели 5.8 выполнены.
+- Проверки: `verify.py` зелёный (105 тестов); `ctest -L render` 130/130 в Debug и Release; `ctest -L bench` (Release) 6/6;
+  `engine.stress.render` и `unit_tests` (сессия, пул, кеши, рендер — трижды) под `msvc-asan` — чисто; шарды
+  `engine.corpus` `big_0`, `cyr_0` — зелёные; экранов сессия не строила — сцен нет.

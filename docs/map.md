@@ -3,11 +3,15 @@
 Где что лежит и как добавляется типовая вещь. Сессия читает этот файл **первым**, до поиска по коду.
 Дерево и состав — эталон `docs/design.md` 5.1–5.3; здесь — короткий путеводитель и рецепты.
 
-> **Состояние: сессия 1.1 — ядро открытия и рендера.** Есть `MuContext::global()` (клоны на документ и поток),
-> `MuError` с `ErrorKind`, `mu::call`, RAII `mu::*Handle`, `Document::open → OpenResult` (пароли, ремонт, PDF/A,
-> подписи, форма, XFA, свойства, права), `Renderer` (display list, scissor, BGRA/RGB в буфер), `imgcmp --cross`,
-> эталоны рендера бит в бит, `engine.corpus.*`/`engine.mutants.*`, фаззер через ядро. Из каркаса этапа 0:
-> синхронный `DocumentSession`, пустое окно `MainWindow` (Главная-заглушка, меню, строка состояния), режимы
+> **Состояние: сессия 1.2 — поток документа, кеш, рендер-пул и тайлы.** Есть `MuContext::global()` (клоны на
+> документ и поток, `forThisThread()`, `family()`), `MuError` с `ErrorKind`, `mu::call`, RAII `mu::*Handle`,
+> `Document::open → OpenResult` (пароли, ремонт, PDF/A, подписи, форма, XFA, свойства, права), `Renderer` и
+> `renderDisplayList`, `DisplayList`/`DisplayCache` (LRU 40), `tiles.h` (`TileKey`, одна матрица, тайлы 512, превью
+> 1/8), `fit.h` (`fitZoom`, проценты, раскладка), `DocumentSession` на своём потоке (очередь с приоритетами,
+> `post`/`edit`/`postSync` → `QFuture`, `cancelAll`, `TaskFailed`), `DocumentRegistry`, `RenderPool`, `TileCache`,
+> `MemoryGuard`, `bench.exe` (Release) с базой `docs/bench/baseline-1.2.json`, `imgcmp --cross`, эталоны рендера
+> бит в бит, `engine.corpus.*`/`engine.mutants.*`/`engine.stress.render`, фаззер через ядро. Из каркаса этапа 0:
+> пустое окно `MainWindow` (Главная-заглушка, меню, строка состояния; страница — `DocumentSession::renderPage`), режимы
 > `--version`, `--self-check`, `--shots`, `--smoke`, `--register-notify`, первые unit/ui/render-тесты, `imgcmp`,
 > `render_refs`, стражи, фаззер, установщик 0.0.1. Всё остальное в таблицах ниже появляется в указанной сессии —
 > рецепты описывают, как это будет устроено, и ссылаются на файлы, которых может ещё не быть. Сессия, которая
@@ -24,7 +28,7 @@
 | `unit_tests` | `tests/unit/**` | — | gtest, `ottisk_services`; метка `unit` |
 | `ui_tests` | `tests/ui/**` | — | QTest, `ottisk_ui_lib`; метка `ui` |
 | `engine_tests`, `render_tests`, `e2e_tests` | `tests/engine/**`, `tests/render/**`, `tests/e2e/**` | — | gtest; метки `engine;slow`, `render;slow`, `e2e;slow` |
-| `imgcmp`, `render_refs`, `bench` | `tools/imgcmp/**`, `tools/render_refs.cpp`, `tests/bench/**` | — | `ottisk_core` |
+| `imgcmp`, `render_refs`, `bench` | `tools/imgcmp/**`, `tools/render_refs.cpp`, `tests/bench/**` | — | `ottisk_core` (`bench` — `ottisk_services`: тайлы через `RenderPool`) |
 | `pdf_open_fuzzer` | `fuzz/pdf_open_fuzzer.cpp` | — | `ottisk_core` (с `/fsanitize-coverage`); только пресет `msvc-fuzz`, запуск — `tools\fuzz.ps1` |
 
 Все exe — в `build/<пресет>/bin/`. Qt DLL в `build` не копируются: кто запускает exe из `build`, добавляет
@@ -42,9 +46,9 @@
 
 | Каталог | Что | Сессия |
 |---|---|---|
-| `mu/` | `context.h` (`MuContext::global()` — один корень на процесс, `clone()` на документ и поток, замки, журнал MuPDF → spdlog), `error.h` (`MuError`, `ErrorKind`: Damaged/Unsupported/Limit/System/Aborted…), `call.h` (`mu::call` — `fz_try` в одном месте, `#pragma warning(disable: 4611)`), `handles.h` (RAII `mu::PageHandle`, `PixmapHandle`, `BufferHandle`… — объявлять снаружи `mu::call`, внутри только `reset`), `stream.h` | 0, 1.1 |
+| `mu/` | `context.h` (`MuContext::global()` — один корень на процесс, `clone()` на документ и поток, `forThisThread()` — thread_local клон для потоков пула, `family()` — корень и клоны с общим store: объекты MuPDF ходят только внутри семьи, `shrinkStore`/`emptyStore`, замки, журнал MuPDF → spdlog), `error.h` (`MuError`, `ErrorKind`: Damaged/Unsupported/Limit/System/Aborted…), `call.h` (`mu::call` — `fz_try` в одном месте, `#pragma warning(disable: 4611)`), `handles.h` (RAII `mu::PageHandle`, `PixmapHandle`, `BufferHandle`… — объявлять снаружи `mu::call`, внутри только `reset`), `stream.h` | 0, 1.1 |
 | `doc/` | `document.h` (`Document::open(path, password) → OpenResult`, `openOrThrow` для инструментов, свойства, `allowed(Perm)`, `pageBox`/`pageRotation`; документ живёт в клоне базового контекста), `page.h`, `saver.h`, `journal.h`, `undo_stack.h`, `autosave.h`, `revisions.h`, `props.h`, `permissions.h`, `xmp.h` | 0, 1.1–1.3 |
-| `render/` | `renderer.h` (`RenderRequest{page, matrix, scissor, aa, recolor}`, `render(buffer, stride, Bgra32Premultiplied\|Rgb24, cookie)`, `renderPage`), `bitmap.h`, `image_compare.h` (метрики `imgcmp`, `crossCompare`); дальше `display_cache.h`, `tiles.h`, `recolor_device.h` | 0, 1.1, 1.2, 2.5b |
+| `render/` | `renderer.h` (`RenderRequest{page, matrix, scissor, aa, recolor}`, `render(buffer, stride, Bgra32Premultiplied\|Rgb24, cookie)`, `renderPage`, `renderDisplayList(ctx, list, matrix, area, …)` — готовый список своим контекстом), `display_cache.h` (`DisplayList` — `shared_ptr`, свой клон контекста для отдачи в любом потоке, `contentBounds()`; `DisplayCache` — LRU 40, `invalidate(page)`, построение с cookie), `tiles.h` (`TileKey`, `pageMatrix` = scale(zoom·dpr) × rotate × translate, `pageDeviceRect`, `tileRectsFor`/`tilesIntersecting` 512 px, `makeTileKey`, превью 1/8 — `previewZoom`/`makePreviewKey`), `fit.h` (`fitZoom` по режимам, `percentToZoom`/`zoomToPercent` — 100 % = dpi/72, `clampZoom` 1–6400 %, `layoutPageSize` — 0 × 0 → Letter, > 14 400 pt — уменьшить), `bitmap.h`, `image_compare.h` (метрики `imgcmp`, `crossCompare`); дальше `recolor_device.h` | 0, 1.1, 1.2, 2.5b |
 | `text/` | `stext.h`, `search.h`, `selection.h`, `index.h` (FTS5), `reflow.h` | 1.4, 8.3 |
 | `print/` | `imposition.h` (вписать, n-up, буклет, постер), `page_set.h`, `band_renderer.h` | 2.6 |
 | `edit/` | `content_model.h`, `text_blocks.h`, `font_resolver.h`, `reflow.h`, `rewriter.h`, `images.h`, `replace.h` | 3.1–3.4 |
@@ -63,8 +67,14 @@
 
 ### `src/services/` — Qt без Widgets (страж: ни одного `QtWidgets`)
 
-`document_session.h` (сейчас синхронный; поток документа и журнал — 1.2–1.3), `app_info.h` (версия, пути для
-`--self-check`), дальше — `document_registry.h`, `render_pool.h`, `tile_cache.h`, `settings.h` + `settings_keys.h`,
+`document_session.h` (поток документа: очередь задач с приоритетами, `post`/`edit`/`postSync` → `QFuture`, `cancelAll`,
+`displayList(page)`, сигналы `pageChanged`/`documentChanged`/`taskFailed`, `OpenSummary` с размерами раскладки; журнал —
+1.3), `task_context.h` (что видит задача: `document()`, `context()`, `cookie()`, `page()` → `PageHandle`, `displayList()`,
+`touchPage()`; с MuPDF — ui его не включает), `document_registry.h` (сессии по id вкладки, один файл — одна вкладка),
+`render_pool.h` (`RenderPool`: `QThreadPool` idealThreadCount − 2, `submit(TileRequest)` → `tileReady`/колбэк, `cancel`,
+`cancelDocument`, `retarget`, `setPriority`), `tile_cache.h` (`TileCache`: `QCache` тайлов 7/8 и превью 1/8 лимита,
+384 МБ, `limitFromMegabytes`, `shrink`), `memory_guard.h` (фон и простой 60 с → `fz_shrink_store` 50 % и `lowMemory`),
+`app_info.h` (версия, пути для `--self-check`), дальше — `settings.h` + `settings_keys.h`,
 `state_db.h` (sqlite), `recent.h`, `http_fetcher.h` (+Fake), `office_converter.h` (+`FakeOfficeBackend`),
 `word_converter.h`, `print_job.h`, `scan/{iscansource,wia,fake}.h`, `tts.h` (+Fake), `mail.h` (+Fake),
 `shell_register.h`, `help.h`, `i18n.h`, `clipboard_io.h`, `autosave_runner.h`, `trust_updater.h`, `crypto_worker.h`,
@@ -88,11 +98,11 @@
 
 | Где | Что |
 |---|---|
-| `tests/unit/` | gtest, метка `unit`, < 1 с, данные — `tests/data/mini/*.pdf` (свои, ≤ 50 КБ); `support/test_pdf.h` — помощники |
+| `tests/unit/` | gtest, метка `unit`, < 1 с, данные — `tests/data/mini/*.pdf` (свои, ≤ 50 КБ); `support/test_pdf.h` — PDF в памяти (`makePdf`, `makeHeavyPdf` — секунды рендера на 600 dpi, `makeMixedPdf` — текст/кривые/картинки, `makeImagePagesPdf` — 200 страниц с картинками), `support/qt_app.h` — `QCoreApplication` и `waitUntil` для сигналов из потоков |
 | `tests/ui/` | QTest offscreen, метка `ui` (ctest `ui.main_window`), снимки виджетов → `build/ui-shots/` |
 | `tests/engine/` | gtest на корпусе по `<корпус>/index.json` (`open_corpus_test.cpp`: тег → части по 200 файлов, `progress:`), `mutants_test.cpp`; зонд `support/probe.h` (открыть → 32 × 32 → закрыть, `QuietLog`); метки `engine;slow`, `FIXTURES_REQUIRED corpus;mutants` (`engine.corpus.verify` — `fetch_corpus.py --verify --dry-run`, 77 — пропуск; `engine.mutants.generate` — `make_mutants.py` в `build/<пресет>/gen`), `TIMEOUT_AFTER_MATCH 120;^progress:` |
 | `tests/render/` | `render_test.cpp` по `expected/expected.json`, эталоны `expected/<корпус>/<файл>.<стр>.<dpi>.png`, `files.json` — источники |
-| `tests/e2e/`, `tests/compat/`, `tests/bench/`, `tests/build/` | сценарии эталона 2 без UI; `compat_check.py` (SKIP 77); `bench`; `install_test.py` (метка `build`) |
+| `tests/e2e/`, `tests/compat/`, `tests/bench/`, `tests/build/` | сценарии эталона 2 без UI; `compat_check.py` (SKIP 77); `bench.cpp` → `bench.exe <файл\|hello\|pdf32000\|big-1200\|images-200\|enc-r6>` (только Release: ctest `bench.engine.*`, JSON в `build/bench/`, сравнение — `tools/bench_compare.py docs/bench/baseline-<прошлый>.json "build/bench/*.json"`: +25 % медианы, шум < 5 мс, цели 5.8); `install_test.py` (метка `build`) |
 | `tests/corpus/manifest.json` | корпуса `{id, url\|git, sha256, license, tags[], expect}` → `%LOCALAPPDATA%\ottisk\corpus` (`OTTISK_CORPUS`) |
 | `tests/fixtures/` | свои фикстуры ≤ 50 КБ и пермиссивные (`LICENSES.md`): `annots/ forms/ enc/ sig/ images/ scans/ office/ scenes/ demo/ imgcmp/ (метрики imgcmp) regress/ (падения фаззера → unit.regress.load) pki/ (4.1)` |
 | `tools/` | `vcenv.cmd`, `verify.py`, `build.ps1`, `build_lock.ps1`, `fuzz.ps1` (фаззер 60 с / 10 мин), `shots.ps1`, `lint.ps1`, стражи `*_guard.py` и `scope_check.py`, `scope_report.py`, `imgcmp/`, `render_refs.cpp`, `review_refs.py`, `fetch_corpus.py`, `compat_check.py`, `bench_compare.py`, `analyze_summary.py`, `copy_icons.py`, `gen/` (генераторы фикстур), `get-tessdata.ps1`, `install-qt.ps1`, `mupdf-build.ps1` + `ottisk-md.props`, очередь: `queue-lib.ps1`, `test_reset_parse.ps1`, `test_guard.ps1` |
@@ -183,6 +193,24 @@ PowerShell-стражи очереди `tools/test_reset_parse.ps1` и `tools/te
 3. Ожидания — JSON рядом с тестом или в `tests/fixtures/` (для XL — до кода); каждый записанный тестом файл
    проходит минимум `qpdf --check` (`tools/compat_check.py`).
 4. Маленький пермиссивный файл, нужный быстрому тесту, — копией в `tests/fixtures/` с записью в `LICENSES.md`.
+
+### Задача документа и рендер тайлов (с 1.2)
+
+1. Всё, что трогает `fz_document`/`fz_page`/`pdf_*`, — задачей `DocumentSession`: `post([](TaskContext& tc) { … },
+   TaskPriority::…)` → `QFuture<T>`; правка — `edit(QStringLiteral("<операция по-английски>"), fn)` (после неё `revision++`,
+   `documentChanged`, `pageChanged` для `tc.touchPage(n)`); в тестах — `postSync`. Задача использует `tc.cookie()` в
+   `fz_run_*`/`Renderer::render` — тогда `cancelAll()` её прерывает. Ошибка — исключение в `QFuture` (`MuError`) и
+   `taskFailed(TaskFailed{code, kind, message, hint})`; отмена — `MuError` с `ErrorKind::Aborted` и без сигнала.
+2. ui не держит указатели MuPDF: только номер страницы, `TileKey`, `shared_ptr<const DisplayList>` (непрозрачен для ui) и
+   `QImage`. `PageHandle` (`tc.page(n)`) живёт только внутри задачи.
+3. Тайлы: `session.displayList(page)` → `tileRectsFor(list->bounds(), zoom, dpr, rotation)` → `RenderPool::submit(TileRequest{
+   makeTileKey(session.id(), page, zoom, dpr, rotation, tile, session.revision()), list, pageMatrix(…), tile.rect, dpr})` →
+   результат в `TileCache::insert`; смена зума — `retarget(doc, видимые, приоритет)`; закрытие — `cancelDocument(doc)` и
+   `TileCache::removeDocument(doc)`. Превью — `makePreviewKey` + `previewZoom(zoom)` + `insertPreview`.
+4. Документы для пула — только на клонах `MuContext::global()` (так открывает `DocumentSession`): список из чужой семьи
+   пул отвергает ошибкой. Мозаика тайлов совпадает с целым рендером бит в бит для текста и прямоугольников; у кривых и
+   растянутых картинок MuPDF даёт отличия в доли пикселя на рёбрах (GEL режет рёбра по scissor) — швов нет, тесты
+   `unit.render.tiles_mosaic_*` держат границы.
 
 ### Новая команда и клавиша (с 2.3–2.4)
 
