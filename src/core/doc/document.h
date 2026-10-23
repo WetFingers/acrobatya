@@ -132,6 +132,10 @@ public:
     bool hasXfa() const;
     bool allowed(Perm perm) const;
     DocProperties properties() const;
+    // Записать поля описания (Title, Author, Subject, Keywords, Creator, Producer, CreationDate; ModDate —
+    // время записи) в /Info и XMP (core/doc/props.h); пользовательские ключи остаются. Операция журнала
+    // «Document properties». Не PDF — std::logic_error.
+    void setProperties(const DocProperties& props);
 
     int pageCount() const;
     // Рамка страницы в пунктах с учётом /CropBox и /Rotate (fz_bound_page).

@@ -19,6 +19,7 @@
 
 #include "core/doc/document.h"
 #include "core/doc/journal.h"
+#include "core/doc/props.h"
 #include "core/doc/saver.h"
 #include "core/mu/call.h"
 #include "core/mu/context.h"
@@ -399,6 +400,24 @@ TEST(saver_compat, DISABLED_write_artifacts) {
     {
         auto doc = Document::createBlank(2);
         check(Saver::save(*doc, plain / L"new-full.pdf"), SaveMode::Full);
+    }
+    {
+        // Свойства: XMP фикстуры обновлён, у файла без XMP — создан (pdfcpu strict проверяет и метаданные).
+        auto doc =
+            Document::openOrThrow(copyFixture(plain, L"data/mini/blank-a4.pdf", L"properties-xmp.pdf"));
+        ot::DocProperties p = doc->properties();
+        p.title = "Свойства & <XMP>";
+        p.keywords = "раз; два";
+        doc->setProperties(p);
+        check(Saver::save(*doc), SaveMode::Incremental);
+        auto fresh = Document::openOrThrow(
+            put(plain, L"properties-new-xmp.pdf", ot::test::makePdf(ot::MuContext::global(), 1)));
+        ot::props::InfoFields info = ot::props::readInfo(*fresh);
+        info.title = "Новый XMP";
+        info.custom["Department"] = "ОТК";
+        ot::props::writeInfo(*fresh, info);
+        ot::props::setLang(*fresh, "ru-RU");
+        check(Saver::save(*fresh), SaveMode::Incremental);
     }
     {
         auto doc = Document::openOrThrow(

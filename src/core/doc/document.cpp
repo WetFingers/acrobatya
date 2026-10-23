@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "core/doc/journal.h"
+#include "core/doc/props.h"
 #include "core/mu/call.h"
 #include "core/mu/context.h"
 #include "core/mu/handles.h"
@@ -617,6 +618,18 @@ DocProperties Document::properties() const {
     }
     props.pdfa = pdfaOf(ctx, pdf);
     return props;
+}
+
+void Document::setProperties(const DocProperties& p) {
+    props::InfoFields info = props::readInfo(*this);
+    info.title = p.title;
+    info.author = p.author;
+    info.subject = p.subject;
+    info.keywords = p.keywords;
+    info.creator = p.creator;
+    info.producer = p.producer;
+    info.creationDate = p.creationDate;
+    props::writeInfo(*this, info);
 }
 
 int Document::pageCount() const {
