@@ -108,6 +108,13 @@ Projection (MuPDF при рендере пишет «cannot create appearance st
 - `xfa-stub.pdf` — `/AcroForm /XFA` массивом пакетов (preamble, config, template, datasets, postamble),
   `NeedsRendering false`, запасное поле AcroForm `form1[0].page1[0].name[0]` — для полосы XFA (6.1).
 
+### `tests/fixtures/imgcmp/` — `make_imgcmp.py` (метрики — `expected.json`; сессия 1.1)
+
+- Три пары PNG 160 × 120 на синтетической «странице»: `noise-*` (±1…3 в 188 пикселях — в пороге по умолчанию),
+  `shift-*` (сдвиг на 1 px), `block-*` (чёрный прямоугольник 24 × 16). Метрики (эталон 9.3, как у
+  `pdfium_diff --metrics`) посчитаны независимым оракулом на numpy float64 — бинарника pdfium_diff на машине нет;
+  с ними сверяется `src/core/render/image_compare.cpp` (`unit.imgcmp.*`).
+
 ### `tests/fixtures/enc/` — `make_enc.py` (пароли и права — `passwords.json`)
 
 `plain.pdf` (основа, 2 страницы) и шесть зашифрованных: `enc-rc4-40.pdf` (V1/R2), `enc-rc4-128.pdf` (V2/R3,

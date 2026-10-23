@@ -2,6 +2,8 @@
 // expected.json → отдельный тест (параметризация); порог — fuzzy записи или defaults. Источник
 // "corpus:<путь>" ищется в %LOCALAPPDATA%\ottisk\corpus (или OTTISK_CORPUS); нет файла — SKIP.
 // release_only=true и Debug-сборка — SKIP (расхождение Debug ↔ Release помечает только render_refs).
+// Release (те же библиотеки MuPDF, что у эталонов) — совпадение бит в бит (pixels == 0); Debug — в порогах.
+// Рендер — Document::renderPage → Renderer (display list, scissor), AA 8, ICC выкл.
 #include <gtest/gtest.h>
 
 #include <cstdlib>
@@ -15,6 +17,7 @@
 #include "core/mu/context.h"
 #include "core/render/bitmap.h"
 #include "core/render/image_compare.h"
+#include "core/util/features.h"
 #include "core/util/paths.h"
 
 namespace fs = std::filesystem;
@@ -132,11 +135,34 @@ TEST_P(RenderRefs, matches_expected) {
         ot::savePng(mu, actual, out);
         ot::savePng(mu, diff, fs::path(out).replace_extension(L".diff.png"));
     }
+#ifdef NDEBUG
+    EXPECT_EQ(r.differingPixels, 0) << c.id << " p" << c.page << " @" << c.dpi << ": " << r.toJson();
+#endif
     EXPECT_TRUE(r.within(c.fuzzy)) << c.id << " p" << c.page << " @" << c.dpi << ": " << r.toJson();
 }
 
 INSTANTIATE_TEST_SUITE_P(refs, RenderRefs, testing::ValuesIn(loadCases()), caseName);
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(RenderRefs);
+
+// Страница 1 hello_world.pdf (pdfium) при 72 dpi: Release — точно, Debug — в порогах (эталон 9.3).
+TEST(refs, hello_world_page1_72dpi) {
+    OT_FEATURE("view-01");
+    ot::MuContext mu;
+    fz_set_aa_level(mu.get(), 8);
+    fz_disable_icc(mu.get());
+    auto doc = ot::Document::openOrThrow(
+        mu, root() / L"tests/fixtures/pick/pdfium_resources/testing/resources/hello_world.pdf");
+    const ot::Bitmap actual = doc->renderPage(0, {72.0f, true});
+    const ot::Bitmap expected =
+        ot::loadPng(mu, root() / L"tests/render/expected/pdfium_resources/hello_world.1.72.png");
+    const ot::CompareResult r = ot::compareBitmaps(expected, actual);
+    ASSERT_TRUE(r.sameSize) << r.toJson();
+#ifdef NDEBUG
+    EXPECT_EQ(r.differingPixels, 0) << r.toJson();
+#else
+    EXPECT_TRUE(r.within({})) << r.toJson();
+#endif
+}
 
 TEST(refs, expected_json_is_present) {
     const auto cases = loadCases();

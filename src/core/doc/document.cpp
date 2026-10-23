@@ -7,6 +7,7 @@
 #include "core/mu/call.h"
 #include "core/mu/context.h"
 #include "core/mu/handles.h"
+#include "core/render/renderer.h"
 #include "core/util/paths.h"
 
 namespace ot {
@@ -431,31 +432,7 @@ PageSize Document::pageSize(int index) const {
 }
 
 Bitmap Document::renderPage(int index, const RenderOptions& options) const {
-    fz_context* ctx = mu_->get();
-    mu::PageHandle page(ctx);
-    mu::PixmapHandle pix(ctx);
-    const float scale = options.dpi / 72.0f;
-    mu::call(ctx, [&] {
-        page.reset(fz_load_page(ctx, doc_, index));
-        const fz_matrix ctm = fz_scale(scale, scale);
-        if (options.annotations) {
-            pix.reset(fz_new_pixmap_from_page(ctx, page, ctm, fz_device_rgb(ctx), 0));
-        } else {
-            pix.reset(fz_new_pixmap_from_page_contents(ctx, page, ctm, fz_device_rgb(ctx), 0));
-        }
-    });
-    Bitmap out;
-    out.width = fz_pixmap_width(ctx, pix);
-    out.height = fz_pixmap_height(ctx, pix);
-    out.components = fz_pixmap_components(ctx, pix);
-    out.stride = out.width * out.components;
-    out.pixels.resize(static_cast<size_t>(out.stride) * static_cast<size_t>(out.height));
-    const unsigned char* src = fz_pixmap_samples(ctx, pix);
-    const auto srcStride = static_cast<size_t>(fz_pixmap_stride(ctx, pix));
-    for (int y = 0; y < out.height; ++y) {
-        std::memcpy(out.row(y), src + srcStride * static_cast<size_t>(y), static_cast<size_t>(out.stride));
-    }
-    return out;
+    return Renderer(*this).renderPage(index, options.dpi, options.annotations);
 }
 
 std::string Document::savePdfToMemory() const {

@@ -1,0 +1,52 @@
+{
+  "generator": "tools/gen/make_imgcmp.py",
+  "seed": 1,
+  "definition": "эталон 9.3: pdfium_diff --metrics; оракул — numpy float64",
+  "pairs": {
+    "noise": {
+      "a": "noise-a.png",
+      "b": "noise-b.png",
+      "metrics": {
+        "same_size": true,
+        "width": 160,
+        "height": 120,
+        "differing_pixels": 188,
+        "max_delta": 3,
+        "mse": 0.014826388888888887,
+        "wmse": 0.140625,
+        "ssim": 0.9999811254788759,
+        "within_default": true
+      }
+    },
+    "shift": {
+      "a": "shift-a.png",
+      "b": "shift-b.png",
+      "metrics": {
+        "same_size": true,
+        "width": 160,
+        "height": 120,
+        "differing_pixels": 1338,
+        "max_delta": 254,
+        "mse": 3080.326354166666,
+        "wmse": 15205.3125,
+        "ssim": 0.7974591855765812,
+        "within_default": false
+      }
+    },
+    "block": {
+      "a": "block-a.png",
+      "b": "block-b.png",
+      "metrics": {
+        "same_size": true,
+        "width": 160,
+        "height": 120,
+        "differing_pixels": 384,
+        "max_delta": 255,
+        "mse": 845.1817534722223,
+        "wmse": 48781.25,
+        "ssim": 0.9764740129782613,
+        "within_default": false
+      }
+    }
+  }
+}

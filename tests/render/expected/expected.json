@@ -1,6 +1,6 @@
 {
   "build": "release",
-  "date": "2026-10-23T02:14:33Z",
+  "date": "2026-10-23T08:22:55Z",
   "defaults": {
     "fuzzy": {
       "max_delta": 3,
@@ -437,7 +437,7 @@
           "height": 800,
           "page": 1,
           "png": "tests/render/expected/pdf-differences/OverlappingGlyphClipping.1.72.png",
-          "sha256": "d260806920139f5f50e698aec3e92b17a4e5c69162aaf122a4306ad009bdc043",
+          "sha256": "300c54d47c9206d10e5fe7ee30221c6f418c35fab7050284c23be6906e6607f5",
           "width": 800
         },
         {
@@ -445,7 +445,7 @@
           "height": 1667,
           "page": 1,
           "png": "tests/render/expected/pdf-differences/OverlappingGlyphClipping.1.150.png",
-          "sha256": "489722d019a86e2cd4b9c365f94e7b5832120edc3a37f481716d818e38ea6937",
+          "sha256": "1c6019203d6bddfab78dafc70508619feb4a311cd03c4f1ab3291ed03840e93e",
           "width": 1667
         }
       ],
@@ -1576,5 +1576,5 @@
     }
   ],
   "mupdf": "1.28.5",
-  "reason": "MuPDF 1.28.5, этап 0: первые эталоны (Release без LTCG)"
+  "reason": "сессия 1.1: рендер через Renderer (display list + scissor) вместо fz_new_pixmap_from_page; отсечение перекрывающихся глифов отличается на 4-5 пикселей (max delta 4)"
 }

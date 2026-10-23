@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <vector>
 
 #include <fmt/format.h>
@@ -123,6 +124,71 @@ CompareResult compareBitmaps(const Bitmap& a, const Bitmap& b, Bitmap* diff) {
         }
         r.ssim = count > 0 ? sum / count : 1.0;
     }
+    return r;
+}
+
+Bitmap cropBitmap(const Bitmap& src, const IRect& area) {
+    const int x0 = std::max(0, area.x0), y0 = std::max(0, area.y0);
+    const int x1 = std::min(src.width, area.x1), y1 = std::min(src.height, area.y1);
+    Bitmap out;
+    if (x1 <= x0 || y1 <= y0 || src.empty()) {
+        return out;
+    }
+    out.width = x1 - x0;
+    out.height = y1 - y0;
+    out.components = src.components;
+    out.stride = out.width * out.components;
+    out.pixels.resize(static_cast<size_t>(out.stride) * static_cast<size_t>(out.height));
+    for (int y = 0; y < out.height; ++y) {
+        std::memcpy(out.row(y), src.row(y0 + y) + static_cast<ptrdiff_t>(x0) * src.components,
+                    static_cast<size_t>(out.stride));
+    }
+    return out;
+}
+
+std::string CrossResult::toJson() const {
+    return fmt::format(
+        R"({{"ok":{},"size_ok":{},"area":[{},{},{},{}],"ink_a":{},"ink_b":{},"ssim":{:.6f},"iou":{:.6f}}})",
+        ok ? "true" : "false", sizeOk ? "true" : "false", area.x0, area.y0, area.x1, area.y1, inkA, inkB,
+        ssim, iou);
+}
+
+CrossResult crossCompare(const Bitmap& a, const Bitmap& b, const IRect& area, const CrossThreshold& t) {
+    CrossResult r;
+    r.sizeOk = !a.empty() && !b.empty() && std::abs(a.width - b.width) <= t.sizeTolerance &&
+               std::abs(a.height - b.height) <= t.sizeTolerance;
+    IRect common{0, 0, std::min(a.width, b.width), std::min(a.height, b.height)};
+    if (!area.empty()) {
+        common = {std::max(common.x0, area.x0), std::max(common.y0, area.y0), std::min(common.x1, area.x1),
+                  std::min(common.y1, area.y1)};
+    }
+    r.area = common;
+    if (common.empty()) {
+        return r;
+    }
+    const Bitmap ca = cropBitmap(a, common);
+    const Bitmap cb = cropBitmap(b, common);
+    auto ink = [&](const Bitmap& m, int x, int y) {
+        for (int c = 0; c < 3; ++c) {
+            if (channel(m, x, y, c) < t.background) {
+                return true;
+            }
+        }
+        return false;
+    };
+    long long inter = 0, uni = 0;
+    for (int y = 0; y < ca.height; ++y) {
+        for (int x = 0; x < ca.width; ++x) {
+            const bool ia = ink(ca, x, y), ib = ink(cb, x, y);
+            r.inkA += ia ? 1 : 0;
+            r.inkB += ib ? 1 : 0;
+            inter += (ia && ib) ? 1 : 0;
+            uni += (ia || ib) ? 1 : 0;
+        }
+    }
+    r.iou = uni == 0 ? 0.0 : static_cast<double>(inter) / static_cast<double>(uni);
+    r.ssim = compareBitmaps(ca, cb).ssim;
+    r.ok = r.sizeOk && r.inkA >= t.minInk && r.inkB >= t.minInk && r.ssim >= t.ssim && r.iou >= t.iou;
     return r;
 }
 
