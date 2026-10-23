@@ -3,7 +3,14 @@
 Где что лежит и как добавляется типовая вещь. Сессия читает этот файл **первым**, до поиска по коду.
 Дерево и состав — эталон `docs/design.md` 5.1–5.3; здесь — короткий путеводитель и рецепты.
 
-> **Состояние: сессия 2.1 — тема, иконки, компоненты, витрина, снимки и каркас i18n.** `ui/theme` (токены трёх
+> **Состояние: сессия 2.2 — виджет просмотра и минимальное ядро аннотаций.** `ui/view`: `PageView`
+> (`QAbstractScrollArea` над `layoutPages()` — пять режимов, зум 8–6400 % с якорем, подгонки, поворот вида, клавиши 6.8,
+> история видов, автопрокрутка), `TilePainter` (display list задачей сессии → тайлы в `RenderPool` → `TileCache`, превью,
+> подмена прежним масштабом, отмена, «Страница не отрисована»), `OverlayStack` (выделение, поиск, рамки аннотаций, слой
+> инструмента), `ToolController` + инструменты просмотра (`tools/`: Рука, Выделение, Увеличение области, Лупа,
+> Панорамирование и масштаб, Снимок; «закрепить»); `core/annot/annots.h` (`AnnotRef`, список/хит-тест/рамка/удаление с
+> undo) и `services/annot_ops.h`; `OpenSummary::pageLayout`, сигнал `DocumentSession::structureChanged`. Вид ещё не в
+> окне — его ставит 2.3. Из 2.1 — тема, иконки, компоненты, витрина, снимки и каркас i18n: `ui/theme` (токены трёх
 > палитр и `Tokens::scaled`, `Theme::apply` без перезапуска, QSS одной таблицей правил, `Icons` — Lucide по теме),
 > `ui/widgets` (15 компонентов и витрина `--showcase`), `ui/shots` (таблица `SCENES`, варианты темы/масштаба/языка),
 > `services/i18n` (`.qm` ресурсом `:/i18n` с qtbase), `ui_tests` — наборы по файлам (ctest `ui.<имя>`).
@@ -61,13 +68,13 @@
 | Каталог | Что | Сессия |
 |---|---|---|
 | `mu/` | `context.h` (`MuContext::global()` — один корень на процесс, `clone()` на документ и поток, `forThisThread()` — thread_local клон для потоков пула, `family()` — корень и клоны с общим store: объекты MuPDF ходят только внутри семьи, `shrinkStore`/`emptyStore`, замки, журнал MuPDF → spdlog), `error.h` (`MuError`, `ErrorKind`: Damaged/Unsupported/Limit/System/Aborted…), `call.h` (`mu::call` — `fz_try` в одном месте, `#pragma warning(disable: 4611)`), `handles.h` (RAII `mu::PageHandle`, `PixmapHandle`, `BufferHandle`… — объявлять снаружи `mu::call`, внутри только `reset`), `stream.h` | 0, 1.1 |
-| `doc/` | `document.h` (`Document::open(path, password) → OpenResult`, `openOrThrow` для инструментов, свойства, `allowed(Perm)`, `pageBox`/`pageRotation`, `pdf()`, `undoStack()`, `setProperties`, `recoverFrom` (автосохранение), `path()`/`filePath()`/`backingFile()`; документ живёт в клоне базового контекста), `journal.h` (`Journal::Operation` RAII — вложенная присоединяется к внешней, `invalidate`/`invalidateAll`/`markHeavy`; `UndoStack` — шаги с именами поверх шагов MuPDF, группировка одноимённых за 1 с, `TouchedPages`, `hasHeavyChanges`, `clear`, слушатель), `saver.h` (`Saver::decide/save`, `SaveMode`, `SaveError`, `SaveOptions` — шифрование, `allowBreakingSignatures`, `linearize`), `autosave.h` (`Autosave`: журнал с позиции 0, копия исходника, `index.json`, `recover`), `revisions.h` (`versionCount`, `changeHistoryValid`, `signatures`, `signedRevisionBytes`), `props.h` (`readInfo`/`writeInfo`, `xmpPacket`, `lang`/`setLang`, `tagged`, `fonts` + `FontCache`, `advanced`), `xmp.h` (`Packet` — свой разбор и сериализатор XMP, даты PDF ↔ ISO); дальше `page.h`, `permissions.h` | 0, 1.1–1.3 |
+| `doc/` | `document.h` (`Document::open(path, password) → OpenResult`, `openOrThrow` для инструментов, свойства, `allowed(Perm)`, `pageBox`/`pageRotation`, `pdf()`, `undoStack()`, `setProperties`, `recoverFrom` (автосохранение), `path()`/`filePath()`/`backingFile()`; документ живёт в клоне базового контекста), `journal.h` (`Journal::Operation` RAII — вложенная присоединяется к внешней, `invalidate`/`invalidateAll`/`markHeavy`; `UndoStack` — шаги с именами поверх шагов MuPDF, группировка одноимённых за 1 с, `TouchedPages`, `hasHeavyChanges`, `clear`, слушатель), `saver.h` (`Saver::decide/save`, `SaveMode`, `SaveError`, `SaveOptions` — шифрование, `allowBreakingSignatures`, `linearize`), `autosave.h` (`Autosave`: журнал с позиции 0, копия исходника, `index.json`, `recover`), `revisions.h` (`versionCount`, `changeHistoryValid`, `signatures`, `signedRevisionBytes`), `props.h` (`readInfo`/`writeInfo`, `xmpPacket`, `lang`/`setLang`, `tagged`, `pageLayout` (2.2), `fonts` + `FontCache`, `advanced`), `xmp.h` (`Packet` — свой разбор и сериализатор XMP, даты PDF ↔ ISO); дальше `page.h`, `permissions.h` | 0, 1.1–1.3 |
 | `render/` | `renderer.h` (`RenderRequest{page, matrix, scissor, aa, recolor}`, `render(buffer, stride, Bgra32Premultiplied\|Rgb24, cookie)`, `renderPage`, `renderDisplayList(ctx, list, matrix, area, …)` — готовый список своим контекстом), `display_cache.h` (`DisplayList` — `shared_ptr`, свой клон контекста для отдачи в любом потоке, `contentBounds()`; `DisplayCache` — LRU 40, `invalidate(page)`, построение с cookie), `tiles.h` (`TileKey`, `pageMatrix` = scale(zoom·dpr) × rotate × translate, `pageDeviceRect`, `tileRectsFor`/`tilesIntersecting` 512 px, `makeTileKey`, превью 1/8 — `previewZoom`/`makePreviewKey`), `fit.h` (`fitZoom` по режимам, `percentToZoom`/`zoomToPercent` — 100 % = dpi/72, `clampZoom` 1–6400 %, `layoutPageSize` — 0 × 0 → Letter, > 14 400 pt — уменьшить), `bitmap.h`, `image_compare.h` (метрики `imgcmp`, `crossCompare`); дальше `recolor_device.h` | 0, 1.1, 1.2, 2.5b |
 | `text/` | `text_types.h` (значения без MuPDF: `TextOptions` — по умолчанию SEGMENT + PARAGRAPH_BREAK, `readingOrder = false` — слои поиска без сегментации, `collectVectors`/`tableHunt`/`collectStructure`/`dehyphenate`/`images`; `TextChar`/`TextLine`/`TextBlock`/`TextVector`/`TextFont`/`TextStructNode`/`TextWord`), `stext.h` (`TextPage::build(doc, page, options, cookie)` — значения в порядке чтения (struct-блоки обходятся в глубину), `text()`, `words()`, `charIndexAt`/`lineAt`/`wordAt`/`wordBounds`, `vectors()`, `structure()`, `fonts()`, `stext()` + `contextForThisThread` для функций MuPDF, `charIndexOf(fz_stext_char*)`; `TextCache` LRU 16 по {страница, флаги}), `search.h` (`SearchOptions`, `searchPage` → `SearchHit{page, firstChar, lastChar, quads}`, `SearchSession::run(pageCount, source, progress, cancel)`, `next/previous/selectFrom/counter`, `textOptions()`), `selection.h` (своё выделение: `selectStream` + `SnapMode`, `selectRectangle`, `selectAll`, `selectRange`, `toPlainText`, `toHtml`), `index.h` (`TextIndex` на FTS5: `upsert`, `markEncrypted`, `isFresh`, `query` фразой в папке, `createSchema` — миграция 1); дальше `reflow.h` | 1.4, 8.3 |
 | `print/` | `imposition.h` (вписать, n-up, буклет, постер), `page_set.h`, `band_renderer.h` | 2.6 |
 | `edit/` | `content_model.h`, `text_blocks.h`, `font_resolver.h`, `reflow.h`, `rewriter.h`, `images.h`, `replace.h` | 3.1–3.4 |
 | `sign/` | `cms.h`, `pkcs12.h`, `cng_signer.h`, `tsa.h`, `signer.h`, `verifier.h`, `chain.h`, `revocation.h`, `ltv.h`, `docmdp.h`, `trust_store.h`, `eutl.h`, `aatl.h`, `appearance.h`, `warnings_scan.h` | 4.1–4.6 |
-| `annot/` | `annots.h` (минимум в 2.2: `AnnotRef`, `listAnnots`, `setRect`, `remove`; 28 типов — 5.1), `appearance.h`, `popups.h`, `fdf.h`, `xfdf.h`, `stamps.h`, `measure.h`, `summary.h`, `fillsign.h` | 2.2, 5.1–5.5 |
+| `annot/` | `annots.h` (2.2, минимум: `AnnotRef{page, objnum}`, `AnnotType` — 28 подтипов в порядке `pdf_annot_type`, `AnnotInfo{ref, type, subtype, rect, flags}`; `listAnnots` — весь `/Annots`, с Link/Popup/Widget, которых нет в списке `pdf_annot` MuPDF; рамки — координаты страницы MuPDF (`pdf_bound_annot`, NoZoom/NoRotate, `/Rotate`); `findAnnot`, `annotAt` — верхняя, без Popup и скрытых; `setRect` — `/Rect` без пересоздания `/AP`; `remove` — `pdf_delete_annot` (с его Popup) или из `/Annots`; правки — `Journal::Operation`; 28 типов, сеттеры и JSON — 5.1), дальше `appearance.h`, `popups.h`, `fdf.h`, `xfdf.h`, `stamps.h`, `measure.h`, `summary.h`, `fillsign.h` | 2.2, 5.1–5.5 |
 | `forms/` | `fields.h`, `field_factory.h`, `js_bridge.h`, `data_io.h`, `submit.h`, `detect.h`, `tab_order.h` | 6.1–6.4 |
 | `pages/` | `organizer.h`, `graft.h`, `split.h`, `labels.h`, `boxes.h`, `insert.h` | 7.1 |
 | `create/` | `text_export.h` (`exportText(doc, TextExportOptions{format, encoding, bom, firstPage, lastPage}, cancelled)`: TXT UTF-8/UTF-16/CP1251 с CRLF и «\f» между страницами, HTML/XHTML/XML через `fz_print_stext_page_as_*`, RTF), `rtf_writer.h` (`RtfWriter`, `rtfText`, `rtfFontFamily`) — 1.4; дальше `dispatcher.h`, `image_to_pdf.h`, `pdf_to_images.h`, `tiff_writer.h`, `combine.h`, `html_to_pdf.h`, `presets.h` | 1.4, 7.2 |
@@ -82,8 +89,9 @@
 ### `src/services/` — Qt без Widgets (страж: ни одного `QtWidgets`)
 
 `document_session.h` (поток документа: очередь задач с приоритетами, `post`/`edit`/`postSync` → `QFuture`, `cancelAll`,
-`displayList(page)`, сигналы `pageChanged`/`documentChanged`/`taskFailed`/`undoStateChanged`/`saved`, `OpenSummary` с
-размерами раскладки; `edit` — в операции журнала, `undo`/`redo`/`undoState`, `save`/`saveAs` через `Saver`,
+`displayList(page)`, сигналы `pageChanged`/`structureChanged` (2.2: `touchAllPages` — все страницы другие, до
+`documentChanged`)/`documentChanged`/`taskFailed`/`undoStateChanged`/`saved`, `OpenSummary` с размерами раскладки (повреждённая
+страница — Letter, не ошибка открытия) и `/PageLayout`; `edit` — в операции журнала, `undo`/`redo`/`undoState`, `save`/`saveAs` через `Saver`,
 `recoverAsync`; QFuture завершается после revision, раскладки и истории), `task_context.h` (что видит задача:
 `document()`, `context()`, `cookie()`, `page()` → `PageHandle`, `displayList()`, `touchPage()`, `touchAllPages()`,
 `markHeavyEdit()`; с MuPDF — ui его не включает), `autosave_runner.h` (`AutosaveRunner`: таймер 1–30 мин, `watch`,
@@ -97,7 +105,8 @@
 индекс, результаты по файлам, `encrypted`/`failed`, сигналы `progress`/`fileFound`/`finished`), `clipboard_io.h`
 (`ClipboardIo::textMime` — text/plain + text/html, `imageMime` — PNG, `put` — нужен QGuiApplication, `snapshot` —
 область страницы при dpi), в `DocumentSession` с 1.4 — `textPage(page, options)` и `exportText(path, options)`,
-`i18n.h` (2.1: `install(язык)` — `:/i18n/ottisk_<язык>.qm` с qtbase, прежний переводчик снимается, `QLocale::setDefault`,
+`annot_ops.h` (2.2: `annot::list`/`at` — задачи, `setRect`/`remove` — `edit` с шагами «Set annotation rectangle» /
+«Delete annotation» и `touchPage`; ui зовёт их, а не `TaskContext`), `i18n.h` (2.1: `install(язык)` — `:/i18n/ottisk_<язык>.qm` с qtbase, прежний переводчик снимается, `QLocale::setDefault`,
 окна получают `LanguageChange`; `resolve` — ru|en|system; `fromSettings` — ключ `language/ui` в `settings.ini`); дальше —
 `settings.h` + `settings_keys.h`, `recent.h`, `http_fetcher.h` (+Fake), `office_converter.h` (+`FakeOfficeBackend`),
 `word_converter.h`, `print_job.h`, `scan/{iscansource,wia,fake}.h`, `tts.h` (+Fake), `mail.h` (+Fake),
@@ -110,9 +119,10 @@
 |---|---|---|
 | `app/` | `main.cpp` (QApplication, тема `Theme::apply` до окна, язык `i18n::install`, `--showcase`, single-instance), `cli.{h,cpp}` (аргументы эталона 3.18: `--theme system\|light\|dark\|contrast`, `--scale`, `--lang`, `--shots`, `--shots-list`) | 0, 2.1 |
 | `shell/` | `main_window.{h,cpp}` (сейчас — пустое окно), `global_bar.h`, `home/`, `document_tabs.h`, `document_view.h`, `tool_panel.h`, `nav_pane.h`, `quick_bar.h`, `status_bar.h`, `message_bar.h`, `command_palette.h`, `preferences/` | 0, 2.3–2.4, 9.1 |
-| `theme/` | `tokens.h` (`constexpr` палитры `kLightPalette`/`kDarkPalette`/`kHighContrastPalette` — имена таблицы 6.4 + `onAccent`, `form`, `shadow`; `kAnnotationColors`; `Metrics` и `kMetricSizes`; `Tokens::base/scaled/palette`), `theme.h` (`ThemeChoice`, `Theme::apply(app, choice, scale)`, `themeChanged`, `Theme::colors()/sizes()`, `mix`, `softBackground`, `rowColors`, `componentColors`), `palette.cpp` (QPalette), `qss.cpp` (база + таблица правил компонентов → QSS и пары контраста), `fonts.cpp` (`uiFont`, `panelTitleFont`, `homeTitleFont`, `numberFont`), `icons.{h,cpp}` (`Icons::get/icon/exists`, `IconTone`, `kToolIcons`/`kPaneIcons`, `toolIconName`), `icon_names.txt` | 2.1 |
+| `theme/` | `tokens.h` (`constexpr` палитры `kLightPalette`/`kDarkPalette`/`kHighContrastPalette` — имена таблицы 6.4 + `onAccent`, `form`, `shadow`; `kAnnotationColors`, `kPaperColor` (бумага — цвет документа, 2.2); `Metrics` и `kMetricSizes` (2.2: `pageGap` 8,
+`toolWindowWidth/Height` 280 × 220, `pageBorder` 1 — вне `kMetricSizes`, «Крупные элементы» её не меняют); `Tokens::base/scaled/palette`), `theme.h` (`ThemeChoice`, `Theme::apply(app, choice, scale)`, `themeChanged`, `Theme::colors()/sizes()`, `mix`, `softBackground`, `rowColors`, `componentColors`), `palette.cpp` (QPalette), `qss.cpp` (база + таблица правил компонентов → QSS и пары контраста), `fonts.cpp` (`uiFont`, `panelTitleFont`, `homeTitleFont`, `numberFont`), `icons.{h,cpp}` (`Icons::get/icon/exists`, `IconTone`, `kToolIcons`/`kPaneIcons`, `toolIconName`), `icon_names.txt` | 2.1 |
 | `widgets/` | `ToolButton` (`setCompact` — без минимума 32 px внутри компонента), `SegmentedBar`, `SearchField`, `PanelHeader`, `Card`, `ListRow` (рисует сама по `rowColors`), `Chip`, `Toast` (`notify(host, …)`), `EmptyState`, `MessageBar`, `ColorSwatch`, `NumberField`, `PropertySheet`, `ZoomBox`, `FloatingBar` (основа QuickBar), `tone.h` (`Tone`, `repolish`), `showcase.{h,cpp}` (`createShowcase`, `createShowcaseWindow`, `forceShowcaseState`) | 2.1 |
-| `view/` | `page_view.h` (`QAbstractScrollArea`), `layout.h`, `tile_painter.h`, `overlay.h`, `tool_controller.h`, `tools/` (hand, select, marquee_zoom, snapshot, annot_select), `view_history.h` | 2.2, 2.2b |
+| `view/` | `layout.h` (`layoutPages(sizes, LayoutOptions{mode, coverPage, zoom, rotation, gap})` → `PageLayout`: ряды, `slot(page).rect` в логических px, `contentSize(row)`, `pageAt`/`nearestPage`/`pagesIn` двоичным поиском; `pageModeFromPdf`), `page_view.h` (`PageView`: `setDocument(session, pool, cache)` или `setPageSizes`, режимы, `setZoom(z, якорь)`/`zoomIn`/`fit(FitMode)` (липкая), `rotateView`, `goToPage`/`goToPagePoint`, `viewState`/`goBack`/`goForward`, автопрокрутка, координаты `pageTransform(page)` — пункты страницы → вьюпорт, `viewportToPage`, `visiblePages(margin)`; `tilePainter()`, `overlays()`, `selectionOverlay()`/`searchOverlay()`/`annotationOverlay()`, `tools()`), `view_history.h` (50 видов), `tile_painter.{h,cpp}` (`paintPage`, `schedule`, `invalidatePage`/`invalidateAll`/`resetDevice`, `requestLog`, `visibleComplete`, сигнал `pageFailed`), `overlay.h` + `overlay_stack.cpp` (`Overlay`, `OverlayStack` по z, `QuadOverlay`, `RectOverlay`), `tool_controller.{h,cpp}` (`ToolController`: `setTool`, `cycleZoomTools`, `reset`, `finished`, `setPinned`, `setSingleKeyShortcuts`, сигналы `toolChanged`/`snapshotTaken`/`selectionChanged`), `tools/` (`view_tool.h` — `ViewTool` и классы инструментов, `tool_panels.h` — `ToolPanel`, `LoupePanel`, `PanZoomPanel`; `hand`, `select`, `marquee_zoom` (+ `RubberBandTool`), `loupe`, `pan_zoom_window`, `snapshot`; 2.2b — `annot_select`) | 2.2, 2.2b |
 | `tools/` | `tool.h` (класс `Tool`), `ToolRegistry`, по папке на инструмент Acrobat: `print/ edit/ organize/ comment/ fillsign/ prepareform/ create/ combine/ export/ protect/ compress/ certificate/ scan/ accessibility/ javascript/ measure/` | 2.3 и далее |
 | `panes/` | миниатюры, закладки, комментарии, вложения, слои, подписи, поля, назначения, поиск | 2.4 и далее |
 | `dialogs/` | диалоги по списку эталона 6.3 | по сессиям |
@@ -123,12 +133,14 @@
 | Где | Что |
 |---|---|
 | `tests/unit/` | gtest, метка `unit`, < 1 с, данные — `tests/data/mini/*.pdf` (свои, ≤ 50 КБ); `support/test_pdf.h` — PDF в памяти (`makePdf`, `makeHeavyPdf` — секунды рендера на 600 dpi, `makeMixedPdf` — текст/кривые/картинки, `makeImagePagesPdf` — 200 страниц с картинками), `support/qt_app.h` — `QCoreApplication` и `waitUntil` для сигналов из потоков, `support/pdf_objects.h` — объекты PDF текстом («qpdf --json в миниатюре»: сравнение после undo и записи), `support/test_edits.h` — правки в операциях (`tenEdits`, `deletePage` — тяжёлая, `addNote`, `setRotate`, `putRootName`); отключённые тесты-помощники `saver_compat.DISABLED_*` (файлы для `compat.save`) и `autosave_child.DISABLED_*` (дочерний процесс для `taskkill`) |
-| `tests/ui/` | QTest offscreen, метка `ui`: набор на файл — `<имя>_test.cpp` с `OT_UI_TEST(Класс, "<имя>")` (`support/ui_test.h`) → ctest `ui.<имя>` без правки CMake; один `main` (`support/ui_main.cpp`, QApplication + светлая тема, `ui_tests <имя> [аргументы QTest]`, `--list`); `support/contrast.h` — WCAG; наборы `main_window`, `theme`, `icons`, `widgets`, `shots`, `i18n`; снимки виджетов → `build/<пресет>/ui-shots/`; кириллицу печатать `setText`, не `QTest::keyClicks` (только Latin-1) |
+| `tests/ui/` | QTest offscreen, метка `ui`: набор на файл — `<имя>_test.cpp` с `OT_UI_TEST(Класс, "<имя>")` (`support/ui_test.h`) → ctest `ui.<имя>` без правки CMake; один `main` (`support/ui_main.cpp`, QApplication + светлая тема, `ui_tests <имя> [аргументы QTest]`, `--list`); `support/contrast.h` — WCAG; наборы `main_window`, `theme`, `icons`, `widgets`, `shots`, `i18n`, `page_view_layout`, `page_view_render`, `tools` (2.2: вид с
+документом — `DocumentSession` на фикстуре, дорисовка — цикл `repaint` до `tilePainter().visibleComplete()`; правка в
+обход ui — `session.edit` с MuPDF прямо в тесте); снимки виджетов → `build/<пресет>/ui-shots/`; кириллицу печатать `setText`, не `QTest::keyClicks` (только Latin-1) |
 | `tests/engine/` | gtest на корпусе по `<корпус>/index.json` (`open_corpus_test.cpp`: тег → части по 200 файлов, `progress:`), `mutants_test.cpp`; зонд `support/probe.h` (открыть → 32 × 32 → закрыть, `QuietLog`, `isBrokenFileCode`, `isMemoryFailure`); предел памяти процесса `support/memory_cap.cpp` (Job Object, `OTTISK_TEST_MEMORY_LIMIT_MB`, 2048 / ASan 6144, 0 — выкл.), `PROCESSORS 2` (ASan — 4); `OTTISK_CORPUS_TRACE=1` — печать каждого файла перед зондом (найти файл падения); срок рендера зонда `OTTISK_PROBE_RENDER_TIMEOUT_S` (15 / ASan 45 с); пропуск `tests/corpus/slow.json` — файлы, которые сам MuPDF рисует минутами (`tools/scan_slow_corpus.py --write`), раздел `asan` — только под ASan (процесс упирается в предел памяти); падение процесса — код и стек в stderr (`support/crash_report.cpp`); метки `engine;slow`, `FIXTURES_REQUIRED corpus;mutants` (`engine.corpus.verify` — `fetch_corpus.py --verify --dry-run`, 77 — пропуск; `engine.mutants.generate` — `make_mutants.py` в `build/<пресет>/gen`), `TIMEOUT_AFTER_MATCH 120;^progress:` |
 | `tests/render/` | `render_test.cpp` по `expected/expected.json`, эталоны `expected/<корпус>/<файл>.<стр>.<dpi>.png`, `files.json` — источники |
 | `tests/e2e/`, `tests/compat/`, `tests/bench/`, `tests/build/` | сценарии эталона 2 без UI; `compat_check.py` (SKIP 77; файлы или каталоги); ctest `compat.save.generate` → `compat.save` / `.signed` (pyHanko INTACT) / `.encrypted` по `build/<пресет>/compat/save` (метки `compat;slow`); `compat.rtf.generate` → `compat.rtf` (`tests/compat/rtf_word_check.ps1`: Word COM открывает RTF из `build/<пресет>/compat/rtf`, «Привет» в `Content.Text`; нет Word — 77); `bench.cpp` → `bench.exe <файл\|hello\|pdf32000\|big-1200\|images-200\|enc-r6\|search>` (`search` / `--search <образец>` — `search_all_ms`, порог 3 с только в Release) (только Release: ctest `bench.engine.*`, JSON в `build/bench/`, сравнение — `tools/bench_compare.py docs/bench/baseline-<прошлый>.json "build/bench/*.json"`: +25 % медианы, шум < 5 мс, цели 5.8); `install_test.py` (метка `build`) |
 | `tests/corpus/manifest.json` | корпуса `{id, url\|git, sha256, license, tags[], expect}` → `C:\Tools\ottisk\corpus` (`OTTISK_CORPUS`) |
-| `tests/fixtures/` | свои фикстуры ≤ 50 КБ и пермиссивные (`LICENSES.md`): `annots/ forms/ enc/ sig/ images/ scans/ office/ scenes/ demo/ imgcmp/ (метрики imgcmp) regress/ (падения фаззера → unit.regress.load) pki/ (4.1) text/ (1.4: search.pdf, vectors.pdf, truetype-nonembedded.pdf, text.json — строки генератора, stext_expected.json — слова PDFium)` |
+| `tests/fixtures/` | свои фикстуры ≤ 50 КБ и пермиссивные (`LICENSES.md`): `annots/ forms/ enc/ sig/ images/ scans/ office/ scenes/ demo/ imgcmp/ (метрики imgcmp) view/ (2.2: layout-mixed.pdf — размеры, /Rotate, /PageLayout; layout_expected.json — раскладка вручную) regress/ (падения фаззера → unit.regress.load) pki/ (4.1) text/ (1.4: search.pdf, vectors.pdf, truetype-nonembedded.pdf, text.json — строки генератора, stext_expected.json — слова PDFium)` |
 | `tools/` | `vcenv.cmd`, `verify.py`, `build.ps1`, `build_lock.ps1`, `fuzz.ps1` (фаззер 60 с / 10 мин), `shots.ps1`, `lint.ps1`, стражи `*_guard.py` и `scope_check.py`, `scope_report.py`, `imgcmp/`, `render_refs.cpp`, `review_refs.py` (`--shots --sheet 16 --main`), `main_scenes.txt`, `fetch_corpus.py`, `scan_slow_corpus.py`, `cl_launcher.py` (обёртка компилятора: русский префикс `/showIncludes` → «Note: including file:», иначе Ninja не видит зависимостей от заголовков), `compat_check.py`, `bench_compare.py`, `analyze_summary.py`, `copy_icons.py`, `gen/` (генераторы фикстур), `get-tessdata.ps1`, `install-qt.ps1`, `mupdf-build.ps1` + `ottisk-md.props`, очередь: `queue-lib.ps1`, `test_reset_parse.ps1`, `test_guard.ps1` |
 | `installer/` | `ottisk.iss` (UTF-8 BOM, per-user), `app.ico`, `app.rc`, `AcroBatya.manifest` (UTF-8 ACP, longPathAware), `licenses/` |
 | `assets/` | `icons/` (только нужные Lucide + `LICENSE`; списки `icons.txt` и `src/ui/theme/icon_names.txt`; встроены ресурсом `:/icons` в `ottisk_ui_lib`), `stamps/`, `help/ru`, `help/en` |
@@ -156,9 +168,34 @@ PowerShell-стражи очереди `tools/test_reset_parse.ps1` и `tools/te
    оболочка («Все инструменты», QuickBar) не правится — порядок и состав из эталона 6.2.
 3. Иконка — имя Lucide в `src/ui/theme/icon_names.txt` + `"$env:OTTISK_PYTHON" -X utf8 -I tools/copy_icons.py`
    (копирует только нужные SVG в `assets/icons/`); неизвестное имя — `qFatal` в Debug и красный `ui.icons.exist`.
-4. Состояния мыши — через `ToolController` в `PageView` (не свой обработчик событий поверх виджета).
+4. Состояния мыши — через `ToolController` в `PageView` (не свой обработчик событий поверх виджета): инструмент правки
+   добавляет свой `ViewTool` (рецепт «Новый инструмент вида» ниже) и включает его из `activate()`.
 5. Логика — в `core`/`services` с тестами первыми; инструмент только вызывает `DocumentSession`.
 6. Команды и клавиши — рецепт «Новая команда и клавиша»; сцена `tool-<имя>` и просмотр PNG; ui-тест в `tests/ui/`.
+
+### Новый инструмент вида (`ViewTool`, с 2.2)
+
+1. Класс в `src/ui/view/tools/view_tool.h` (наследник `ViewTool` или `RubberBandTool` для рамки), реализация —
+   `tools/<имя>.cpp`; id — в `ViewToolId`, экземпляр — в конструкторе `ToolController` (и `kViewToolCount`).
+2. Мышь — `mousePress/Move/Release/DoubleClick` (координаты вьюпорта; страница — `view.pageAtViewport`, пункты —
+   `view.viewportToPage`), клавиши — `keyPress`, свой слой — `paintOverlay` (вьюпорт; страница → вьюпорт —
+   `view.pageTransform(page)`), курсор — `cursor(point, mods)` (иконки — `Icons::get`), Esc — `cancel()`.
+3. Однократный (после действия — прежний инструмент, если не «закреплён», comment-42) — `oneShot() = true` и
+   `controller.finished()` по готовности.
+4. Документ — только через `DocumentSession` (`textPage`, `ClipboardIo::snapshot`, `annot::*` из `services/annot_ops.h`),
+   ответы — `future.then(&controller, …)`; смена документа и правка страницы приходят в `ToolController::documentChanged`
+   / `pageChanged` — сбросить кеши инструмента там.
+5. Плавающая панель — наследник `ToolPanel` (`tool_panels.h`: заголовок с «Закрыть», правый верхний угол вьюпорта,
+   токены `toolWindow*`); тест — `tests/ui/tools_test.cpp` (QTest-мышь в `view.viewport()`; одну и ту же точку
+   второй `mouseMove` не доставит).
+
+### Слой поверх страниц (`Overlay`, с 2.2)
+
+Готовые — `view.selectionOverlay()` (выделение), `searchOverlay()` (совпадения, текущее — `setCurrent`),
+`annotationOverlay()` (рамки): `setQuads(page, …)` / `setRects(page, …)` в пунктах страницы, потом
+`view.viewport()->update()`. Свой слой — наследник `Overlay` (`paintPage` — painter обрезан рамкой страницы,
+`paintViewport` — поверх всего), `view.overlays().add(&слой, z)` (поиск 10, выделение 20, рамки 30, инструмент 100);
+владелец слоя убирает его `remove()` до своей смерти.
 
 ### Новая аннотация (ядро — 2.2/5.1, инструменты — 5.1–5.5)
 
@@ -252,7 +289,7 @@ PowerShell-стражи очереди `tools/test_reset_parse.ps1` и `tools/te
    `taskFailed(TaskFailed{code, kind, message, hint})`; отмена — `MuError` с `ErrorKind::Aborted` и без сигнала.
 2. ui не держит указатели MuPDF: только номер страницы, `TileKey`, `shared_ptr<const DisplayList>` (непрозрачен для ui) и
    `QImage`. `PageHandle` (`tc.page(n)`) живёт только внутри задачи.
-3. Тайлы: `session.displayList(page)` → `tileRectsFor(list->bounds(), zoom, dpr, rotation)` → `RenderPool::submit(TileRequest{
+3. Тайлы (в окне это делает `ui/view/tile_painter.cpp` — свой код рендера в ui не нужен): `session.displayList(page)` → `tileRectsFor(list->bounds(), zoom, dpr, rotation)` → `RenderPool::submit(TileRequest{
    makeTileKey(session.id(), page, zoom, dpr, rotation, tile, session.revision()), list, pageMatrix(…), tile.rect, dpr})` →
    результат в `TileCache::insert`; смена зума — `retarget(doc, видимые, приоритет)`; закрытие — `cancelDocument(doc)` и
    `TileCache::removeDocument(doc)`. Превью — `makePreviewKey` + `previewZoom(zoom)` + `insertPreview`.
