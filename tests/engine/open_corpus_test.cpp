@@ -118,7 +118,7 @@ TEST_P(CorpusOpen, files) {
             const std::string password =
                 expect.rfind("password:", 0) == 0 ? expect.substr(sizeof("password:") - 1) : std::string();
             const ot::test::ProbeResult p =
-                ot::test::probeFile(ot::paths::fromUtf8(rec.value("path", std::string())), password);
+                ot::test::probeFile(ot::test::corpusFile(rec.value("path", std::string()), rel), password);
             std::string problem;
             if (expect == "broken-ok") {
                 if (p.error.kind != ot::ErrorKind::None && !ot::test::isBrokenFileCode(p.error.code)) {

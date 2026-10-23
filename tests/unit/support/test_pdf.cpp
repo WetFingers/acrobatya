@@ -69,7 +69,7 @@ std::string makePdf(MuContext& mu, int pages) {
     return bytes;
 }
 
-std::string makeHeavyPdf(MuContext& mu, int curves) {
+std::string makeHeavyPdf(MuContext& mu, int curves, bool clipped) {
     fz_context* ctx = mu.get();
     pdf_document* pdf = nullptr;
     pdf_obj* page = nullptr;
@@ -86,6 +86,9 @@ std::string makeHeavyPdf(MuContext& mu, int curves) {
     };
     std::string ops;
     ops.reserve(static_cast<size_t>(curves) * 96);
+    if (clipped) {
+        ops += "q 10 10 575 822 re W n\n";  // всё под обрезкой: отмена оставит clip на стеке устройства
+    }
     ops += "3 w\n";
     for (int i = 0; i < curves; ++i) {
         ops += std::to_string(next(256)) + " " + std::to_string(next(256)) + " " + std::to_string(next(256)) +
@@ -93,6 +96,9 @@ std::string makeHeavyPdf(MuContext& mu, int curves) {
         ops += std::to_string(next(595)) + " 0 m " + std::to_string(next(595)) + " " +
                std::to_string(next(842)) + " " + std::to_string(next(595)) + " " + std::to_string(next(842)) +
                " " + std::to_string(next(595)) + " 842 c S\n";
+    }
+    if (clipped) {
+        ops += "Q\n";
     }
     mu::call(ctx, [&] {
         pdf = pdf_create_document(ctx);

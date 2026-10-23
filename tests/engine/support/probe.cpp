@@ -67,4 +67,18 @@ std::filesystem::path corpusRoot() {
     return paths::fromUtf8(local != nullptr ? local : "") / L"ottisk" / L"corpus";
 }
 
+std::filesystem::path corpusFile(const std::string& path, const std::string& rel) {
+    if (rel.rfind("repo:", 0) == 0) {
+        return paths::fromUtf8(OTTISK_SOURCE_DIR) / paths::fromUtf8(rel.substr(5));
+    }
+    if (!rel.empty()) {
+        std::error_code ec;
+        const std::filesystem::path moved = corpusRoot() / paths::fromUtf8(rel);
+        if (std::filesystem::exists(moved, ec)) {
+            return moved;
+        }
+    }
+    return paths::fromUtf8(path);
+}
+
 }  // namespace ot::test

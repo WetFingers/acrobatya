@@ -10,11 +10,13 @@
 #include <QThread>
 
 #include <atomic>
+#include <chrono>
 #include <cstring>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <set>
+#include <thread>
 #include <vector>
 
 #include "core/doc/document.h"
@@ -479,6 +481,31 @@ TEST(render, cancel_retarget_keeps_visible_and_aborts_the_rest) {
     }
     EXPECT_EQ(visibleOk, 1u);
     EXPECT_LE(invisibleOk, 1u);  // мог успеть только тот, что уже шёл
+}
+
+TEST(render, cancel_inside_clip_is_aborted_not_error) {
+    // Отмена посреди списка, когда на стеке устройства clip: устройство не закрывается (close бросил бы
+    // «items left on stack», FZ_ERROR_ARGUMENT) — ошибка рендера только Aborted.
+    MuContext mu;
+    auto doc = Document::openOrThrowMemory(ot::test::makeHeavyPdf(mu, 4000, true));
+    const auto list = DisplayList::build(*doc, 0);
+    const float zoom = 600.0f / 72.0f;
+    const IRect device = ot::pageDeviceRect(list->bounds(), zoom, 1.0f);
+    std::vector<std::uint8_t> buf(static_cast<size_t>(device.width()) * device.height() * 4);
+    fz_cookie cookie{};
+    std::thread killer([&cookie] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(60));
+        cookie.abort = 1;
+    });
+    try {
+        ot::renderDisplayList(MuContext::forThisThread().get(), *list,
+                              ot::pageMatrix(list->bounds(), zoom, 1.0f), device, buf.data(),
+                              device.width() * 4, ot::PixelFormat::Bgra32Premultiplied, &cookie);
+        ADD_FAILURE() << "render finished before abort";
+    } catch (const ot::MuError& e) {
+        EXPECT_EQ(e.kind(), ErrorKind::Aborted) << e.what();
+    }
+    killer.join();
 }
 
 TEST(render, cancel_display_list_build_is_not_cached) {

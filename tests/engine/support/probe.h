@@ -45,4 +45,8 @@ private:
 // Каталог корпусов: OTTISK_CORPUS или %LOCALAPPDATA%\ottisk\corpus.
 std::filesystem::path corpusRoot();
 
+// Файл записи индекса корпуса: "repo:<путь>" — от корня исходников; иначе <corpusRoot()>/<rel>, если он есть
+// (корпус могли перенести — абсолютный "path" индекса указывает на старое место), иначе "path" как есть.
+std::filesystem::path corpusFile(const std::string& path, const std::string& rel);
+
 }  // namespace ot::test

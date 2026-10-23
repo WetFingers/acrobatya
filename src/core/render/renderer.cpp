@@ -61,7 +61,14 @@ void renderDisplayList(fz_context* ctx, const DisplayList& list, const Matrix& m
         fz_clear_pixmap_with_value(ctx, pix, 0xff);
         dev.reset(fz_new_draw_device(ctx, fz_identity, pix));
         fz_run_display_list(ctx, list.get(), dev, ctm, scissor, cookie);
-        fz_close_device(ctx, dev);
+        if (cookie == nullptr || cookie->abort == 0) {
+            fz_close_device(ctx, dev);
+        } else {
+            // Отмена посреди списка: на стеке устройства остаются clip/group — close бросил бы «items left on
+            // stack»; стек освобождает drop, а пустой close_device убирает предупреждение «dropping
+            // unclosed».
+            dev->close_device = nullptr;
+        }
     });
     if (cookie != nullptr && cookie->abort != 0) {
         throw MuError(FZ_ERROR_ABORT, "render aborted");

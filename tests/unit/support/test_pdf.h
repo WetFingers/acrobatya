@@ -16,7 +16,8 @@ std::string makePdf(MuContext& mu, int pages = 1);
 // «Тяжёлая» страница A4: curves длинных кривых Безье через всю страницу (толщина 3 pt, детерминированно).
 // Каждая кривая — отдельный узел display list: рендер на 600 dpi идёт секунды, отмена через fz_cookie
 // проверяется между узлами.
-std::string makeHeavyPdf(MuContext& mu, int curves = 4000);
+// clipped — все кривые под обрезкой (q … re W n … Q): отмена посреди списка оставляет clip на стеке.
+std::string makeHeavyPdf(MuContext& mu, int curves = 4000, bool clipped = false);
 
 // Смешанная страница A4: текст Helvetica и Times, прямоугольники; Curves — ещё кривая и треугольник с
 // заливкой и обводкой; Full — ещё картинка 100 × 80 px, растянутая на 300 × 240 pt, и картинка 1200 × 900 px,
