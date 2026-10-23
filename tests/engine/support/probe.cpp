@@ -133,8 +133,10 @@ bool isBrokenFileCode(int fzCode) noexcept {
 }
 
 bool isMemoryFailure(const DocError& e) noexcept {
-    return e.code == FZ_ERROR_SYSTEM &&
-           (e.message.find("malloc") != std::string::npos || e.message.find("memory") != std::string::npos);
+    // MuPDF: «malloc (N bytes) failed», «calloc (N x M bytes) failed», «realloc (N bytes) failed», «… out of
+    // memory».
+    const auto has = [&e](const char* s) { return e.message.find(s) != std::string::npos; };
+    return e.code == FZ_ERROR_SYSTEM && ((has("alloc") && has("failed")) || has("memory"));
 }
 
 bool envFlag(const char* name) {

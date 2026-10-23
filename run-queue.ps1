@@ -369,7 +369,6 @@ function Get-LocalSettingsText {
     "VCPKG_MAX_CONCURRENCY": "10",
     "VCPKG_ROOT": "$tools\\vcpkg",
     "OTTISK_VCPKG_ROOT": "$tools\\vcpkg",
-    "VCPKG_DEFAULT_BINARY_CACHE": "$tools\\vcpkg\\archives",
     "QT_ROOT": "C:\\Qt\\6.12.0\\msvc2022_64",
     "MUPDF_ROOT": "C:\\src\\mupdf",
     "QT_QPA_PLATFORM": "offscreen",
@@ -433,9 +432,11 @@ function Ensure-LocalSettings {
     }
     try {
         $j = Read-QueueText $f | ConvertFrom-Json
+        # VCPKG_DEFAULT_BINARY_CACHE не обязателен: tools\vcenv.cmd ставит <vcpkg>\archives, только если папка есть
+        # (vcpkg падает на несуществующем каталоге кеша).
         $need = @('BASH_DEFAULT_TIMEOUT_MS', 'CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS', 'VCPKG_ROOT', 'OTTISK_VCPKG_ROOT',
-                  'VCPKG_DEFAULT_BINARY_CACHE', 'QT_ROOT', 'MUPDF_ROOT', 'QT_QPA_PLATFORM', 'TESSDATA_PREFIX', 'OTTISK_PYTHON',
-                  'OTTISK_CORPUS', 'OTTISK_INSTANCE')
+                  'QT_ROOT', 'MUPDF_ROOT', 'QT_QPA_PLATFORM', 'TESSDATA_PREFIX', 'OTTISK_PYTHON', 'OTTISK_CORPUS',
+                  'OTTISK_INSTANCE')
         $miss = @($need | Where-Object { -not ($j.env.PSObject.Properties.Name -contains $_) })
         if ($miss.Count -gt 0) { Say ("  ! .claude\settings.local.json: нет env {0}" -f ($miss -join ', ')) 'Yellow' }
         else { Say '  [+] .claude\settings.local.json — env очереди на месте' 'Green' }

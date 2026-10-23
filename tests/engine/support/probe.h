@@ -36,7 +36,8 @@ ProbeResult probeFile(const std::filesystem::path& path, const std::string& pass
 // Ошибки нашего кода (код 0), ввода-вывода (SYSTEM) и вызова (ARGUMENT) сюда не входят.
 bool isBrokenFileCode(int fzCode) noexcept;
 
-// Нехватка памяти: FZ_ERROR_SYSTEM «malloc (…) failed» — под пределом engine_tests (support/memory_cap.cpp).
+// Нехватка памяти: FZ_ERROR_SYSTEM «malloc/calloc/realloc (…) failed» — под пределом engine_tests
+// (support/memory_cap.cpp).
 bool isMemoryFailure(const DocError& e) noexcept;
 
 // Переменная окружения задана, не пуста и не «0».

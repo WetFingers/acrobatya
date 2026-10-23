@@ -154,8 +154,14 @@ ottisk_gtest_exe(unit_tests tests/unit unit "unit" 60 ottisk_services)
 # пропуск; тесты сами дают SKIP), mutants — 100 своих битых PDF в build/<пресет>/gen; после первой строки
 # «progress:» у теста 120 с на остаток. Процесс engine_tests ограничен по памяти (tests/engine/support/
 # memory_cap.cpp) и занимает 2 слота ctest -j: десять шардов fuzz без предела уронили Windows (23.10.2026).
+# Под ASan процесс больше (предел 6144 МБ против 2048) — слотов вдвое больше.
+if(OTTISK_ASAN)
+  set(_engine_slots 4)
+else()
+  set(_engine_slots 2)
+endif()
 ottisk_gtest_exe(engine_tests tests/engine engine "engine;slow" 600 ottisk_services
-  PROPERTIES FIXTURES_REQUIRED "corpus\;mutants" TIMEOUT_AFTER_MATCH "120\;^progress:" PROCESSORS 2)
+  PROPERTIES FIXTURES_REQUIRED "corpus\;mutants" TIMEOUT_AFTER_MATCH "120\;^progress:" PROCESSORS ${_engine_slots})
 if(TARGET engine_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_test(NAME engine.corpus.verify
     COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/fetch_corpus.py" --verify --dry-run --missing-code 77

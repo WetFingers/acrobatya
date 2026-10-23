@@ -83,7 +83,9 @@ std::string shardName(const testing::TestParamInfo<Shard>& info) {
     return n;
 }
 
-// tests/corpus/slow.json → {"files": {rel: причина}}; нет файла — пусто.
+// tests/corpus/slow.json → {"files": {rel: причина}, "asan": {rel: причина}}; "asan" — только в ASan-сборке:
+// ASan сам держит ~2,7 ГБ, и на этих файлах процесс упирается в предел памяти (support/memory_cap.cpp) — ASan
+// тогда не возвращает ошибку, а завершает процесс. Нет файла — пусто.
 const json& slowFiles() {
     static const json files = [] {
         const fs::path p = ot::paths::fromUtf8(OTTISK_SOURCE_DIR) / L"tests" / L"corpus" / L"slow.json";
@@ -92,7 +94,16 @@ const json& slowFiles() {
             return json::object();
         }
         try {
-            return json::parse(ot::paths::readFile(p)).value("files", json::object());
+            const json doc = json::parse(ot::paths::readFile(p));
+            json out = doc.value("files", json::object());
+#if defined(__SANITIZE_ADDRESS__)
+            const json asan =
+                doc.value("asan", json::object());  // не временный: range-for не продлевает его жизнь
+            for (const auto& [rel, why] : asan.items()) {
+                out[rel] = why;
+            }
+#endif
+            return out;
         } catch (const std::exception&) {
             return json::object();
         }
