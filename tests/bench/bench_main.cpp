@@ -49,7 +49,7 @@ int wmain(int argc, wchar_t** argv) {
         for (int r = 0; r < runs; ++r) {
             ot::MuContext mu;
             const auto t0 = clock::now();
-            auto doc = ot::Document::open(mu, file);
+            auto doc = ot::Document::openOrThrow(mu, file);
             (void)doc->renderPage(0, {dpi, true});
             const auto t1 = clock::now();
             pages = doc->pageCount();

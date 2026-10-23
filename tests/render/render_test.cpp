@@ -121,7 +121,7 @@ TEST_P(RenderRefs, matches_expected) {
     ot::MuContext mu;
     fz_set_aa_level(mu.get(), 8);
     fz_disable_icc(mu.get());
-    auto doc = ot::Document::open(mu, src);
+    auto doc = ot::Document::openOrThrow(mu, src);
     const ot::Bitmap actual = doc->renderPage(c.page - 1, {static_cast<float>(c.dpi), true});
     const ot::Bitmap expected = ot::loadPng(mu, root() / ot::paths::fromUtf8(c.png));
     ot::Bitmap diff;

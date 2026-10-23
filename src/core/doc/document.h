@@ -1,19 +1,25 @@
-// Document — открытый документ MuPDF (эталон 4.2). Этап 0: открыть (путь UTF-16 → fz_open_file_w,
-// пароль), число страниц, размер страницы, растр страницы; создать пустой PDF в памяти.
-// Поток: один документ — один поток одновременно (правило MuPDF); синхронный.
+// Document — открытый документ MuPDF (эталон 4.2): открыть (путь UTF-16 → fz_open_file_w, пароль),
+// флаги открытия (ремонт, PDF/A, подписи, форма, XFA), страницы (рамка с учётом /Rotate, поворот),
+// свойства (/Info, версия, линеаризация, шифрование, права /P), растр страницы.
+// Документ живёт в своём контексте — клоне базового (по умолчанию MuContext::global()): общий store и
+// замки, свой стек ошибок. Поток: один документ — один поток одновременно (правило MuPDF); синхронный.
+// PDF правится и сохраняется; XPS/EPUB/CBZ/FB2/изображения/TXT/HTML — только просмотр (isPdf() == false).
 #pragma once
 
 #include <filesystem>
 #include <memory>
 #include <string>
 
+#include "core/mu/error.h"
 #include "core/render/bitmap.h"
+#include "core/util/geometry.h"
 
 struct fz_document;
 
 namespace ot {
 
 class MuContext;
+class Document;
 
 struct PageSize {
     float width = 0;  // в пунктах (1/72 дюйма), с учётом /Rotate
@@ -25,40 +31,107 @@ struct RenderOptions {
     bool annotations = true;  // false — только содержимое страницы (fz_run_page_contents)
 };
 
+// Права из /P (эталон 7.1); владелец (пароль владельца) может всё.
+enum class Perm { Print, PrintHighRes, Copy, Edit, Annotate, FillForms, Accessibility, Assemble };
+
+struct DocError {
+    ErrorKind kind = ErrorKind::None;
+    int code = 0;         // FZ_ERROR_* (0 — ошибка не из MuPDF, например NotFound)
+    std::string message;  // английский текст MuPDF или наш — для журнала, не для интерфейса
+};
+
+struct OpenResult {
+    std::unique_ptr<Document> document;  // nullptr — не открылся (error); при needsPassword — есть
+    bool ok = false;                     // открыт и читается (пароль не нужен или подошёл)
+    bool needsPassword = false;          // зашифрован, пароль не задан или не подошёл → authenticate()
+    bool repaired = false;               // MuPDF чинил xref: инкрементальное сохранение запрещено
+    bool pdfa = false;                   // заявлен PDF/A (XMP pdfaid:part)
+    bool isSigned = false;               // есть подписанное поле подписи
+    bool hasForm = false;                // есть поля AcroForm, кроме подписей
+    bool hasXfa = false;                 // /AcroForm /XFA — «XFA не поддерживается»
+    DocError error;
+};
+
+struct DocProperties {
+    // /Info в UTF-8; даты — как в файле ("D:20260101120000+03'00'")
+    std::string title, author, subject, keywords, creator, producer, creationDate, modDate;
+    std::string format;  // "PDF 1.7", "XPS", "CBZ", "Image"… (FZ_META_FORMAT)
+    int pdfVersion = 0;  // 17 для PDF 1.7, 20 для PDF 2.0; 0 — не PDF
+    int pageCount = 0;
+    bool linearized = false;  // «Быстрый просмотр в Интернете»
+    bool encrypted = false;
+    std::string encryption;      // "Standard V5 R6 256-bit AES" (FZ_META_ENCRYPTION) или пусто
+    int encryptionRevision = 0;  // /R
+    int permissionsP = -4;       // /P как в файле (без шифрования — −4: всё разрешено)
+    bool ownerAuthenticated = false;
+    std::string pdfa;  // "PDF/A-2B" или пусто
+};
+
 class Document {
 public:
     ~Document();
     Document(const Document&) = delete;
     Document& operator=(const Document&) = delete;
 
-    // Открыть файл. Формат — по расширению (".pdf", ".xps", ".png"…), неизвестное — как PDF.
-    // Бросает MuError (повреждён, не поддерживается) и std::runtime_error (нет файла).
-    static std::unique_ptr<Document> open(MuContext& mu, const std::filesystem::path& path);
+    // Открыть файл: fz_open_document_with_stream(fz_open_file_w(path)). Формат — по расширению
+    // (".pdf", ".xps", ".png"…; неизвестное — как PDF) и по содержимому. Пароль (UTF-8) пробуется, если
+    // документ зашифрован. Не бросает: ошибка — в OpenResult::error.
+    static OpenResult open(const std::filesystem::path& path, const std::string& password = {});
+    static OpenResult open(MuContext& base, const std::filesystem::path& path,
+                           const std::string& password = {});
     // Открыть из памяти (magic — расширение или MIME).
-    static std::unique_ptr<Document> openMemory(MuContext& mu, std::string bytes,
-                                                const std::string& magic = ".pdf");
+    static OpenResult openMemory(std::string bytes, const std::string& magic = ".pdf",
+                                 const std::string& password = {});
+    static OpenResult openMemory(MuContext& base, std::string bytes, const std::string& magic = ".pdf",
+                                 const std::string& password = {});
+    // То же для инструментов и тестов: бросает MuError (MuPDF) или std::runtime_error (нет файла, нужен
+    // пароль).
+    static std::unique_ptr<Document> openOrThrow(const std::filesystem::path& path,
+                                                 const std::string& password = {});
+    static std::unique_ptr<Document> openOrThrow(MuContext& base, const std::filesystem::path& path,
+                                                 const std::string& password = {});
+    static std::unique_ptr<Document> openOrThrowMemory(std::string bytes, const std::string& magic = ".pdf");
     // Новый PDF в памяти: pages пустых страниц A4 (595 × 842 pt).
-    static std::unique_ptr<Document> createBlank(MuContext& mu, int pages = 1);
+    static std::unique_ptr<Document> createBlank(int pages = 1);
+    static std::unique_ptr<Document> createBlank(MuContext& base, int pages = 1);
 
     bool needsPassword() const;
-    // true — пароль подошёл (пользователя или владельца).
+    // true — пароль подошёл (пользователя или владельца); пароль в UTF-8.
     bool authenticate(const std::string& password);
 
+    bool isPdf() const noexcept;
+    bool repaired() const;  // pdf_was_repaired: файл чинили при открытии или позже
+    bool isPdfA() const;
+    bool isSigned() const;
+    bool hasForm() const;
+    bool hasXfa() const;
+    bool allowed(Perm perm) const;
+    DocProperties properties() const;
+
     int pageCount() const;
+    // Рамка страницы в пунктах с учётом /CropBox и /Rotate (fz_bound_page).
+    RectF pageBox(int index) const;
+    // /Rotate, приведённый к 0, 90, 180, 270 (у не-PDF — 0).
+    int pageRotation(int index) const;
     PageSize pageSize(int index) const;
     Bitmap renderPage(int index, const RenderOptions& options = {}) const;
 
     // Сериализация PDF (только для документов PDF) — для тестов и «Сохранить как» этапа 0.
     std::string savePdfToMemory() const;
 
+    const std::filesystem::path& path() const noexcept { return path_; }
     fz_document* handle() const noexcept { return doc_; }
-    MuContext& context() const noexcept { return mu_; }
+    MuContext& context() const noexcept { return *mu_; }
 
 private:
-    Document(MuContext& mu, fz_document* doc, std::string bytes);
-    MuContext& mu_;
+    Document(std::unique_ptr<MuContext> mu, fz_document* doc, std::string bytes, std::filesystem::path path);
+    static OpenResult finishOpen(std::unique_ptr<Document> doc, const std::string& password);
+
+    std::unique_ptr<MuContext> mu_;  // клон базового контекста — только этого документа
     fz_document* doc_ = nullptr;
     std::string memory_;  // данные openMemory живут, пока жив документ
+    std::filesystem::path path_;
+    bool ownerAuthenticated_ = false;
 };
 
 }  // namespace ot

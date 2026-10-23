@@ -132,7 +132,7 @@ int update(const fs::path& filesJson, const std::vector<int>& dpis, const std::s
             item["release_only_reason"] = it->second.value("release_only_reason", std::string());
         }
         try {
-            auto doc = ot::Document::open(mu, resolveSource(source));
+            auto doc = ot::Document::openOrThrow(mu, resolveSource(source));
             for (int page : pages) {
                 for (int dpi : dpis) {
                     const ot::Bitmap bmp = doc->renderPage(page - 1, {static_cast<float>(dpi), true});
@@ -198,7 +198,7 @@ int check(const fs::path& filesJson) {
     for (const json& f : files.value("files", json::array())) {
         ++count;
         try {
-            auto doc = ot::Document::open(mu, resolveSource(f.value("source", std::string())));
+            auto doc = ot::Document::openOrThrow(mu, resolveSource(f.value("source", std::string())));
             for (const json& p : f.value("pages", json::array({1}))) {
                 (void)doc->renderPage(p.get<int>() - 1, {72.0f, true});
             }

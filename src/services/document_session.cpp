@@ -8,18 +8,20 @@
 
 namespace ot {
 
-DocumentSession::DocumentSession(QObject* parent) : QObject(parent), mu_(std::make_unique<MuContext>()) {}
+DocumentSession::DocumentSession(QObject* parent) : QObject(parent) {}
 
 DocumentSession::~DocumentSession() = default;
 
 bool DocumentSession::open(const QString& path) {
     close();
-    try {
-        doc_ = Document::open(*mu_, std::filesystem::path(path.toStdWString()));
-    } catch (const std::exception& e) {
-        error_ = QString::fromUtf8(e.what());
+    // Документ — в клоне MuContext::global() (эталон 4.1); пароль спросит сессия 2.5.
+    OpenResult r = Document::open(std::filesystem::path(path.toStdWString()));
+    if (!r.ok) {
+        error_ =
+            r.needsPassword ? QStringLiteral("password required") : QString::fromStdString(r.error.message);
         return false;
     }
+    doc_ = std::move(r.document);
     path_ = path;
     error_.clear();
     emit opened(path_);

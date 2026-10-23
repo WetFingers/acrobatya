@@ -50,7 +50,7 @@ bool selfCheck(QStringList& lines) {
                  QDir::toNativeSeparators(QLibraryInfo::path(QLibraryInfo::PluginsPath));
     try {
         MuContext mu;
-        auto doc = Document::createBlank(mu, 1);
+        auto doc = Document::createBlank(mu, 1);  // свой корень: проверка без global()
         const Bitmap bmp = doc->renderPage(0, {});
         const bool white = !bmp.empty() && bmp.pixels.front() == 255 && bmp.pixels.back() == 255;
         lines << QStringLiteral("render: %1x%2 %3")

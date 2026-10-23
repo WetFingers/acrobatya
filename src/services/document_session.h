@@ -12,7 +12,6 @@
 
 namespace ot {
 
-class MuContext;
 class Document;
 
 class DocumentSession : public QObject {
@@ -38,7 +37,6 @@ signals:
     void closed();
 
 private:
-    std::unique_ptr<MuContext> mu_;
     std::unique_ptr<Document> doc_;
     QString path_;
     QString error_;

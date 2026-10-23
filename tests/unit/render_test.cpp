@@ -22,7 +22,7 @@ int at(const Bitmap& b, int x, int y) { return b.row(y)[x * b.components]; }
 TEST(render, page_size_follows_dpi) {
     OT_FEATURE("view-01");
     MuContext mu;
-    auto doc = Document::openMemory(mu, ot::test::makePdf(mu));
+    auto doc = Document::openOrThrowMemory(ot::test::makePdf(mu));
     const Bitmap b72 = doc->renderPage(0, {72.0f, true});
     EXPECT_EQ(b72.width, 595);
     EXPECT_EQ(b72.height, 842);
@@ -34,7 +34,7 @@ TEST(render, page_size_follows_dpi) {
 
 TEST(render, black_square_where_drawn_and_white_background) {
     MuContext mu;
-    auto doc = Document::openMemory(mu, ot::test::makePdf(mu));
+    auto doc = Document::openOrThrowMemory(ot::test::makePdf(mu));
     const Bitmap b = doc->renderPage(0, {72.0f, true});
     EXPECT_EQ(at(b, 150, 150), 0);    // внутри квадрата 100..200 × 100..200 (от верха)
     EXPECT_EQ(at(b, 50, 50), 255);    // поле
@@ -44,7 +44,7 @@ TEST(render, black_square_where_drawn_and_white_background) {
 
 TEST(render, png_roundtrip_is_lossless) {
     MuContext mu;
-    auto doc = Document::openMemory(mu, ot::test::makePdf(mu));
+    auto doc = Document::openOrThrowMemory(ot::test::makePdf(mu));
     const Bitmap b = doc->renderPage(0, {50.0f, true});
     ot::test::TempDir dir;
     const auto file = dir.path() / L"страница.png";
