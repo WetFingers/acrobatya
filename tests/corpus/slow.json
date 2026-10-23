@@ -36,5 +36,16 @@
     "mupdf-fuzz/files/fce3cbade697acc0ced484440b9400fa6c99d8dc": "Debug mutool draw -w 32: дольше 30 с (23.10.2026)",
     "mupdf-fuzz/files/fd0944d0c398c3c36e3f33f8a9277777113a8172": "Debug mutool draw -w 32: дольше 30 с (23.10.2026)",
     "mupdf-fuzz/files/fe9026fcccb932774060d0e2cc9944b151c86fb8": "Debug mutool draw -w 32: дольше 30 с (23.10.2026)"
+  },
+  "asan": {
+    "mupdf-fuzz/files/01c4e44c98120d55b6942b0afd6f32ebd0bd2fae": "ASan: внутренняя память ASan упирается в предел 6 ГБ (23.10.2026)",
+    "mupdf-fuzz/files/0fbf13b02a81faae926990810507f6a4826d53b9": "ASan: внутренняя память ASan упирается в предел 6 ГБ (23.10.2026)",
+    "mupdf-fuzz/files/40de6950d4a8d1d379e897b72a07bdcc5b507172": "ASan: внутренняя память ASan упирается в предел 6 ГБ (23.10.2026)",
+    "mupdf-fuzz/files/74b301a0eb138fcabc23ff8e1d5f0ce19a49981d": "ASan: внутренняя память ASan упирается в предел 6 ГБ (23.10.2026)",
+    "mupdf-fuzz/files/80f865be5c938462a1ac2985dc8efa4271994fb4": "ASan: внутренняя память ASan упирается в предел 6 ГБ (23.10.2026)",
+    "mupdf-fuzz/files/928b498efb9989a078e392e50d53b1c2e11da086": "ASan: внутренняя память ASan упирается в предел 6 ГБ (23.10.2026)",
+    "mupdf-fuzz/files/e337684eb0cfe41cb2a1d23371bdbfb226f97ffa": "ASan: внутренняя память ASan упирается в предел 6 ГБ (23.10.2026)",
+    "mupdf-fuzz/files/e5706491e1c35329b027862f633c7c77a0b9f897": "ASan: внутренняя память ASan упирается в предел 6 ГБ (23.10.2026)",
+    "mupdf-fuzz/files/regressions/2e7e542791691643684415ff53deee7e21181acb": "ASan: внутренняя память ASan упирается в предел 6 ГБ (23.10.2026)"
   }
 }
