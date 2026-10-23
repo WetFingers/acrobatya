@@ -56,8 +56,10 @@ std::function<QWidget*()> withMainWindow(std::function<void(MainWindow&)> setup)
 
 // view_scenes.cpp — сцены вида страниц view-* (PageView на фикстуре во весь кадр, 2.2b).
 std::vector<Scene> viewScenes();
-// shell_scenes.cpp — сцены оболочки shell-* (главное окно с документами, 2.3).
+// shell_scenes.cpp — сцены оболочки shell-*, all-tools*, quick-bar и Главной home-* (2.3).
 std::vector<Scene> shellScenes();
+std::vector<Scene> homeScenes();
+Scene homeScene(const char* name);  // Главная без недавних
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.
 bool waitSceneReady(const Scene& scene, QWidget* window, int timeoutMs = 30000);

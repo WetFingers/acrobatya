@@ -74,6 +74,10 @@ public:
     SessionState sessionState() const;
     void restoreSession(const SessionState& state);
     static bool restoreSessionEnabled();
+    // «Восстанавливать последний вид при открытии» (Установки → Документы; вкл. по умолчанию, ключ переедет в
+    // settings_keys.h в 2.4b).
+    static constexpr char kRestoreViewKey[] = "documents/restoreLastView";
+    static bool restoreLastViewEnabled();
 
     // Второй экземпляр передал файлы: открыть и поднять окно.
     void handleRequest(const ot::SingleInstance::Request& request);
@@ -100,7 +104,6 @@ private:
     void retranslateMenus();
     void updateActions();
 
-    QWidget* buildHome();
     void retranslateTitle();
     void openDialog();
     void saveCurrent();

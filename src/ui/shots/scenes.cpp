@@ -58,7 +58,7 @@ std::function<QWidget*()> withMainWindow(std::function<void(MainWindow&)> setup)
 const std::vector<Scene>& sceneTable() {
     static const std::vector<Scene> SCENES = [] {
         std::vector<Scene> table = {
-            {QStringLiteral("home"), withMainWindow([](MainWindow& w) { w.showHome(); }), {}, {}, {}},
+            homeScene("home"),
             {QStringLiteral("showcase"), showcaseScene, {}, {}, {}},
             {QStringLiteral("showcase-dark"), showcaseScene, ThemeChoice::Dark, {}, {}},
             {QStringLiteral("showcase-contrast"), showcaseScene, ThemeChoice::HighContrast, {}, {}},
@@ -67,7 +67,10 @@ const std::vector<Scene>& sceneTable() {
         for (Scene& s : viewScenes()) {  // 2.2b: view-single … view-loupe
             table.push_back(std::move(s));
         }
-        for (Scene& s : shellScenes()) {  // 2.3: shell-document, shell-two-tabs
+        for (Scene& s : shellScenes()) {  // 2.3: shell-document, shell-two-tabs, all-tools…, quick-bar
+            table.push_back(std::move(s));
+        }
+        for (Scene& s : homeScenes()) {  // 2.3: home-empty, home-recent, home-files
             table.push_back(std::move(s));
         }
         return table;

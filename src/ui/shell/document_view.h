@@ -12,6 +12,7 @@
 #include <memory>
 
 #include "services/document_session.h"
+#include "services/recent.h"
 #include "ui/widgets/tone.h"
 
 class QVBoxLayout;
@@ -53,6 +54,9 @@ public:
 
     // Страница после первого показа (--page, восстановление сеанса).
     void setInitialPage(int page);
+    // Последний вид файла (недавние, services/recent.h): раскладка, масштаб и страница после первого показа.
+    void setInitialView(const LastView& view);
+    LastView currentView() const;
 
     // «Сохранить» в свой файл с ожиданием (подтверждение закрытия; полный поток сохранения — 2.5). false —
     // отказ или ошибка (errorString()).
@@ -78,6 +82,7 @@ private:
     QPointer<QWidget> floating_;
     QString error_;
     int initialPage_ = -1;
+    LastView initialView_;
     bool modified_ = false;
 };
 

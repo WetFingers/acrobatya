@@ -102,6 +102,34 @@ void DocumentView::setFloatingBar(QWidget* bar) {
 
 void DocumentView::setInitialPage(int page) { initialPage_ = page; }
 
+namespace {
+
+const std::pair<PageMode, const char*> kModes[] = {
+    {PageMode::SinglePage, "SinglePage"},
+    {PageMode::Continuous, "Continuous"},
+    {PageMode::Facing, "Facing"},
+    {PageMode::FacingContinuous, "FacingContinuous"},
+};
+
+}  // namespace
+
+void DocumentView::setInitialView(const LastView& view) {
+    initialView_ = view;
+    initialPage_ = view.page;
+}
+
+LastView DocumentView::currentView() const {
+    LastView v;
+    v.page = view_->currentPage();
+    v.zoomPercent = view_->zoomPercent();
+    for (const auto& [mode, name] : kModes) {
+        if (mode == view_->pageMode()) {
+            v.layout = QLatin1String(name);
+        }
+    }
+    return v;
+}
+
 bool DocumentView::save() {
     error_.clear();
     if (isViewOnly()) {
@@ -154,10 +182,19 @@ void DocumentView::showEvent(QShowEvent* event) {
     if (initialPage_ >= 0) {
         // После показа: размер вьюпорта известен — переход ставит страницу наверх.
         QTimer::singleShot(0, this, [this] {
-            if (initialPage_ >= 0) {
-                view_->goToPage(initialPage_);
-                initialPage_ = -1;
+            if (initialPage_ < 0) {
+                return;
             }
+            for (const auto& [mode, name] : kModes) {
+                if (initialView_.layout == QLatin1String(name)) {
+                    view_->setPageMode(mode);
+                }
+            }
+            if (initialView_.zoomPercent > 0) {
+                view_->setZoomPercent(static_cast<float>(initialView_.zoomPercent));
+            }
+            view_->goToPage(initialPage_);
+            initialPage_ = -1;
         });
     }
 }

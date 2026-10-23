@@ -27,11 +27,14 @@
 #include "services/app_info.h"
 #include "services/convert_ops.h"
 #include "services/document_registry.h"
+#include "services/recent.h"
 #include "services/render_pool.h"
+#include "services/thumbnails.h"
 #include "services/tile_cache.h"
 #include "ui/shell/document_tabs.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/global_bar.h"
+#include "ui/shell/home/home_page.h"
 #include "ui/shell/quick_bar.h"
 #include "ui/shell/tool_panel.h"
 #include "ui/theme/theme.h"
@@ -91,7 +94,11 @@ MainWindow::MainWindow(QWidget* parent)
     rowLayout->addWidget(body_, 1);
     center_ = new QStackedWidget(body_);
     center_->setObjectName(QStringLiteral("shellCenter"));
-    home_ = buildHome();
+    auto* home = new HomePage(RecentFiles::shared(), ThumbnailCache::shared(), center_);
+    connect(home, &HomePage::openRequested, this, [this](const QString& path) { openFile(path); });
+    connect(home, &HomePage::openDialogRequested, this, &MainWindow::openDialog);
+    connect(home, &HomePage::notifyLater, this, &MainWindow::notifyLater);
+    home_ = home;
     center_->addWidget(home_);
     documents_ = new QStackedWidget(center_);
     documents_->setObjectName(QStringLiteral("documents"));
@@ -134,36 +141,6 @@ MainWindow::~MainWindow() {
 }
 
 DocumentTabs& MainWindow::tabs() const { return *globalBar_->tabs(); }
-
-QWidget* MainWindow::buildHome() {
-    auto* page = new QWidget(this);
-    page->setObjectName(QStringLiteral("homePage"));
-    auto* layout = new QVBoxLayout(page);
-    const Metrics& m = Theme::sizes();
-    layout->setContentsMargins(m.grid * 12, m.grid * 10, m.grid * 12, m.grid * 10);
-    layout->setSpacing(m.grid * 4);
-
-    auto* title = new QLabel(tr("Главная"), page);
-    title->setObjectName(QStringLiteral("homeTitle"));
-    title->setFont(homeTitleFont(m));
-    layout->addWidget(title);
-
-    auto* hint = new QLabel(tr("Откройте PDF (Ctrl+O) или перетащите файл сюда."), page);
-    hint->setObjectName(QStringLiteral("homeHint"));
-    hint->setWordWrap(true);
-    layout->addWidget(hint);
-
-    auto* row = new QHBoxLayout();
-    auto* openButton = new QPushButton(tr("Открыть файл…"), page);
-    openButton->setObjectName(QStringLiteral("homeOpen"));
-    openButton->setProperty("primary", true);
-    connect(openButton, &QPushButton::clicked, this, &MainWindow::openDialog);
-    row->addWidget(openButton);
-    row->addStretch(1);
-    layout->addLayout(row);
-    layout->addStretch(1);
-    return page;
-}
 
 bool MainWindow::openFile(const QString& path, int page) {
     error_.clear();
@@ -210,7 +187,12 @@ bool MainWindow::openFile(const QString& path, int page) {
     view->setFloatingBar(quick);
     if (page >= 0) {
         view->setInitialPage(page);
+    } else if (restoreLastViewEnabled()) {
+        if (const std::optional<LastView> last = RecentFiles::shared().lastView(view->path())) {
+            view->setInitialView(*last);  // «Восстанавливать последний вид при открытии» (как в Acrobat)
+        }
     }
+    RecentFiles::shared().touch(view->path(), opened.summary.pageCount);
     const int index = tabs().addDocument(opened.id, view->title(), view->path());
     showDocument(index);
     emit documentOpened(view);
@@ -235,6 +217,7 @@ bool MainWindow::closeDocument(int index) {
     }
     const quint64 id = view->id();
     const bool wasHome = isHomeShown();
+    RecentFiles::shared().saveView(view->path(), view->currentView());
     releaseView(view);
     documents_->removeWidget(view);
     delete view;
@@ -259,6 +242,7 @@ bool MainWindow::closeAllDocuments() {
 
 void MainWindow::showHome() {
     center_->setCurrentWidget(home_);
+    home_->setFocus();
     toolPanel_->hide();
     ToolRegistry::instance().setView(nullptr);
     globalBar_->setHomeActive(true);
@@ -355,6 +339,11 @@ void MainWindow::restoreSession(const SessionState& state) {
     }
 }
 
+bool MainWindow::restoreLastViewEnabled() {
+    QSettings settings(app::settingsPath(), QSettings::IniFormat);
+    return settings.value(QLatin1String(kRestoreViewKey), true).toBool();
+}
+
 bool MainWindow::restoreSessionEnabled() {
     QSettings settings(app::settingsPath(), QSettings::IniFormat);
     return settings.value(QLatin1String(session::kRestoreKey), false).toBool();
@@ -433,6 +422,9 @@ void MainWindow::closeEvent(QCloseEvent* event) {
             }
         }
         session::save(state);
+        for (int i = 0; i < documentCount(); ++i) {
+            RecentFiles::shared().saveView(document(i)->path(), document(i)->currentView());
+        }
         closing_ = true;
     }
     QMainWindow::closeEvent(event);

@@ -65,3 +65,11 @@ rotate-ccw
 grid-2x2
 panel-left-close
 panel-left-open
+
+# Главная (2.3)
+clock
+monitor
+folder
+download
+pin
+list

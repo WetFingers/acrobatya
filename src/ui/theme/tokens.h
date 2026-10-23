@@ -153,6 +153,10 @@ struct Metrics {
     int iconEmpty = 40;          // иконка пустого состояния
     int panelTitlePx = 13;       // заголовок панели, 600
     int homeTitlePx = 20;        // заголовок Главной
+    int homeNav = 240;           // левый столбец Главной: Недавние, Избранное, Файлы, Сканы (2.3)
+    int cardWidth = 184;         // карточка файла Главной: миниатюра 160 + поля
+    int cardHeight = 256;        //   и её высота (миниатюра до 200 + имя и дата)
+    int thumbWidth = 160;        // миниатюра первой страницы (эталон 3.18)
     int focusRing = 2;           // рамка фокуса accent
     int shadowBlur = 16;         // тень: размытие
     int shadowOffset = 4;        //   и сдвиг вниз
@@ -191,6 +195,10 @@ inline constexpr int Metrics::* kMetricSizes[] = {
     &Metrics::iconEmpty,
     &Metrics::panelTitlePx,
     &Metrics::homeTitlePx,
+    &Metrics::homeNav,
+    &Metrics::cardWidth,
+    &Metrics::cardHeight,
+    &Metrics::thumbWidth,
     &Metrics::focusRing,
     &Metrics::shadowBlur,
     &Metrics::shadowOffset,

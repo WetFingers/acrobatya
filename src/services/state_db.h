@@ -5,8 +5,9 @@
 // — там только восстановимое состояние (индекс, недавние, виды), программа не должна из-за него падать.
 //
 // Миграции: 1 — индекс поиска по папкам (core/text/index.h: fts_files, fts_pages), 2 — вкладки прошлого
-// сеанса (session_store.h: session_tabs). Следующие сессии добавляют шаги в конец списка (state_db.cpp) и
-// поднимают kSchemaVersion: недавние файлы, последние виды, подозрения OCR…
+// сеанса (session_store.h: session_tabs), 3 — недавние, избранное и последние виды (recent.h: recent).
+// Следующие сессии добавляют шаги в конец списка (state_db.cpp) и
+// поднимают kSchemaVersion: прочитанные комментарии, подозрения OCR…
 //
 // Поток: handle() — только под замком mutex() (запросы из пула поиска по папкам, GUI и потоков документов
 // идут по очереди).
@@ -22,7 +23,7 @@ namespace ot {
 
 class StateDb {
 public:
-    static constexpr int kSchemaVersion = 2;
+    static constexpr int kSchemaVersion = 3;
 
     // <каталог данных>/state.sqlite.
     static QString defaultPath();

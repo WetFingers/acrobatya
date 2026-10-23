@@ -40,6 +40,17 @@ const std::vector<std::function<void(sqlite3*)>>& migrations() {
                  "CREATE TABLE IF NOT EXISTS session_tabs(position INTEGER PRIMARY KEY, path TEXT NOT NULL, "
                  "page INTEGER NOT NULL DEFAULT 0, current INTEGER NOT NULL DEFAULT 0)");
         },
+        // 3: недавние файлы, избранное и последние виды (2.3, services/recent.h)
+        [](sqlite3* db) {
+            exec(db,
+                 "CREATE TABLE IF NOT EXISTS recent(key TEXT PRIMARY KEY, path TEXT NOT NULL, "
+                 "opened_at INTEGER NOT NULL DEFAULT 0, in_recent INTEGER NOT NULL DEFAULT 1, "
+                 "pinned INTEGER NOT NULL DEFAULT 0, favorite INTEGER NOT NULL DEFAULT 0, "
+                 "favorite_at INTEGER NOT NULL DEFAULT 0, page_count INTEGER NOT NULL DEFAULT 0, "
+                 "last_page INTEGER NOT NULL DEFAULT 0, zoom REAL NOT NULL DEFAULT 0, layout TEXT NOT NULL "
+                 "DEFAULT '')");
+            exec(db, "CREATE INDEX IF NOT EXISTS recent_opened ON recent(in_recent, opened_at)");
+        },
     };
     return steps;
 }
