@@ -57,6 +57,9 @@ public:
     QList<int> pages() const { return quads_.keys(); }
     // Выделенный (текущий) четырёхугольник: обводка; page < 0 — нет.
     void setCurrent(int page, int index);
+    // Несколько текущих (совпадение в две строки или через страницу): пары {страница, индекс}.
+    void setCurrent(std::vector<std::pair<int, int>> items);
+    const std::vector<std::pair<int, int>>& current() const noexcept { return current_; }
 
     void paintPage(QPainter& painter, const PageView& view, int page) override;
 
@@ -64,8 +67,7 @@ private:
     ColorFn fill_;
     ColorFn stroke_;
     QHash<int, std::vector<QuadF>> quads_;
-    int currentPage_ = -1;
-    int currentIndex_ = -1;
+    std::vector<std::pair<int, int>> current_;
 };
 
 // Рамки по страницам (пункты страницы): выбранные аннотации, области инструмента.

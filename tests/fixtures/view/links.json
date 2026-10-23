@@ -1,0 +1,128 @@
+{
+  "generator": "tools/gen/make_view.py",
+  "pdf": "links.pdf",
+  "page_height": 841.8898,
+  "links": [
+    {
+      "page": 0,
+      "label": "К странице 3 (явное назначение)",
+      "kind": "GoTo",
+      "rect_mupdf": [
+        76,
+        96.0,
+        330,
+        115.0
+      ],
+      "target": {
+        "page": 2,
+        "point": [
+          72,
+          141.89
+        ]
+      }
+    },
+    {
+      "page": 0,
+      "label": "К разделу «Итоги» (именованное)",
+      "kind": "GoTo",
+      "rect_mupdf": [
+        76,
+        130.0,
+        330,
+        149.0
+      ],
+      "target": {
+        "page": 2,
+        "point": [
+          72,
+          121.89
+        ]
+      }
+    },
+    {
+      "page": 0,
+      "label": "Следующая страница (/Named)",
+      "kind": "Named",
+      "rect_mupdf": [
+        76,
+        164.0,
+        330,
+        183.0
+      ],
+      "target": {
+        "page": 1
+      }
+    },
+    {
+      "page": 0,
+      "label": "Сайт example.org (/URI)",
+      "kind": "URI",
+      "rect_mupdf": [
+        76,
+        198.0,
+        330,
+        217.0
+      ],
+      "target": {
+        "uri": "https://example.org/akrobatya"
+      }
+    },
+    {
+      "page": 0,
+      "label": "Другой файл other.pdf (/GoToR)",
+      "kind": "GoToR",
+      "rect_mupdf": [
+        76,
+        232.0,
+        330,
+        251.0
+      ],
+      "target": {
+        "file": "other.pdf",
+        "page": 1
+      }
+    },
+    {
+      "page": 0,
+      "label": "Запустить calc.exe (/Launch)",
+      "kind": "Launch",
+      "rect_mupdf": [
+        76,
+        266.0,
+        330,
+        285.0
+      ],
+      "target": {
+        "file": "calc.exe"
+      }
+    },
+    {
+      "page": 0,
+      "label": "Сценарий (/JavaScript)",
+      "kind": "JavaScript",
+      "rect_mupdf": [
+        76,
+        300.0,
+        330,
+        319.0
+      ],
+      "target": {
+        "name": "JavaScript"
+      }
+    },
+    {
+      "page": 1,
+      "label": "Назад к началу (/Fit)",
+      "kind": "GoTo",
+      "rect_mupdf": [
+        76,
+        96.0,
+        330,
+        115.0
+      ],
+      "target": {
+        "page": 0
+      }
+    }
+  ]
+}

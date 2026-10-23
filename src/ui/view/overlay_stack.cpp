@@ -78,8 +78,7 @@ void QuadOverlay::setQuads(int page, std::vector<QuadF> quads) {
 
 void QuadOverlay::clear() {
     quads_.clear();
-    currentPage_ = -1;
-    currentIndex_ = -1;
+    current_.clear();
 }
 
 void QuadOverlay::clearPage(int page) { quads_.remove(page); }
@@ -90,9 +89,13 @@ const std::vector<QuadF>& QuadOverlay::quads(int page) const {
 }
 
 void QuadOverlay::setCurrent(int page, int index) {
-    currentPage_ = page;
-    currentIndex_ = index;
+    current_.clear();
+    if (page >= 0 && index >= 0) {
+        current_.emplace_back(page, index);
+    }
 }
+
+void QuadOverlay::setCurrent(std::vector<std::pair<int, int>> items) { current_ = std::move(items); }
 
 void QuadOverlay::paintPage(QPainter& painter, const PageView& view, int page) {
     const auto it = quads_.constFind(page);
@@ -106,12 +109,16 @@ void QuadOverlay::paintPage(QPainter& painter, const PageView& view, int page) {
     for (const QuadF& q : *it) {
         painter.drawPolygon(overlayQuadPolygon(t, q));
     }
-    if (page == currentPage_ && stroke_ && currentIndex_ >= 0 &&
-        currentIndex_ < static_cast<int>(it->size())) {
-        painter.setRenderHint(QPainter::Antialiasing, true);
-        painter.setBrush(Qt::NoBrush);
-        painter.setPen(QPen(stroke_(), Theme::sizes().focusRing));
-        painter.drawPolygon(overlayQuadPolygon(t, (*it)[static_cast<std::size_t>(currentIndex_)]));
+    if (!stroke_) {
+        return;
+    }
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(stroke_(), Theme::sizes().focusRing));
+    for (const auto& [currentPage, index] : current_) {
+        if (currentPage == page && index >= 0 && index < static_cast<int>(it->size())) {
+            painter.drawPolygon(overlayQuadPolygon(t, (*it)[static_cast<std::size_t>(index)]));
+        }
     }
 }
 

@@ -12,6 +12,8 @@
 #include <QString>
 
 #include <memory>
+#include <utility>
+#include <vector>
 
 namespace ot {
 
@@ -25,6 +27,10 @@ public:
 
     static std::unique_ptr<QMimeData> textMime(const QString& plain, const QString& html);
     static std::unique_ptr<QMimeData> textMime(const TextPage& page, const TextSelection& selection);
+    // Выделение на нескольких страницах (по порядку): текст страниц через «\n», HTML — фрагменты подряд в
+    // одном документе.
+    using PageSelection = std::pair<const TextPage*, const TextSelection*>;
+    static std::unique_ptr<QMimeData> textMime(const std::vector<PageSelection>& pages);
     static std::unique_ptr<QMimeData> imageMime(const QImage& image);
     // Положить в системный буфер обмена; false — буфера нет (не QGuiApplication) или mime пуст.
     static bool put(std::unique_ptr<QMimeData> mime);

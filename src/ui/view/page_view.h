@@ -13,6 +13,12 @@
 // видов, ui/view/view_history.h — стек из 50). Автопрокрутка — таймер с регулируемой скоростью (↑/↓ меняют
 // скорость, Esc — стоп). Без документа (setPageSizes) вид раскладывается и листается — так его проверяют
 // тесты раскладки; рендер — с документом (setDocument).
+//
+// Ссылки (2.2b; view-13): слой LinkLayer — курсор-указатель и переход по щелчку у «Выделения», «Руки» и
+// «Панорамирования», Tab/Shift+Tab по ссылкам видимых страниц с рамкой фокуса, Enter — переход. activateLink
+// шлёт linkActivated(LinkAction) для любой ссылки (что делать с GoToR и URI — решает окно 2.4/2.5, Launch —
+// никогда) и сам переходит по GoTo/Named. Совпадения поиска (view-18) — setSearchHits/setCurrentSearchHit:
+// подсветка всех, текущее — обводкой, вид прокручивается к нему.
 #pragma once
 
 #include <QAbstractScrollArea>
@@ -23,10 +29,13 @@
 #include <QTransform>
 #include <QVector>
 
+#include <memory>
 #include <optional>
 #include <vector>
 
+#include "core/links/links.h"
 #include "core/render/fit.h"
+#include "core/text/search.h"
 #include "services/document_session.h"
 #include "ui/view/layout.h"
 #include "ui/view/overlay.h"
@@ -39,6 +48,7 @@ class TileCache;
 
 namespace ot::ui {
 
+class LinkLayer;
 class TilePainter;
 class ToolController;
 
@@ -132,6 +142,20 @@ public:
     QPointF viewportToPage(int page, QPointF point) const;
     // Страницы, видимые во вьюпорте (с запасом margin логических px по вертикали).
     std::vector<int> visiblePages(double margin = 0) const;
+    // Прокрутить так, чтобы рамка (пункты страницы) с полем margin px была во вьюпорте (наименьший сдвиг;
+    // страница другого ряда постраничного режима — сначала её ряд).
+    void ensureVisible(int page, const RectF& rect, double margin = 0);
+
+    // Ссылки страниц и переход по ним.
+    LinkLayer& linkLayer() const noexcept { return *links_; }
+    void activateLink(const links::LinkInfo& link);
+
+    // Совпадения поиска (SearchSession 1.4): подсветка всех; текущее — обводка и прокрутка к нему.
+    void setSearchHits(std::vector<SearchHit> hits);
+    void clearSearchHits();
+    const std::vector<SearchHit>& searchHits() const noexcept { return hits_; }
+    void setCurrentSearchHit(int index);
+    int currentSearchHit() const noexcept { return currentHit_; }
 
     // Растр страниц (ui/view/tile_painter.h) и слои поверх них (ui/view/overlay.h): выделение текста,
     // совпадения поиска, рамки аннотаций — встроенные; инструменты добавляют свои.
@@ -149,6 +173,9 @@ signals:
     void layoutChanged();
     void historyChanged();
     void autoScrollChanged(bool active);
+    // Щелчок или Enter по ссылке (любой вид; переход по GoTo/Named вид делает сам, Launch не исполняется
+    // никогда).
+    void linkActivated(const ot::links::LinkAction& action);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -163,6 +190,7 @@ protected:
     void mouseDoubleClickEvent(QMouseEvent* event) override;
     void showEvent(QShowEvent* event) override;
     bool event(QEvent* event) override;
+    bool focusNextPrevChild(bool next) override;
 
 private:
     struct Anchor {
@@ -209,6 +237,10 @@ private:
     double autoCarry_ = 0;
     TilePainter* tiles_ = nullptr;          // ребёнок вида
     ToolController* controller_ = nullptr;  // ребёнок вида
+    std::unique_ptr<LinkLayer> links_;
+    std::vector<SearchHit> hits_;
+    std::vector<std::vector<std::pair<int, int>>> hitQuads_;  // совпадение → его квады {страница, индекс}
+    int currentHit_ = -1;
     OverlayStack overlays_;
     QuadOverlay selection_;
     QuadOverlay search_;

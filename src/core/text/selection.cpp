@@ -314,8 +314,8 @@ std::string htmlEscape(std::string_view text) {
     return out;
 }
 
-std::string toHtml(const TextPage& page, const TextSelection& selection) {
-    std::string out = "<html><head><meta charset=\"utf-8\"></head><body>";
+std::string toHtmlFragment(const TextPage& page, const TextSelection& selection) {
+    std::string out;
     int block = -1;
     int line = -1;
     bool bold = false;
@@ -370,8 +370,18 @@ std::string toHtml(const TextPage& page, const TextSelection& selection) {
     if (block >= 0) {
         out += "</p>";
     }
+    return out;
+}
+
+std::string htmlDocument(std::string_view fragment) {
+    std::string out = "<html><head><meta charset=\"utf-8\"></head><body>";
+    out += fragment;
     out += "</body></html>";
     return out;
+}
+
+std::string toHtml(const TextPage& page, const TextSelection& selection) {
+    return htmlDocument(toHtmlFragment(page, selection));
 }
 
 }  // namespace ot

@@ -4,7 +4,8 @@
 // после действия возвращает прежний, если не закреплён. Однобуквенные клавиши (H, V, Z, Shift+Z, X; эталон
 // 6.8) выключены по умолчанию — включает настройка. Пробел держит «Руку» временно, Esc бросает действие и
 // возвращает «Выделение» (инструмент, который поглотил Esc — ViewTool::escape, — остаётся). «Выбор объектов»
-// (AnnotSelectTool, 2.2b) — общий выбор аннотаций для инструментов этапов 3–6.
+// (AnnotSelectTool, 2.2b) — общий выбор аннотаций для инструментов этапов 3–6. Ссылки (2.2b): у «Выделения»,
+// «Руки» и «Панорамирования» над ссылкой — курсор-указатель, щелчок без сдвига — PageView::activateLink.
 #pragma once
 
 #include <QImage>
@@ -15,6 +16,7 @@
 #include <memory>
 #include <optional>
 
+#include "core/links/links.h"
 #include "ui/view/overlay.h"
 #include "ui/view/tools/view_tool.h"
 
@@ -63,7 +65,10 @@ public:
     bool mouseDoubleClick(QMouseEvent* event);
     bool keyPress(QKeyEvent* event);
     bool keyRelease(QKeyEvent* event);
-    void updateCursor(QPointF point, Qt::KeyboardModifiers modifiers);
+    void updateCursor(QPointF point, Qt::KeyboardModifiers modifiers,
+                      Qt::MouseButtons buttons = Qt::NoButton);
+    // Текущий инструмент ходит по ссылкам (Выделение, Рука, Панорамирование).
+    bool followsLinks() const noexcept;
 
     void paintViewport(QPainter& painter, const PageView& view) override;
 
@@ -91,7 +96,9 @@ private:
     std::array<std::unique_ptr<ViewTool>, kViewToolCount> tools_;
     ViewToolId current_ = defaultTool();
     ViewToolId previous_ = defaultTool();
-    std::optional<ViewToolId> beforeSpace_;  // пробел — временная «Рука»
+    std::optional<ViewToolId> beforeSpace_;     // пробел — временная «Рука»
+    std::optional<links::LinkInfo> linkPress_;  // нажатие над ссылкой: отпустили на месте — переход
+    QPointF linkPressPos_;
     bool pinned_ = false;
     bool singleKeys_ = false;
 };

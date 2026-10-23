@@ -123,6 +123,23 @@ public:
     // Выделение по страницам (по возрастанию) и его текст (страницы — через «\n»).
     const std::map<int, TextSelection>& selection() const noexcept { return selection_; }
     QString selectedText() const;
+    // Ctrl+C: выделенное — в буфер обмена text/plain + text/html (services/clipboard_io.h). false — нечего.
+    bool copySelection();
+
+    // Клавиатурный курсор выделения (ocr-41; эталон 3.2, 6.9): граница символа на странице. Ставит щелчок,
+    // сдвигает Shift+←/→ (символ), Shift+↑/↓ (строка) — выделение от начала до курсора; виден, пока у вида
+    // фокус. Рамка курсора — пункты страницы (нет — пусто).
+    struct Caret {
+        int page = -1;
+        int boundary = 0;       // 0…chars().size(): граница перед символом boundary
+        bool trailing = false;  // показывать после символа boundary − 1 (конец строки)
+        bool valid() const noexcept { return page >= 0; }
+        bool operator==(const Caret& other) const noexcept {
+            return page == other.page && boundary == other.boundary;
+        }
+    };
+    const Caret& caret() const noexcept { return caret_; }
+    std::optional<RectF> caretRect() const;
     // Сбросить слои (документ сменился или правка страницы).
     void forgetPages();
     void forgetPage(int page);
@@ -137,6 +154,12 @@ private:
     void recompute();
     void publish();
     void textArrived(int page);
+    // Курсор — по выделению мышью (конец протягивания) или по точке щелчка.
+    void syncCaret();
+    bool moveCaret(int key);
+    Caret stepCaret(const Caret& from, int delta);
+    Caret stepCaretLine(const Caret& from, int delta);
+    void selectBetween(const Caret& a, const Caret& b);
 
     bool pressing_ = false;
     bool rectangle_ = false;  // Alt — столбцы
@@ -152,6 +175,9 @@ private:
     QHash<int, std::shared_ptr<const TextPage>> pages_;
     QSet<int> requested_;
     std::map<int, TextSelection> selection_;
+    Caret caret_;
+    Caret keyAnchor_;        // начало выделения клавишами
+    bool keyboard_ = false;  // выделение ведут клавиши (от keyAnchor_ до caret_)
 };
 
 // ---------------------------------------------------------------- Рамка (общая для зума и снимка)

@@ -4,6 +4,7 @@
 #include <QClipboard>
 #include <QCoreApplication>
 #include <QGuiApplication>
+#include <QStringList>
 
 #include <algorithm>
 #include <cmath>
@@ -60,6 +61,22 @@ std::unique_ptr<QMimeData> ClipboardIo::textMime(const QString& plain, const QSt
 std::unique_ptr<QMimeData> ClipboardIo::textMime(const TextPage& page, const TextSelection& selection) {
     return textMime(QString::fromStdString(toPlainText(page, selection)),
                     QString::fromStdString(toHtml(page, selection)));
+}
+
+std::unique_ptr<QMimeData> ClipboardIo::textMime(const std::vector<PageSelection>& pages) {
+    QStringList plain;
+    std::string html;
+    for (const auto& [page, selection] : pages) {
+        if (page == nullptr || selection == nullptr || selection->empty()) {
+            continue;
+        }
+        plain << QString::fromStdString(toPlainText(*page, *selection));
+        html += toHtmlFragment(*page, *selection);
+    }
+    if (plain.isEmpty()) {
+        return textMime(QString(), QString());
+    }
+    return textMime(plain.join(QLatin1Char('\n')), QString::fromStdString(htmlDocument(html)));
 }
 
 std::unique_ptr<QMimeData> ClipboardIo::imageMime(const QImage& image) {

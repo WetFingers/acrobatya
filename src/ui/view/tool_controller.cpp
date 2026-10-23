@@ -1,7 +1,9 @@
 #include "ui/view/tool_controller.h"
 
+#include <QApplication>
 #include <QCursor>
 
+#include "ui/view/link_layer.h"
 #include "ui/view/page_view.h"
 
 namespace ot::ui {
@@ -102,21 +104,41 @@ void ToolController::pageChanged(int page) {
     }
 }
 
+bool ToolController::followsLinks() const noexcept {
+    return current_ == ViewToolId::Select || current_ == ViewToolId::Hand || current_ == ViewToolId::PanZoom;
+}
+
 bool ToolController::mousePress(QMouseEvent* event) {
+    linkPress_.reset();
+    const Qt::KeyboardModifiers mods = event->modifiers() & ~Qt::KeypadModifier;
+    if (event->button() == Qt::LeftButton && mods == Qt::NoModifier && followsLinks()) {
+        linkPress_ = view_.linkLayer().linkAt(event->position());
+        linkPressPos_ = event->position();
+    }
     const bool handled = current().mousePress(event);
-    updateCursor(event->position(), event->modifiers());
+    updateCursor(event->position(), event->modifiers(), event->buttons());
     return handled;
 }
 
 bool ToolController::mouseMove(QMouseEvent* event) {
     const bool handled = current().mouseMove(event);
-    updateCursor(event->position(), event->modifiers());
+    updateCursor(event->position(), event->modifiers(), event->buttons());
     return handled;
 }
 
 bool ToolController::mouseRelease(QMouseEvent* event) {
+    const std::optional<links::LinkInfo> pressed = std::exchange(linkPress_, std::nullopt);
     const bool handled = current().mouseRelease(event);
-    updateCursor(event->position(), event->modifiers());
+    if (pressed && event->button() == Qt::LeftButton && followsLinks() &&
+        (event->position() - linkPressPos_).manhattanLength() < QApplication::startDragDistance()) {
+        // Щелчок на месте — переход (протянули — это выделение или прокрутка, не ссылка).
+        const std::optional<links::LinkInfo> now = view_.linkLayer().linkAt(event->position());
+        if (now && now->page == pressed->page && now->objnum == pressed->objnum &&
+            now->rect.x0 == pressed->rect.x0 && now->rect.y0 == pressed->rect.y0) {
+            view_.activateLink(*pressed);
+        }
+    }
+    updateCursor(event->position(), event->modifiers(), event->buttons());
     return handled;
 }
 
@@ -180,7 +202,11 @@ bool ToolController::keyRelease(QKeyEvent* event) {
     return false;
 }
 
-void ToolController::updateCursor(QPointF point, Qt::KeyboardModifiers modifiers) {
+void ToolController::updateCursor(QPointF point, Qt::KeyboardModifiers modifiers, Qt::MouseButtons buttons) {
+    if (buttons == Qt::NoButton && followsLinks() && view_.linkLayer().linkAt(point)) {
+        view_.viewport()->setCursor(QCursor(Qt::PointingHandCursor));
+        return;
+    }
     view_.viewport()->setCursor(current().cursor(point, modifiers));
 }
 

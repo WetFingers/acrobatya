@@ -50,6 +50,10 @@ std::string toPlainText(const TextPage& page, const TextSelection& selection);
 // блок — <p>, строка внутри блока — <br>, жирный — <b>, курсив — <i> (по имени и флагам шрифта; строка за
 // строкой).
 std::string toHtml(const TextPage& page, const TextSelection& selection);
+// То же без обёртки документа (<p>…</p> подряд) — выделение нескольких страниц склеивается фрагментами.
+std::string toHtmlFragment(const TextPage& page, const TextSelection& selection);
+// Обёртка фрагмента: <html><head><meta charset="utf-8"></head><body>…</body></html>.
+std::string htmlDocument(std::string_view fragment);
 std::string htmlEscape(std::string_view text);
 
 }  // namespace ot

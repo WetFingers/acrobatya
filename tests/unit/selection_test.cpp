@@ -261,3 +261,28 @@ TEST(clipboard_io, snapshot_area_as_png_at_dpi) {
     EXPECT_TRUE(mime->hasImage());
     session.close();
 }
+
+// Выделение через страницы (Ctrl+C в виде, 2.2b): текст страниц через «\n», HTML — один документ с
+// фрагментами страниц подряд.
+TEST(clipboard_io, text_mime_of_several_pages) {
+    ot::test::qtApp();
+    auto doc = Document::openOrThrow(textFixture("search.pdf"));
+    const auto first = TextPage::build(*doc, 0);
+    const auto second = TextPage::build(*doc, 1);
+    const TextSelection a = ot::selectAll(*first);
+    const TextSelection b = ot::selectAll(*second);
+    const TextSelection none;
+    const auto mime =
+        ot::ClipboardIo::textMime({{first.get(), &a}, {second.get(), &none}, {second.get(), &b}});
+    ASSERT_TRUE(mime);
+    EXPECT_EQ(mime->text(),
+              QString::fromStdString(ot::toPlainText(*first, a) + "\n" + ot::toPlainText(*second, b)));
+    const QString html = mime->html();
+    EXPECT_TRUE(html.startsWith(QStringLiteral("<html><head><meta charset=\"utf-8\"></head><body>")));
+    EXPECT_EQ(html.count(QStringLiteral("<body>")), 1);
+    EXPECT_TRUE(html.contains(QString::fromStdString(ot::toHtmlFragment(*first, a))));
+    EXPECT_TRUE(html.contains(QString::fromStdString(ot::toHtmlFragment(*second, b))));
+    EXPECT_EQ(QString::fromStdString(ot::toHtml(*first, a)),
+              QString::fromStdString(ot::htmlDocument(ot::toHtmlFragment(*first, a))));
+    EXPECT_FALSE(ot::ClipboardIo::textMime({{first.get(), &none}})->hasHtml());
+}

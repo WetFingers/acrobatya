@@ -2,13 +2,17 @@
 // с начала последней, промежуточные целиком), Alt — прямоугольником (столбцы), двойной щелчок — слово,
 // тройной — строка, Shift+щелчок — продолжить, Ctrl+A — всё, I-курсор над строкой текста. Слой текста —
 // задачей DocumentSession::textPage (core/text/stext.h), выделение — core/text/selection.h; подсветка — слой
-// выделения PageView. Копирование, HTML и клавиатурный курсор — сессия 2.2b.
+// выделения PageView. 2.2b: Ctrl+C — text/plain + text/html через ClipboardIo; клавиатурный курсор (ocr-41) —
+// граница символа: щелчок ставит, Shift+стрелки ведут выделение от начала до курсора (через страницы — если
+// их слой уже загружен), курсор виден, пока у вида фокус.
 #include <QApplication>
 #include <QFuture>
 
 #include <algorithm>
+#include <cmath>
 
 #include "core/text/stext.h"
+#include "services/clipboard_io.h"
 #include "services/document_session.h"
 #include "ui/theme/theme.h"
 #include "ui/view/page_view.h"
@@ -20,8 +24,29 @@ namespace ot::ui {
 namespace {
 
 constexpr float kTextHoverTolerance = 1.0f;  // пункты: I-курсор чуть шире строки
+constexpr double kCaretMarginPx = 24;        // поле вокруг курсора, к которому прокручивается вид
 
 PointF selectPagePoint(QPointF p) { return {static_cast<float>(p.x()), static_cast<float>(p.y())}; }
+
+float charLeft(const TextChar& c) { return std::min(c.quad.ul.x, c.quad.ll.x); }
+float charRight(const TextChar& c) { return std::max(c.quad.ur.x, c.quad.lr.x); }
+
+// x границы курсора на странице (после последнего символа — правая кромка).
+float caretX(const TextPage& text, int boundary, bool trailing) {
+    const auto& chars = text.chars();
+    if (boundary > 0 && (trailing || boundary >= static_cast<int>(chars.size()))) {
+        return charRight(chars[static_cast<std::size_t>(boundary - 1)]);
+    }
+    return charLeft(chars[static_cast<std::size_t>(boundary)]);
+}
+
+// Строка курсора: символа boundary, в конце (trailing, конец страницы) — предыдущего.
+int caretLine(const TextPage& text, int boundary, bool trailing) {
+    const auto& chars = text.chars();
+    const int n = static_cast<int>(chars.size());
+    const int index = (trailing || boundary >= n) ? boundary - 1 : boundary;
+    return chars[static_cast<std::size_t>(std::clamp(index, 0, n - 1))].line;
+}
 
 }  // namespace
 
@@ -115,6 +140,7 @@ void SelectTool::startAt(QMouseEvent* event, int clicks) {
     const Qt::KeyboardModifiers mods = event->modifiers();
     pressing_ = true;
     selectAllPending_ = false;
+    keyboard_ = false;
     rectangle_ = (mods & Qt::AltModifier) != 0 && clicks == 1;
     snap_ = clicks >= 3 ? SnapMode::Lines : (clicks == 2 ? SnapMode::Words : SnapMode::Chars);
     if (rectangle_) {
@@ -167,7 +193,207 @@ bool SelectTool::keyPress(QKeyEvent* event) {
         selectAll();
         return true;
     }
+    if (event->matches(QKeySequence::Copy)) {
+        return copySelection();
+    }
+    const Qt::KeyboardModifiers mods = event->modifiers() & ~Qt::KeypadModifier;
+    const int key = event->key();
+    if (mods == Qt::ShiftModifier &&
+        (key == Qt::Key_Left || key == Qt::Key_Right || key == Qt::Key_Up || key == Qt::Key_Down)) {
+        moveCaret(key);
+        return true;  // Shift+стрелки — всегда выделение, не прокрутка
+    }
     return false;
+}
+
+bool SelectTool::copySelection() {
+    std::vector<ClipboardIo::PageSelection> parts;
+    for (const auto& [page, sel] : selection_) {
+        const auto it = pages_.constFind(page);
+        if (it != pages_.constEnd() && *it) {
+            parts.emplace_back(it->get(), &sel);
+        }
+    }
+    if (parts.empty()) {
+        return false;
+    }
+    ClipboardIo::put(ClipboardIo::textMime(parts));
+    return true;
+}
+
+// ---------------------------------------------------------------- клавиатурный курсор
+
+void SelectTool::syncCaret() {
+    if (keyboard_ || rectangle_) {
+        return;
+    }
+    if (!selection_.empty()) {
+        // Конец протягивания: вперёд — после последнего символа, назад — перед первым.
+        const bool forward =
+            anchor_.page < focus_.page ||
+            (anchor_.page == focus_.page && (anchor_.pagePoint.y() < focus_.pagePoint.y() ||
+                                             (anchor_.pagePoint.y() == focus_.pagePoint.y() &&
+                                              anchor_.pagePoint.x() <= focus_.pagePoint.x())));
+        if (forward) {
+            const auto& [page, sel] = *selection_.rbegin();
+            caret_ = {page, sel.chars.back() + 1, true};
+        } else {
+            const auto& [page, sel] = *selection_.begin();
+            caret_ = {page, sel.chars.front(), false};
+        }
+        return;
+    }
+    if (anchor_.page < 0) {
+        return;
+    }
+    const auto it = pages_.constFind(anchor_.page);
+    if (it != pages_.constEnd() && *it && !(*it)->chars().empty()) {
+        caret_ = {anchor_.page, closestBoundary(**it, selectPagePoint(anchor_.pagePoint)), false};
+    }
+}
+
+SelectTool::Caret SelectTool::stepCaret(const Caret& from, int delta) {
+    const TextPage* text = textPage(from.page);
+    if (text == nullptr) {
+        return from;
+    }
+    const int n = static_cast<int>(text->chars().size());
+    const int b = from.boundary + delta;
+    if (b < 0) {
+        const TextPage* prev = textPage(from.page - 1);
+        return prev != nullptr && !prev->chars().empty()
+                   ? Caret{from.page - 1, static_cast<int>(prev->chars().size()), true}
+                   : Caret{from.page, 0, false};
+    }
+    if (b > n) {
+        const TextPage* next = textPage(from.page + 1);
+        return next != nullptr && !next->chars().empty() ? Caret{from.page + 1, 0, false}
+                                                         : Caret{from.page, n, true};
+    }
+    return {from.page, b, b == n};
+}
+
+SelectTool::Caret SelectTool::stepCaretLine(const Caret& from, int delta) {
+    const TextPage* text = textPage(from.page);
+    if (text == nullptr || text->chars().empty()) {
+        return from;
+    }
+    const float x = caretX(*text, from.boundary, from.trailing);
+    int page = from.page;
+    int line = caretLine(*text, from.boundary, from.trailing) + delta;
+    // Пустые строки пропускаются; за краем страницы — соседняя (если её слой загружен).
+    while (true) {
+        if (line < 0 || line >= static_cast<int>(text->lines().size())) {
+            const TextPage* other = textPage(page + delta);
+            if (other == nullptr || other->lines().empty()) {
+                return from;
+            }
+            page += delta;
+            text = other;
+            line = delta > 0 ? 0 : static_cast<int>(text->lines().size()) - 1;
+        }
+        if (text->lines()[static_cast<std::size_t>(line)].charCount > 0) {
+            break;
+        }
+        line += delta;
+    }
+    const TextLine& l = text->lines()[static_cast<std::size_t>(line)];
+    const auto& chars = text->chars();
+    Caret best{page, l.firstChar, false};
+    float bestDistance = std::fabs(charLeft(chars[static_cast<std::size_t>(l.firstChar)]) - x);
+    for (int i = l.firstChar + 1; i <= l.firstChar + l.charCount; ++i) {
+        const bool end = i == l.firstChar + l.charCount;
+        const float bx = end ? charRight(chars[static_cast<std::size_t>(i - 1)])
+                             : charLeft(chars[static_cast<std::size_t>(i)]);
+        const float d = std::fabs(bx - x);
+        if (d < bestDistance) {
+            bestDistance = d;
+            best = {page, i, end};
+        }
+    }
+    return best;
+}
+
+void SelectTool::selectBetween(const Caret& a, const Caret& b) {
+    selection_.clear();
+    const bool ordered = a.page < b.page || (a.page == b.page && a.boundary <= b.boundary);
+    const Caret& from = ordered ? a : b;
+    const Caret& to = ordered ? b : a;
+    for (int page = from.page; page <= to.page; ++page) {
+        const TextPage* text = textPage(page);
+        if (text == nullptr) {
+            continue;
+        }
+        const int first = page == from.page ? from.boundary : 0;
+        const int last = page == to.page ? to.boundary - 1 : static_cast<int>(text->chars().size()) - 1;
+        TextSelection sel = selectRange(*text, first, last);
+        if (!sel.empty()) {
+            selection_.emplace(page, std::move(sel));
+        }
+    }
+}
+
+bool SelectTool::moveCaret(int key) {
+    if (!keyboard_) {
+        // Начало: от выделения мышью (его начало — якорь, конец — курсор), от курсора щелчка или с начала
+        // текущей страницы.
+        if (!selection_.empty() && !rectangle_ && caret_.valid()) {
+            const bool caretAtEnd = caret_.page == selection_.rbegin()->first &&
+                                    caret_.boundary == selection_.rbegin()->second.chars.back() + 1;
+            keyAnchor_ =
+                caretAtEnd ? Caret{selection_.begin()->first, selection_.begin()->second.chars.front()}
+                           : Caret{selection_.rbegin()->first, selection_.rbegin()->second.chars.back() + 1};
+        } else if (caret_.valid() && selection_.empty()) {
+            keyAnchor_ = caret_;
+        } else {
+            const int page = view_.currentPage();
+            const TextPage* text = textPage(page);
+            if (text == nullptr) {
+                return false;  // слой страницы придёт — следующее нажатие начнёт
+            }
+            caret_ = keyAnchor_ = Caret{page, 0, false};
+        }
+        keyboard_ = true;
+        rectangle_ = false;
+        anchor_ = focus_ = Point{};
+        selectAllPending_ = false;
+    }
+    switch (key) {
+        case Qt::Key_Left:
+            caret_ = stepCaret(caret_, -1);
+            break;
+        case Qt::Key_Right:
+            caret_ = stepCaret(caret_, 1);
+            break;
+        case Qt::Key_Up:
+            caret_ = stepCaretLine(caret_, -1);
+            break;
+        default:
+            caret_ = stepCaretLine(caret_, 1);
+            break;
+    }
+    selectBetween(keyAnchor_, caret_);
+    publish();
+    controller_.emitSelectionChanged();
+    if (const auto r = caretRect()) {
+        view_.ensureVisible(caret_.page, *r, kCaretMarginPx);
+    }
+    return true;
+}
+
+std::optional<RectF> SelectTool::caretRect() const {
+    if (!caret_.valid()) {
+        return std::nullopt;
+    }
+    const auto it = pages_.constFind(caret_.page);
+    if (it == pages_.constEnd() || !*it || (*it)->chars().empty()) {
+        return std::nullopt;
+    }
+    const TextPage& text = **it;
+    const float x = caretX(text, caret_.boundary, caret_.trailing);
+    const RectF& line =
+        text.lines()[static_cast<std::size_t>(caretLine(text, caret_.boundary, caret_.trailing))].bbox;
+    return RectF{x, line.y0, x, line.y1};
 }
 
 void SelectTool::recompute() {
@@ -225,6 +451,7 @@ void SelectTool::recompute() {
             selection_.emplace(page, std::move(sel));
         }
     }
+    syncCaret();
     publish();
 }
 
@@ -238,6 +465,11 @@ void SelectTool::publish() {
 }
 
 void SelectTool::textArrived(int page) {
+    if (keyboard_) {
+        selectBetween(keyAnchor_, caret_);  // промежуточная страница выделения клавишами пришла
+        publish();
+        return;
+    }
     if (selectAllPending_) {
         if (const TextPage* text = textPage(page)) {
             TextSelection sel = ot::selectAll(*text);
@@ -260,6 +492,8 @@ void SelectTool::textArrived(int page) {
 }
 
 void SelectTool::selectAll() {
+    keyboard_ = false;
+    caret_ = Caret{};
     anchor_ = focus_ = Point{};
     rectangle_ = false;
     pressing_ = false;
@@ -290,6 +524,8 @@ void SelectTool::selectAll() {
 void SelectTool::clearSelection() {
     const bool had = !selection_.empty();
     selection_.clear();
+    caret_ = keyAnchor_ = Caret{};
+    keyboard_ = false;
     anchor_ = focus_ = Point{};
     selectAllPending_ = false;
     rectangle_ = false;
@@ -320,6 +556,14 @@ QString SelectTool::selectedText() const {
 }
 
 void SelectTool::paintOverlay(QPainter& painter) {
+    if (const auto r = caretRect(); r && view_.hasFocus() && !pressing_) {
+        // Курсор выделения — на бумаге (всегда светлой), поэтому цвет accent, а не текст темы.
+        const QTransform t = view_.pageTransform(caret_.page);
+        QPen caretPen(Theme::colors().accent.color(), Theme::sizes().focusRing);
+        caretPen.setCapStyle(Qt::FlatCap);
+        painter.setPen(caretPen);
+        painter.drawLine(t.map(QPointF(r->x0, r->y0)), t.map(QPointF(r->x1, r->y1)));
+    }
     if (!pressing_ || !rectangle_) {
         return;
     }

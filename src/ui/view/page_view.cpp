@@ -9,10 +9,12 @@
 
 #include <algorithm>
 #include <cmath>
+#include <map>
 
 #include "core/render/tiles.h"
 #include "services/document_session.h"
 #include "ui/theme/theme.h"
+#include "ui/view/link_layer.h"
 #include "ui/view/tile_painter.h"
 #include "ui/view/tool_controller.h"
 
@@ -49,7 +51,9 @@ namespace {
 constexpr int kSearchZ = 10;
 constexpr int kSelectionZ = 20;
 constexpr int kAnnotFramesZ = 30;
+constexpr int kLinkFocusZ = 40;
 constexpr int kToolZ = 100;
+constexpr double kEnsureMarginPx = 16;  // поле вокруг совпадения или ссылки, к которой прокручивается вид
 
 }  // namespace
 
@@ -63,6 +67,8 @@ PageView::PageView(QWidget* parent)
     overlays_.add(&search_, kSearchZ);
     overlays_.add(&selection_, kSelectionZ);
     overlays_.add(&annotFrames_, kAnnotFramesZ);
+    links_ = std::make_unique<LinkLayer>(*this);
+    overlays_.add(links_.get(), kLinkFocusZ);
     controller_ = new ToolController(*this);
     overlays_.add(controller_, kToolZ);
     setFrameShape(QFrame::NoFrame);
@@ -86,7 +92,7 @@ PageView::PageView(QWidget* parent)
     });
 }
 
-PageView::~PageView() = default;
+PageView::~PageView() { overlays_.remove(links_.get()); }
 
 void PageView::setDocument(DocumentSession* session, RenderPool* pool, TileCache* cache) {
     if (session_ != nullptr) {
@@ -97,8 +103,9 @@ void PageView::setDocument(DocumentSession* session, RenderPool* pool, TileCache
     cache_ = cache;
     tiles_->setDocument(session, pool, cache);
     selection_.clear();
-    search_.clear();
+    clearSearchHits();
     annotFrames_.clear();
+    links_->documentChanged();
     history_.clear();
     fit_.reset();
     currentPage_ = 0;
@@ -114,10 +121,12 @@ void PageView::setDocument(DocumentSession* session, RenderPool* pool, TileCache
         });
         connect(session_, &DocumentSession::pageChanged, this, [this](int page) {
             tiles_->invalidatePage(page);
+            links_->pageChanged(page);
             controller_->pageChanged(page);
         });
         connect(session_, &DocumentSession::structureChanged, this, [this] {
             tiles_->invalidateAll();
+            links_->documentChanged();
             controller_->documentChanged();
         });
         connect(session_, &DocumentSession::closed, this, [this] { tiles_->invalidateAll(); });
@@ -162,6 +171,8 @@ void PageView::setPageSizes(const QVector<QSizeF>& pointSizes) {
         session_ = nullptr;
     }
     tiles_->setDocument(nullptr, pool_, cache_);
+    links_->documentChanged();
+    clearSearchHits();
     sizes_ = pointSizes;
     history_.clear();
     fit_.reset();
@@ -765,6 +776,7 @@ void PageView::paintEvent(QPaintEvent* /*event*/) {
     overlays_.paintViewport(p, *this);
     p.end();
     tiles_->schedule();
+    links_->prefetch(visiblePages());
 }
 
 void PageView::showEvent(QShowEvent* event) {
@@ -843,6 +855,14 @@ void PageView::keyPressEvent(QKeyEvent* event) {
         }
     }
 
+    if ((key == Qt::Key_Return || key == Qt::Key_Enter) && mods == Qt::NoModifier) {
+        if (const links::LinkInfo* link = links_->focused()) {
+            const links::LinkInfo target = *link;  // переход может сбросить списки
+            activateLink(target);
+            event->accept();
+            return;
+        }
+    }
     if (controller_->keyPress(event)) {
         event->accept();
         return;
@@ -948,6 +968,7 @@ void PageView::keyReleaseEvent(QKeyEvent* event) {
 
 void PageView::mousePressEvent(QMouseEvent* event) {
     setFocus(Qt::MouseFocusReason);
+    links_->clearFocus();
     if (!controller_->mousePress(event)) {
         QAbstractScrollArea::mousePressEvent(event);
     }
@@ -991,16 +1012,139 @@ bool PageView::event(QEvent* event) {
             key->matches(QKeySequence::SelectAll) ||
             (controller_->singleKeyShortcuts() && (mods == Qt::NoModifier || mods == Qt::ShiftModifier) &&
              (k == Qt::Key_H || k == Qt::Key_V || k == Qt::Key_Z || k == Qt::Key_X));
+        // «Выделение»: Ctrl+C копирует выделенный текст вида.
+        const bool copy = key->matches(QKeySequence::Copy) && controller_->tool() == ViewToolId::Select &&
+                          controller_->select().hasSelection();
         // «Выбор объектов»: Del удаляет выбранные аннотации, а не уходит ярлыку окна.
         const bool annotDelete = mods == Qt::NoModifier && k == Qt::Key_Delete &&
                                  controller_->tool() == ViewToolId::AnnotSelect &&
                                  !controller_->annotSelect().selection().empty();
-        if (ctrlZoom || rotate || history || tool || annotDelete) {
+        if (ctrlZoom || rotate || history || tool || copy || annotDelete) {
             event->accept();
             return true;
         }
     }
     return QAbstractScrollArea::event(event);
+}
+
+bool PageView::focusNextPrevChild(bool next) {
+    // Tab/Shift+Tab — по ссылкам видимых страниц (эталон 6.9); кончились — фокус дальше по окну.
+    if (links_->focusNext(next)) {
+        if (const links::LinkInfo* link = links_->focused()) {
+            ensureVisible(link->page, link->rect, kEnsureMarginPx);
+        }
+        return true;
+    }
+    return QAbstractScrollArea::focusNextPrevChild(next);
+}
+
+// ---------------------------------------------------------------- прокрутка к месту, ссылки, поиск
+
+void PageView::ensureVisible(int page, const RectF& rect, double margin) {
+    if (page < 0 || page >= pageCount()) {
+        return;
+    }
+    if (layout_.paged() && layout_.slot(page).row != row_) {
+        goToPage(page);
+    }
+    const QRectF r = pageTransform(page)
+                         .mapRect(QRectF(QPointF(rect.x0, rect.y0), QPointF(rect.x1, rect.y1)))
+                         .adjusted(-margin, -margin, margin, margin);
+    const QSizeF view = viewport()->size();
+    auto shift = [](double lo, double hi, double size) {
+        if (lo < 0) {
+            return lo;
+        }
+        if (hi > size) {
+            return std::min(hi - size, lo);  // не шире окна — прижать к началу
+        }
+        return 0.0;
+    };
+    const double dx = shift(r.left(), r.right(), view.width());
+    const double dy = shift(r.top(), r.bottom(), view.height());
+    if (dx != 0 || dy != 0) {
+        setScrollPosition(scrollPosition() + QPointF(dx, dy));
+    }
+    viewport()->update();
+}
+
+void PageView::activateLink(const links::LinkInfo& link) {
+    const links::LinkAction action = link.action;
+    emit linkActivated(action);
+    if (!action.internal() || action.page < 0 || action.page >= pageCount()) {
+        return;  // GoToR, URI — окно (2.4/2.5) спрашивает; Launch не исполняется никогда (эталон 7.6)
+    }
+    using links::DestFit;
+    if (action.fit == DestFit::XYZ && action.zoom > 0) {
+        setZoomPercent(action.zoom * 100.0f);
+    } else if (action.fit == DestFit::Fit || action.fit == DestFit::FitB) {
+        fit(FitMode::Page);
+    } else if (action.fit == DestFit::FitH || action.fit == DestFit::FitBH) {
+        fit(FitMode::Width);
+    }
+    if (action.point) {
+        const double x = std::isnan(action.point->x) ? 0.0 : action.point->x;
+        const double y = std::isnan(action.point->y) ? 0.0 : action.point->y;
+        goToPagePoint(action.page, QPointF(x, y));
+    } else {
+        goToPage(action.page);
+    }
+}
+
+void PageView::setSearchHits(std::vector<SearchHit> hits) {
+    hits_ = std::move(hits);
+    hitQuads_.clear();
+    currentHit_ = -1;
+    search_.clear();
+    std::map<int, std::vector<QuadF>> byPage;
+    hitQuads_.reserve(hits_.size());
+    for (const SearchHit& hit : hits_) {
+        std::vector<std::pair<int, int>> refs;
+        for (const SearchQuad& q : hit.quads) {
+            std::vector<QuadF>& list = byPage[q.page];
+            refs.emplace_back(q.page, static_cast<int>(list.size()));
+            list.push_back(q.quad);
+        }
+        hitQuads_.push_back(std::move(refs));
+    }
+    for (auto& [page, quads] : byPage) {
+        search_.setQuads(page, std::move(quads));
+    }
+    viewport()->update();
+}
+
+void PageView::clearSearchHits() {
+    hits_.clear();
+    hitQuads_.clear();
+    currentHit_ = -1;
+    search_.clear();
+    viewport()->update();
+}
+
+void PageView::setCurrentSearchHit(int index) {
+    if (index < 0 || index >= static_cast<int>(hits_.size())) {
+        currentHit_ = -1;
+        search_.setCurrent({});
+        viewport()->update();
+        return;
+    }
+    currentHit_ = index;
+    const auto i = static_cast<std::size_t>(index);
+    search_.setCurrent(hitQuads_[i]);
+    const SearchHit& hit = hits_[i];
+    RectF bounds = RectF::none();
+    for (const SearchQuad& q : hit.quads) {
+        if (q.page == hit.page) {
+            bounds = bounds.valid() ? rectUnion(bounds, q.quad.bounds()) : q.quad.bounds();
+        }
+    }
+    if (bounds.valid()) {
+        ensureVisible(hit.page, bounds, kEnsureMarginPx);
+        if (hit.page != currentPage_) {
+            setCurrentPage(hit.page);
+        }
+    }
+    viewport()->update();
 }
 
 }  // namespace ot::ui
