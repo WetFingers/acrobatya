@@ -2,8 +2,10 @@
 
 #include <QApplication>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QPixmap>
 #include <QScrollArea>
+#include <QThread>
 
 #include <cstdio>
 #include <memory>
@@ -51,13 +53,19 @@ std::function<QWidget*()> withMainWindow(std::function<void(MainWindow&)> setup)
 
 // Таблица сцен (эталон 6.10 — SCENES): порядок — порядок «all» и контакт-листов.
 const std::vector<Scene>& sceneTable() {
-    static const std::vector<Scene> SCENES = {
-        {QStringLiteral("home"), withMainWindow([](MainWindow& w) { w.showHome(); }), {}, {}},
-        {QStringLiteral("showcase"), showcaseScene, {}, {}},
-        {QStringLiteral("showcase-dark"), showcaseScene, ThemeChoice::Dark, {}},
-        {QStringLiteral("showcase-contrast"), showcaseScene, ThemeChoice::HighContrast, {}},
-        {QStringLiteral("showcase-large"), showcaseScene, {}, 1.25},
-    };
+    static const std::vector<Scene> SCENES = [] {
+        std::vector<Scene> table = {
+            {QStringLiteral("home"), withMainWindow([](MainWindow& w) { w.showHome(); }), {}, {}, {}},
+            {QStringLiteral("showcase"), showcaseScene, {}, {}, {}},
+            {QStringLiteral("showcase-dark"), showcaseScene, ThemeChoice::Dark, {}, {}},
+            {QStringLiteral("showcase-contrast"), showcaseScene, ThemeChoice::HighContrast, {}, {}},
+            {QStringLiteral("showcase-large"), showcaseScene, {}, 1.25, {}},
+        };
+        for (Scene& s : viewScenes()) {  // 2.2b: view-single … view-loupe
+            table.push_back(std::move(s));
+        }
+        return table;
+    }();
     return SCENES;
 }
 
@@ -103,6 +111,22 @@ QWidget* makeScene(const QString& name, const ShotOptions& options) {
     return w;
 }
 
+bool waitSceneReady(const Scene& scene, QWidget* window, int timeoutMs) {
+    if (!scene.ready) {
+        return true;
+    }
+    QElapsedTimer t;
+    t.start();
+    while (!scene.ready(window)) {
+        if (t.elapsed() > timeoutMs) {
+            return false;
+        }
+        QApplication::processEvents();
+        QThread::msleep(5);
+    }
+    return true;
+}
+
 int runShots(const QStringList& names, const ShotOptions& options) {
     const QString out = options.outDir.isEmpty() ? QStringLiteral(".queue/screenshots") : options.outDir;
     QDir().mkpath(out);
@@ -130,6 +154,10 @@ int runShots(const QStringList& names, const ShotOptions& options) {
         QApplication::processEvents();
         QCoreApplication::sendPostedEvents();
         QApplication::processEvents();
+        if (!waitSceneReady(*scene, w.get())) {
+            printLine(QStringLiteral("not ready in 30 s: ") + name);
+            ++failures;
+        }
         const QString file = QDir(out).filePath(sceneFileName(*scene, options));
         const QPixmap pm = w->grab();
         if (pm.isNull() || !pm.save(file, "PNG")) {

@@ -1,6 +1,7 @@
 // ui.shots — снимки сцен (эталон 6.10): --shots-list печатает сцены, сцена рисует PNG 1440 × 900 нужного
 // имени, витрина — с кириллицей в Segoe UI; варианты темы, масштаба и языка — суффиксы имени; закреплённые
-// сценой тема и масштаб варианту не подчиняются.
+// сценой тема и масштаб варианту не подчиняются. Сцены вида страниц view-* (2.2b) ждут растра (Scene::ready)
+// и пишут PNG 1440 × 900: страницы на холсте, в тёмной теме холст тёмный, бумага белая.
 #include <QApplication>
 #include <QDir>
 #include <QLabel>
@@ -41,7 +42,9 @@ private slots:
 
     void listsScenes() {
         const QStringList names = sceneNames();
-        for (const char* n : {"home", "showcase", "showcase-dark", "showcase-large", "showcase-contrast"}) {
+        for (const char* n : {"home", "showcase", "showcase-dark", "showcase-large", "showcase-contrast",
+                              "view-single", "view-continuous", "view-facing", "view-cover", "view-rotated",
+                              "view-zoom-400", "view-dark", "view-selection", "view-loupe"}) {
             QVERIFY2(names.contains(QLatin1String(n)), n);
         }
         QCOMPARE(QStringList(names).removeDuplicates(), qsizetype(0));
@@ -120,8 +123,67 @@ private slots:
         QCOMPARE(runShots({QStringLiteral("all")}, o), 0);
         const QStringList files =
             QDir(dir.path()).entryList({QStringLiteral("*.png")}, QDir::Files, QDir::Name);
-        QCOMPARE(files, (QStringList{QStringLiteral("home-dark.png"), QStringLiteral("showcase-dark.png")}));
+        // Без закреплённой темы и масштаба — с суффиксом варианта; showcase-dark и view-dark — уже тёмные.
+        QStringList expected;
+        for (const Scene& s : sceneTable()) {
+            if (!s.theme && !s.scale) {
+                expected << s.name + QStringLiteral("-dark.png");
+            }
+        }
+        expected.sort();
+        QCOMPARE(files, expected);
+        QVERIFY(!files.contains(QStringLiteral("view-dark.png")));
         QCOMPARE(runShots({QStringLiteral("nope")}, o), 1);
+    }
+
+    // Сцены вида страниц: каждая дожидается растра и пишет PNG 1440 × 900; страница на холсте видна.
+    void viewScenesPng() {
+        QTemporaryDir dir;
+        ShotOptions o;
+        o.outDir = dir.path();
+        QStringList names;
+        for (const QString& n : sceneNames()) {
+            if (n.startsWith(QStringLiteral("view-"))) {
+                names << n;
+            }
+        }
+        QCOMPARE(names.size(), 9);
+        QCOMPARE(runShots(names, o), 0);
+        for (const QString& n : names) {
+            const QImage img(QDir(dir.path()).filePath(n + QStringLiteral(".png")));
+            QCOMPARE(img.size(), QSize(1440, 900));
+            if (n == QStringLiteral("view-zoom-400")) {
+                continue;  // на 400 % весь кадр — бумага
+            }
+            // Страницы на холсте: заметная доля кадра — не цвет холста в углу.
+            const QColor canvas = img.pixelColor(2, 2);
+            int page = 0;
+            int total = 0;
+            for (int y = 0; y < img.height(); y += 9) {
+                for (int x = 0; x < img.width(); x += 9) {
+                    page += img.pixelColor(x, y) != canvas ? 1 : 0;
+                    ++total;
+                }
+            }
+            QVERIFY2(page * 100 > total * 15,
+                     qPrintable(n + QStringLiteral(": %1 из %2").arg(page).arg(total)));
+        }
+        const QImage dark(QDir(dir.path()).filePath(QStringLiteral("view-dark.png")));
+        QVERIFY(qGray(dark.pixel(2, 2)) < 90);  // холст тёмный
+        int white = 0;                          // бумага белая (кадр середины по горизонтали)
+        for (int y = 0; y < dark.height(); y += 5) {
+            white += qGray(dark.pixel(dark.width() / 2, y)) > 245 ? 1 : 0;
+        }
+        QVERIFY2(white > dark.height() / 5 / 3, qPrintable(QString::number(white)));
+        const QImage selection(QDir(dir.path()).filePath(QStringLiteral("view-selection.png")));
+        bool tinted = false;  // подсветка выделения/поиска — не серая
+        for (int y = 0; y < selection.height() && !tinted; y += 3) {
+            for (int x = 0; x < selection.width() && !tinted; x += 3) {
+                const QColor c = selection.pixelColor(x, y);
+                tinted = c.blue() > c.red() + 25;
+            }
+        }
+        QVERIFY(tinted);
     }
 };
 

@@ -15,6 +15,8 @@
 //   peak_working_set_mb пиковая память процесса (PeakWorkingSetSize), один файл — один процесс
 // Режим поиска (план 1.4): `bench search` (PDF32000_2008.pdf) или `--search <образец>` у любого файла —
 //   search_all_ms      открыть → текстовые слои всех страниц → SearchSession по всему документу   ≤ 3 000 мс
+// Листание в виде (план 2.2b): `bench ui-paging [--runs 3] [--pages 100]` — PageView offscreen над
+//   PDF32000_2008.pdf (tests/bench/bench_ui.cpp): first_frame_ms ≤ 500, page_cold_ms ≤ 150, page_warm_ms ≤ 50
 #include <windows.h>
 
 #include <psapi.h>
@@ -43,6 +45,8 @@
 #include "core/text/stext.h"
 #include "core/util/paths.h"
 #include "services/render_pool.h"
+
+#include "bench_ui.h"
 
 namespace fs = std::filesystem;
 
@@ -157,8 +161,8 @@ double tilesWall(const ot::Document& doc, int pages, float zoom, ot::RenderPool&
 int wmain(int argc, wchar_t** argv) {
     if (argc < 2) {
         std::fprintf(stderr,
-                     "usage: bench <file.pdf | hello | pdf32000 | big-1200 | images-200 | enc-r6 | search> "
-                     "[--name id]\n"
+                     "usage: bench <file.pdf | hello | pdf32000 | big-1200 | images-200 | enc-r6 | search | "
+                     "ui-paging> [--name id]\n"
                      "             [--password p] [--runs 5] [--pages 50] [--threads N] [--search needle]\n"
                      "             [--json out.json]\n");
         return 2;
@@ -168,6 +172,8 @@ int wmain(int argc, wchar_t** argv) {
     std::string password;
     int runs = 5;
     int maxPages = 50;
+    bool runsSet = false;
+    bool pagesSet = false;
     int threads = 0;
     std::string needle;
     fs::path jsonOut;
@@ -180,8 +186,10 @@ int wmain(int argc, wchar_t** argv) {
             password = v;
         } else if (a == L"--runs") {
             runs = std::max(1, std::stoi(v));
+            runsSet = true;
         } else if (a == L"--pages") {
             maxPages = std::max(1, std::stoi(v));
+            pagesSet = true;
         } else if (a == L"--threads") {
             threads = std::stoi(v);
         } else if (a == L"--search") {
@@ -189,6 +197,14 @@ int wmain(int argc, wchar_t** argv) {
         } else if (a == L"--json") {
             jsonOut = argv[i + 1];
         }
+    }
+    if (arg == "ui-paging") {
+        const fs::path spec = findFile("PDF32000_2008.pdf");
+        if (spec.empty()) {
+            std::printf("SKIP: PDF32000_2008.pdf not found (corpus adobe-spec)\n");
+            return 77;
+        }
+        return ot::bench::runUiPaging(spec, runsSet ? runs : 3, pagesSet ? maxPages : 100, jsonOut);
     }
     fs::path file = ot::paths::fromUtf8(arg);
     if (!fs::exists(file)) {

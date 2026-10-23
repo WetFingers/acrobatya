@@ -3,6 +3,7 @@
 // Новая сцена — строка в таблице SCENES (sceneTable() в scenes.cpp): имя kebab-case и функция, которая строит
 // окно; сцена может закрепить тему или масштаб (showcase-dark, showcase-large) — тогда вариант запуска её не
 // меняет. Закон вида — эталон 6, не снимок; pHash к прошлому рубежу (tools/review_refs.py --shots) — сигнал.
+// Сцена с асинхронным растром (вид страниц, 2.2b) задаёт ready — снимок ждёт его (до 30 с).
 #pragma once
 
 #include <QSize>
@@ -26,6 +27,8 @@ struct Scene {
     std::function<QWidget*()> make;    // окно сцены (вызывающий владеет)
     std::optional<ThemeChoice> theme;  // закреплённая тема сцены
     std::optional<double> scale;       // закреплённый масштаб («Крупные элементы»)
+    std::function<bool(QWidget*)>
+        ready;  // кадр готов (растр приходит из потоков); пусто — сразу после показа
 };
 
 struct ShotOptions {
@@ -50,6 +53,12 @@ int runShots(const QStringList& names, const ShotOptions& options);
 
 // Сцена из главного окна: MainWindow, доведённый функцией до нужного вида.
 std::function<QWidget*()> withMainWindow(std::function<void(MainWindow&)> setup);
+
+// view_scenes.cpp — сцены вида страниц view-* (PageView на фикстуре во весь кадр, 2.2b).
+std::vector<Scene> viewScenes();
+
+// Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.
+bool waitSceneReady(const Scene& scene, QWidget* window, int timeoutMs = 30000);
 
 // fixtures.cpp — данные сцен без сети и данных человека: tests/fixtures/scenes и tests/fixtures/demo.
 QString sourceRoot();                           // OTTISK_SOURCE_DIR или вверх от exe до tests/fixtures

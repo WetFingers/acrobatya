@@ -10,3 +10,8 @@ showcase
 showcase-dark
 showcase-contrast
 showcase-large
+
+# 2.2b — вид страниц (до 2.3 — PageView во весь кадр)
+view-continuous
+view-dark
+view-selection

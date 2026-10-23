@@ -132,10 +132,11 @@ target_compile_definitions(render_refs PRIVATE OTTISK_SOURCE_DIR="${CMAKE_SOURCE
 ottisk_warnings(render_refs)
 
 # bench (план 1.2, эталон 5.8) — тайлы идут через RenderPool, поэтому services; файлы ищет в исходниках,
-# корпусе и <сборка>/gen.
+# корпусе и <сборка>/gen. Режим ui-paging (план 2.2b, tests/bench/bench_ui.cpp) — PageView offscreen и
+# QBENCHMARK, поэтому ui_lib и Qt Test (Release-целей не прибавилось: тот же bench).
 file(GLOB_RECURSE OTTISK_BENCH_SRC CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/tests/bench/*.cpp")
 add_executable(bench ${OTTISK_BENCH_SRC})
-target_link_libraries(bench PRIVATE ottisk_services)
+target_link_libraries(bench PRIVATE ottisk_ui_lib Qt6::Test)
 target_compile_definitions(bench PRIVATE OTTISK_SOURCE_DIR="${CMAKE_SOURCE_DIR}" OTTISK_BINARY_DIR="${CMAKE_BINARY_DIR}")
 ottisk_qt(bench)
 ottisk_warnings(bench)
@@ -225,7 +226,12 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     set_tests_properties(bench.engine.${_b} PROPERTIES LABELS "bench;slow" FIXTURES_REQUIRED bench_files
       SKIP_RETURN_CODE 77 TIMEOUT 900 RUN_SERIAL TRUE)
   endforeach()
+  add_test(NAME bench.ui.paging COMMAND bench ui-paging --json "${CMAKE_SOURCE_DIR}/build/bench/ui-paging.json")
+else()
+  # Листание в виде (план 2.2b) и в Debug — проверить, что замер идёт; числа — в <сборка>/bench, не в базу.
+  add_test(NAME bench.ui.paging COMMAND bench ui-paging --runs 1 --json "${CMAKE_BINARY_DIR}/bench/ui-paging.json")
 endif()
+set_tests_properties(bench.ui.paging PROPERTIES LABELS "bench;slow" SKIP_RETURN_CODE 77 TIMEOUT 1800 RUN_SERIAL TRUE)
 ottisk_gtest_exe(e2e_tests tests/e2e e2e "e2e;slow" 900 ottisk_services)
 
 file(GLOB_RECURSE OTTISK_UI_TEST_SRC CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/tests/ui/*.cpp" "${CMAKE_SOURCE_DIR}/tests/ui/*.h")
