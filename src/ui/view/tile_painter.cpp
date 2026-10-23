@@ -65,6 +65,7 @@ void TilePainter::setDocument(DocumentSession* session, RenderPool* pool, TileCa
     dropDocument();
     session_ = session;
     docId_ = session != nullptr ? session->id() : 0;
+    layers_ = session != nullptr ? session->layersHash() : 0;
     if (pool == nullptr) {
         if (!ownPool_) {
             ownPool_ = std::make_unique<RenderPool>();
@@ -135,7 +136,7 @@ bool TilePainter::drawTiles(QPainter& p, int page, const PageState& s, const Geo
                                      static_cast<int>(std::ceil(visible.y1 / factor))};
     bool complete = true;
     for (const TileRect& tile : tilesIntersecting(device, area)) {
-        const TileKey key = makeTileKey(docId_, page, zoom, g.dpr, g.rotation, tile, revision);
+        const TileKey key = makeTileKey(docId_, page, zoom, g.dpr, g.rotation, tile, revision, layers_);
         const std::optional<QImage> image = cache_->find(key);
         if (!image) {
             complete = false;
@@ -182,10 +183,10 @@ void TilePainter::paintPage(QPainter& p, int page, const QRectF& rect) {
     p.setRenderHint(QPainter::SmoothPixmapTransform, true);
     // Превью — растянуть на страницу (текущей правки или прежней).
     std::optional<QImage> preview =
-        cache_->findPreview(makePreviewKey(docId_, page, g->zoom, g->dpr, g->rotation, s.revision));
+        cache_->findPreview(makePreviewKey(docId_, page, g->zoom, g->dpr, g->rotation, s.revision, layers_));
     if (!preview && s.fallbackRevision) {
         preview = cache_->findPreview(
-            makePreviewKey(docId_, page, g->zoom, g->dpr, g->rotation, *s.fallbackRevision));
+            makePreviewKey(docId_, page, g->zoom, g->dpr, g->rotation, *s.fallbackRevision, layers_));
     }
     if (preview) {
         p.drawImage(rect, *preview, QRectF(QPointF(0, 0), QSizeF(preview->size())));
@@ -193,7 +194,8 @@ void TilePainter::paintPage(QPainter& p, int page, const QRectF& rect) {
     // Есть ли все тайлы кадра — без отметки «свежий» (contains).
     bool missing = false;
     for (const TileRect& tile : tilesIntersecting(g->device, visible)) {
-        if (!cache_->contains(makeTileKey(docId_, page, g->zoom, g->dpr, g->rotation, tile, s.revision))) {
+        if (!cache_->contains(
+                makeTileKey(docId_, page, g->zoom, g->dpr, g->rotation, tile, s.revision, layers_))) {
             missing = true;
             break;
         }
@@ -263,7 +265,7 @@ void TilePainter::schedule() {
         const QPointF origin(std::round(rect.left() * g->dpr), std::round(rect.top() * g->dpr));
 
         // Превью страницы целиком.
-        const TileKey pk = makePreviewKey(docId_, page, g->zoom, g->dpr, g->rotation, s.revision);
+        const TileKey pk = makePreviewKey(docId_, page, g->zoom, g->dpr, g->rotation, s.revision, layers_);
         wanted.insert(pk);
         if (!inflight_.contains(pk) && !cache_->findPreview(pk)) {
             const float pz = previewZoom(g->zoom);
@@ -279,7 +281,8 @@ void TilePainter::schedule() {
         }
         const Matrix matrix = pageMatrix(s.bounds, g->zoom, g->dpr, g->rotation);
         for (const TileRect& tile : tilesIntersecting(g->device, tileDeviceArea(area, origin, g->dpr))) {
-            const TileKey key = makeTileKey(docId_, page, g->zoom, g->dpr, g->rotation, tile, s.revision);
+            const TileKey key =
+                makeTileKey(docId_, page, g->zoom, g->dpr, g->rotation, tile, s.revision, layers_);
             wanted.insert(key);
             if (cache_->contains(key)) {
                 continue;
@@ -437,6 +440,15 @@ void TilePainter::invalidatePage(int page) {
     s.error.clear();
     ++s.generation;
     view_.viewport()->update();
+}
+
+void TilePainter::setLayersHash(quint64 hash) {
+    if (hash == layers_) {
+        return;
+    }
+    // Другая видимость слоёв — другие растры и display lists (сессия их уже сбросила); прежние не подменяют.
+    layers_ = hash;
+    invalidateAll();
 }
 
 void TilePainter::invalidateAll() {

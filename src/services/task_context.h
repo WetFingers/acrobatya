@@ -3,6 +3,7 @@
 // задач в services/core: включает MuPDF; ui работает с document_session.h, где MuPDF нет.
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <thread>
 #include <vector>
@@ -76,6 +77,9 @@ public:
     void touchAllPages();
     // Тяжёлая правка (страницы, картинки, редактор, уменьшение размера): Saver запишет файл целиком.
     void markHeavyEdit();
+    // Видимость слоёв сменилась (core/links/layers.h): все display lists и текстовые слои сбрасываются, после
+    // задачи — DocumentSession::layersHash() = hash и сигнал layersChanged. Не правка: в историю не идёт.
+    void setLayersState(std::uint64_t hash);
     DocumentSession& session() const noexcept { return session_; }
 
 private:
@@ -86,6 +90,8 @@ private:
     fz_cookie* cookie_;
     std::vector<int> touched_;
     bool touchedAll_ = false;
+    bool layersChanged_ = false;
+    std::uint64_t layersHash_ = 0;
     std::unique_ptr<Journal::Operation> op_;  // операция правки (edit) — только в её задаче
 };
 

@@ -1,0 +1,128 @@
+{
+  "generator": "tools/gen/make_view.py",
+  "pdf": "nav.pdf",
+  "pages": 4,
+  "title": "Навигация: слои, вложения, назначения",
+  "layers": [
+    {
+      "text": "Сетка",
+      "depth": 0,
+      "on": true,
+      "locked": false
+    },
+    {
+      "text": "Подписи",
+      "depth": 0,
+      "on": true,
+      "locked": false
+    },
+    {
+      "text": "Русские",
+      "depth": 1,
+      "on": true,
+      "locked": false
+    },
+    {
+      "text": "English",
+      "depth": 1,
+      "on": false,
+      "locked": false
+    },
+    {
+      "text": "Служебные",
+      "depth": 0,
+      "label": true
+    },
+    {
+      "text": "Водяной знак",
+      "depth": 1,
+      "on": true,
+      "locked": true
+    }
+  ],
+  "grid_square_pt": [
+    197.63780000000003,
+    320.9449,
+    200,
+    200
+  ],
+  "attachments": [
+    {
+      "name": "inner.pdf",
+      "description": "Вложенный PDF",
+      "size": 696,
+      "source": "document"
+    },
+    {
+      "name": "notes.txt",
+      "description": "Заметки к отчёту",
+      "size": 48,
+      "source": "document"
+    },
+    {
+      "name": "report.docx",
+      "description": "Отчёт в Word",
+      "size": 49,
+      "source": "document"
+    },
+    {
+      "name": "setup.exe",
+      "description": "Установщик (не запускать)",
+      "size": 59,
+      "source": "document"
+    },
+    {
+      "name": "data.csv",
+      "description": "Таблица данных",
+      "size": 41,
+      "source": "annotation",
+      "page": 1
+    }
+  ],
+  "destinations": [
+    {
+      "name": "chapter1",
+      "page": 1,
+      "fit": "XYZ"
+    },
+    {
+      "name": "intro",
+      "page": 0,
+      "fit": "XYZ"
+    },
+    {
+      "name": "chapter2",
+      "page": 2,
+      "fit": "FitH"
+    },
+    {
+      "name": "summary",
+      "page": 3,
+      "fit": "Fit"
+    }
+  ],
+  "outline_top": [
+    "Слои",
+    "Глава 1",
+    "Глава 2",
+    "Итоги"
+  ],
+  "open_action": {
+    "page": 1,
+    "fit": "Fit"
+  },
+  "transitions": [
+    {
+      "page": 1,
+      "type": "Dissolve",
+      "duration": 0.5
+    },
+    {
+      "page": 2,
+      "type": "Wipe",
+      "duration": 1,
+      "direction": 270,
+      "dur": 3
+    }
+  ]
+}

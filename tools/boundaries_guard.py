@@ -6,7 +6,9 @@
   * src/core/**     — без Qt (<Q…>, <Qt…>, "Q…") и без заголовков services/ и ui/;
   * src/services/** — без QtWidgets (<QtWidgets/…>, <QWidget>, <QApplication>, виджеты и диалоги)
                       и без заголовков ui/;
-  * src/ui/**       — без MuPDF (<mupdf/…>, "mupdf/…") — только через типы-значения core.
+  * src/ui/**       — без MuPDF (<mupdf/…>, "mupdf/…") — только через типы-значения core;
+  * оболочка Windows (ShellExecute*, QDesktopServices::openUrl) — только в src/services/shell_launcher.cpp
+    (план 2.4, эталон 7.3: иначе offscreen-прогоны откроют на машине человека Edge, Word, Параметры).
 Код 0 — зелёный, 1 — красный (строки «файл:строка: что»). Каталога src нет — зелёный.
 """
 
@@ -42,6 +44,9 @@ WIDGET_HEADERS = {
     "QAbstractPrintDialog", "QWidgetAction", "QDesktopWidget", "QOpenGLWidget",
 }
 LAYER_HEADER_RE = re.compile(r"^(?:\.\./)*(?:src/)?(core|services|ui)/")
+# Вызовы оболочки Windows вне ShellLauncher (по коду без комментариев и строк).
+SHELL_RE = re.compile(r"\bShellExecute\w*\b|\bQDesktopServices\s*::\s*openUrl\b")
+SHELL_OWNER = "src/services/shell_launcher.cpp"
 
 # ---- лексер C++: комментарии, строки, символы (копия из i18n_guard.py — правьте все четыре) ----
 _IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -208,6 +213,11 @@ def main(argv: list[str]) -> int:
         for m in INCLUDE_RE.finditer(code):
             for msg in violations(layer, m.group(1), m.group(2)):
                 errors.append(f"{rel}:{lines.line(m.start(2))}: {msg}")
+        if rel != SHELL_OWNER:
+            bare = mask(text, lex(text), {"comment", "string", "char"})
+            for m in SHELL_RE.finditer(bare):
+                errors.append(f"{rel}:{lines.line(m.start())}: {m.group(0)} — оболочка Windows только через "
+                              f"ShellLauncher ({SHELL_OWNER})")
     if errors:
         print("\n".join(errors))
         print(f"boundaries: красный, нарушений {len(errors)} (файлов {count})")

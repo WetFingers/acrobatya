@@ -22,8 +22,10 @@
 #include "ui/shell/document_view.h"
 #include "ui/shell/global_bar.h"
 #include "ui/shell/main_window.h"
+#include "ui/shell/nav_pane.h"
 #include "ui/shell/quick_bar.h"
 #include "ui/shell/tool_panel.h"
+#include "ui/theme/icons.h"
 #include "ui/tools/tool_registry.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
@@ -315,8 +317,39 @@ void MainWindow::registerCommands() {
     r.add({.id = QStringLiteral("view.navPane"),
            .title = tr("Панель &навигации"),
            .shortcuts = {key(Qt::Key_F4)},
+           .run = [this] { navPane_->togglePanel(); },
+           .enabled = hasDoc,
            .menu = QStringLiteral("view/panels"),
-           .stage = 2});
+           .checkable = true,
+           .checked = [this] { return navPane_->isPanelOpen(); }});
+    // Страницы правой навигации (эталон 6.1, 6.3): по одной, без клавиш (F4 — последняя открытая).
+    const std::tuple<const char*, QString, const char*> panes[] = {
+        {"view.pane.thumbnails", tr("&Миниатюры страниц"), "thumbnails"},
+        {"view.pane.bookmarks", tr("&Закладки"), "bookmarks"},
+        {"view.pane.comments", tr("&Комментарии"), "comments"},
+        {"view.pane.layers", tr("&Слои"), "layers"},
+        {"view.pane.attachments", tr("&Вложения"), "attachments"},
+        {"view.pane.signatures", tr("&Подписи"), "signatures"},
+        {"view.pane.destinations", tr("&Назначения"), "destinations"},
+    };
+    for (const auto& [id, title, pane] : panes) {
+        const QString p = QLatin1String(pane);
+        r.add({.id = QLatin1String(id),
+               .title = title,
+               .icon = QLatin1String(toolIconName(pane)),
+               .run =
+                   [this, p] {
+                       if (navPane_->isPanelOpen() && navPane_->currentPane() == p) {
+                           navPane_->closePanel();
+                       } else {
+                           navPane_->showPane(p);
+                       }
+                   },
+               .enabled = hasDoc,
+               .menu = QStringLiteral("view/navpanes"),
+               .checkable = true,
+               .checked = [this, p] { return navPane_->isPanelOpen() && navPane_->currentPane() == p; }});
+    }
     r.add({.id = QStringLiteral("view.toolPanel"),
            .title = tr("Панель &инструментов"),
            .shortcuts = {key(Qt::SHIFT | Qt::Key_F4)},
@@ -446,8 +479,9 @@ void MainWindow::registerCommands() {
            .menu = QStringLiteral("share")});
     r.add({.id = QStringLiteral("share.showInExplorer"),
            .title = tr("Показать в &Проводнике"),
-           .menu = QStringLiteral("share"),
-           .stage = 2});
+           .run = [this] { showInExplorer(); },
+           .enabled = hasDoc,
+           .menu = QStringLiteral("share")});
     registerToolCommands();
 }
 
@@ -537,6 +571,7 @@ void MainWindow::rebuildMenus() {
         {QStringLiteral("view/rotate"), tr("&Повернуть вид")},
         {QStringLiteral("view/navigate"), tr("Пере&ход по страницам")},
         {QStringLiteral("view/panels"), tr("Показать или с&крыть")},
+        {QStringLiteral("view/navpanes"), tr("Панели на&вигации")},
     };
 
     for (const Command* c : commands_->all()) {
@@ -645,11 +680,11 @@ void MainWindow::setSingleKeyAccelerators(bool on) {
 
 bool MainWindow::singleKeyAccelerators() const { return commands_->singleKeysEnabled(); }
 
-// F8: левая панель и плавающие панели документов (правая навигация и строка состояния — 2.4) скрыты или
-// видны.
+// F8: левая панель, правая навигация и плавающие панели документов скрыты или видны.
 void MainWindow::setPanelsHidden(bool hidden) {
     panelsHidden_ = hidden;
     toolPanel_->setVisible(!hidden && !isHomeShown());
+    navPane_->setShown(!hidden && !isHomeShown());
     for (int i = 0; i < documentCount(); ++i) {
         if (QWidget* bar = document(i)->floatingBar()) {
             bar->setVisible(!hidden);

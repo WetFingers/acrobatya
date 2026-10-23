@@ -68,5 +68,10 @@ std::vector<LinkInfo> pageLinks(Document& doc, int page);
 // Верхняя ссылка под точкой (последняя в списке, чья рамка ближе tolerance пт); нет — nullopt.
 std::optional<LinkInfo> linkAt(const std::vector<LinkInfo>& links, PointF point, float tolerance = 0);
 
+// Действие по адресу MuPDF (закладки, назначения 2.4): «#…» — GoTo с разрешённым назначением (страница −1 —
+// не нашлось), «file:…» — GoToR (file — путь, page — из «#page=N»), прочий внешний — Uri; пусто —
+// Unsupported.
+LinkAction actionFromUri(Document& doc, std::string_view uri);
+
 }  // namespace links
 }  // namespace ot

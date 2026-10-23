@@ -131,6 +131,9 @@ public:
     QSizeF pageSizePoints(int index) const;
     // Номер правки: растёт после каждой успешной edit(), undo() и redo() (поле revision ключа тайлов).
     quint64 revision() const noexcept { return revision_.load(); }
+    // Видимость слоёв (core/links/layers.h stateHash; 0 — слоёв нет): поле layersHash ключа тайлов. Меняет её
+    // задача (TaskContext::setLayersState) — не правка: в историю не идёт, revision не растёт.
+    quint64 layersHash() const noexcept { return layersHash_.load(); }
     // История правок — из любого потока (обновляется после каждой правки, undo, redo, открытия).
     UndoState undoState() const;
     // Задач в очереди и выполняется сейчас.
@@ -198,6 +201,9 @@ signals:
     void taskFailed(const ot::TaskFailed& failure);
     void undoStateChanged();
     void saved(const QString& path);
+    // Видимость слоёв сменилась (панель «Слои», сброс, переоткрытие после записи): display lists и текстовые
+    // слои уже сброшены, layersHash() — новый.
+    void layersChanged();
 
 private:
     friend class TaskContext;
@@ -279,6 +285,7 @@ private:
     QString error_;
     UndoState undoState_;
     std::atomic<quint64> revision_{0};
+    std::atomic<quint64> layersHash_{0};
 };
 
 // ---------------------------------------------------------------- шаблоны

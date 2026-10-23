@@ -60,6 +60,8 @@ std::vector<Scene> viewScenes();
 std::vector<Scene> shellScenes();
 std::vector<Scene> homeScenes();
 Scene homeScene(const char* name);  // Главная без недавних
+// pane_scenes.cpp — сцены правой навигации pane-* (2.4).
+std::vector<Scene> paneScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.
 bool waitSceneReady(const Scene& scene, QWidget* window, int timeoutMs = 30000);

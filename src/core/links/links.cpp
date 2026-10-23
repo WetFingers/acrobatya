@@ -283,6 +283,50 @@ std::vector<LinkInfo> pageLinks(Document& doc, int page) {
     return result;
 }
 
+LinkAction actionFromUri(Document& doc, std::string_view uri) {
+    LinkAction action;
+    if (uri.empty()) {
+        return action;
+    }
+    action.uri = std::string(uri);
+    fz_context* ctx = doc.context().get();
+    int external = 0;
+    mu::call(ctx, [&] { external = fz_is_external_link(ctx, action.uri.c_str()); });
+    if (external == 0) {
+        action.kind = LinkKind::GoTo;
+        linkResolve(doc, action.uri.c_str(), action);
+        return action;
+    }
+    constexpr std::string_view kFile = "file:";
+    if (uri.substr(0, kFile.size()) == kFile) {
+        // «file:путь#page=N» или «file:путь#nameddest=имя» (pdf_new_uri_from_path_and_*).
+        action.kind = LinkKind::GoToR;
+        const std::string_view rest = uri.substr(kFile.size());
+        const std::size_t hash = rest.find('#');
+        action.file = std::string(rest.substr(0, hash));
+        if (hash != std::string_view::npos) {
+            const std::string_view frag = rest.substr(hash + 1);
+            constexpr std::string_view kPage = "page=";
+            constexpr std::string_view kNamed = "nameddest=";
+            if (frag.substr(0, kPage.size()) == kPage) {
+                int n = 0;
+                for (const char c : frag.substr(kPage.size())) {
+                    if (c < '0' || c > '9') {
+                        break;
+                    }
+                    n = n * 10 + (c - '0');
+                }
+                action.page = n > 0 ? n - 1 : -1;
+            } else if (frag.substr(0, kNamed.size()) == kNamed) {
+                action.destName = std::string(frag.substr(kNamed.size()));
+            }
+        }
+        return action;
+    }
+    action.kind = LinkKind::Uri;
+    return action;
+}
+
 std::optional<LinkInfo> linkAt(const std::vector<LinkInfo>& links, PointF point, float tolerance) {
     for (auto it = links.rbegin(); it != links.rend(); ++it) {
         if (rectContains(it->rect, point)) {

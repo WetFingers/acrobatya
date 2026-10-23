@@ -34,6 +34,7 @@ namespace ot::ui {
 class DocumentTabs;
 class DocumentView;
 class GlobalBar;
+class NavPane;
 class ToolPanel;
 
 class MainWindow : public QMainWindow {
@@ -63,6 +64,8 @@ public:
     DocumentTabs& tabs() const;
     GlobalBar& globalBar() const { return *globalBar_; }
     ToolPanel& toolPanel() const { return *toolPanel_; }
+    // Правая навигация (2.4): полоса 44 и панель 280 (в сплиттере, ширина 220–480).
+    NavPane& navPane() const { return *navPane_; }
     DocumentRegistry& registry() const { return *registry_; }
     // Реестр команд окна (меню, клавиши, палитра 2.4b, --script 2.4b, страж unit.guard.hotkeys).
     CommandRegistry& commands() const { return *commands_; }
@@ -105,6 +108,7 @@ signals:
 protected:
     void closeEvent(QCloseEvent* event) override;
     void changeEvent(QEvent* event) override;
+    void showEvent(QShowEvent* event) override;
     void dragEnterEvent(QDragEnterEvent* event) override;
     void dropEvent(QDropEvent* event) override;
 
@@ -129,6 +133,9 @@ private:
     void reportOpenError(const QString& path, const QString& reason);
     void showAllTools();
     void releaseView(DocumentView* view);
+    void applyNavWidth();
+    void openAttachmentPdf(const QString& path, const QString& title);
+    void showInExplorer();
 
     std::unique_ptr<RenderPool> pool_;
     std::unique_ptr<TileCache> cache_;
@@ -138,6 +145,7 @@ private:
     GlobalBar* globalBar_ = nullptr;
     QSplitter* body_ = nullptr;
     ToolPanel* toolPanel_ = nullptr;
+    NavPane* navPane_ = nullptr;
     QStackedWidget* center_ = nullptr;
     QWidget* home_ = nullptr;
     QStackedWidget* documents_ = nullptr;

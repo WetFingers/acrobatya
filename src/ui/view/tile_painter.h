@@ -75,6 +75,9 @@ public:
     // Правка страницы / структуры: новые ключи, прежние растры — подмена до прихода новых.
     void invalidatePage(int page);
     void invalidateAll();
+    // Видимость слоёв документа (DocumentSession::layersHash, поле ключа тайлов): другая — всё заново.
+    void setLayersHash(quint64 hash);
+    quint64 layersHash() const noexcept { return layers_; }
     // Смена экрана (dpr): растры документа и задачи — сброс.
     void resetDevice();
 
@@ -128,6 +131,7 @@ private:
     PageView& view_;
     QPointer<DocumentSession> session_;
     quint64 docId_ = 0;
+    quint64 layers_ = 0;  // DocumentSession::layersHash() — поле layersHash ключей
     RenderPool* pool_ = nullptr;
     TileCache* cache_ = nullptr;
     std::unique_ptr<RenderPool> ownPool_;

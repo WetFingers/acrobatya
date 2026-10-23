@@ -12,6 +12,7 @@
 #include "core/doc/document.h"
 #include "core/doc/journal.h"
 #include "core/doc/props.h"
+#include "core/links/layers.h"
 #include "core/mu/call.h"
 #include "core/mu/context.h"
 #include "core/render/display_cache.h"
@@ -42,6 +43,16 @@ QString hintFor(ErrorKind kind) {
             return {};
         default:
             return QStringLiteral("report");
+    }
+}
+
+// Видимость слоёв открытого документа; испорченный /OCProperties не роняет открытие — как без слоёв.
+quint64 layersHashOf(Document& doc) {
+    try {
+        return layers::stateHash(doc);
+    } catch (const MuError& e) {
+        spdlog::warn("layers: cannot read optional content: {}", e.what());
+        return 0;
     }
 }
 
@@ -129,6 +140,13 @@ void TaskContext::markHeavyEdit() {
     if (op_) {
         op_->markHeavy();
     }
+}
+
+void TaskContext::setLayersState(std::uint64_t hash) {
+    session_.displayCache_->clear();
+    session_.textCache_->clear();
+    layersChanged_ = true;
+    layersHash_ = hash;
 }
 
 void TaskContext::touchAllPages() {
@@ -251,6 +269,10 @@ void DocumentSession::loop() {
         }
         for (const int page : tc.touched_) {
             emit pageChanged(page);
+        }
+        if (tc.layersChanged_) {
+            layersHash_.store(tc.layersHash_);
+            emit layersChanged();
         }
         if (task.isEdit) {
             refreshUndoState();
@@ -407,6 +429,7 @@ void DocumentSession::afterSave(const SaveReport& report) {
             s.hasXfa = doc_->hasXfa();
             s.pageCount = doc_->pageCount();
             s.pageSizes = layoutSizes(*doc_, s.pageCount);
+            s.pageLayout = QString::fromStdString(props::pageLayout(*doc_));
             const QString docPath = QString::fromStdWString(doc_->path().wstring());
             const std::lock_guard lock(mutex_);
             summary_ = s;
@@ -415,6 +438,11 @@ void DocumentSession::afterSave(const SaveReport& report) {
         }
     }
     refreshUndoState();
+    // Переоткрытый документ — снова в конфигурации слоёв /D.
+    const quint64 layers = doc_ ? layersHashOf(*doc_) : 0;
+    if (layersHash_.exchange(layers) != layers) {
+        emit layersChanged();
+    }
     if (report.ok()) {
         emit saved(path());
     }
@@ -531,6 +559,7 @@ void DocumentSession::install(std::unique_ptr<Document> doc, OpenSummary& s, con
             s.pageCount = doc->pageCount();
             s.pageSizes = layoutSizes(*doc, s.pageCount);
             s.pageLayout = QString::fromStdString(props::pageLayout(*doc));
+            layersHash_.store(layersHashOf(*doc));
             doc_ = std::shared_ptr<Document>(std::move(doc));
         } catch (const MuError& e) {
             s = OpenSummary{};

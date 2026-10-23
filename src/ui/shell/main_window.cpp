@@ -19,9 +19,11 @@
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QStandardPaths>
+#include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
 
+#include <algorithm>
 #include <exception>
 
 #include "services/app_info.h"
@@ -30,18 +32,21 @@
 #include "services/document_registry.h"
 #include "services/recent.h"
 #include "services/render_pool.h"
+#include "services/shell_launcher.h"
 #include "services/thumbnails.h"
 #include "services/tile_cache.h"
 #include "ui/shell/document_tabs.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/global_bar.h"
 #include "ui/shell/home/home_page.h"
+#include "ui/shell/nav_pane.h"
 #include "ui/shell/quick_bar.h"
 #include "ui/shell/tool_panel.h"
 #include "ui/theme/theme.h"
 #include "ui/tools/tool_registry.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
+#include "ui/widgets/message_bar.h"
 #include "ui/widgets/toast.h"
 
 namespace ot::ui {
@@ -96,6 +101,8 @@ MainWindow::MainWindow(QWidget* parent)
     rowLayout->addWidget(body_, 1);
     center_ = new QStackedWidget(body_);
     center_->setObjectName(QStringLiteral("shellCenter"));
+    // Минимум центра — свой, а не Главной (у неё широкая раскладка): иначе панель навигации не шире 220.
+    center_->setMinimumWidth(Theme::sizes().centerMin);
     auto* home = new HomePage(RecentFiles::shared(), ThumbnailCache::shared(), center_);
     connect(home, &HomePage::openRequested, this, [this](const QString& path) { openFile(path); });
     connect(home, &HomePage::openDialogRequested, this, &MainWindow::openDialog);
@@ -107,6 +114,26 @@ MainWindow::MainWindow(QWidget* parent)
     center_->addWidget(documents_);
     body_->addWidget(center_);
     body_->setStretchFactor(body_->indexOf(center_), 1);
+    // Правая навигация: панель 280 — в сплиттере (тянется 220–480), полоса 44 — у правого края.
+    navPane_ = new NavPane(row);
+    body_->addWidget(navPane_->panel());
+    body_->setStretchFactor(body_->indexOf(navPane_->panel()), 0);
+    body_->setCollapsible(body_->indexOf(navPane_->panel()), false);
+    rowLayout->addWidget(navPane_);
+    connect(navPane_, &NavPane::panelOpenChanged, this, [this](bool open) {
+        if (open) {
+            // После того как сплиттер примет показ панели (он восстанавливает прежний размер при показе).
+            QTimer::singleShot(0, this, &MainWindow::applyNavWidth);
+        }
+        updateActions();
+    });
+    connect(navPane_, &NavPane::currentPaneChanged, this, &MainWindow::updateActions);
+    connect(navPane_, &NavPane::openPdfRequested, this, &MainWindow::openAttachmentPdf);
+    connect(body_, &QSplitter::splitterMoved, this, [this] {
+        if (navPane_->panel()->isVisible()) {
+            navPane_->setPanelWidth(navPane_->panel()->width());
+        }
+    });
     column->addWidget(row, 1);
     setCentralWidget(shell);
 
@@ -250,6 +277,7 @@ void MainWindow::showHome() {
     center_->setCurrentWidget(home_);
     home_->setFocus();
     toolPanel_->hide();
+    navPane_->setShown(false);
     ToolRegistry::instance().setView(nullptr);
     globalBar_->setHomeActive(true);
     retranslateTitle();
@@ -268,6 +296,9 @@ void MainWindow::showDocument(int index) {
     documents_->setCurrentWidget(view);
     center_->setCurrentWidget(documents_);
     toolPanel_->setVisible(!panelsHidden_);
+    navPane_->setDocument(view);
+    navPane_->setShown(!panelsHidden_);
+    QTimer::singleShot(0, this, &MainWindow::applyNavWidth);
     ToolRegistry::instance().setView(view);
     globalBar_->setHomeActive(false);
     view->setFocus();
@@ -383,6 +414,50 @@ void MainWindow::releaseView(DocumentView* view) {
     if (ToolRegistry::instance().view() == view) {
         ToolRegistry::instance().setView(nullptr);
     }
+    if (navPane_ != nullptr && navPane_->document() == view) {
+        navPane_->setDocument(nullptr);
+    }
+}
+
+// Ширина панели навигации — из settings.ini (её пишет перетаскивание разделителя).
+void MainWindow::applyNavWidth() {
+    // До показа окна сплиттер не разложен: ширину даёт sizeHint панели (тот же navpane/width).
+    if (!isVisible() || !navPane_->panel()->isVisibleTo(this)) {
+        return;
+    }
+    const QList<int> sizes = body_->sizes();
+    if (sizes.size() < 2) {
+        return;
+    }
+    const int total = sizes[0] + sizes[1];
+    if (total <= 0) {
+        return;  // окно ещё не разложено — ширину даст sizeHint панели
+    }
+    const int w = navPane_->panelWidth();
+    body_->setSizes({std::max(0, total - w), w});
+}
+
+// PDF-вложение — вкладкой из временной папки (эталон 7.3; ограничения защищённого просмотра — 2.5b).
+void MainWindow::openAttachmentPdf(const QString& path, const QString& title) {
+    if (!openFile(path)) {
+        return;
+    }
+    if (DocumentView* view = currentDocument()) {
+        MessageBar* bar = view->addMessage(
+            Tone::Warn,
+            tr("Вложение «%1» открыто из временной папки: изменения в нём не попадут в исходный документ.")
+                .arg(title));
+        bar->setObjectName(QStringLiteral("attachmentBar"));
+    }
+}
+
+// «Поделиться → Показать в Проводнике» — только через ShellLauncher (эталон 7.3, 8.3).
+void MainWindow::showInExplorer() {
+    if (DocumentView* view = currentDocument()) {
+        if (!ShellLauncher::instance().showInExplorer(view->path())) {
+            Toast::notify(this, tr("Не удалось открыть Проводник."), Tone::Danger);
+        }
+    }
 }
 
 void MainWindow::notifyLater(const QString& what, int stage) {
@@ -445,6 +520,12 @@ void MainWindow::changeEvent(QEvent* event) {
         retranslateMenus();
     }
     QMainWindow::changeEvent(event);
+}
+
+// Первый показ: сплиттер разложен — панели навигации её ширина из settings.ini.
+void MainWindow::showEvent(QShowEvent* event) {
+    QMainWindow::showEvent(event);
+    QTimer::singleShot(0, this, &MainWindow::applyNavWidth);
 }
 
 void MainWindow::dragEnterEvent(QDragEnterEvent* event) {

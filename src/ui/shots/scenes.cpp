@@ -11,6 +11,7 @@
 #include <memory>
 
 #include "services/i18n.h"
+#include "services/shell_launcher.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
 #include "ui/widgets/showcase.h"
@@ -71,6 +72,9 @@ const std::vector<Scene>& sceneTable() {
             table.push_back(std::move(s));
         }
         for (Scene& s : homeScenes()) {  // 2.3: home-empty, home-recent, home-files
+            table.push_back(std::move(s));
+        }
+        for (Scene& s : paneScenes()) {  // 2.4: pane-thumbnails, pane-bookmarks, pane-layers…
             table.push_back(std::move(s));
         }
         return table;
@@ -145,6 +149,9 @@ int runShots(const QStringList& names, const ShotOptions& options) {
     }
     // Снимки — на языке варианта, а не системы и не настройки (сцены детерминированы).
     ot::i18n::install(options.lang);
+    // Оболочка Windows в сценах — только фейк (эталон 8.3): сцена ничего не открывает на машине человека.
+    static FakeShellLauncher shell;
+    ShellLauncher::setInstance(&shell);
     const bool variant = options.theme != ThemeChoice::Light || options.scale > 1.0;
     int failures = 0;
     for (const QString& name : wanted) {

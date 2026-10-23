@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 
+#include "services/shell_launcher.h"
 #include "support/ui_test.h"
 #include "ui/theme/theme.h"
 #include "ui/tools/tool_registry.h"
@@ -23,6 +24,9 @@ int main(int argc, char** argv) {
     QApplication app(argc, argv);
     ot::ui::Theme::apply(app, ot::ui::ThemeChoice::Light);
     ot::ui::registerBuiltinTools(ot::ui::ToolRegistry::instance());  // как main.cpp программы
+    // Оболочка Windows в ui-тестах — только фейк (эталон 8.3): ни браузера, ни Word, ни Проводника.
+    static ot::FakeShellLauncher shell;
+    ot::ShellLauncher::setInstance(&shell);
     auto& suites = ot::test::uiSuites();
     if (argc > 1 && std::strcmp(argv[1], "--list") == 0) {
         for (const auto& s : suites) {

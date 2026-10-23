@@ -130,6 +130,11 @@ void PageView::setDocument(DocumentSession* session, RenderPool* pool, TileCache
             controller_->documentChanged();
         });
         connect(session_, &DocumentSession::closed, this, [this] { tiles_->invalidateAll(); });
+        connect(session_, &DocumentSession::layersChanged, this, [this] {
+            if (session_ != nullptr) {
+                tiles_->setLayersHash(session_->layersHash());
+            }
+        });
         const OpenSummary s = session_->summary();
         if (respectLayout_) {
             if (const auto l = pageModeFromPdf(s.pageLayout)) {

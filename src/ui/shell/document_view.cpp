@@ -16,7 +16,7 @@ namespace ot::ui {
 
 DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool* pool, TileCache* cache,
                            QWidget* parent)
-    : QWidget(parent), session_(std::move(session)) {
+    : QWidget(parent), session_(std::move(session)), pool_(pool) {
     setObjectName(QStringLiteral("documentView"));
     auto* column = new QVBoxLayout(this);
     column->setContentsMargins(0, 0, 0, 0);

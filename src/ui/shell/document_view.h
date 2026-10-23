@@ -38,6 +38,8 @@ public:
     const std::shared_ptr<DocumentSession>& sessionPtr() const { return session_; }
     quint64 id() const { return session_->id(); }
     PageView& view() const { return *view_; }
+    // Пул рендера окна (миниатюры панели навигации рисуются в нём же, с низким приоритетом).
+    RenderPool* pool() const { return pool_; }
     QString path() const;
     QString title() const;  // имя файла
     bool isModified() const { return modified_; }
@@ -76,6 +78,7 @@ private:
     void placeFloatingBar();
 
     std::shared_ptr<DocumentSession> session_;
+    RenderPool* pool_ = nullptr;
     PageView* view_ = nullptr;
     QWidget* messages_ = nullptr;
     QVBoxLayout* messageLayout_ = nullptr;

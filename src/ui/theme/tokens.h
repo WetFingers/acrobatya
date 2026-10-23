@@ -144,6 +144,7 @@ struct Metrics {
     int rightPanel = 280;         // правая панель
     int rightPanelMin = 220;      //   ширина тянется 220–480
     int rightPanelMax = 480;
+    int centerMin = 240;         // документ между панелями не уже (Главная его не расширяет, 2.4)
     int statusBar = 32;          // строка состояния
     int radius = 4;              // скругление кнопок и полей
     int radiusLarge = 8;         // карточки, плавающая панель
@@ -186,6 +187,7 @@ inline constexpr int Metrics::* kMetricSizes[] = {
     &Metrics::rightPanel,
     &Metrics::rightPanelMin,
     &Metrics::rightPanelMax,
+    &Metrics::centerMin,
     &Metrics::statusBar,
     &Metrics::radius,
     &Metrics::radiusLarge,

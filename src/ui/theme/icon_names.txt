@@ -29,6 +29,11 @@ paperclip
 file-signature
 list-tree
 locate
+# Страницы правой навигации (2.4): слои, вложения
+eye
+eye-off
+external-link
+shield-alert
 
 # Плавающая панель быстрых действий (эталон 6.1)
 mouse-pointer-2

@@ -461,6 +461,29 @@ std::vector<Rule> componentRules(const Palette& p, const Metrics& m) {
          {},
          QStringLiteral("border-right: 1px solid %1;").arg(css(B))},
         {QStringLiteral("ot--ui--ToolPanel #allToolsRows"), {}, {}, {}, S, {}, none},
+        // Правая навигация (2.4): полоса 44 — surfaceAlt с рамкой слева, панель 280 — surface с рамкой слева;
+        // ряд кнопок внизу страницы панели — рамка сверху.
+        {QStringLiteral("ot--ui--NavPane"),
+         QStringLiteral("NavPane"),
+         QStringLiteral("normal"),
+         T,
+         SA,
+         {},
+         QStringLiteral("border-left: 1px solid %1;").arg(css(B))},
+        {QStringLiteral("ot--ui--NavPanel"),
+         QStringLiteral("NavPanel"),
+         QStringLiteral("normal"),
+         T,
+         S,
+         {},
+         QStringLiteral("border-left: 1px solid %1;").arg(css(B))},
+        {QStringLiteral("ot--ui--NavPanel #paneButtons"),
+         {},
+         {},
+         {},
+         S,
+         {},
+         QStringLiteral("border-top: 1px solid %1;").arg(css(B))},
         // Главная (2.3): столбец разделов — surfaceAlt с рамкой справа, подписи — textMuted; «Краткие
         // сведения» —
         // surface с рамкой слева.
