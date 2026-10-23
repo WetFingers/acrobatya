@@ -14,7 +14,6 @@
 #include <memory>
 
 #include <windows.h>
-#include <shlobj.h>
 
 #include <spdlog/spdlog.h>
 
@@ -71,15 +70,24 @@ void defaultOffscreenFonts() {
 int main(int argc, char** argv) {
     using namespace ot::ui;
     defaultOffscreenFonts();
-    if (hasArg(argc, argv, "--version") || hasArg(argc, argv, "--self-check") ||
-        hasArg(argc, argv, "--register-notify") || hasArg(argc, argv, "--shots-list")) {
+    if (isConsoleMode(argc, argv)) {
+        // Без окна и без QPA (QCoreApplication): --self-check в установленной копии и под любым
+        // QT_QPA_PLATFORM.
         attachParentConsole();
         QCoreApplication app(argc, argv);
         QCoreApplication::setApplicationName(QStringLiteral("AcroBatya"));
         const CliOptions opts = parseCli(QCoreApplication::arguments());
+        if (!opts.error.isEmpty()) {
+            printUtf8(opts.error);
+            return 2;
+        }
+        if (!opts.dataDir.isEmpty()) {
+            qputenv("OTTISK_DATA_DIR", QFileInfo(opts.dataDir).absoluteFilePath().toUtf8());
+        }
+        spdlog::set_level(opts.logLevel.isEmpty() ? spdlog::level::off
+                                                  : spdlog::level::from_str(opts.logLevel.toStdString()));
         if (opts.registerNotify) {
-            SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nullptr, nullptr);
-            return 0;
+            return runRegisterNotify();
         }
         if (opts.shotsList) {
             for (const QString& name : sceneNames()) {
@@ -93,13 +101,10 @@ int main(int argc, char** argv) {
             std::fflush(stdout);
             return 0;
         }
-        QStringList lines;
-        const bool ok = ot::app::selfCheck(lines);
-        for (const QString& line : lines) {
-            printUtf8(line);
+        if (!opts.openAll.isEmpty()) {
+            return runOpenAll(opts.openAll);
         }
-        std::fflush(stdout);
-        return ok ? 0 : 1;
+        return runSelfCheck();
     }
 
     QApplication app(argc, argv);

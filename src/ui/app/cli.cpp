@@ -1,6 +1,18 @@
 #include "ui/app/cli.h"
 
+#include <QDir>
+#include <QDirIterator>
+#include <QFileInfo>
+
+#include <algorithm>
+#include <cstdio>
 #include <cstring>
+
+#include <windows.h>
+#include <shlobj.h>
+
+#include "services/app_info.h"
+#include "services/open_probe.h"
 
 #include "ui/theme/theme.h"
 
@@ -73,6 +85,8 @@ CliOptions parseCli(const QStringList& arguments) {
             if (o.smokeSeconds <= 0) {
                 o.error = QStringLiteral("bad --smoke ") + v;
             }
+        } else if (a == QLatin1String("--open-all")) {
+            if (!next(o.openAll)) break;
         } else if (a == QLatin1String("--script")) {
             if (!next(o.script)) break;
         } else if (a == QLatin1String("--page")) {
@@ -109,6 +123,100 @@ bool hasArg(int argc, char** argv, const char* name) {
         }
     }
     return false;
+}
+
+bool isConsoleMode(int argc, char** argv) {
+    for (const char* mode :
+         {"--version", "--self-check", "--register-notify", "--shots-list", "--open-all"}) {
+        if (hasArg(argc, argv, mode)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+namespace {
+
+void printLine(const QString& s) {
+    const QByteArray utf8 = s.toUtf8();
+    std::fwrite(utf8.constData(), 1, static_cast<size_t>(utf8.size()), stdout);
+    std::fputc('\n', stdout);
+    std::fflush(stdout);
+}
+
+}  // namespace
+
+int runSelfCheck() {
+    QStringList lines;
+    const bool ok = app::selfCheck(lines);
+    for (const QString& line : lines) {
+        printLine(line);
+    }
+    return ok ? 0 : 1;
+}
+
+int runRegisterNotify() {
+    // Проводник перечитывает ассоциации после установщика; ProgID и Capabilities пишет сам установщик.
+    SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nullptr, nullptr);
+    return 0;
+}
+
+OpenAllReport openAll(const QString& folder, int timeoutMs, bool trace) {
+    OpenAllReport report;
+    QStringList files;
+    QDirIterator it(folder, {QStringLiteral("*.pdf")}, QDir::Files | QDir::Hidden | QDir::NoSymLinks,
+                    QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        files << it.next();
+    }
+    std::sort(files.begin(), files.end(), [](const QString& a, const QString& b) {
+        return QString::compare(a, b, Qt::CaseInsensitive) < 0;
+    });
+    for (const QString& file : files) {
+        if (trace) {
+            printLine(QStringLiteral("probe ") + QDir::toNativeSeparators(file));
+        }
+        const OpenProbe p = probeOpen(file, timeoutMs);
+        ++report.files;
+        switch (p.result) {
+            case OpenProbe::Result::Opened:
+                ++report.opened;
+                if (!p.reason.isEmpty()) {  // открылся, но страница 1 битая
+                    report.lines << QStringLiteral("refused ") + QDir::toNativeSeparators(file) +
+                                        QStringLiteral(": ") + p.reason;
+                }
+                break;
+            case OpenProbe::Result::Refused:
+                ++report.refused;
+                report.lines << QStringLiteral("refused ") + QDir::toNativeSeparators(file) +
+                                    QStringLiteral(": ") + p.reason;
+                break;
+            case OpenProbe::Result::Failed:
+                ++report.failures;
+                report.lines << QStringLiteral("FAIL ") + QDir::toNativeSeparators(file) +
+                                    QStringLiteral(": ") + p.reason;
+                break;
+        }
+    }
+    return report;
+}
+
+int runOpenAll(const QString& folder) {
+    if (!QFileInfo(folder).isDir()) {
+        printLine(QStringLiteral("open-all: no such folder ") + QDir::toNativeSeparators(folder));
+        return 1;
+    }
+    const bool trace = qEnvironmentVariable("OTTISK_OPEN_ALL_TRACE") == QLatin1String("1");
+    const OpenAllReport r = openAll(folder, 20000, trace);
+    for (const QString& line : r.lines) {
+        printLine(line);
+    }
+    printLine(QStringLiteral("open-all: %1 files, opened %2, refused %3, failures %4")
+                  .arg(r.files)
+                  .arg(r.opened)
+                  .arg(r.refused)
+                  .arg(r.failures));
+    return r.failures;
 }
 
 }  // namespace ot::ui
