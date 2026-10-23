@@ -223,6 +223,22 @@ TEST_F(SearchTest, session_skips_pages_without_text_layer) {
     EXPECT_EQ(s.count(), 3);
 }
 
+// Контекст совпадения «Расширенного поиска» (2.5): строка с совпадением между \x02 и \x03, обрезка по radius
+// символов с «…» (пробелы у края обрезки убираются).
+TEST_F(SearchTest, snippet_marks_match_in_line) {
+    OT_FEATURE("view-19");
+    const auto hits = onPage(0, "оттиска", opts(false, true, false, false));
+    ASSERT_EQ(hits.size(), 1u);
+    EXPECT_EQ(ot::searchSnippet(*pages_[0], hits[0], 100),
+              "Без ударения: оттиск, а в родительном падеже — \x02оттиска\x03.");
+    EXPECT_EQ(ot::searchSnippet(*pages_[0], hits[0], 10), "…падеже — \x02оттиска\x03.");
+    const auto years = onPage(0, "1999");
+    ASSERT_EQ(years.size(), 1u);
+    EXPECT_EQ(ot::searchSnippet(*pages_[0], years[0], 7),
+              "Годы \x02"
+              "1999\x03 и 2026…");
+}
+
 TEST(search_session, runs_in_document_thread_with_text_cache) {
     ot::test::qtApp();
     ot::DocumentSession session;

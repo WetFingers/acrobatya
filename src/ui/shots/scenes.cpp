@@ -95,6 +95,9 @@ const std::vector<Scene>& sceneTable() {
         for (Scene& s : prefsScenes()) {  // 2.4b: preferences-general, preferences-page-display, palette
             table.push_back(std::move(s));
         }
+        for (Scene& s : searchScenes()) {  // 2.5: find-bar, search-window
+            table.push_back(std::move(s));
+        }
         return table;
     }();
     return SCENES;

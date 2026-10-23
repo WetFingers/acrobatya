@@ -53,6 +53,13 @@ int runShots(const QStringList& names, const ShotOptions& options);
 
 // Сцена из главного окна: MainWindow, доведённый функцией до нужного вида.
 std::function<QWidget*()> withMainWindow(std::function<void(MainWindow&)> setup);
+// Окно верхнего уровня (диалог, палитра) — виджетом внутри главного окна: снимок окна не видит отдельных
+// окон; фон и тень — то, что дорисовала бы система (токены shadow*; prefs_scenes.cpp, 2.4b–2.5).
+void embedWindow(MainWindow& w, QWidget* window);
+// То же по центру главного окна, показать.
+void embedCentered(MainWindow& w, QWidget* dialog);
+// Текущий документ окна показан: страницы есть, видимые тайлы готовы (Scene::ready сцен с документом).
+bool sceneDocumentReady(QWidget* window);
 
 // view_scenes.cpp — сцены вида страниц view-* (PageView на фикстуре во весь кадр, 2.2b).
 std::vector<Scene> viewScenes();
@@ -68,6 +75,8 @@ std::vector<Scene> statusScenes();
 std::vector<Scene> modeScenes();
 // prefs_scenes.cpp — preferences-general, preferences-page-display, palette (2.4b).
 std::vector<Scene> prefsScenes();
+// search_scenes.cpp — find-bar, search-window (2.5).
+std::vector<Scene> searchScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.
 bool waitSceneReady(const Scene& scene, QWidget* window, int timeoutMs = 30000);

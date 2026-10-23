@@ -57,6 +57,11 @@ struct SearchHit {
 std::vector<SearchHit> searchPage(const TextPage& page, std::string_view needle,
                                   const SearchOptions& options = {});
 
+// Контекст совпадения (2.5, «Расширенный поиск»): строки страницы page, на которых лежит совпадение (часть на
+// следующей странице не входит), совпадение — между \x02 и \x03 (как IndexHit::snippet), до и после — не
+// больше radius символов; обрезано — «…» (пробелы у края обрезки убираются), строки — через пробел.
+std::string searchSnippet(const TextPage& page, const SearchHit& hit, int radius = 40);
+
 struct SearchProgress {
     int pagesDone = 0;  // страниц подано в поиск
     int pageCount = 0;

@@ -3,11 +3,14 @@
 #include <QFileInfo>
 #include <QPushButton>
 #include <QResizeEvent>
+#include <QScrollBar>
 #include <QTimer>
 #include <QVBoxLayout>
 
+#include <algorithm>
 #include <exception>
 
+#include "ui/panes/find_bar.h"
 #include "ui/shell/message_bar.h"
 #include "ui/theme/theme.h"
 #include "ui/view/page_view.h"
@@ -29,6 +32,8 @@ DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool*
     column->addWidget(view_, 1);
     view_->setDocument(session_.get(), pool, cache);
     setFocusProxy(view_);
+    find_ = new FindBar(*session_, *view_, this);
+    find_->installEventFilter(this);
 
     connect(session_.get(), &DocumentSession::undoStateChanged, this, &DocumentView::updateModified,
             Qt::QueuedConnection);
@@ -151,9 +156,31 @@ void DocumentView::placeFloatingBar() {
     floating_->raise();
 }
 
+// Панель «Найти» — в правом верхнем углу области страниц (левее полосы прокрутки), поверх вида.
+void DocumentView::placeFindBar() {
+    if (find_ == nullptr || !find_->isVisible()) {
+        return;
+    }
+    const QSize s = find_->sizeHint();
+    const int margin = Theme::sizes().grid * 4;
+    const QRect area = view_->geometry();
+    const int scroll = view_->verticalScrollBar()->isVisible() ? view_->verticalScrollBar()->width() : 0;
+    const int width = std::min(s.width(), std::max(0, area.width() - scroll - margin * 2));
+    find_->setGeometry(area.right() - scroll - margin - width + 1, area.top() + margin, width, s.height());
+    find_->raise();
+}
+
+bool DocumentView::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == find_ && (event->type() == QEvent::Show || event->type() == QEvent::LayoutRequest)) {
+        QTimer::singleShot(0, this, &DocumentView::placeFindBar);
+    }
+    return QWidget::eventFilter(watched, event);
+}
+
 void DocumentView::resizeEvent(QResizeEvent* event) {
     QWidget::resizeEvent(event);
     placeFloatingBar();
+    placeFindBar();
 }
 
 void DocumentView::showEvent(QShowEvent* event) {

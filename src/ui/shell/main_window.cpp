@@ -38,6 +38,8 @@
 #include "services/shell_launcher.h"
 #include "services/thumbnails.h"
 #include "services/tile_cache.h"
+#include "ui/dialogs/search_window.h"
+#include "ui/panes/find_bar.h"
 #include "ui/shell/command_palette.h"
 #include "ui/shell/document_tabs.h"
 #include "ui/shell/document_view.h"
@@ -163,7 +165,15 @@ MainWindow::MainWindow(QWidget* parent)
     connect(toolPanel_, &ToolPanel::toolRequested, this,
             [this](const QString& id) { ToolRegistry::instance().activate(id, currentDocument()); });
     connect(globalBar_, &GlobalBar::settingsClicked, this, [this] { showPreferences(); });
-    connect(globalBar_, &GlobalBar::searchRequested, this, [this] { notifyLater(tr("Поиск"), 2); });
+    // Поле поиска глобальной панели: в документе — панель «Найти» с этой строкой, на Главной — «Расширенный
+    // поиск».
+    connect(globalBar_, &GlobalBar::searchRequested, this, [this](const QString& text) {
+        if (DocumentView* view = currentDocument()) {
+            view->findBar().find(text);
+        } else {
+            showSearchWindow(text);
+        }
+    });
 
     // Полоса режима чтения — над документом (не страница стека центра).
     readBar_ = new ReadModeBar(center_);
@@ -240,6 +250,8 @@ bool MainWindow::openFile(const QString& path, int page, const QString& password
         updateActions();
     });
     connect(view, &DocumentView::saveAsPdfRequested, this, [this, view] { saveAsPdf(view); });
+    connect(&view->findBar(), &FindBar::advancedSearchRequested, this,
+            [this](const QString& text) { showSearchWindow(text); });
     connect(&view->session(), &DocumentSession::undoStateChanged, this, &MainWindow::updateActions,
             Qt::QueuedConnection);
     auto* quick = new QuickBar();
@@ -532,6 +544,22 @@ void MainWindow::applyPreferences() {
     status_->reloadSettings();
     updateActions();
 }
+
+SearchWindow* MainWindow::showSearchWindow(const QString& text) {
+    if (search_ == nullptr) {
+        search_ = new SearchWindow(*this);
+    }
+    if (!text.isEmpty()) {
+        search_->setQuery(text);
+    }
+    search_->show();
+    search_->raise();
+    search_->activateWindow();
+    search_->queryField()->setFocus();
+    return search_;
+}
+
+SearchWindow* MainWindow::searchWindow() const { return search_.data(); }
 
 CommandPalette* MainWindow::showCommandPalette() {
     if (palette_ == nullptr) {

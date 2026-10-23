@@ -95,6 +95,36 @@ FolderSearch::FolderSearch(StateDb& db, QObject* parent) : QObject(parent), db_(
     qRegisterMetaType<ot::FolderSearchResult>();
 }
 
+QStringList FolderSearch::suggest(StateDb& db, const QString& prefix, int limit) {
+    QStringList out;
+    // Последнее слово ввода — в виде терминов индекса: нижний регистр, без комбинируемых знаков (NFD).
+    qsizetype start = prefix.size();
+    while (start > 0 && (prefix[start - 1].isLetterOrNumber() || prefix[start - 1].isMark())) {
+        --start;
+    }
+    const QString head = prefix.left(start);
+    QString word;
+    for (const QChar c : prefix.mid(start).toLower().normalized(QString::NormalizationForm_D)) {
+        if (!c.isMark()) {
+            word += c;
+        }
+    }
+    word = word.normalized(QString::NormalizationForm_C);
+    if (word.isEmpty() || !db.isOpen()) {
+        return out;
+    }
+    try {
+        const std::lock_guard lock(db.mutex());
+        const TextIndex index(db.handle());
+        for (const std::string& term : index.suggest(word.toStdString(), limit)) {
+            out << head + QString::fromStdString(term);
+        }
+    } catch (const std::exception& e) {
+        spdlog::warn("folder search: suggestions failed: {}", e.what());
+    }
+    return out;
+}
+
 QFuture<FolderSearchResult> FolderSearch::start(const QString& folder, const QString& query,
                                                 const FolderSearchOptions& options) {
     return QtConcurrent::run([this, folder, query, options] { return run(folder, query, options); });
@@ -197,6 +227,7 @@ FolderSearchResult FolderSearch::run(const QString& folder, const QString& query
     // 4. Запрос по индексу внутри папки; удалённые с диска — из индекса (если обход был полным).
     std::vector<IndexHit> hits;
     std::vector<std::string> encrypted;
+    std::vector<std::string> empty;
     QSet<QString> walked;
     for (const Entry& e : entries) {
         walked.insert(e.path);
@@ -215,6 +246,7 @@ FolderSearchResult FolderSearch::run(const QString& folder, const QString& query
         }
         hits = index.query(query.toStdString(), prefix);
         encrypted = index.encryptedFiles(prefix);
+        empty = index.emptyFiles(prefix);
     } catch (const std::exception& e) {
         spdlog::warn("folder search: index query failed: {}", e.what());
     }
@@ -222,6 +254,12 @@ FolderSearchResult FolderSearch::run(const QString& folder, const QString& query
         const QString p = QString::fromStdString(path);
         if (walked.contains(p)) {
             result.encrypted.push_back(p);
+        }
+    }
+    for (const std::string& path : empty) {
+        const QString p = QString::fromStdString(path);
+        if (walked.contains(p)) {
+            result.noText.push_back(p);
         }
     }
     for (const IndexHit& h : hits) {

@@ -120,3 +120,32 @@ TEST(index, folder_prefix_is_literal) {
     EXPECT_EQ(paths(index.query("слово", "C:/a%b/")), (std::vector<std::string>{"C:/a%b/z.pdf#0"}));
     EXPECT_EQ(index.query("слово").size(), 3u);
 }
+
+// Подсказки поля «Расширенного поиска» (2.5): термины индекса по префиксу — без регистра и диакритики (как их
+// хранит токенизатор: «Отти́ск» → «оттиск»), сначала встречающиеся на большем числе страниц, затем по
+// алфавиту.
+TEST(index, suggest_terms_by_prefix) {
+    OT_FEATURE("view-19");
+    Db d;
+    TextIndex index(d.db);
+    index.upsert("C:/док/a.pdf", 1, {"Оттиск и оттиска, отчёт", "оттиск снова"});
+    index.upsert("C:/док/b.pdf", 2, {"Отчёт о работе"});
+    index.upsert("C:/другое/c.pdf", 3, {"оттепель"});
+    EXPECT_EQ(index.suggest("отт"), (std::vector<std::string>{"оттиск", "оттепель", "оттиска"}));
+    EXPECT_EQ(index.suggest("отт", 1), (std::vector<std::string>{"оттиск"}));
+    EXPECT_EQ(index.suggest("отч"), (std::vector<std::string>{"отчёт"}));  // «ё» — своя буква
+    EXPECT_TRUE(index.suggest("щ").empty());
+    EXPECT_TRUE(index.suggest("").empty());
+}
+
+// Файлы без текстового слоя (сканы без OCR): «нет текста — распознать?» в результатах по папке (2.5).
+TEST(index, files_without_text) {
+    Db d;
+    TextIndex index(d.db);
+    index.upsert("C:/док/scan.pdf", 1, {"", "  \n"});
+    index.upsert("C:/док/text.pdf", 2, {"текст"});
+    index.markEncrypted("C:/док/enc.pdf", 3);
+    index.upsert("C:/другое/scan2.pdf", 4, {""});
+    EXPECT_EQ(index.emptyFiles("C:/док/"), (std::vector<std::string>{"C:/док/scan.pdf"}));
+    EXPECT_EQ(index.emptyFiles(), (std::vector<std::string>{"C:/док/scan.pdf", "C:/другое/scan2.pdf"}));
+}

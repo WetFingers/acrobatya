@@ -49,6 +49,7 @@ struct FolderSearchResult {
     QVector<FolderFileHits> files;
     QStringList encrypted;  // пропущены: нужен пароль
     QStringList failed;     // не открылись
+    QStringList noText;     // без текстового слоя (сканы без OCR): «нет текста — распознать?» (2.5)
     int scanned = 0;        // файлов по фильтру
     int extracted = 0;      // извлечено заново (новые и изменённые)
     bool cancelled = false;
@@ -65,6 +66,10 @@ public:
                            const FolderSearchOptions& options = {});
     QFuture<FolderSearchResult> start(const QString& folder, const QString& query,
                                       const FolderSearchOptions& options = {});
+    // Подсказки поля «Расширенного поиска» (2.5): термины индекса state.sqlite, начинающиеся с последнего
+    // слова prefix (регистр и комбинируемые ударения снимаются, как у токенизатора), — строками «начало +
+    // термин».
+    static QStringList suggest(StateDb& db, const QString& prefix, int limit = 10);
     // Любой поток: остановить текущий поиск (run вернёт cancelled).
     void cancel() noexcept { cancel_ = true; }
     bool isCancelled() const noexcept { return cancel_.load(); }

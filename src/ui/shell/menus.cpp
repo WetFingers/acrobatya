@@ -17,6 +17,7 @@
 #include "services/commands.h"
 #include "services/document_session.h"
 #include "services/settings.h"
+#include "ui/panes/find_bar.h"
 #include "ui/shell/document_tabs.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/global_bar.h"
@@ -166,13 +167,44 @@ void MainWindow::registerCommands() {
            .when = view,
            .enabled = hasDoc,
            .menu = QStringLiteral("edit")});
+    // Поиск (2.5): панель «Найти» вкладки и «Расширенный поиск».
+    auto onFind = [this](std::function<void(FindBar&)> fn) -> std::function<void()> {
+        return [this, fn = std::move(fn)] {
+            if (DocumentView* d = currentDocument()) {
+                fn(d->findBar());
+            }
+        };
+    };
     r.add({.id = QStringLiteral("edit.find"),
            .title = tr("&Найти…"),
            .shortcuts = {key(Qt::CTRL | Qt::Key_F)},
            .icon = QStringLiteral("search"),
+           .run = onFind([](FindBar& f) { f.activate(); }),
+           .enabled = hasDoc,
            .menu = QStringLiteral("edit"),
-           .separatorBefore = true,
-           .stage = 2});
+           .separatorBefore = true});
+    r.add({.id = QStringLiteral("edit.findNext"),
+           .title = tr("Найти &следующее"),
+           .shortcuts = {key(Qt::Key_F3), key(Qt::CTRL | Qt::Key_G)},
+           .run = onFind([](FindBar& f) { f.findNext(); }),
+           .enabled = hasDoc,
+           .menu = QStringLiteral("edit")});
+    r.add({.id = QStringLiteral("edit.findPrevious"),
+           .title = tr("Найти &предыдущее"),
+           .shortcuts = {key(Qt::SHIFT | Qt::Key_F3)},
+           .run = onFind([](FindBar& f) { f.findPrevious(); }),
+           .enabled = hasDoc,
+           .menu = QStringLiteral("edit")});
+    r.add({.id = QStringLiteral("edit.advancedSearch"),
+           .title = tr("&Расширенный поиск…"),
+           .shortcuts = {key(Qt::CTRL | Qt::SHIFT | Qt::Key_F)},
+           .run = [this] { showSearchWindow(); },
+           .menu = QStringLiteral("edit")});
+    r.add({.id = QStringLiteral("edit.replace"),
+           .title = tr("Найти и &заменить…"),
+           .shortcuts = {key(Qt::CTRL | Qt::SHIFT | Qt::Key_H)},
+           .menu = QStringLiteral("edit"),
+           .stage = 3});
     r.add({.id = QStringLiteral("app.preferences"),
            .title = tr("&Установки…"),
            .shortcuts = {key(Qt::CTRL | Qt::Key_K)},

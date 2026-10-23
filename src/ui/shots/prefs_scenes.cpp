@@ -18,9 +18,7 @@
 
 namespace ot::ui {
 
-namespace {
-
-bool prefsDocumentReady(QWidget* w) {
+bool sceneDocumentReady(QWidget* w) {
     auto* window = static_cast<MainWindow*>(w);
     DocumentView* doc = window->currentDocument();
     if (doc == nullptr || doc->view().pageCount() == 0) {
@@ -30,9 +28,7 @@ bool prefsDocumentReady(QWidget* w) {
     return doc->view().tilePainter().visibleComplete();
 }
 
-// Окно верхнего уровня виджетом внутри главного окна: фон окна и тень, которые иначе дорисовала бы система
-// (токены shadow, shadowBlur, shadowOffset — как у плавающей панели).
-void embed(MainWindow& w, QWidget* window) {
+void embedWindow(MainWindow& w, QWidget* window) {
     window->setParent(&w, Qt::Widget);
     window->setAutoFillBackground(true);
     const Metrics& m = Theme::sizes();
@@ -43,13 +39,14 @@ void embed(MainWindow& w, QWidget* window) {
     window->setGraphicsEffect(shadow);
 }
 
-// Диалог виджетом по центру окна (снимок окна не видит отдельных окон верхнего уровня).
 void embedCentered(MainWindow& w, QWidget* dialog) {
-    embed(w, dialog);
+    embedWindow(w, dialog);
     dialog->move((w.width() - dialog->width()) / 2, (w.height() - dialog->height()) / 2);
     dialog->show();
     dialog->raise();
 }
+
+namespace {
 
 Scene preferencesScene(const char* name, const char* category) {
     Scene s;
@@ -59,7 +56,7 @@ Scene preferencesScene(const char* name, const char* category) {
         w.openFile(sceneFixture(QStringLiteral("demo/report.pdf")));
         QTimer::singleShot(0, &w, [&w, id] { embedCentered(w, w.showPreferences(id)); });
     });
-    s.ready = prefsDocumentReady;
+    s.ready = sceneDocumentReady;
     return s;
 }
 
@@ -76,13 +73,13 @@ std::vector<Scene> prefsScenes() {
         w.openFile(sceneFixture(QStringLiteral("demo/report.pdf")));
         QTimer::singleShot(0, &w, [&w] {
             CommandPalette* p = w.showCommandPalette();
-            embed(w, p);
+            embedWindow(w, p);
             p->setFilter(MainWindow::tr("страниц"));
             p->show();  // showEvent ставит палитру у верхнего края окна
             p->raise();
         });
     });
-    palette.ready = prefsDocumentReady;
+    palette.ready = sceneDocumentReady;
     scenes.push_back(palette);
     return scenes;
 }

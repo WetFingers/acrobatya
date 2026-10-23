@@ -1,5 +1,6 @@
 #include "core/text/search.h"
 
+#include <algorithm>
 #include <map>
 
 #include <spdlog/spdlog.h>
@@ -9,6 +10,7 @@
 #include "core/mu/error.h"
 #include "core/mu/handles.h"
 #include "core/text/stext.h"
+#include "core/util/utf8.h"
 
 extern "C" {
 #include <mupdf/fitz.h>
@@ -258,6 +260,63 @@ int SearchSession::selectFrom(int page) noexcept {
         }
     }
     return current_;
+}
+
+std::string searchSnippet(const TextPage& page, const SearchHit& hit, int radius) {
+    const std::vector<TextChar>& chars = page.chars();
+    const int n = static_cast<int>(chars.size());
+    if (hit.firstChar < 0 || hit.firstChar >= n) {
+        return {};
+    }
+    const int last = hit.endPage == hit.page ? std::clamp(hit.lastChar, hit.firstChar, n - 1) : n - 1;
+    // Строки совпадения целиком: от начала первой до конца последней.
+    const std::vector<TextLine>& lines = page.lines();
+    auto lineOf = [&](int i) -> const TextLine* {
+        const int l = chars[i].line;
+        return l >= 0 && l < static_cast<int>(lines.size()) ? &lines[l] : nullptr;
+    };
+    const TextLine* firstLine = lineOf(hit.firstChar);
+    const TextLine* lastLine = lineOf(last);
+    const int begin = firstLine != nullptr ? firstLine->firstChar : hit.firstChar;
+    const int end = lastLine != nullptr ? lastLine->firstChar + lastLine->charCount - 1 : last;
+    // Символы строк; между строками — пробел.
+    std::u32string before, match, after;
+    for (int i = begin; i <= end && i < n; ++i) {
+        std::u32string& out = i < hit.firstChar ? before : (i <= last ? match : after);
+        if (i > begin && chars[i].line != chars[i - 1].line && !out.empty() && out.back() != U' ') {
+            out.push_back(U' ');
+        }
+        out.push_back(chars[i].c);
+    }
+    auto isSpace = [](char32_t c) {
+        return c == U' ' || c == U'\t' || c == U'\n' || c == U'\r' || c == 0xA0;
+    };
+    const std::size_t r = static_cast<std::size_t>(std::max(0, radius));
+    constexpr const char* kEllipsis = "\xE2\x80\xA6";  // «…»
+    std::string out;
+    if (before.size() > r) {
+        before.erase(0, before.size() - r);
+        while (!before.empty() && isSpace(before.front())) {
+            before.erase(0, 1);
+        }
+        out += kEllipsis;
+    }
+    out += utf8::encode(before);
+    out += '\x02';
+    out += utf8::encode(match);
+    out += '\x03';
+    const bool cut = after.size() > r;
+    if (cut) {
+        after.resize(r);
+        while (!after.empty() && isSpace(after.back())) {
+            after.pop_back();
+        }
+    }
+    out += utf8::encode(after);
+    if (cut) {
+        out += kEllipsis;
+    }
+    return out;
 }
 
 }  // namespace ot

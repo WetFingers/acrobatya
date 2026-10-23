@@ -59,6 +59,13 @@ public:
                                 int limit = 10000) const;
     std::vector<std::string> files(std::string_view folder = {}) const;
     std::vector<std::string> encryptedFiles(std::string_view folder = {}) const;
+    // Файлы без текстового слоя (не зашифрованы, ни одной страницы с текстом — сканы без OCR, 2.5).
+    std::vector<std::string> emptyFiles(std::string_view folder = {}) const;
+    // Подсказки поля поиска (2.5): термины индекса, начинающиеся с prefix, — сначала встречающиеся на большем
+    // числе страниц, затем по алфавиту (байты UTF-8). Термины хранятся без регистра и диакритики
+    // (токенизатор unicode61 remove_diacritics 2: «Отти́ск» → «оттиск», «ё» остаётся): prefix в том же виде
+    // приводит вызывающий. Таблица fts5vocab — во временной схеме подключения (без миграции).
+    std::vector<std::string> suggest(std::string_view prefix, int limit = 10) const;
     int fileCount() const;
     int pageCount() const;
 

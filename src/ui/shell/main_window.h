@@ -41,6 +41,7 @@ class FullScreenWindow;
 class NavPane;
 class PreferencesDialog;
 class ReadModeBar;
+class SearchWindow;
 class StatusBar;
 class ToolPanel;
 
@@ -132,6 +133,10 @@ public:
     // Применить settings.ini к работающему окну: тема и «Крупные элементы», язык, однобуквенные ускорители,
     // логические номера страниц (зовёт «ОК» Установок).
     void applyPreferences();
+    // «Расширенный поиск» (Ctrl+Shift+F; dialogs/search_window.h): окно создаётся при первом вызове, не
+    // модальное; text — строка поиска (пусто — прежняя).
+    SearchWindow* showSearchWindow(const QString& text = {});
+    SearchWindow* searchWindow() const;
     // Палитра команд (Ctrl+Shift+P; command_palette.h) — команды реестра окна.
     CommandPalette* showCommandPalette();
     CommandPalette* commandPalette() const;
@@ -201,6 +206,7 @@ private:
     QPointer<FullScreenWindow> fullScreen_;
     QPointer<PreferencesDialog> preferences_;
     QPointer<CommandPalette> palette_;
+    QPointer<SearchWindow> search_;
 
     struct Actions;
     std::unique_ptr<Actions> actions_;

@@ -201,6 +201,20 @@
         }
       ],
       "font": "TrueType /Arial не встроен, WinAnsi + /Differences cp1251"
+    },
+    "find.pdf": {
+      "word": "печать",
+      "hits": 12,
+      "per_page": [
+        5,
+        4,
+        3
+      ],
+      "case_sensitive_lower": 10,
+      "not_whole_word": [
+        "печати",
+        "впечатление"
+      ]
     }
   }
 }

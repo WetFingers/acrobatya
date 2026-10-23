@@ -286,6 +286,37 @@ std::vector<std::string> TextIndex::encryptedFiles(std::string_view folder) cons
     return out;
 }
 
+std::vector<std::string> TextIndex::emptyFiles(std::string_view folder) const {
+    std::vector<std::string> out;
+    Stmt st(db_, (std::string("SELECT f.path FROM fts_files f WHERE f.encrypted = 0 AND f.pages = 0 AND ") +
+                  kFolderFilter + " ORDER BY f.path")
+                     .c_str());
+    st.bind(2, folder);
+    while (st.step()) {
+        out.push_back(st.text(0));
+    }
+    return out;
+}
+
+std::vector<std::string> TextIndex::suggest(std::string_view prefix, int limit) const {
+    std::vector<std::string> out;
+    if (prefix.empty() || limit <= 0) {
+        return out;
+    }
+    exec(db_, "CREATE VIRTUAL TABLE IF NOT EXISTS temp.fts_vocab USING fts5vocab(main, fts_pages, row);");
+    // Верхняя граница диапазона — prefix + U+10FFFF: любой термин с этим началом меньше её (байты UTF-8).
+    std::string upper(prefix);
+    upper += "\xF4\x8F\xBF\xBF";
+    Stmt st(
+        db_,
+        "SELECT term FROM temp.fts_vocab WHERE term >= ?1 AND term < ?2 ORDER BY doc DESC, term LIMIT ?3");
+    st.bind(1, prefix).bind(2, upper).bind(3, std::int64_t{limit});
+    while (st.step()) {
+        out.push_back(st.text(0));
+    }
+    return out;
+}
+
 int TextIndex::fileCount() const {
     Stmt st(db_, "SELECT count(*) FROM fts_files");
     return st.step() ? static_cast<int>(st.integer(0)) : 0;

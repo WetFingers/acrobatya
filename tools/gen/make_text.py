@@ -7,6 +7,8 @@
                                (U+0301), «оттиск», «оттиска»; годы 1999, 2026 и число 12345; лигатуры U+FB01/U+FB02;
                                жирная и курсивная строки; две строки для выделения; цветная строка; на второй
                                странице «оттиск, ОТТИСК и Оттиск» и год 2027, третья — без искомого слова;
+  find.pdf                   — 3 страницы для панели «Найти» (сессия 2.5): слово «печать» 12 раз (5 + 4 + 3; одно —
+                               «ПЕЧАТЬ», одно — «Печать») и для «целого слова» — «печати», «впечатление»;
   vectors.pdf                — строки с подчёркиваниями отрезками (m l S), рамка (re S) и закрашенный
                                прямоугольник (re f) — для TextPage::Options{collectVectors};
   truetype-nonembedded.pdf   — простой TrueType /Arial **без встроенной программы шрифта** (подмена в читалке),
@@ -79,6 +81,31 @@ def search_pdf(out: Path, lines: Lines):
     put(cv, 2, 72, 760, "Третья страница без искомого слова.", reg, 12, "page3")
     doc.add_page(cv)
     doc.save(out)
+
+
+def find_pdf(out: Path):
+    """12 вхождений «печать» на трёх страницах (5 + 4 + 3) — панель «Найти» подсвечивает все, F3 обходит по кругу."""
+    doc = g.Doc("find", "Панель «Найти»: двенадцать вхождений", creator="tools/gen/make_text.py")
+    reg = doc.font("arial")
+    pages = [
+        ["Печать и подпись: печать ставится внизу.",
+         "Вторая печать — на обороте, третья печать — в углу.",
+         "Без печати документ недействителен; впечатление важно.",
+         "Последняя печать первой страницы."],
+        ["ПЕЧАТЬ крупно и печать мелко.",
+         "Ещё одна печать и снова печать."],
+        ["Третья страница: печать, печать и печать."],
+    ]
+    for lines in pages:
+        cv = doc.canvas()
+        y = 760
+        for text in lines:
+            cv.text(72, y, text, reg, 12)
+            y -= 24
+        doc.add_page(cv)
+    doc.save(out)
+    return {"word": "печать", "hits": 12, "per_page": [5, 4, 3], "case_sensitive_lower": 10,
+            "not_whole_word": ["печати", "впечатление"]}
 
 
 def vectors_pdf(out: Path, lines: Lines):
@@ -161,7 +188,8 @@ def main():
     search_pdf(dst / "search.pdf", lines)
     vec = vectors_pdf(dst / "vectors.pdf", lines)
     truetype_nonembedded(dst / "truetype-nonembedded.pdf", lines)
-    files = ["search.pdf", "vectors.pdf", "truetype-nonembedded.pdf"]
+    find = find_pdf(dst / "find.pdf")
+    files = ["search.pdf", "vectors.pdf", "truetype-nonembedded.pdf", "find.pdf"]
     for name in files:
         g.check_size(dst / name, LIMIT)
     by_file = {"search.pdf": [0, 1, 2], "vectors.pdf": [3], "truetype-nonembedded.pdf": [4]}
@@ -177,6 +205,7 @@ def main():
         meta["files"][name] = {"lines": items}
     meta["files"]["search.pdf"]["pages"] = 3
     meta["files"]["vectors.pdf"]["vectors"] = vec
+    meta["files"]["find.pdf"] = find
     meta["files"]["truetype-nonembedded.pdf"]["font"] = "TrueType /Arial не встроен, WinAnsi + /Differences cp1251"
     g.write_json(dst / "text.json", meta)
     g.say("text: %s" % ", ".join(files))

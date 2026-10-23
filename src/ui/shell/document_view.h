@@ -27,6 +27,7 @@ class TileCache;
 
 namespace ot::ui {
 
+class FindBar;
 class MessageBar;
 class MessageStack;
 class PageView;
@@ -55,6 +56,9 @@ public:
     MessageBar* addMessage(Tone tone, const QString& text);
     QList<MessageBar*> messages() const;
 
+    // Панель «Найти» (Ctrl+F, 2.5) — плавающая в правом верхнем углу вида; у вкладки своя.
+    FindBar& findBar() const { return *find_; }
+
     // Плавающая панель (QuickBar) — поверх вида, по центру у нижнего края.
     void setFloatingBar(QWidget* bar);
     QWidget* floatingBar() const { return floating_; }
@@ -77,17 +81,20 @@ signals:
     void saveAsPdfRequested();
 
 protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void showEvent(QShowEvent* event) override;
 
 private:
     void updateModified();
     void placeFloatingBar();
+    void placeFindBar();
 
     std::shared_ptr<DocumentSession> session_;
     RenderPool* pool_ = nullptr;
     PageView* view_ = nullptr;
     MessageStack* stack_ = nullptr;
+    FindBar* find_ = nullptr;
     QPointer<QWidget> floating_;
     QString error_;
     int initialPage_ = -1;
