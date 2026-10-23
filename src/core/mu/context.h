@@ -36,6 +36,11 @@ public:
     // (AA, ICC) на момент клонирования.
     std::unique_ptr<MuContext> clone() const;
 
+    // Клон global() для текущего потока (thread_local, создаётся при первом вызове в потоке, отдаётся при
+    // выходе потока): потоки RenderPool рисуют им display lists, им же отдаются fz_display_list и прочие
+    // общие объекты там, где разрушается последняя ссылка.
+    static MuContext& forThisThread();
+
     // Версия MuPDF, с которой собрана программа (FZ_VERSION).
     static std::string version();
 

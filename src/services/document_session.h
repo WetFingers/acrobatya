@@ -38,6 +38,8 @@
 namespace ot {
 
 class Document;
+class DisplayCache;
+class DisplayList;
 class TaskContext;
 struct TaskCancel;  // fz_cookie задачи (task_context.h)
 
@@ -104,6 +106,11 @@ public:
     quint64 revision() const noexcept { return revision_.load(); }
     // Задач в очереди и выполняется сейчас.
     int pendingTasks() const;
+
+    // Display list страницы из кеша документа (LRU 40 страниц, правка страницы его сбрасывает) — для
+    // RenderPool: единственное, что уходит из потока документа.
+    QFuture<std::shared_ptr<const DisplayList>> displayList(int page, bool annotations = true,
+                                                            TaskPriority priority = TaskPriority::High);
 
     // Растр страницы при dpi (BGRA → QImage ARGB32_Premultiplied) с ожиданием; пустой — ошибка
     // (errorString()). Для окна этапа 0 — до тайлов PageView (сессия 2.2).
@@ -173,6 +180,7 @@ private:
 
     // Только в потоке документа.
     std::shared_ptr<Document> doc_;
+    std::unique_ptr<DisplayCache> displayCache_;
     TaskContext* current_ = nullptr;
 
     // Итог открытия — читается из любого потока (под mutex_).

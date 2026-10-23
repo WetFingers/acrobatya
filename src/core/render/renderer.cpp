@@ -6,6 +6,7 @@
 #include "core/mu/call.h"
 #include "core/mu/context.h"
 #include "core/mu/handles.h"
+#include "core/render/display_cache.h"
 
 namespace ot {
 
@@ -37,6 +38,36 @@ private:
 
 }  // namespace
 
+void renderDisplayList(fz_context* ctx, const DisplayList& list, const Matrix& matrix, const IRect& area,
+                       std::uint8_t* buffer, int stride, PixelFormat format, fz_cookie* cookie, int aa) {
+    const int bytesPerPixel = format == PixelFormat::Bgra32Premultiplied ? 4 : 3;
+    if (area.empty() || buffer == nullptr || stride < area.width() * bytesPerPixel) {
+        throw std::invalid_argument("renderDisplayList: empty area, null buffer or short stride");
+    }
+    const AaScope aaScope(ctx, aa);
+    const fz_matrix ctm = toFz(matrix);
+    const fz_rect scissor = fz_make_rect(static_cast<float>(area.x0), static_cast<float>(area.y0),
+                                         static_cast<float>(area.x1), static_cast<float>(area.y1));
+    mu::PixmapHandle pix(ctx);
+    mu::DeviceHandle dev(ctx);
+    mu::call(ctx, [&] {
+        fz_colorspace* cs =
+            format == PixelFormat::Bgra32Premultiplied ? fz_device_bgr(ctx) : fz_device_rgb(ctx);
+        pix.reset(fz_new_pixmap_with_data(ctx, cs, area.width(), area.height(), nullptr,
+                                          format == PixelFormat::Bgra32Premultiplied ? 1 : 0, stride,
+                                          buffer));
+        pix->x = area.x0;  // пиксель буфера (0, 0) — точка устройства (x0, y0)
+        pix->y = area.y0;
+        fz_clear_pixmap_with_value(ctx, pix, 0xff);
+        dev.reset(fz_new_draw_device(ctx, fz_identity, pix));
+        fz_run_display_list(ctx, list.get(), dev, ctm, scissor, cookie);
+        fz_close_device(ctx, dev);
+    });
+    if (cookie != nullptr && cookie->abort != 0) {
+        throw MuError(FZ_ERROR_ABORT, "render aborted");
+    }
+}
+
 IRect Renderer::deviceBounds(int page, const Matrix& matrix) const {
     fz_context* ctx = doc_.context().get();
     mu::PageHandle p(ctx);
@@ -56,34 +87,9 @@ void Renderer::render(const RenderRequest& req, std::uint8_t* buffer, int stride
     if (area.empty() || buffer == nullptr || stride < area.width() * bytesPerPixel) {
         throw std::invalid_argument("Renderer::render: empty area, null buffer or short stride");
     }
-    fz_context* ctx = doc_.context().get();
-    const AaScope aa(ctx, req.aa);
-    const fz_matrix ctm = toFz(req.matrix);
-    const fz_rect scissor = fz_make_rect(static_cast<float>(area.x0), static_cast<float>(area.y0),
-                                         static_cast<float>(area.x1), static_cast<float>(area.y1));
-    mu::PageHandle page(ctx);
-    mu::DisplayListHandle list(ctx);
-    mu::PixmapHandle pix(ctx);
-    mu::DeviceHandle dev(ctx);
-    mu::call(ctx, [&] {
-        page.reset(fz_load_page(ctx, doc_.handle(), req.page));
-        list.reset(req.annotations ? fz_new_display_list_from_page(ctx, page)
-                                   : fz_new_display_list_from_page_contents(ctx, page));
-        fz_colorspace* cs =
-            format == PixelFormat::Bgra32Premultiplied ? fz_device_bgr(ctx) : fz_device_rgb(ctx);
-        pix.reset(fz_new_pixmap_with_data(ctx, cs, area.width(), area.height(), nullptr,
-                                          format == PixelFormat::Bgra32Premultiplied ? 1 : 0, stride,
-                                          buffer));
-        pix->x = area.x0;  // пиксель буфера (0, 0) — точка устройства (x0, y0)
-        pix->y = area.y0;
-        fz_clear_pixmap_with_value(ctx, pix, 0xff);
-        dev.reset(fz_new_draw_device(ctx, fz_identity, pix));
-        fz_run_display_list(ctx, list, dev, ctm, scissor, cookie);
-        fz_close_device(ctx, dev);
-    });
-    if (cookie != nullptr && cookie->abort != 0) {
-        throw MuError(FZ_ERROR_ABORT, "render aborted");
-    }
+    // Список строится с тем же cookie: отмена прерывает и интерпретацию страницы.
+    const auto list = DisplayList::build(doc_, req.page, req.annotations, cookie);
+    renderDisplayList(doc_.context().get(), *list, req.matrix, area, buffer, stride, format, cookie, req.aa);
 }
 
 Bitmap Renderer::renderPage(int page, float dpi, bool annotations, int aa) const {

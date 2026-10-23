@@ -18,6 +18,12 @@ std::string makePdf(MuContext& mu, int pages = 1);
 // проверяется между узлами.
 std::string makeHeavyPdf(MuContext& mu, int curves = 4000);
 
+// Смешанная страница A4: текст Helvetica и Times, прямоугольники; Curves — ещё кривая и треугольник с
+// заливкой и обводкой; Full — ещё картинка 100 × 80 px, растянутая на 300 × 240 pt, и картинка 1200 × 900 px,
+// сжатая в 200 × 150 pt (градиенты с полосами, детерминированно).
+enum class MixedContent { TextAndRects, Curves, Full };
+std::string makeMixedPdf(MuContext& mu, MixedContent content = MixedContent::Full);
+
 // Уникальный временный каталог с кириллицей в имени (удаляется деструктором).
 class TempDir {
 public:

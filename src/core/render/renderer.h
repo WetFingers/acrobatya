@@ -2,8 +2,9 @@
 // или Bitmap получают пиксели прямо от fz_new_pixmap_with_data → fz_clear_pixmap_with_value(0xff) →
 // fz_new_draw_device → fz_run_display_list(…, scissor, cookie) → fz_close_device до fz_drop_device.
 // Одна матрица на рендер, хит-тест и выделение: scale(zoom·dpr) × rotate(view) × translate(…).
-// Display list строится на вызов; кеш списков и тайлов — сессия 1.2 (display_cache.h, tiles.h).
-// Поток: как у документа — один поток одновременно (контекст документа).
+// Renderer строит display list на вызов (с cookie — прерываемо); кеш списков — DisplayCache, тайлы — tiles.h,
+// рендер готового списка в любом потоке своим контекстом — renderDisplayList (RenderPool).
+// Поток Renderer: как у документа — один поток одновременно (контекст документа).
 #pragma once
 
 #include <cstdint>
@@ -18,6 +19,7 @@ extern "C" {
 namespace ot {
 
 class Document;
+class DisplayList;
 
 // Замена цветов при чтении (эталон 3.1, view-30) — устройство перекраски появится в сессии 2.5b.
 enum class Recolor { None };
@@ -56,5 +58,13 @@ public:
 private:
     const Document& doc_;
 };
+
+// Нарисовать готовый display list в buffer контекстом ctx (поток рендера — свой клон: MuContext::
+// forThisThread()): область area устройства при matrix, stride байт на строку, фон белый непрозрачный.
+// cookie->abort = 1 из другого потока прерывает рендер (MuError, ErrorKind::Aborted); aa — как у Renderer.
+void renderDisplayList(fz_context* ctx, const DisplayList& list, const Matrix& matrix, const IRect& area,
+                       std::uint8_t* buffer, int stride,
+                       PixelFormat format = PixelFormat::Bgra32Premultiplied, fz_cookie* cookie = nullptr,
+                       int aa = -1);
 
 }  // namespace ot

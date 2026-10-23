@@ -3,6 +3,7 @@
 // задач в services/core: включает MuPDF; ui работает с document_session.h, где MuPDF нет.
 #pragma once
 
+#include <memory>
 #include <thread>
 #include <vector>
 
@@ -14,6 +15,7 @@ namespace ot {
 
 class Document;
 class DocumentSession;
+class DisplayList;
 
 // fz_cookie задачи: abort = 1 ставит DocumentSession::cancelAll() из другого потока.
 struct TaskCancel {
@@ -58,7 +60,9 @@ public:
     bool aborted() const noexcept { return cookie_ != nullptr && cookie_->abort != 0; }
     // Загрузить страницу на время задачи; ошибка — MuError.
     PageHandle page(int index) const;
-    // Правка затронула страницу: после задачи — сигнал pageChanged(index).
+    // Display list страницы из кеша документа (строится с cookie задачи — отмена прерывает построение).
+    std::shared_ptr<const DisplayList> displayList(int index, bool annotations = true) const;
+    // Правка затронула страницу: её display list сбрасывается, после задачи — сигнал pageChanged(index).
     void touchPage(int index);
     DocumentSession& session() const noexcept { return session_; }
 

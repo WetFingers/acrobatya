@@ -26,6 +26,9 @@ void onMuError(void* /*user*/, const char* message) { logToSpdlog(spdlog::level:
 
 struct MuContext::Locks {
     std::mutex mutexes[FZ_LOCK_MAX];
+    // fz_clone_context копирует исходный контекст memcpy: клоны одного корня — по одному (потоки рендера
+    // клонируют global() одновременно).
+    std::mutex cloning;
     fz_locks_context api{};
 
     Locks() {
@@ -72,11 +75,20 @@ MuContext& MuContext::global() {
 }
 
 std::unique_ptr<MuContext> MuContext::clone() const {
-    fz_context* cloned = fz_clone_context(ctx_);
+    fz_context* cloned = nullptr;
+    {
+        const std::lock_guard lock(locks_->cloning);
+        cloned = fz_clone_context(ctx_);
+    }
     if (cloned == nullptr) {
         throw std::runtime_error("fz_clone_context failed");
     }
     return std::unique_ptr<MuContext>(new MuContext(cloned, locks_));
+}
+
+MuContext& MuContext::forThisThread() {
+    thread_local const std::unique_ptr<MuContext> local = global().clone();
+    return *local;
 }
 
 std::string MuContext::version() { return FZ_VERSION; }

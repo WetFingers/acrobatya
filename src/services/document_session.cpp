@@ -10,6 +10,7 @@
 #include "core/doc/document.h"
 #include "core/mu/call.h"
 #include "core/mu/context.h"
+#include "core/render/display_cache.h"
 #include "core/render/renderer.h"
 #include "services/task_context.h"
 
@@ -79,7 +80,12 @@ PageHandle TaskContext::page(int index) const {
     return PageHandle(ctx, loaded, index);
 }
 
+std::shared_ptr<const DisplayList> TaskContext::displayList(int index, bool annotations) const {
+    return session_.displayCache_->get(document(), index, annotations, cookie_);
+}
+
 void TaskContext::touchPage(int index) {
+    session_.displayCache_->invalidate(index);
     if (std::find(touched_.begin(), touched_.end(), index) == touched_.end()) {
         touched_.push_back(index);
     }
@@ -98,7 +104,8 @@ private:
     DocumentSession& owner_;
 };
 
-DocumentSession::DocumentSession(QObject* parent) : QObject(parent), id_(nextSessionId.fetch_add(1)) {
+DocumentSession::DocumentSession(QObject* parent)
+    : QObject(parent), id_(nextSessionId.fetch_add(1)), displayCache_(std::make_unique<DisplayCache>()) {
     qRegisterMetaType<ot::TaskFailed>();
     thread_ = std::make_unique<Thread>(*this);
     thread_->setObjectName(QStringLiteral("DocumentSession-%1").arg(id_));
@@ -193,6 +200,7 @@ void DocumentSession::loop() {
         }
     }
     // Остановка: документ закрывается в своём потоке (его контекст — только этого потока).
+    displayCache_->clear();
     doc_.reset();
 }
 
@@ -244,6 +252,7 @@ std::exception_ptr DocumentSession::abortedError() {
 QFuture<OpenSummary> DocumentSession::openAsync(const QString& path, const QString& password) {
     return post(
         [this, path, password](TaskContext&) {
+            displayCache_->clear();
             doc_.reset();
             OpenSummary s;
             OpenResult r = Document::open(std::filesystem::path(path.toStdWString()), password.toStdString());
@@ -305,6 +314,7 @@ void DocumentSession::close() {
     }
     QFuture<void> done = post(
         [this](TaskContext&) {
+            displayCache_->clear();
             doc_.reset();
             const std::lock_guard lock(mutex_);
             summary_ = OpenSummary{};
@@ -352,6 +362,12 @@ QSizeF DocumentSession::pageSizePoints(int index) const {
         return {};
     }
     return summary_.pageSizes[index];
+}
+
+QFuture<std::shared_ptr<const DisplayList>> DocumentSession::displayList(int page, bool annotations,
+                                                                         TaskPriority priority) {
+    return post([page, annotations](TaskContext& tc) { return tc.displayList(page, annotations); }, priority,
+                QStringLiteral("display-list"));
 }
 
 QImage DocumentSession::renderPage(int index, qreal dpi) {
