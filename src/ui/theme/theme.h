@@ -41,6 +41,14 @@ QString makeStyleSheet(const Palette& p, const Metrics& m);
 std::vector<ColorPair> componentColors(const Palette& p);
 // Мягкий фон тона (полосы сообщений, чипы, тосты): tone поверх surface.
 QColor softBackground(const Palette& p, const Rgba& tone);
+// Цвета строки списка (ListRow рисует сама): фон (пустой — прозрачный), текст и подпись по состоянию.
+enum class RowState { Normal, Hover, Selected, Disabled };
+struct RowColors {
+    QColor background;
+    QColor text;
+    QColor detail;
+};
+RowColors rowColors(const Palette& p, RowState state);
 
 // fonts.cpp
 QFont uiFont(const Metrics& m);          // Segoe UI fontPt

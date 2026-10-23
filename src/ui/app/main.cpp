@@ -5,6 +5,7 @@
 #include <QTimer>
 
 #include <cstdio>
+#include <memory>
 
 #include <windows.h>
 #include <shlobj.h>
@@ -14,6 +15,7 @@
 #include "ui/shell/main_window.h"
 #include "ui/shots/scenes.h"
 #include "ui/theme/theme.h"
+#include "ui/widgets/showcase.h"
 
 namespace {
 
@@ -93,6 +95,14 @@ int main(int argc, char** argv) {
 
     // Тема до создания окна: Fusion, палитра и шрифт из токенов (эталон 6.4); по умолчанию — «Системная».
     Theme::apply(app, parseThemeChoice(opts.theme).value_or(ThemeChoice::System), opts.scale);
+    if (opts.showcase) {
+        std::unique_ptr<QWidget> showcase(createShowcaseWindow());
+        showcase->show();
+        if (opts.smokeSeconds > 0) {
+            QTimer::singleShot(opts.smokeSeconds * 1000, &app, &QApplication::quit);
+        }
+        return app.exec();
+    }
     MainWindow window;
     window.show();
     if (!opts.files.isEmpty()) {

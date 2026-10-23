@@ -4,6 +4,7 @@
 //   --shots <имя[,имя]|all>   снимки сцен в PNG без экрана (--out <каталог>, --size WxH)
 //   --theme system|light|dark|contrast   тема (эталон 6.4; по умолчанию — системная, у снимков — светлая)
 //   --scale 1|1.25            «Крупные элементы» (ocr-42)
+//   --showcase                витрина компонентов (эталон 6.4) вместо главного окна
 //   --smoke <секунды>         окно на N секунд и выход с кодом 0
 //   --register-notify         SHChangeNotify(SHCNE_ASSOCCHANGED) после установщика
 //   <файлы…>                  открыть
@@ -24,6 +25,7 @@ struct CliOptions {
     QSize shotsSize{1440, 900};
     QString theme;       // пусто — по умолчанию (окно — system, снимки — light)
     double scale = 1.0;  // 1 или 1,25
+    bool showcase = false;
     int smokeSeconds = 0;
     QStringList files;
     QString error;  // непустая — ошибка разбора

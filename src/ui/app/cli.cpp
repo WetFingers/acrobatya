@@ -53,6 +53,8 @@ CliOptions parseCli(const QStringList& arguments) {
             if (!ok || o.scale < 1.0 || o.scale > 2.0) {
                 o.error = QStringLiteral("bad --scale ") + v;
             }
+        } else if (a == QLatin1String("--showcase")) {
+            o.showcase = true;
         } else if (a == QLatin1String("--smoke")) {
             QString v;
             if (!next(v)) break;
