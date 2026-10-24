@@ -102,6 +102,9 @@ CharStyle StyleChange::applied(CharStyle style) const {
     if (charSpacing) {
         style.charSpacing = *charSpacing;
     }
+    if (wordSpacing) {
+        style.wordSpacing = *wordSpacing;
+    }
     if (hscale) {
         style.hscale = *hscale;
     }
@@ -142,6 +145,10 @@ ParagraphEditor ParagraphEditor::fromBlock(const ContentModel& model, const Text
         st.colorOps = model.colorOps(s.refs);
         st.rise = s.rise * sy;
         st.charSpacing = s.charSpace * s.scale * sx;
+        // Tw действует только на однобайтовый код 32; у абзаца по ширине это растяжка строки, не стиль.
+        if (block.align != Align::Justify && !font.twoByte) {
+            st.wordSpacing = s.wordSpace * s.scale * sx;
+        }
         st.hscale = sy > 0 ? s.scale * sx / sy : s.scale;
         st.skew = frame.d != 0 ? frame.c / frame.d : 0;
         if (std::fabs(st.skew) < 1e-3f) {

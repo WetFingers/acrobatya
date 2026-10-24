@@ -42,6 +42,8 @@ struct CharStyle {
     bool underline = false;
     float rise = 0;         // подъём над базовой линией (Ts), пт
     float charSpacing = 0;  // межбуквенный интервал (Tc) — добавка после каждого символа, пт
+    float wordSpacing = 0;  // межсловный (Tw) — добавка после пробела, пт (у абзаца по ширине — 0: растяжку
+                            // считает перевёрстка)
     float hscale =
         1;  // горизонтальный масштаб (Tz / 100; у матрицы текста с разными масштабами — их отношение)
     float skew = 0;  // наклон исходной матрицы текста (x += skew · y)
@@ -60,6 +62,7 @@ struct StyleChange {
     std::optional<bool> underline;
     std::optional<float> rise;
     std::optional<float> charSpacing;
+    std::optional<float> wordSpacing;
     std::optional<float> hscale;
     std::optional<int> render;
 
