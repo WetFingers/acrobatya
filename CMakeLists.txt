@@ -210,6 +210,14 @@ if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   set_tests_properties(compat.rtf PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_rtf SKIP_RETURN_CODE 77
     TIMEOUT 300)
 endif()
+# Печать в файл через GDI (план 2.6): print_compat.DISABLED_gdi_to_file — «Microsoft Print to PDF» без окна драйвера
+# в <сборка>/compat/print/gdi.pdf, MuPDF читает страницы; нет такого принтера — пропуск (GTEST_SKIP).
+if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_test(NAME compat.print.pdf
+    COMMAND unit_tests --gtest_also_run_disabled_tests --gtest_filter=print_compat.*)
+  set_tests_properties(compat.print.pdf PROPERTIES LABELS "compat;slow" SKIP_REGULAR_EXPRESSION "\\[  SKIPPED \\]"
+    ENVIRONMENT "OTTISK_COMPAT_OUT=${CMAKE_BINARY_DIR}/compat" TIMEOUT 120)
+endif()
 ottisk_gtest_exe(render_tests tests/render render "render;slow" 900 ottisk_core)
 # Замеры движка (план 1.2): только Release — числа Debug с целями 5.8 не сравнимы. big-1200 и images-200 —
 # make_big.py в <сборка>/gen (фикстура, пропускает готовые), PDF32000_2008 — только из корпуса (нет — SKIP 77);

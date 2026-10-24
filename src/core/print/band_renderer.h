@@ -35,8 +35,6 @@ class DisplayList;
 
 namespace ot::print {
 
-enum class PrintContent { Document, DocumentAndMarkups, FormFieldsOnly };
-
 inline constexpr std::size_t kMaxBandBytes = std::size_t{32} << 20;
 
 // Display list страницы для печати (поток документа). cookie: abort = 1 прерывает (MuError Aborted).

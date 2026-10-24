@@ -46,6 +46,8 @@ enum class NupOrder { Horizontal, HorizontalReversed, Vertical, VerticalReversed
 enum class BookletSubset { BothSides, FrontOnly, BackOnly };
 enum class Binding { Left, Right };
 enum class SheetSide { Single, Front, Back };
+// «Комментарии и формы» (view-42; рисует band_renderer.h): содержимое и поля / ещё пометки / только поля.
+enum class PrintContent { Document, DocumentAndMarkups, FormFieldsOnly };
 
 // Бумага: книжный лист (width ≤ height) и области печати обеих ориентаций (пункты от левого верхнего угла
 // листа в этой ориентации). Пустая область альбомного — поля книжного листа, повёрнутого на 90° против

@@ -93,6 +93,19 @@ inline constexpr ListKey kTrustedFolders{"trust/trustedFolders"};
 // все.
 inline constexpr StringKey kInternetAccess{"trust/internetAccess", "ask", "ask|allowAll|blockAll"};
 
+// --- Печать (print/; эталон 3.3, 3.18 «Печать»; view-37, create-16; сессия 2.6) ---
+// Принтер по умолчанию диалога «Печать» (пусто — системный).
+inline constexpr StringKey kPrintPrinter{"print/printer", ""};
+// «Качество»: потолок dpi растра печати (у «Microsoft Print to PDF» 1200 dpi — растр 300).
+inline constexpr IntKey kPrintQuality{"print/quality", 300, 72, 1200};
+// Масштаб по умолчанию: «Вписать» / «Реальный размер» / «Уменьшить негабаритные».
+inline constexpr StringKey kPrintScale{"print/scale", "fit", "fit|actual|shrink"};
+// «Печать в PDF» (create-16): папка (пусто — «Документы») и имя файла — шаблон, {name} — имя документа.
+inline constexpr StringKey kPrintPdfFolder{"print/pdfFolder", ""};
+inline constexpr StringKey kPrintPdfName{"print/pdfName", "{name}"};
+// Спрашивать имя файла при «Печать в PDF» (иначе — папка и шаблон, существующий файл получает « (2)»).
+inline constexpr BoolKey kPrintPdfAsk{"print/pdfAsk", true};
+
 // --- Инструменты и панель быстрых действий ---
 inline constexpr ListKey kPinnedTools{"tools/pinned"};
 inline constexpr BoolKey kToolPanelCollapsed{"tools/panelCollapsed", false};  // Shift+F4
