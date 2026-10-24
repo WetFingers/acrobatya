@@ -124,7 +124,8 @@ TEST(settings, foreign_values_fall_back_to_defaults) {
 TEST(settings, string_defaults_are_allowed_choices) {
     for (const keys::StringKey* k :
          {&keys::kTheme, &keys::kLanguage, &keys::kDefaultLayout, &keys::kDefaultZoom, &keys::kNavPaneCurrent,
-          &keys::kFullScreenDefaultTransition, &keys::kFullScreenBackground}) {
+          &keys::kFullScreenDefaultTransition, &keys::kFullScreenBackground, &keys::kProtectedView,
+          &keys::kInternetAccess}) {
         EXPECT_TRUE(Settings::allowed(*k, QString::fromUtf8(k->def))) << k->name;
     }
     for (const keys::IntKey* k : {&keys::kAutosaveMinutes, &keys::kMetaVersion, &keys::kNavPaneWidth,

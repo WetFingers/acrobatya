@@ -51,6 +51,17 @@ const std::vector<std::function<void(sqlite3*)>>& migrations() {
                  "DEFAULT '')");
             exec(db, "CREATE INDEX IF NOT EXISTS recent_opened ON recent(in_recent, opened_at)");
         },
+        // 4: доверенные файлы (2.5b: «Включить все функции» защищённого просмотра — scope 'protectedView';
+        // JavaScript «для этого файла» 6.1 — свой scope) и сайты ссылок Диспетчера доверия (services/
+        // link_policy.h: rule 1 — разрешить, 2 — запретить)
+        [](sqlite3* db) {
+            exec(db,
+                 "CREATE TABLE IF NOT EXISTS trusted_files(key TEXT NOT NULL, scope TEXT NOT NULL, "
+                 "path TEXT NOT NULL, trusted_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(key, scope))");
+            exec(db,
+                 "CREATE TABLE IF NOT EXISTS link_hosts(host TEXT PRIMARY KEY, rule INTEGER NOT NULL, "
+                 "decided_at INTEGER NOT NULL DEFAULT 0)");
+        },
     };
     return steps;
 }

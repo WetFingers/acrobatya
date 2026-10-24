@@ -79,12 +79,20 @@ bool CommandRegistry::isEnabled(const QString& id) const {
     if (isMode(c->when) && !contexts_.contains(c->when)) {
         return false;
     }
+    if (c->blocked && !c->blocked().isEmpty()) {
+        return false;
+    }
     return !c->enabled || c->enabled();
 }
 
 bool CommandRegistry::isChecked(const QString& id) const {
     const Command* c = find(id);
     return c != nullptr && c->checkable && c->checked && c->checked();
+}
+
+QString CommandRegistry::blockedReason(const QString& id) const {
+    const Command* c = find(id);
+    return c != nullptr && c->blocked ? c->blocked() : QString();
 }
 
 bool CommandRegistry::trigger(const QString& id) {

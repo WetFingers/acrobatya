@@ -54,6 +54,8 @@ public:
 
     // Можно ли открыть (не сохранить) вложение: PDF — да, чёрный список — нет, прочее — по настройке.
     static bool canOpen(const attachments::Attachment& a);
+    // То же для документа панели: в защищённом просмотре (2.5b) — ни одно, только «Сохранить…».
+    bool canOpenHere(const attachments::Attachment& a) const;
     static bool allowOpenNonPdf();
 
     void setConfirm(Confirm confirm) { confirm_ = std::move(confirm); }

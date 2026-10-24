@@ -76,6 +76,24 @@ void MainWindow::registerCommands() {
         };
     };
     const QString view = QLatin1String(CommandRegistry::kViewContext);
+    // Причины запрета (2.5b): защищённый просмотр и права /P документа — серая команда с подсказкой.
+    auto protectedReason = [this](const QString& text) -> std::function<QString()> {
+        return [this, text] {
+            DocumentView* d = currentDocument();
+            return d != nullptr && d->isProtectedView() ? text : QString();
+        };
+    };
+    auto denied = [this](Perm perm, const QString& text) -> std::function<QString()> {
+        return [this, perm, text] {
+            DocumentView* d = currentDocument();
+            return d != nullptr && !d->permissions().allows(perm) ? text : QString();
+        };
+    };
+    const auto saveBlocked =
+        protectedReason(tr("Защищённый просмотр: сохранение отключено. Нажмите «Включить все функции»."));
+    const auto editBlocked =
+        protectedReason(tr("Защищённый просмотр: правка отключена. Нажмите «Включить все функции»."));
+    const auto copyDenied = denied(Perm::Copy, tr("Документ защищён: копирование запрещено"));
 
     // Файл
     r.add({.id = QStringLiteral("doc.open"),
@@ -90,6 +108,7 @@ void MainWindow::registerCommands() {
            .icon = QStringLiteral("save"),
            .run = [this] { saveCurrent(); },
            .enabled = hasDoc,
+           .blocked = saveBlocked,
            .menu = QStringLiteral("file"),
            .separatorBefore = true});
     r.add({.id = QStringLiteral("doc.saveAs"),
@@ -97,6 +116,7 @@ void MainWindow::registerCommands() {
            .shortcuts = {key(Qt::CTRL | Qt::SHIFT | Qt::Key_S)},
            .run = [this] { saveCurrentAs(); },
            .enabled = hasDoc,
+           .blocked = saveBlocked,
            .menu = QStringLiteral("file")});
     r.add({.id = QStringLiteral("doc.close"),
            .title = tr("&Закрыть"),
@@ -109,6 +129,7 @@ void MainWindow::registerCommands() {
            .title = tr("&Печать…"),
            .shortcuts = {key(Qt::CTRL | Qt::Key_P)},
            .icon = QStringLiteral("printer"),
+           .blocked = denied(Perm::Print, tr("Документ защищён: печать запрещена")),
            .menu = QStringLiteral("file"),
            .separatorBefore = true,
            .stage = 2});
@@ -137,6 +158,7 @@ void MainWindow::registerCommands() {
                },
            .enabled = [this,
                        editable] { return editable() && currentDocument()->session().undoState().canUndo; },
+           .blocked = editBlocked,
            .menu = QStringLiteral("edit")});
     r.add({.id = QStringLiteral("edit.redo"),
            .title = tr("&Вернуть"),
@@ -149,6 +171,7 @@ void MainWindow::registerCommands() {
                },
            .enabled = [this,
                        editable] { return editable() && currentDocument()->session().undoState().canRedo; },
+           .blocked = editBlocked,
            .menu = QStringLiteral("edit")});
     r.add({.id = QStringLiteral("edit.copy"),
            .title = tr("&Копировать"),
@@ -156,6 +179,7 @@ void MainWindow::registerCommands() {
            .run = onView([](PageView& v) { v.tools().select().copySelection(); }),
            .when = view,
            .enabled = hasDoc,
+           .blocked = copyDenied,
            .menu = QStringLiteral("edit"),
            .separatorBefore = true});
     r.add({.id = QStringLiteral("edit.selectAll"),
@@ -441,6 +465,7 @@ void MainWindow::registerCommands() {
                .run = tool(t),
                .when = view,
                .enabled = hasDoc,
+               .blocked = t == ViewToolId::Snapshot ? copyDenied : std::function<QString()>{},
                .menu = QStringLiteral("tools"),
                .singleKey = !k.isEmpty(),
                .checkable = true,
@@ -709,7 +734,10 @@ void MainWindow::updateActions() {
         }
         QString plain = c->title;
         plain.remove(QLatin1Char('&')).remove(QStringLiteral("…"));
-        act->setToolTip(c->stage > 0 ? tr("«%1» появится в версии 0.%2").arg(plain).arg(c->stage) : plain);
+        const QString blocked = commands_->blockedReason(c->id);
+        act->setToolTip(c->stage > 0         ? tr("«%1» появится в версии 0.%2").arg(plain).arg(c->stage)
+                        : !blocked.isEmpty() ? blocked
+                                             : plain);
     }
 }
 

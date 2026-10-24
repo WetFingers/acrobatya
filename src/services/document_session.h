@@ -39,6 +39,7 @@
 
 #include "core/create/text_export.h"
 #include "core/doc/autosave.h"
+#include "core/doc/permissions.h"
 #include "core/doc/saver.h"
 #include "core/links/initial_view.h"
 #include "core/mu/error.h"
@@ -97,6 +98,8 @@ struct OpenSummary {
     // /OpenAction, /ViewerPreferences) — окно применяет его при открытии.
     QStringList pageLabels;
     InitialView initial;
+    // Действующие права /P (2.5b; core/doc/permissions.h): окно делает серыми печать, копирование, правку.
+    Permissions permissions;
     TaskFailed error;
 };
 

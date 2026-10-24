@@ -55,6 +55,10 @@ public:
     // удаляет пометки.
     bool editable() const noexcept { return editable_; }
     void setEditable(bool on) noexcept { editable_ = on; }
+    // Копирование текста и «Снимок» в буфер (2.5b): право /P «копирование» снято — Ctrl+C и снимок ничего не
+    // кладут в буфер.
+    bool copyAllowed() const noexcept { return copyAllowed_; }
+    void setCopyAllowed(bool on) noexcept { copyAllowed_ = on; }
     bool singleKeyShortcuts() const noexcept { return singleKeys_; }
     void setSingleKeyShortcuts(bool on) noexcept { singleKeys_ = on; }
 
@@ -106,6 +110,7 @@ private:
     bool pinned_ = false;
     bool singleKeys_ = false;
     bool editable_ = true;
+    bool copyAllowed_ = true;
 };
 
 }  // namespace ot::ui

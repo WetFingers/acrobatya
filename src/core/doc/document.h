@@ -130,6 +130,7 @@ public:
     bool isSigned() const;
     bool hasForm() const;
     bool hasXfa() const;
+    // Действующее право (core/doc/permissions.h: правила /P, пароль владельца — всё).
     bool allowed(Perm perm) const;
     DocProperties properties() const;
     // Записать поля описания (Title, Author, Subject, Keywords, Creator, Producer, CreationDate; ModDate —

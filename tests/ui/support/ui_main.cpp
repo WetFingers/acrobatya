@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 
+#include "services/protected_view.h"
 #include "services/shell_launcher.h"
 #include "support/ui_test.h"
 #include "ui/theme/theme.h"
@@ -27,6 +28,9 @@ int main(int argc, char** argv) {
     // Оболочка Windows в ui-тестах — только фейк (эталон 8.3): ни браузера, ни Word, ни Проводника.
     static ot::FakeShellLauncher shell;
     ot::ShellLauncher::setInstance(&shell);
+    // Файлы тестов лежат в QTemporaryDir (%TEMP%) — для защищённого просмотра (2.5b) временные папки тестов
+    // не «чужие»; набор protected_view проверяет это правило, подставляя свою папку.
+    ot::protected_view::setTempFoldersForTesting(QStringList{});
     auto& suites = ot::test::uiSuites();
     if (argc > 1 && std::strcmp(argv[1], "--list") == 0) {
         for (const auto& s : suites) {

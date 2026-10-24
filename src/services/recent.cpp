@@ -8,52 +8,14 @@
 #include <spdlog/spdlog.h>
 
 #include "services/document_registry.h"
+#include "services/sql.h"
 #include "services/state_db.h"
 
 namespace ot {
 
 namespace {
 
-// Подготовленный запрос: параметры по порядку (?1, ?2…), шаги — step(); закрывается сам.
-class Statement {
-public:
-    Statement(sqlite3* db, const char* sql) : db_(db) {
-        if (sqlite3_prepare_v2(db, sql, -1, &st_, nullptr) != SQLITE_OK) {
-            spdlog::warn("recent: {}", sqlite3_errmsg(db));
-            st_ = nullptr;
-        }
-    }
-    ~Statement() { sqlite3_finalize(st_); }
-    Statement(const Statement&) = delete;
-    Statement& operator=(const Statement&) = delete;
-
-    bool ok() const { return st_ != nullptr; }
-    Statement& text(int i, const QString& value) {
-        const QByteArray utf8 = value.toUtf8();
-        sqlite3_bind_text(st_, i, utf8.constData(), static_cast<int>(utf8.size()), SQLITE_TRANSIENT);
-        return *this;
-    }
-    Statement& integer(int i, qint64 value) {
-        sqlite3_bind_int64(st_, i, value);
-        return *this;
-    }
-    Statement& real(int i, double value) {
-        sqlite3_bind_double(st_, i, value);
-        return *this;
-    }
-    int step() { return st_ != nullptr ? sqlite3_step(st_) : SQLITE_ERROR; }
-    bool run() { return step() == SQLITE_DONE; }
-    QString columnText(int i) const {
-        return QString::fromUtf8(reinterpret_cast<const char*>(sqlite3_column_text(st_, i)),
-                                 sqlite3_column_bytes(st_, i));
-    }
-    qint64 columnInt(int i) const { return sqlite3_column_int64(st_, i); }
-    double columnReal(int i) const { return sqlite3_column_double(st_, i); }
-
-private:
-    sqlite3* db_;
-    sqlite3_stmt* st_ = nullptr;
-};
+using Statement = SqlStatement;
 
 constexpr char kColumns[] = "path, opened_at, pinned, favorite, page_count, last_page, zoom, layout";
 

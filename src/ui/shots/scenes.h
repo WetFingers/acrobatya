@@ -80,6 +80,8 @@ std::vector<Scene> searchScenes();
 // dialog_scenes.cpp — properties-description, properties-fonts, properties-initial-view, xmp-editor,
 // password-dialog, recover-dialog, pdfa-bar (2.5).
 std::vector<Scene> dialogScenes();
+// trust_scenes.cpp — protected-view, link-confirm (2.5b).
+std::vector<Scene> trustScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.
 bool waitSceneReady(const Scene& scene, QWidget* window, int timeoutMs = 30000);

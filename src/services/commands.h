@@ -37,7 +37,10 @@ struct Command {
     std::function<void()> run;
     QString when;
     std::function<bool()> enabled;  // пусто — всегда
-    QString menu;                   // "file", "view/zoom"…; пусто — не в меню
+    // Причина запрета (2.5b): непустая строка — команда серая, строка — подсказка («Документ защищён: печать
+    // запрещена», «Защищённый просмотр: …»; текст tr() даёт ui). Пусто — не запрещена.
+    std::function<QString()> blocked;
+    QString menu;  // "file", "view/zoom"…; пусто — не в меню
     bool separatorBefore = false;
     bool singleKey = false;
     bool checkable = false;
@@ -68,6 +71,8 @@ public:
     int count() const { return static_cast<int>(commands_.size()); }
 
     bool isEnabled(const QString& id) const;
+    // Почему команда запрещена правами или защищённым просмотром (Command::blocked); пусто — не запрещена.
+    QString blockedReason(const QString& id) const;
     bool isChecked(const QString& id) const;
     // Выполнить, если доступна; false — нет такой, заглушка или недоступна.
     bool trigger(const QString& id);

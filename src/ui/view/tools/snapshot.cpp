@@ -71,7 +71,9 @@ void SnapshotTool::finish(const QRectF& rect, QPointF point, Qt::KeyboardModifie
             image.setDotsPerMeterX(dpm);
             image.setDotsPerMeterY(dpm);
         }
-        ClipboardIo::put(ClipboardIo::imageMime(image));
+        if (controller_.copyAllowed()) {  // право /P «копирование» снято — в буфер не кладём (2.5b)
+            ClipboardIo::put(ClipboardIo::imageMime(image));
+        }
         controller_.emitSnapshot(image);
         controller_.finished();
     });

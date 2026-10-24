@@ -69,6 +69,15 @@ inline constexpr BoolKey kPdfaReadOnly{"documents/pdfaReadOnly", true};
 
 // --- Доверие (trust/; Диспетчер доверия целиком — 7.6) ---
 inline constexpr BoolKey kAllowOpenAttachments{"trust/allowOpenAttachments", true};
+// Защищённый просмотр (2.5b, security-35; эталон 7.5): «Выкл.» / «Файлы из потенциально опасных расположений»
+// (Zone.Identifier с ZoneId ≥ 3, временные папки, PDF-вложения) / «Все файлы».
+inline constexpr StringKey kProtectedView{"trust/protectedView", "unsafe", "off|unsafe|all"};
+// Привилегированные расположения (security-37): файлы этих папок (с подпапками) не идут в защищённый
+// просмотр.
+inline constexpr ListKey kTrustedFolders{"trust/trustedFolders"};
+// Доступ PDF к сайтам (security-42; эталон 7.4): сайт не из списка — спросить / открывать все / запретить
+// все.
+inline constexpr StringKey kInternetAccess{"trust/internetAccess", "ask", "ask|allowAll|blockAll"};
 
 // --- Инструменты и панель быстрых действий ---
 inline constexpr ListKey kPinnedTools{"tools/pinned"};

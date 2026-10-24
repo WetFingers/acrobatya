@@ -20,6 +20,7 @@
 
 #include "services/document_registry.h"
 #include "services/document_session.h"
+#include "services/protected_view.h"
 #include "services/session_store.h"
 #include "services/settings_keys.h"
 #include "services/single_instance.h"
@@ -43,6 +44,7 @@ class DocumentTabs;
 class DocumentView;
 class GlobalBar;
 class FullScreenWindow;
+class LinkFlow;
 class NavPane;
 class PasswordDialog;
 class PreferencesDialog;
@@ -118,6 +120,15 @@ public:
 
     // Сохранение (2.5, save_flow.h): Ctrl+S, Ctrl+Shift+S, «Сохранить» при закрытии.
     SaveFlow& saveFlow() const { return *saveFlow_; }
+    // Ссылки и закладки наружу (2.5b, link_flow.h): подтверждение /URI с памятью по сайту, /GoToR, запрет
+    // /Launch, защищённый просмотр.
+    LinkFlow& linkFlow() const { return *linkFlow_; }
+    // Защищённый просмотр вкладки (2.5b; services/protected_view.h): только чтение и жёлтая полоса
+    // «[Включить все функции]» — она делает файл своим (state.sqlite) и снимает ограничения. title — имя
+    // вложения (Origin::Attachment). Origin::None — ничего.
+    void applyProtectedView(DocumentView* view, protected_view::Origin origin, const QString& title = {});
+    // «Включить все функции» вкладки (кнопка полосы).
+    void enableAllFeatures(DocumentView* view);
     // Автосохранение открытых PDF (services/autosave_runner.h; Установки → Документы): «Не сохранять» и
     // закрытие удаляют запись документа.
     AutosaveRunner& autosave() const { return *autosave_; }
@@ -222,6 +233,7 @@ private:
     std::unique_ptr<AutosaveRunner> autosave_;
     CommandRegistry* commands_ = nullptr;
     SaveFlow* saveFlow_ = nullptr;
+    LinkFlow* linkFlow_ = nullptr;
     PasswordPrompt passwordPrompt_;
     QHash<QString, QString> passwords_;  // «запомнить на время сеанса»: ключ пути → пароль (только память)
     QPointer<RecoverDialog> recover_;

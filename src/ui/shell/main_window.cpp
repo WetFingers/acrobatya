@@ -26,6 +26,8 @@
 #include <algorithm>
 #include <exception>
 
+#include <spdlog/spdlog.h>
+
 #include "services/app_info.h"
 #include "services/autosave_runner.h"
 #include "services/background_tasks.h"
@@ -50,6 +52,7 @@
 #include "ui/shell/full_screen.h"
 #include "ui/shell/global_bar.h"
 #include "ui/shell/home/home_page.h"
+#include "ui/shell/link_flow.h"
 #include "ui/shell/message_bar.h"
 #include "ui/shell/nav_pane.h"
 #include "ui/shell/preferences/preferences_dialog.h"
@@ -190,6 +193,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(readBar_, &ReadModeBar::exitRequested, this, [this] { setReadMode(false); });
 
     saveFlow_ = new SaveFlow(*this);
+    linkFlow_ = new LinkFlow(*this);
     connect(saveFlow_, &SaveFlow::saved, this, [this](DocumentView* view) {
         const int index = tabs().indexOf(view->id());
         if (index >= 0) {
@@ -303,6 +307,9 @@ DocumentView* MainWindow::addDocumentView(const DocumentRegistry::Opened& opened
         updateActions();
     });
     connect(view, &DocumentView::readOnlyChanged, this, &MainWindow::updateActions);
+    connect(view, &DocumentView::protectedViewChanged, this, &MainWindow::updateActions);
+    connect(&view->view(), &PageView::linkActivated, this,
+            [this, view](const links::LinkAction& action) { linkFlow_->follow(*view, action); });
     connect(view, &DocumentView::saveAsPdfRequested, this, [this, view] { saveAsPdf(view); });
     connect(&view->findBar(), &FindBar::advancedSearchRequested, this,
             [this](const QString& text) { showSearchWindow(text); });
@@ -349,6 +356,8 @@ DocumentView* MainWindow::addDocumentView(const DocumentRegistry::Opened& opened
             }
         });
     }
+    // Чужой файл (Zone.Identifier, временная папка; эталон 7.5) — защищённый просмотр.
+    applyProtectedView(view, protected_view::check(view->path()));
     if (opened.summary.isPdf) {
         autosave_->watch(&view->session());
     }
@@ -697,7 +706,7 @@ PropertiesDialog* MainWindow::showProperties(int tab) {
     if (properties_ != nullptr) {
         properties_->close();
     }
-    auto* dialog = new PropertiesDialog(*view, !view->canEdit(), this);
+    auto* dialog = new PropertiesDialog(*view, !view->canEdit() || !view->permissions().edit, this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     if (tab >= 0) {
         dialog->showTab(static_cast<PropertiesDialog::Tab>(tab));
@@ -800,19 +809,80 @@ void MainWindow::applyNavWidth() {
     body_->setSizes({std::max(0, total - w), w});
 }
 
-// PDF-вложение — вкладкой из временной папки (эталон 7.3; ограничения защищённого просмотра — 2.5b).
+// PDF-вложение — вкладкой из временной папки в защищённом просмотре (эталон 7.3, 7.5).
 void MainWindow::openAttachmentPdf(const QString& path, const QString& title) {
     if (!openFile(path)) {
         return;
     }
-    if (DocumentView* view = currentDocument()) {
-        // Вид полосы — защищённый просмотр: его ограничения для вложений добавит 2.5b.
-        MessageBar* bar = view->messageStack().showMessage(
-            MessageKind::ProtectedView,
-            tr("Вложение «%1» открыто из временной папки: изменения в нём не попадут в исходный документ.")
-                .arg(title));
-        bar->setObjectName(QStringLiteral("attachmentBar"));
+    DocumentView* view = currentDocument();
+    if (view == nullptr) {
+        return;
     }
+    const protected_view::Origin origin = protected_view::check(path, true);
+    if (origin != protected_view::Origin::None) {
+        applyProtectedView(view, origin, title);
+        return;
+    }
+    // Защищённый просмотр выключен или вложение уже своё — только напоминание о временной папке.
+    MessageBar* bar = view->addMessage(
+        Tone::Info,
+        tr("Вложение «%1» открыто из временной папки: изменения в нём не попадут в исходный документ.")
+            .arg(title));
+    bar->setObjectName(QStringLiteral("attachmentBar"));
+}
+
+void MainWindow::applyProtectedView(DocumentView* view, protected_view::Origin origin, const QString& title) {
+    using protected_view::Origin;
+    if (view == nullptr || origin == Origin::None) {
+        return;
+    }
+    view->setProtectedView(origin);
+    QString text;
+    switch (origin) {
+        case Origin::Internet:
+            text =
+                tr("Защищённый просмотр: файл получен из Интернета. Правка и сохранение отключены, ссылки и "
+                   "вложения не открываются.");
+            break;
+        case Origin::TempFolder:
+            text = tr(
+                "Защищённый просмотр: файл открыт из временной папки (например, вложение письма). Правка и "
+                "сохранение отключены, ссылки и вложения не открываются.");
+            break;
+        case Origin::Attachment:
+            text = tr("Защищённый просмотр: вложение «%1» открыто из временной папки. Правка и сохранение "
+                      "отключены, ссылки и вложения не открываются.")
+                       .arg(title);
+            break;
+        case Origin::AllFiles:
+        case Origin::None:
+            text =
+                tr("Защищённый просмотр: правка и сохранение отключены, ссылки и вложения не открываются.");
+            break;
+    }
+    MessageBar* bar = view->messageStack().showMessage(MessageKind::ProtectedView, text);
+    bar->setObjectName(origin == Origin::Attachment ? QStringLiteral("attachmentBar")
+                                                    : QStringLiteral("protectedViewBar"));
+    bar->addAction(tr("Включить все функции"), QStringLiteral("enableAll"), true);
+    connect(bar, &MessageBar::actionTriggered, view, [this, view](const QString& id) {
+        if (id == QLatin1String("enableAll")) {
+            enableAllFeatures(view);
+        }
+    });
+    updateActions();
+}
+
+void MainWindow::enableAllFeatures(DocumentView* view) {
+    if (view == nullptr || !view->isProtectedView()) {
+        return;
+    }
+    // Файл становится своим (отпечаток содержимого в state.sqlite); Zone.Identifier не трогаем.
+    if (!protected_view::trust(view->path())) {
+        spdlog::warn("protected view: could not remember {}", view->path().toStdString());
+    }
+    view->setProtectedView(protected_view::Origin::None);
+    view->messageStack().remove(MessageKind::ProtectedView);
+    updateActions();
 }
 
 // «Поделиться → Показать в Проводнике» — только через ShellLauncher (эталон 7.3, 8.3).

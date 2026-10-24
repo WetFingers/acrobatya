@@ -207,6 +207,9 @@ bool SelectTool::keyPress(QKeyEvent* event) {
 }
 
 bool SelectTool::copySelection() {
+    if (!controller_.copyAllowed()) {
+        return false;  // право /P «копирование» снято (2.5b)
+    }
     std::vector<ClipboardIo::PageSelection> parts;
     for (const auto& [page, sel] : selection_) {
         const auto it = pages_.constFind(page);

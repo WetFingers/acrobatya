@@ -7,6 +7,7 @@
 #include <string_view>
 
 #include "core/doc/journal.h"
+#include "core/doc/permissions.h"
 #include "core/doc/props.h"
 #include "core/mu/call.h"
 #include "core/mu/context.h"
@@ -604,38 +605,7 @@ bool Document::hasXfa() const {
     return xfa != 0;
 }
 
-bool Document::allowed(Perm perm) const {
-    fz_permission p = FZ_PERMISSION_PRINT;
-    switch (perm) {
-        case Perm::Print:
-            p = FZ_PERMISSION_PRINT;
-            break;
-        case Perm::PrintHighRes:
-            p = FZ_PERMISSION_PRINT_HQ;
-            break;
-        case Perm::Copy:
-            p = FZ_PERMISSION_COPY;
-            break;
-        case Perm::Edit:
-            p = FZ_PERMISSION_EDIT;
-            break;
-        case Perm::Annotate:
-            p = FZ_PERMISSION_ANNOTATE;
-            break;
-        case Perm::FillForms:
-            p = FZ_PERMISSION_FORM;
-            break;
-        case Perm::Accessibility:
-            p = FZ_PERMISSION_ACCESSIBILITY;
-            break;
-        case Perm::Assemble:
-            p = FZ_PERMISSION_ASSEMBLE;
-            break;
-    }
-    int ok = 0;
-    mu::call(mu_->get(), [&] { ok = fz_has_permission(mu_->get(), doc_, p); });
-    return ok != 0;
-}
+bool Document::allowed(Perm perm) const { return Permissions::of(*this).allows(perm); }
 
 DocProperties Document::properties() const {
     fz_context* ctx = mu_->get();

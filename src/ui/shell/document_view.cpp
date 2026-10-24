@@ -33,7 +33,9 @@ DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool*
     column->addWidget(view_, 1);
     view_->setDocument(session_.get(), pool, cache);
     setFocusProxy(view_);
-    view_->tools().setEditable(canEdit());
+    permissions_ = session_->summary().permissions;
+    view_->tools().setEditable(canAnnotate());
+    view_->tools().setCopyAllowed(permissions_.copy);
     find_ = new FindBar(*session_, *view_, this);
     find_->installEventFilter(this);
 
@@ -41,6 +43,14 @@ DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool*
             Qt::QueuedConnection);
     connect(session_.get(), &DocumentSession::saved, this, &DocumentView::updateModified,
             Qt::QueuedConnection);
+    connect(
+        session_.get(), &DocumentSession::saved, this,
+        [this] {
+            permissions_ = session_->summary().permissions;
+            view_->tools().setEditable(canAnnotate());
+            view_->tools().setCopyAllowed(permissions_.copy);
+        },
+        Qt::QueuedConnection);
     updateModified();
 
     if (isViewOnly()) {
@@ -71,8 +81,20 @@ void DocumentView::setReadOnly(bool readOnly) {
         return;
     }
     readOnly_ = readOnly;
-    view_->tools().setEditable(canEdit());
+    view_->tools().setEditable(canAnnotate());
     emit readOnlyChanged(readOnly);
+}
+
+void DocumentView::setProtectedView(protected_view::Origin origin) {
+    if (protected_ == origin) {
+        return;
+    }
+    const bool was = isProtectedView();
+    protected_ = origin;
+    view_->tools().setEditable(canAnnotate());
+    if (was != isProtectedView()) {
+        emit protectedViewChanged(isProtectedView());
+    }
 }
 
 MessageBar* DocumentView::addMessage(Tone tone, const QString& text) { return stack_->add(tone, text); }

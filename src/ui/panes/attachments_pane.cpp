@@ -101,7 +101,7 @@ AttachmentsPane::AttachmentsPane(QWidget* parent) : NavPage(parent) {
     connect(tree_, &QTreeWidget::itemSelectionChanged, this, &AttachmentsPane::updateButtons);
     connect(tree_, &QTreeWidget::itemActivated, this, [this](QTreeWidgetItem*) {
         const int i = current();
-        if (i >= 0 && canOpen(files_[static_cast<std::size_t>(i)])) {
+        if (i >= 0 && canOpenHere(files_[static_cast<std::size_t>(i)])) {
             openCurrent();
         } else {
             saveCurrent();
@@ -128,6 +128,10 @@ QString AttachmentsPane::tempFolder() {
 
 bool AttachmentsPane::allowOpenNonPdf() { return Settings().get(settings::kAllowOpenAttachments); }
 
+bool AttachmentsPane::canOpenHere(const attachments::Attachment& a) const {
+    return canOpen(a) && (view_ == nullptr || !view_->isProtectedView());
+}
+
 bool AttachmentsPane::canOpen(const attachments::Attachment& a) {
     if (!a.embedded || attachments::isBlocked(a.fileName)) {
         return false;
@@ -139,7 +143,14 @@ void AttachmentsPane::setDocument(DocumentView* view) {
     if (view == view_ && !dirty_) {
         return;
     }
+    if (view_ != nullptr && view_ != view) {
+        disconnect(view_, &DocumentView::protectedViewChanged, this, &AttachmentsPane::updateButtons);
+    }
     view_ = view;
+    if (view != nullptr) {
+        connect(view, &DocumentView::protectedViewChanged, this, &AttachmentsPane::updateButtons,
+                Qt::UniqueConnection);
+    }
     dirty_ = true;
     ++generation_;
     if (isVisible()) {
@@ -230,12 +241,14 @@ void AttachmentsPane::select(int index) {
 void AttachmentsPane::updateButtons() {
     const int i = current();
     const bool has = i >= 0 && i < static_cast<int>(files_.size());
-    const bool openable = has && canOpen(files_[static_cast<std::size_t>(i)]);
+    const bool openable = has && canOpenHere(files_[static_cast<std::size_t>(i)]);
     open_->setEnabled(openable);
     save_->setEnabled(has && files_[static_cast<std::size_t>(i)].embedded);
     if (has && !openable) {
         const attachments::Attachment& a = files_[static_cast<std::size_t>(i)];
-        open_->setToolTip(attachments::isBlocked(a.fileName)
+        open_->setToolTip(view_ != nullptr && view_->isProtectedView()
+                              ? tr("Защищённый просмотр: вложения можно только сохранить.")
+                          : attachments::isBlocked(a.fileName)
                               ? tr("Файлы такого типа не открываются — только «Сохранить…».")
                               : tr("Открытие вложений внешними программами выключено в Установках."));
     } else {
@@ -263,8 +276,8 @@ void AttachmentsPane::openCurrent() {
         return;
     }
     const attachments::Attachment a = files_[static_cast<std::size_t>(i)];
-    if (!canOpen(a)) {
-        saveCurrent();  // чёрный список эталона 7.3 — только «Сохранить как…»
+    if (!canOpenHere(a)) {
+        saveCurrent();  // чёрный список эталона 7.3 и защищённый просмотр — только «Сохранить как…»
         return;
     }
     const QString name = QString::fromStdString(attachments::safeFileName(a.fileName));

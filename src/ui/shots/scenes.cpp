@@ -101,6 +101,9 @@ const std::vector<Scene>& sceneTable() {
         for (Scene& s : dialogScenes()) {  // 2.5: properties-*, xmp-editor
             table.push_back(std::move(s));
         }
+        for (Scene& s : trustScenes()) {  // 2.5b: protected-view, link-confirm
+            table.push_back(std::move(s));
+        }
         return table;
     }();
     return SCENES;

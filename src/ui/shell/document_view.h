@@ -15,6 +15,7 @@
 
 #include "core/links/links.h"
 #include "services/document_session.h"
+#include "services/protected_view.h"
 #include "services/recent.h"
 #include "ui/widgets/tone.h"
 
@@ -54,7 +55,19 @@ public:
     // не меняют документ. canEdit — не «только просмотр» и не «только чтение».
     void setReadOnly(bool readOnly);
     bool isReadOnly() const { return readOnly_; }
-    bool canEdit() const { return !isViewOnly() && !readOnly_; }
+    // Защищённый просмотр (2.5b; services/protected_view.h): только чтение, «Сохранить» и «Сохранить как»
+    // запрещены (печать — можно), ссылки наружу и вложения не открываются. Origin::None — снять («Включить
+    // все функции»).
+    void setProtectedView(protected_view::Origin origin);
+    protected_view::Origin protectedOrigin() const { return protected_; }
+    bool isProtectedView() const { return protected_ != protected_view::Origin::None; }
+    // Права /P документа (OpenSummary::permissions; после сохранения — заново).
+    const Permissions& permissions() const { return permissions_; }
+    // canEdit — не «только просмотр», не «только чтение», не защищённый просмотр; canSave — свой файл можно
+    // записать; canAnnotate — править комментарии (ещё и право /P «комментарии»).
+    bool canEdit() const { return !isViewOnly() && !readOnly_ && !isProtectedView(); }
+    bool canSave() const { return !isViewOnly() && !isProtectedView(); }
+    bool canAnnotate() const { return canEdit() && permissions_.annotate; }
 
     // Полосы сообщений над документом: виды и порядок — MessageStack; addMessage — своя полоса (после видов).
     MessageStack& messageStack() const { return *stack_; }
@@ -84,6 +97,7 @@ public:
 signals:
     void modifiedChanged(bool modified);
     void readOnlyChanged(bool readOnly);
+    void protectedViewChanged(bool on);
     void saveAsPdfRequested();
 
 protected:
@@ -108,6 +122,8 @@ private:
     std::optional<links::LinkAction> initialAction_;
     bool modified_ = false;
     bool readOnly_ = false;
+    protected_view::Origin protected_ = protected_view::Origin::None;
+    Permissions permissions_;
 };
 
 }  // namespace ot::ui
