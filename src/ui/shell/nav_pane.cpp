@@ -16,6 +16,7 @@
 #include "ui/panes/layers_pane.h"
 #include "ui/panes/nav_page.h"
 #include "ui/panes/thumbnails_pane.h"
+#include "ui/shell/document_view.h"
 #include "ui/theme/icons.h"
 #include "ui/theme/theme.h"
 #include "ui/widgets/empty_state.h"

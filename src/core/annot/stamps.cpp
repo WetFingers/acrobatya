@@ -146,8 +146,8 @@ std::vector<LineGlyph> shapeLine(fz_context* ctx, fz_font* font, const std::u32s
     mu::call(ctx, [&] {
         for (std::size_t i = 0; i < count; ++i) {
             fz_font* used = nullptr;
-            g[i].gid = fz_encode_character_with_fallback(ctx, font, static_cast<int>(chars[i]), 0, FZ_LANG_UNSET,
-                                                         &used);
+            g[i].gid = fz_encode_character_with_fallback(ctx, font, static_cast<int>(chars[i]), 0,
+                                                         FZ_LANG_UNSET, &used);
             g[i].font = used;
             g[i].adv = fz_advance_glyph(ctx, used, g[i].gid, 0);
         }
@@ -156,7 +156,8 @@ std::vector<LineGlyph> shapeLine(fz_context* ctx, fz_font* font, const std::u32s
 }
 
 // Строка контурами глифов в устройство (внутри mu::call).
-void drawLine(fz_context* ctx, fz_device* dev, const LineGlyph* glyphs, std::size_t count, const StampLine& line) {
+void drawLine(fz_context* ctx, fz_device* dev, const LineGlyph* glyphs, std::size_t count,
+              const StampLine& line) {
     float width = 0;
     for (std::size_t i = 0; i < count; ++i) {
         width += glyphs[i].adv * line.size;
@@ -173,7 +174,8 @@ void drawLine(fz_context* ctx, fz_device* dev, const LineGlyph* glyphs, std::siz
     for (std::size_t i = 0; i < count; ++i) {
         const fz_matrix trm = fz_make_matrix(line.size, 0, 0, -line.size, x, line.y);
         if (fz_path* path = fz_outline_glyph(ctx, glyphs[i].font, glyphs[i].gid, trm)) {
-            fz_fill_path(ctx, dev, path, 0, fz_identity, fz_device_rgb(ctx), rgb, 1.0f, fz_default_color_params);
+            fz_fill_path(ctx, dev, path, 0, fz_identity, fz_device_rgb(ctx), rgb, 1.0f,
+                         fz_default_color_params);
             fz_drop_path(ctx, path);
         }
         x += glyphs[i].adv * line.size;
@@ -432,9 +434,11 @@ void setStampRotation(Document& doc, const AnnotRef& ref, float degrees) {
         const float rx = (rect.x0 + rect.x1) / 2;
         const float ry = (rect.y0 + rect.y1) / 2;
         pdf_dict_put_matrix(ctx, n, PDF_NAME(Matrix), m);
-        pdf_dict_put_rect(ctx, obj, PDF_NAME(Rect), fz_make_rect(rx - w / 2, ry - h / 2, rx + w / 2, ry + h / 2));
+        pdf_dict_put_rect(ctx, obj, PDF_NAME(Rect),
+                          fz_make_rect(rx - w / 2, ry - h / 2, rx + w / 2, ry + h / 2));
         if (whole) {
-            pdf_dict_put_int(ctx, obj, PDF_NAME(Rotate), static_cast<std::int64_t>(std::round(normalized)) % 360);
+            pdf_dict_put_int(ctx, obj, PDF_NAME(Rotate),
+                             static_cast<std::int64_t>(std::round(normalized)) % 360);
         } else {
             pdf_dict_put_real(ctx, obj, PDF_NAME(Rotate), normalized);
         }

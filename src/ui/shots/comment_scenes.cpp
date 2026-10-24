@@ -11,11 +11,21 @@
 // «Прямоугольник»); annot-cloud — облако вокруг абзаца и облачный прямоугольник; annot-vertex-edit —
 // выбранный «Выбором объектов» многоугольник с маркерами вершин; annot-props-appearance — «Свойства
 // комментария» облачного прямоугольника (вкладка «Вид»), annot-props-general — текстового поля (вкладка
-// «Общие»).
+// «Общие»); stamps-palette — палитра штампов (Стандартные, выбран «Утверждено»; и тёмная); annot-stamp-custom
+// — «Утверждено», повёрнутый «Черновик» и свой штамп-печать из картинки, выбранный «Выбором объектов» с
+// маркером поворота; annot-stamp-dynamic — три динамических штампа с личными данными, датой и временем;
+// annot-attachment — значок вложения у строки и файл в панели «Вложения».
 #include <QApplication>
+#include <QBuffer>
 #include <QCoreApplication>
+#include <QDate>
 #include <QFuture>
+#include <QImage>
 #include <QMouseEvent>
+#include <QPainter>
+#include <QPainterPath>
+#include <QScrollArea>
+#include <QTime>
 #include <QTimer>
 
 #include <cmath>
@@ -28,10 +38,15 @@
 #include "services/comment_settings.h"
 #include "services/document_session.h"
 #include "services/settings.h"
+#include "services/stamps_catalog.h"
 #include "ui/dialogs/annot_props_dialog.h"
+#include "ui/dialogs/stamps_palette.h"
+#include "ui/panes/attachments_pane.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
+#include "ui/shell/nav_pane.h"
 #include "ui/shots/scenes.h"
+#include "ui/theme/theme.h"
 #include "ui/tools/comment/comment_mode.h"
 #include "ui/tools/comment/comment_tool.h"
 #include "ui/tools/comment/inline_text_editor.h"
@@ -40,6 +55,7 @@
 #include "ui/tools/tool_registry.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
+#include "ui/widgets/tool_button.h"
 
 namespace ot::ui {
 
@@ -457,6 +473,165 @@ void propsGeneralScene(MainWindow& w, DocumentView& doc, const TextPtr& /*text*/
     propsScene(w, doc, std::move(p), AnnotPropsDialog::General);
 }
 
+// ---------------------------------------------------------------- штампы и вложения (5.2)
+
+// Панель инструмента прокручена к «Штамп и вложение».
+void showStampSection() {
+    CommentTool& tool = sceneCommentTool();
+    if (auto* scroll = qobject_cast<QScrollArea*>(tool.panel())) {
+        if (ToolButton* attach = tool.actionButton(CommentAction::Attach)) {
+            scroll->widget()->adjustSize();
+            scroll->ensureWidgetVisible(attach, 0, Theme::sizes().grid * 40);
+        }
+    }
+}
+
+void stampPaletteScene(MainWindow& w, DocumentView& /*doc*/, const TextPtr& /*text*/) {
+    sceneCommentTool().start(CommentAction::Stamp);
+    showStampSection();
+    if (StampsPalette* palette = sceneCommentTool().showStampPalette()) {
+        palette->showCategory(QString::fromLatin1(stamps::kStandard));
+        palette->selectStamp(QStringLiteral("standard/approved"));
+        embedCentered(w, palette);
+    }
+    markDone(w);
+}
+
+// Штамп каталога id в рамке шириной width с левым верхним углом at.
+QFuture<annot::AnnotRef> placeStamp(DocumentView& doc, const QString& id, QPointF at, float width,
+                                    const annot::StampValues& values = {}) {
+    const stamps::StampCatalog catalog;
+    const std::optional<stamps::StampEntry> entry = catalog.find(id);
+    if (!entry) {
+        return {};
+    }
+    const annot::StampSize size = catalog.size(*entry);
+    annot::AnnotProps p = sceneProps(CommentAction::Stamp);
+    const float height = width * size.height / std::max(1.0f, size.width);
+    p.rect = {static_cast<float>(at.x()), static_cast<float>(at.y()), static_cast<float>(at.x()) + width,
+              static_cast<float>(at.y()) + height};
+    return annot::createStamp(doc.session(), 0, catalog.source(*entry), values, std::move(p));
+}
+
+// Своя печать: круг с подписью по кругу и звездой в середине (как штамп из PNG).
+QByteArray sealPng() {
+    QImage image(240, 240, QImage::Format_ARGB32);
+    image.fill(Qt::transparent);
+    QPainter painter(&image);
+    painter.setRenderHint(QPainter::Antialiasing);
+    const QColor ink(0x1E, 0x3A, 0x8A);
+    painter.setPen(QPen(ink, 6));
+    painter.drawEllipse(QRectF(8, 8, 224, 224));
+    painter.setPen(QPen(ink, 3));
+    painter.drawEllipse(QRectF(46, 46, 148, 148));
+    QFont font(QStringLiteral("Segoe UI"));
+    font.setPixelSize(19);
+    font.setBold(true);
+    painter.setFont(font);
+    const QString text =
+        QCoreApplication::translate("ot::ui::CommentScenes", "ООО «РОМАШКА» • ДЛЯ ДОКУМЕНТОВ •");
+    const double step = 360.0 / text.size();
+    for (int i = 0; i < text.size(); ++i) {
+        painter.save();
+        painter.translate(120, 120);
+        painter.rotate(-90 + i * step);
+        painter.translate(94, 0);
+        painter.rotate(90);
+        painter.drawText(QRectF(-10, -12, 20, 24), Qt::AlignCenter, QString(text[i]));
+        painter.restore();
+    }
+    QPainterPath star;
+    for (int i = 0; i < 10; ++i) {
+        const double r = i % 2 == 0 ? 40 : 16;
+        const double a = (-90 + i * 36) * 3.14159265358979 / 180.0;
+        const QPointF pt(120 + r * std::cos(a), 120 + r * std::sin(a));
+        if (i == 0) {
+            star.moveTo(pt);
+        } else {
+            star.lineTo(pt);
+        }
+    }
+    star.closeSubpath();
+    painter.fillPath(star, ink);
+    painter.end();
+    QByteArray png;
+    QBuffer buffer(&png);
+    buffer.open(QIODevice::WriteOnly);
+    image.save(&buffer, "PNG");
+    return png;
+}
+
+void stampCustomScene(MainWindow& w, DocumentView& doc, const TextPtr& /*text*/) {
+    sceneCommentTool().start(CommentAction::Stamp);
+    showStampSection();
+    placeStamp(doc, QStringLiteral("standard/approved"), {80, 380}, 200);
+    placeStamp(doc, QStringLiteral("standard/draft"), {330, 390}, 200).then(&w, [&doc](annot::AnnotRef ref) {
+        annot::setStampRotation(doc.session(), ref, 345);
+    });
+    annot::AnnotProps seal = sceneProps(CommentAction::Stamp);
+    seal.rect = {200, 520, 330, 650};
+    const QByteArray png = sealPng();
+    PageView* view = &doc.view();
+    annot::createImageStamp(doc.session(), 0,
+                            std::string(png.constData(), static_cast<std::size_t>(png.size())),
+                            std::move(seal), "#Seal")
+        .then(&w, [&w, view, &doc](annot::AnnotRef ref) {
+            view->tools().setTool(ViewToolId::AnnotSelect);
+            annot::list(doc.session(), 0)
+                .then(&w, [&w, view, ref](const std::vector<annot::AnnotInfo>& list) {
+                    for (const annot::AnnotInfo& a : list) {
+                        if (a.ref == ref) {
+                            view->tools().annotSelect().setSelection({a});
+                        }
+                    }
+                    // Угол штампа читается задачей — кадр, когда маркер поворота на месте.
+                    auto* poll = new QTimer(&w);
+                    poll->start(50);
+                    QObject::connect(poll, &QTimer::timeout, &w, [&w, view, poll] {
+                        if (view->tools().annotSelect().rotateHandle().has_value()) {
+                            poll->deleteLater();
+                            markDone(w);
+                        }
+                    });
+                });
+        });
+}
+
+void stampDynamicScene(MainWindow& w, DocumentView& doc, const TextPtr& /*text*/) {
+    sceneCommentTool().start(CommentAction::Stamp);
+    showStampSection();
+    annot::StampValues values =
+        stamps::stampValues(Settings(), QDateTime(QDate(2026, 10, 25), QTime(14, 30)));
+    values.name = sceneText(QT_TRANSLATE_NOOP("ot::ui::CommentScenes", "Мария Иванова"));
+    values.title = sceneText(QT_TRANSLATE_NOOP("ot::ui::CommentScenes", "Главный бухгалтер"));
+    values.org = sceneText(QT_TRANSLATE_NOOP("ot::ui::CommentScenes", "ООО «Ромашка»"));
+    placeStamp(doc, QStringLiteral("dynamic/approved"), {80, 380}, 220, values);
+    placeStamp(doc, QStringLiteral("dynamic/received"), {330, 380}, 220, values);
+    placeStamp(doc, QStringLiteral("dynamic/reviewed"), {80, 500}, 220, values)
+        .then(&w, [&w](annot::AnnotRef) { markDone(w); });
+}
+
+void attachmentScene(MainWindow& w, DocumentView& doc, const TextPtr& text) {
+    sceneCommentTool().start(CommentAction::Attach);
+    showStampSection();
+    float x = 540;
+    float y = 200;
+    if (text->lines().size() > 2) {
+        const RectF line = text->lines()[2].bbox;
+        x = std::min(line.x1 + 24, static_cast<float>(doc.view().pageSizePoints(0).width()) - 20);
+        y = (line.y0 + line.y1) / 2;
+    }
+    annot::AnnotProps p = sceneProps(CommentAction::Attach);
+    const float half = CommentMode::kNoteIconSize / 2;
+    p.rect = {x - half, y - half, x + half, y + half};
+    p.fileName = sceneText(QT_TRANSLATE_NOOP("ot::ui::CommentScenes", "Смета на ремонт.xlsx"));
+    p.contents = p.fileName;
+    p.fileData = "PK\x03\x04 scene attachment";
+    w.navPane().showPane(QStringLiteral("attachments"));
+    // Панель «Вложения» перечитывает список после правки документа сама.
+    annot::create(doc.session(), 0, std::move(p)).then(&w, [&w](annot::AnnotRef) { markDone(w); });
+}
+
 }  // namespace
 
 std::vector<Scene> commentScenes() {
@@ -579,6 +754,39 @@ std::vector<Scene> commentScenes() {
     propsGeneral.make = commentScene(doc, propsGeneralScene);
     propsGeneral.ready = commentReady;
     scenes.push_back(propsGeneral);
+
+    Scene palette;
+    palette.name = QStringLiteral("stamps-palette");
+    palette.make = commentScene(doc, stampPaletteScene);
+    palette.ready = commentReady;
+    scenes.push_back(palette);
+
+    Scene paletteDark = palette;
+    paletteDark.name = QStringLiteral("stamps-palette-dark");
+    paletteDark.theme = ThemeChoice::Dark;
+    scenes.push_back(paletteDark);
+
+    Scene stampCustom;
+    stampCustom.name = QStringLiteral("annot-stamp-custom");
+    stampCustom.make = commentScene(doc, stampCustomScene);
+    stampCustom.ready = commentReady;
+    scenes.push_back(stampCustom);
+
+    Scene stampDynamic;
+    stampDynamic.name = QStringLiteral("annot-stamp-dynamic");
+    stampDynamic.make = commentScene(doc, stampDynamicScene);
+    stampDynamic.ready = commentReady;
+    scenes.push_back(stampDynamic);
+
+    Scene attachment;
+    attachment.name = QStringLiteral("annot-attachment");
+    attachment.make = commentScene(doc, attachmentScene);
+    attachment.ready = [](QWidget* w) {
+        auto* window = static_cast<MainWindow*>(w);
+        auto* pane = qobject_cast<AttachmentsPane*>(window->navPane().page(QStringLiteral("attachments")));
+        return commentReady(w) && pane != nullptr && !pane->files().empty();
+    };
+    scenes.push_back(attachment);
     return scenes;
 }
 

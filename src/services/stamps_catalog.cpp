@@ -35,9 +35,8 @@ std::uint32_t rgbOf(const QString& hex) {
 void sortLocale(QStringList& list) {
     QCollator collator;
     collator.setCaseSensitivity(Qt::CaseInsensitive);
-    std::sort(list.begin(), list.end(), [&collator](const QString& a, const QString& b) {
-        return collator.compare(a, b) < 0;
-    });
+    std::sort(list.begin(), list.end(),
+              [&collator](const QString& a, const QString& b) { return collator.compare(a, b) < 0; });
 }
 
 StampEntry userEntry(const QString& root, const QString& category, const QString& stem) {
@@ -122,7 +121,8 @@ QStringList StampCatalog::userCategories() const {
 std::vector<StampEntry> StampCatalog::user() const {
     std::vector<StampEntry> out;
     for (const QString& category : userCategories()) {
-        QStringList files = QDir(QDir(root_).filePath(category)).entryList({QStringLiteral("*.pdf")}, QDir::Files);
+        QStringList files =
+            QDir(QDir(root_).filePath(category)).entryList({QStringLiteral("*.pdf")}, QDir::Files);
         sortLocale(files);
         for (const QString& f : files) {
             out.push_back(userEntry(root_, category, QFileInfo(f).completeBaseName()));
@@ -184,8 +184,9 @@ annot::StampSize StampCatalog::size(const StampEntry& entry) const {
     }
 }
 
-std::optional<StampEntry> StampCatalog::createFromPdf(const QByteArray& pdf, int page, const QString& category,
-                                                     const QString& name, QString* error) {
+std::optional<StampEntry> StampCatalog::createFromPdf(const QByteArray& pdf, int page,
+                                                      const QString& category, const QString& name,
+                                                      QString* error) {
     const QString cat = safeName(category);
     const QString stem = safeName(name);
     if (cat.isEmpty() || stem.isEmpty()) {
@@ -196,7 +197,8 @@ std::optional<StampEntry> StampCatalog::createFromPdf(const QByteArray& pdf, int
     }
     std::string single;
     try {
-        single = annot::pageStampPdf(std::string(pdf.constData(), static_cast<std::size_t>(pdf.size())), page);
+        single =
+            annot::pageStampPdf(std::string(pdf.constData(), static_cast<std::size_t>(pdf.size())), page);
     } catch (const std::exception& e) {
         if (error != nullptr) {
             *error = QString::fromUtf8(e.what());
@@ -226,7 +228,7 @@ std::optional<StampEntry> StampCatalog::createFromPdf(const QByteArray& pdf, int
 }
 
 std::optional<StampEntry> StampCatalog::createFromFile(const QString& file, int page, const QString& category,
-                                                      const QString& name, QString* error) {
+                                                       const QString& name, QString* error) {
     QFile f(file);
     if (!f.open(QIODevice::ReadOnly)) {
         if (error != nullptr) {
@@ -247,11 +249,12 @@ std::optional<StampEntry> StampCatalog::createFromFile(const QString& file, int 
         }
         return std::nullopt;
     }
-    return createFromPdf(QByteArray(pdf.data(), static_cast<qsizetype>(pdf.size())), 0, category, name, error);
+    return createFromPdf(QByteArray(pdf.data(), static_cast<qsizetype>(pdf.size())), 0, category, name,
+                         error);
 }
 
 std::optional<StampEntry> StampCatalog::createFromImage(const QImage& image, const QString& category,
-                                                       const QString& name, QString* error) {
+                                                        const QString& name, QString* error) {
     if (image.isNull()) {
         if (error != nullptr) {
             *error = QStringLiteral("no image");
@@ -271,10 +274,12 @@ std::optional<StampEntry> StampCatalog::createFromImage(const QImage& image, con
         }
         return std::nullopt;
     }
-    return createFromPdf(QByteArray(pdf.data(), static_cast<qsizetype>(pdf.size())), 0, category, name, error);
+    return createFromPdf(QByteArray(pdf.data(), static_cast<qsizetype>(pdf.size())), 0, category, name,
+                         error);
 }
 
-std::optional<StampEntry> StampCatalog::rename(const QString& id, const QString& name, const QString& category) {
+std::optional<StampEntry> StampCatalog::rename(const QString& id, const QString& name,
+                                               const QString& category) {
     const std::optional<StampEntry> e = find(id);
     if (!e || e->builtIn) {
         return std::nullopt;

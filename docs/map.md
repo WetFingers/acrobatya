@@ -3,7 +3,33 @@
 Где что лежит и как добавляется типовая вещь. Сессия читает этот файл **первым**, до поиска по коду.
 Дерево и состав — эталон `docs/design.md` 5.1–5.3; здесь — короткий путеводитель и рецепты.
 
-> **Состояние: сессия 5.1 — ядро аннотаций, записка, разметка, карандаш, буфер и панель «Добавить комментарии»**.
+> **Состояние: сессия 5.2 — текстовое поле и выноска, фигуры, свойства комментария, штампы и вложения**.
+> `core/annot/` — `freetext.h` (свой вид FreeText: шрифт /DA — `kTextFonts` (Segoe UI, Arial, Times New Roman, Courier
+> New), встроенный Type0 Identity-H в /AcroForm /DR, `textFont`/`textFontFamily`, `wrapText`; выноска /IT
+> FreeTextCallout + /CL + /LE, /RD, /Rotate), `stamps.h` (`StampSource{pdf, page, name, lines}` → `createStamp` — страница
+> PDF в /AP /N через display list, строки динамического `StampLine` контурами глифов, `expandStampText` — {name} {title}
+> {org} {date} {time}; `createImageStamp`/`imageStampSize` (96 dpi), `imageStampPdf`/`pageStampPdf`, `setStampRotation`/
+> `stampRotation` — /Matrix вида, /Rect по повёрнутой рамке, /Rotate; шаги «Add stamp», «Rotate stamp»); фигуры — /BE
+> облако, /IT LineArrow/PolygonCloud, `LineEnding`; службы — `stamps_catalog.h` (`StampCatalog`: свои из ресурса
+> `:/stamps` (`assets/stamps/stamps.json` + PDF трёх категорий `standard`, `sign-here`, `dynamic`; PDF пишет
+> `unit_tests --gtest_also_run_disabled_tests --gtest_filter=stamps_assets.*`), пользовательские
+> `<данные>/stamps/<категория>/<имя>.pdf` (id `user/<категория>/<имя>`: `createFromFile/Image/Pdf`, `rename`, `remove`),
+> избранное — `state.sqlite` `stamp_favorites` (миграция 6); `stampValues(Settings, when)` — Identity, dd.MM.yyyy,
+> HH:mm; `thumbnail`), `annot_ops.h` — `createStamp`, `createImageStamp`, `setStampRotation`, `stampRotation`; ключ
+> `commenting/stamp`; ui — `CommentAction::Stamp/Attach` (`stamp_tool.cpp` — щелчок/протягивание, картинка буфера один
+> раз; `attach_tool.cpp` — `CommentMode::setFilePrompt`, /FileAttachment со встроенным файлом), `CommentTool` — «Фигуры»,
+> «Штамп и вложение» (`showStampPalette`, `stampLabel`), «Формат текста», команды `tool.textbox` J, `tool.rectangle` R,
+> `tool.stamp` K; `InlineTextEditor` — правка поля на странице; `ui/dialogs/stamps_palette` (`StampsPalette`: категории,
+> миниатюры, «Создать…», «Из буфера обмена», избранное, переименовать/удалить, «Личные данные…»; подмены
+> `setFilePrompt`/`setNamePrompt`/`setConfirm`), `ui/dialogs/annot_props_dialog` (`AnnotPropsDialog::openFor` — Вид/Общие/
+> История, «Заблокировано», «По умолчанию»); `annot_menu.cpp` — «Свойства…», «Изменить текст», «Открыть вложение»,
+> «Сохранить вложение…», двойной щелчок по вложению → `AttachmentsPane::openAnnotation` (чёрный список и подтверждение
+> 2.4; панель перечитывает список после правки документа); «Выбор объектов» — маркеры вершин (`vertexPoints`, шаг «Move
+> vertex») и маркер поворота штампа (`rotateHandle`, Shift — 15°); сцены `annot-freetext`, `annot-callout`,
+> `annot-text-format`, `annot-shapes`, `annot-cloud`, `annot-vertex-edit`, `annot-props-*`, `stamps-palette`,
+> `annot-stamp-custom`, `annot-stamp-dynamic`, `annot-attachment`; ctest `unit.freetext`, `unit.shapes`, `unit.stamps`,
+> `ui.freetext`, `ui.shapes`, `ui.annot_props`, `ui.stamps_palette`, `compat.freetext`, `compat.annots` (+ `stamps.pdf`).
+> Из 5.1 — ядро аннотаций, записка, разметка, карандаш, буфер и панель «Добавить комментарии».
 > `core/annot/` — `annots.h` (28 подтипов: `AnnotRef{page, objnum, nm}` — сравнение без nm; `AnnotInfo` + автор, текст,
 > /C, /M, /IRT, /RT, /Popup, `hasAppearance`; `AnnotProps` — все свойства и геометрия в координатах страницы;
 > `AnnotPatch`; `listAnnots` за один проход, `readProps`, `annotAt` по типу (квады, штрих, линия, многоугольник),
@@ -580,6 +606,11 @@ PowerShell-стражи очереди `tools/test_reset_parse.ps1` и `tools/te
    («Embed file») — `pdf_end_operation` следом; значок NoZoom MuPDF рисует размером /BBox, pdfium — /Rect: у новых
    /Rect = /BBox. Инструмент вида — действие `CommentAction` в `CommentMode` (слот `ViewToolId::Comment`, файл
    действия — `ui/tools/comment/<действие>_tool.cpp`).
+7. С 5.2: свой внешний вид, который MuPDF не должен пересинтезировать (FreeText, штамп), — ядро пишет /AP само
+   (`freetext.cpp`, `stamps.cpp`), `setRect` такой вид только вписывает; новый штамп — PDF в `assets/stamps/<категория>/`
+   и строка `stamps.json` (id, файл, /Name Acrobat, надпись, цвет, строки динамического) + подпись в `kKnownStamps`
+   (`stamps_palette.cpp`); PDF пересобирает `stamps_assets.DISABLED_generate`. Совместимость нового вида — файл в
+   `annots_compat.DISABLED_write` (`compat.annots` сверяет его с pypdfium2).
 
 ### Новый диалог
 

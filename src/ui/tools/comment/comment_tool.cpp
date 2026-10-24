@@ -19,7 +19,10 @@
 #include "services/document_session.h"
 #include "services/settings.h"
 #include "services/settings_keys.h"
+#include "services/stamps_catalog.h"
+#include "ui/dialogs/stamps_palette.h"
 #include "ui/shell/document_view.h"
+#include "ui/shell/main_window.h"
 #include "ui/theme/icons.h"
 #include "ui/theme/theme.h"
 #include "ui/tools/comment/inline_text_editor.h"
@@ -94,6 +97,11 @@ bool openLine(CommentAction a) {
     return a == CommentAction::Line || a == CommentAction::Arrow || a == CommentAction::PolyLine;
 }
 
+constexpr ActionRow kStampRows[] = {
+    {CommentAction::Stamp, "commentStamp", "stamp"},
+    {CommentAction::Attach, "commentAttach", "paperclip"},
+};
+
 constexpr ActionRow kDrawRows[] = {
     {CommentAction::Ink, "commentInk", "pencil"},
     {CommentAction::Eraser, "commentEraser", "eraser"},
@@ -124,6 +132,8 @@ CommentMode& CommentTool::modeOf(PageView& view) {
     return *static_cast<CommentMode*>(tools.install(std::make_unique<CommentMode>(view, tools)));
 }
 
+DocumentView* CommentTool::view() const { return view_; }
+
 CommentMode* CommentTool::mode() const {
     if (view_ == nullptr) {
         return nullptr;
@@ -152,7 +162,10 @@ void CommentTool::activate(DocumentView& view) {
     connections_.push_back(connect(&m, &CommentMode::actionChanged, this, [this] {
         syncButtons();
         loadStyle();
+        updateStampLabel();
     }));
+    // Картинка буфера ставится один раз — подпись снова о штампе каталога.
+    connections_.push_back(connect(&m, &CommentMode::created, this, [this] { updateStampLabel(); }));
     connections_.push_back(connect(&view.view().tools(), &ToolController::annotSelectionChanged, this,
                                    [this] { loadFormatFromSelection(); }));
     settingsChanged();
@@ -211,6 +224,7 @@ void CommentTool::loadStyle() {
     width_->setValue(p.borderWidth);
     const bool shape = CommentMode::isDragShape(action) || CommentMode::isPolyShape(action);
     width_->setEnabled(action == CommentAction::Ink || text || shape);
+    color_->setEnabled(action != CommentAction::Stamp);  // у штампа цвет — в самом штампе
     styleForm_->setRowVisible(fill_, closedShape(action));
     styleForm_->setRowVisible(lineStart_, openLine(action));
     styleForm_->setRowVisible(lineEnd_, openLine(action));
@@ -337,6 +351,10 @@ void CommentTool::syncButtons() {
         button->setChecked(active && m->action() == action);
         button->setToolTip(usable ? CommentMode::actionTitle(action) : lock_);
     }
+    if (paletteButton_ != nullptr) {
+        paletteButton_->setEnabled(usable);
+        paletteButton_->setToolTip(usable ? tr("Выбрать или создать штамп") : lock_);
+    }
     if (lockLabel_ != nullptr) {
         lockLabel_->setText(lock_);
         lockLabel_->setVisible(!lock_.isEmpty());
@@ -421,6 +439,18 @@ void CommentTool::buildPanel() {
     for (const ActionRow& row : kShapeRows) {
         addAction(row);
     }
+    addCaption(column, tr("Штамп и вложение"));
+    addAction(kStampRows[0]);
+    stampLabel_ = new QLabel(panel_);
+    stampLabel_->setObjectName(QStringLiteral("commentStampCurrent"));
+    stampLabel_->setWordWrap(true);
+    column->addWidget(stampLabel_);
+    ToolButton* palette = addRow(column, QStringLiteral("layout-grid"), tr("Палитра штампов…"));
+    palette->setObjectName(QStringLiteral("commentStampPalette"));
+    connect(palette, &ToolButton::clicked, this, [this] { showStampPalette(); });
+    paletteButton_ = palette;
+    addAction(kStampRows[1]);
+    updateStampLabel();
     buildStyle(column);
     column->addStretch(1);
     scroll->setWidget(body);
@@ -621,6 +651,58 @@ void CommentTool::loadFormatFromSelection() {
         });
 }
 
+// ---------------------------------------------------------------- штамп
+
+void CommentTool::updateStampLabel() {
+    if (stampLabel_ == nullptr) {
+        return;
+    }
+    CommentMode* m = mode();
+    if (m != nullptr && m->hasClipboardStamp()) {
+        stampLabel_->setText(tr("Штамп: картинка из буфера обмена"));
+        return;
+    }
+    const QString id = m != nullptr ? m->stamp() : Settings().get(settings::kCommentStamp);
+    const std::optional<stamps::StampEntry> entry = stamps::StampCatalog().find(id);
+    stampLabel_->setText(entry ? tr("Штамп: %1").arg(StampsPalette::stampTitle(*entry))
+                               : tr("Штамп не выбран"));
+}
+
+StampsPalette* CommentTool::showStampPalette() {
+    if (view_ == nullptr || !lock_.isEmpty()) {
+        return nullptr;
+    }
+    auto* palette = new StampsPalette(view_->window());
+    palette->setAttribute(Qt::WA_DeleteOnClose);
+    palette->setWindowModality(Qt::WindowModal);
+    if (CommentMode* m = mode()) {
+        palette->selectStamp(m->stamp());
+    }
+    connect(palette, &StampsPalette::stampChosen, this, [this](const QString& id) {
+        if (view_ == nullptr) {
+            return;
+        }
+        modeOf(view_->view()).setStamp(id);
+        start(CommentAction::Stamp);
+        updateStampLabel();
+    });
+    connect(palette, &StampsPalette::clipboardStampChosen, this, [this](const QImage& image) {
+        if (view_ == nullptr) {
+            return;
+        }
+        modeOf(view_->view()).setClipboardStamp(image);
+        start(CommentAction::Stamp);
+        updateStampLabel();
+    });
+    connect(palette, &StampsPalette::identityRequested, this, [this] {
+        if (auto* w = view_ != nullptr ? qobject_cast<MainWindow*>(view_->window()) : nullptr) {
+            w->showPreferences(QStringLiteral("commenting"));
+        }
+    });
+    palette->open();
+    return palette;
+}
+
 // ---------------------------------------------------------------- команды
 
 std::vector<ot::Command> CommentTool::commands() const {
@@ -683,6 +765,15 @@ std::vector<ot::Command> CommentTool::commands() const {
                    .shortcuts = {QKeySequence(Qt::Key_R)},
                    .icon = QStringLiteral("square"),
                    .run = runner(CommentAction::Rectangle),
+                   .when = QLatin1String(CommandRegistry::kViewContext),
+                   .enabled = enabled,
+                   .menu = QStringLiteral("tools"),
+                   .singleKey = true});
+    out.push_back({.id = QStringLiteral("tool.stamp"),
+                   .title = tr("Ш&тамп"),
+                   .shortcuts = {QKeySequence(Qt::Key_K)},
+                   .icon = QStringLiteral("stamp"),
+                   .run = runner(CommentAction::Stamp),
                    .when = QLatin1String(CommandRegistry::kViewContext),
                    .enabled = enabled,
                    .menu = QStringLiteral("tools"),

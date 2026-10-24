@@ -83,6 +83,8 @@ protected:
 
 private:
     void reload();
+    // Правка документа (вложение-комментарий добавлено, удалено, undo): список — заново.
+    void documentEdited();
     void fill(const std::vector<attachments::Attachment>& files);
     void updateButtons();
     void retranslate();

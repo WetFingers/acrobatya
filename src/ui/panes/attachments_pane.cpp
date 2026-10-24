@@ -20,6 +20,7 @@
 #include <exception>
 #include <memory>
 
+#include "services/document_session.h"
 #include "services/nav_ops.h"
 #include "services/settings.h"
 #include "services/shell_launcher.h"
@@ -145,10 +146,14 @@ void AttachmentsPane::setDocument(DocumentView* view) {
     }
     if (view_ != nullptr && view_ != view) {
         disconnect(view_, &DocumentView::protectedViewChanged, this, &AttachmentsPane::updateButtons);
+        disconnect(&view_->session(), &DocumentSession::undoStateChanged, this,
+                   &AttachmentsPane::documentEdited);
     }
     view_ = view;
     if (view != nullptr) {
         connect(view, &DocumentView::protectedViewChanged, this, &AttachmentsPane::updateButtons,
+                Qt::UniqueConnection);
+        connect(&view->session(), &DocumentSession::undoStateChanged, this, &AttachmentsPane::documentEdited,
                 Qt::UniqueConnection);
     }
     dirty_ = true;
@@ -157,6 +162,13 @@ void AttachmentsPane::setDocument(DocumentView* view) {
         reload();
     } else {
         fill({});
+    }
+}
+
+void AttachmentsPane::documentEdited() {
+    dirty_ = true;
+    if (isVisible()) {
+        reload();
     }
 }
 
@@ -230,7 +242,8 @@ void AttachmentsPane::fill(const std::vector<attachments::Attachment>& files) {
         pendingOpen_.reset();
         for (std::size_t i = 0; i < files_.size(); ++i) {
             const attachments::Attachment& a = files_[i];
-            if (a.source == attachments::Source::Annotation && a.page == want.page && a.objnum == want.objnum) {
+            if (a.source == attachments::Source::Annotation && a.page == want.page &&
+                a.objnum == want.objnum) {
                 select(static_cast<int>(i));
                 if (want.save) {
                     saveCurrent();

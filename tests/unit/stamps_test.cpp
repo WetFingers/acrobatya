@@ -1,10 +1,10 @@
 // unit.stamps.* — штампы и вложение-комментарий (план 5.2, п. 4; эталон 3.4 «Инструмент»: Штамп (K), Вложить
-// файл; comment-11, comment-12, comment-13 частично, comment-14, comment-41): подстановки {name} {title} {org}
-// {date} {time}; штамп из assets/stamps — векторный вид (контуры, ни шрифтов, ни картинок) с /Name Acrobat,
-// переживает инкрементальную запись; из PNG — картинка в /AP (pdf_set_annot_stamp_image и одностраничный PDF
-// пользовательского штампа); страница чужого PDF — отдельным файлом; динамический штамп рисует подставленную дату
-// (другая дата — другой вид); поворот — /Matrix вида, /Rect по повёрнутой рамке, /Rotate, undo; вложение
-// извлекается байт в байт.
+// файл; comment-11, comment-12, comment-13 частично, comment-14, comment-41): подстановки {name} {title}
+// {org} {date} {time}; штамп из assets/stamps — векторный вид (контуры, ни шрифтов, ни картинок) с /Name
+// Acrobat, переживает инкрементальную запись; из PNG — картинка в /AP (pdf_set_annot_stamp_image и
+// одностраничный PDF пользовательского штампа); страница чужого PDF — отдельным файлом; динамический штамп
+// рисует подставленную дату (другая дата — другой вид); поворот — /Matrix вида, /Rect по повёрнутой рамке,
+// /Rotate, undo; вложение извлекается байт в байт.
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -102,7 +102,8 @@ bool hasFonts(fz_context* ctx, pdf_obj* res, int depth = 0) {
     }
     pdf_obj* xobjs = pdf_dict_get(ctx, res, PDF_NAME(XObject));
     for (int i = 0; i < pdf_dict_len(ctx, xobjs) && depth < 4; ++i) {
-        if (hasFonts(ctx, pdf_dict_get(ctx, pdf_dict_get_val(ctx, xobjs, i), PDF_NAME(Resources)), depth + 1)) {
+        if (hasFonts(ctx, pdf_dict_get(ctx, pdf_dict_get_val(ctx, xobjs, i), PDF_NAME(Resources)),
+                     depth + 1)) {
             return true;
         }
     }
@@ -140,8 +141,10 @@ Ap apOf(Document& doc, int objnum) {
 
 int inkPixels(const ot::Bitmap& with, const ot::Bitmap& without, const ot::RectF& r) {
     int n = 0;
-    for (int y = std::max(0, static_cast<int>(r.y0)); y < std::min(with.height, static_cast<int>(r.y1)); ++y) {
-        for (int x = std::max(0, static_cast<int>(r.x0)); x < std::min(with.width, static_cast<int>(r.x1)); ++x) {
+    for (int y = std::max(0, static_cast<int>(r.y0)); y < std::min(with.height, static_cast<int>(r.y1));
+         ++y) {
+        for (int x = std::max(0, static_cast<int>(r.x0)); x < std::min(with.width, static_cast<int>(r.x1));
+             ++x) {
             for (int k = 0; k < with.components; ++k) {
                 const auto i = static_cast<std::size_t>(x * with.components + k);
                 if (with.row(y)[i] != without.row(y)[i]) {
@@ -179,7 +182,6 @@ TEST(stamps, expand_placeholders) {
     EXPECT_EQ(ot::annot::expandStampText("{name}, {date}", anon), "25.10.2026");
     EXPECT_EQ(ot::annot::expandStampText("{name}", anon), "");
 }
-
 
 // Свой штамп: векторный вид без шрифтов и картинок, /Name Acrobat, переживает запись и переоткрытие.
 TEST(stamps, vector_stamp_from_assets_survives_save) {
@@ -270,7 +272,7 @@ TEST(stamps, dynamic_stamp_draws_expanded_lines) {
     StampSource src;
     src.pdf = asset("dynamic/approved.pdf");
     src.name = "#DApproved";
-    src.lines = {{"{name}", 100, 47, 9, 1, 0x2E7D32}, {"{date} {time}", 100, 58, 9, 1, 0x2E7D32}};
+    src.lines = {{"{name}", 100, 45.5f, 8, 1, 0x2E7D32}, {"{date} {time}", 100, 54.5f, 8, 1, 0x2E7D32}};
     StampValues v;
     v.name = "Мария Иванова";
     v.date = "25.10.2026";
@@ -287,14 +289,16 @@ TEST(stamps, dynamic_stamp_draws_expanded_lines) {
     EXPECT_NE(apA.stream, apB.stream);                // дата другая — контуры другие
     EXPECT_GT(apA.stream.size(), apC.stream.size());  // строки добавились
     EXPECT_FALSE(apA.fonts);
-    // Строки — в нижней части штампа: там штамп со строками отличается от штампа без них, надпись сверху — нет.
+    // Строки — в нижней части штампа: там штамп со строками отличается от штампа без них, надпись сверху —
+    // нет.
     const ot::Bitmap page = doc->renderPage(0, {.dpi = 72, .annotations = true});
     auto differing = [&page](int y0, int y1) {
         int n = 0;
         for (int y = y0; y < y1; ++y) {
             for (int x = 110; x < 290; ++x) {
                 const auto i = static_cast<std::size_t>(x * page.components);
-                if (page.row(y)[i] != page.row(y + 100)[i] || page.row(y)[i + 1] != page.row(y + 100)[i + 1]) {
+                if (page.row(y)[i] != page.row(y + 100)[i] ||
+                    page.row(y)[i + 1] != page.row(y + 100)[i + 1]) {
                     ++n;
                 }
             }

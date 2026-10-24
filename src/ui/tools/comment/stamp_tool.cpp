@@ -1,9 +1,9 @@
 // Штамп (план 5.2, п. 4; эталон 3.4 «Инструмент»: Штамп (K) — из палитры, из буфера (comment-41); comment-11,
-// comment-12, comment-13): щелчок — выбранный штамп в его размере центром в точке щелчка (в пределах страницы);
-// протягивание — в рамке протягивания по ширине с теми же пропорциями; динамический — со значениями Identity
-// и датой/временем постановки (services/stamps_catalog.h stampValues); картинка буфера обмена — один раз
-// штампом-картинкой (размер — 96 dpi, не шире kMaxImageStamp), затем снова штамп каталога. Пока инструмент
-// выбран — рамка штампа за курсором.
+// comment-12, comment-13): щелчок — выбранный штамп в его размере центром в точке щелчка (в пределах
+// страницы); протягивание — в рамке протягивания по ширине с теми же пропорциями; динамический — со
+// значениями Identity и датой/временем постановки (services/stamps_catalog.h stampValues); картинка буфера
+// обмена — один раз штампом-картинкой (размер — 96 dpi, не шире kMaxImageStamp), затем снова штамп каталога.
+// Пока инструмент выбран — рамка штампа за курсором.
 #include <QBuffer>
 #include <QFuture>
 #include <QPainter>
@@ -90,8 +90,8 @@ void CommentMode::stampRelease() {
     rect.moveLeft(std::clamp(rect.left(), 0.0, std::max(0.0, page.width() - rect.width())));
     rect.moveTop(std::clamp(rect.top(), 0.0, std::max(0.0, page.height() - rect.height())));
     annot::AnnotProps props = newProps(CommentAction::Stamp);
-    props.rect = {static_cast<float>(rect.left()), static_cast<float>(rect.top()), static_cast<float>(rect.right()),
-                  static_cast<float>(rect.bottom())};
+    props.rect = {static_cast<float>(rect.left()), static_cast<float>(rect.top()),
+                  static_cast<float>(rect.right()), static_cast<float>(rect.bottom())};
     if (!clipboardStamp_.isNull()) {
         QByteArray png;
         QBuffer buffer(&png);
@@ -99,7 +99,8 @@ void CommentMode::stampRelease() {
         clipboardStamp_.save(&buffer, "PNG");
         clipboardStamp_ = {};
         sizedStamp_.clear();
-        done(annot::createImageStamp(*s, page_, std::string(png.constData(), static_cast<std::size_t>(png.size())),
+        done(annot::createImageStamp(*s, page_,
+                                     std::string(png.constData(), static_cast<std::size_t>(png.size())),
                                      std::move(props), "Image"),
              false);
         return;
@@ -110,7 +111,8 @@ void CommentMode::stampRelease() {
         reportError(tr("штамп не найден — выберите его в палитре"));
         return;
     }
-    done(annot::createStamp(*s, page_, catalog.source(*entry), stamps::stampValues(Settings()), std::move(props)),
+    done(annot::createStamp(*s, page_, catalog.source(*entry), stamps::stampValues(Settings()),
+                            std::move(props)),
          false);
 }
 

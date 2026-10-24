@@ -2,7 +2,9 @@
 // $OTTISK_COMPAT_OUT/annots — matrix.pdf (annots-all.pdf с запиской, записанный инкрементом), created.pdf (15
 // создаваемых типов на пустой странице, инкрементом), наш рендер страницы 144 dpi (*.ours.png) и regions.json
 // — рамки аннотаций с внешним видом в пикселях; tools/compat_annots.py рендерит их pypdfium2 и сверяет imgcmp
-// --cross в каждой рамке. Отключён: запускает ctest compat.annots.generate.
+// --cross в каждой рамке; 5.2 — stamps.pdf: свои штампы assets/stamps (векторный вид из display list,
+// динамический со строками, повёрнутый /Matrix) и штамп-картинка, инкрементом. Отключён: запускает ctest
+// compat.annots.generate.
 #include <gtest/gtest.h>
 
 #include <nlohmann/json.hpp>
@@ -13,6 +15,7 @@
 
 #include "core/annot/annots.h"
 #include "core/annot/defaults.h"
+#include "core/annot/stamps.h"
 #include "core/doc/document.h"
 #include "core/doc/saver.h"
 #include "core/mu/context.h"
@@ -164,7 +167,46 @@ TEST(annots_compat, DISABLED_write) {
         const ot::SaveReport r = ot::Saver::save(*doc, created, {.mode = ot::SaveMode::Incremental});
         ASSERT_TRUE(r.ok()) << r.message;
     }
-    const nlohmann::json manifest = {{"files", {describe(out, "matrix"), describe(out, "created")}}};
+    // Свои штампы (5.2), инкрементом.
+    const fs::path stamps = out / "stamps.pdf";
+    ot::paths::writeFile(stamps, ot::test::makePdf(ot::MuContext::global(), 1));
+    {
+        auto doc = ot::Document::openOrThrow(stamps);
+        const fs::path assets = ot::test::sourceDir() / "assets" / "stamps";
+        auto stampProps = [](ot::RectF rect) {
+            AnnotProps p = ot::annot::toolDefaults(AnnotType::Stamp);
+            p.author = "compat";
+            p.rect = rect;
+            return p;
+        };
+        ot::annot::StampSource approved{
+            ot::paths::readFile(assets / "standard" / "approved.pdf"), 0, "#Approved", {}};
+        ot::annot::createStamp(*doc, 0, approved, {}, stampProps({60, 60, 260, 122}));
+        ot::annot::StampSource dynamic{
+            ot::paths::readFile(assets / "dynamic" / "approved.pdf"),
+            0,
+            "#DApproved",
+            {{"{name}", 100, 45.5f, 8, 1, 0x2E7D32}, {"{date} {time}", 100, 54.5f, 8, 1, 0x2E7D32}}};
+        ot::annot::StampValues values;
+        values.name = "Мария Иванова";
+        values.date = "25.10.2026";
+        values.time = "14:30";
+        ot::annot::createStamp(*doc, 0, dynamic, values, stampProps({300, 60, 500, 124}));
+        ot::annot::StampSource draft{ot::paths::readFile(assets / "standard" / "draft.pdf"), 0, "#Draft", {}};
+        const ot::annot::AnnotRef turned =
+            ot::annot::createStamp(*doc, 0, draft, {}, stampProps({80, 220, 280, 282}));
+        ot::annot::setStampRotation(*doc, turned, 30);
+        const std::string png =
+            ot::paths::readFile(ot::test::sourceDir() / "tests" / "fixtures" / "images" / "logo.png");
+        const ot::annot::StampSize size = ot::annot::imageStampSize(png);
+        ot::annot::createImageStamp(*doc, 0, png, stampProps({340, 220, 340 + size.width, 220 + size.height}),
+                                    "Logo");
+        const ot::SaveReport r = ot::Saver::save(*doc, stamps, {.mode = ot::SaveMode::Incremental});
+        ASSERT_TRUE(r.ok()) << r.message;
+    }
+    const nlohmann::json manifest = {
+        {"files", {describe(out, "matrix"), describe(out, "created"), describe(out, "stamps")}}};
     ot::paths::writeFile(out / "regions.json", manifest.dump(2));
     EXPECT_EQ(manifest["files"][1]["regions"].size(), 15u);
+    EXPECT_EQ(manifest["files"][2]["regions"].size(), 4u);
 }

@@ -141,13 +141,13 @@ QFuture<AnnotRef> createStamp(DocumentSession& session, int page, StampSource so
 
 QFuture<AnnotRef> createImageStamp(DocumentSession& session, int page, std::string image, AnnotProps props,
                                    std::string name) {
-    return session.edit(QString::fromStdString(createStepName(AnnotType::Stamp)),
-                        [page, image = std::move(image), props = std::move(props),
-                         name = std::move(name)](TaskContext& tc) {
-                            AnnotRef ref = ot::annot::createImageStamp(tc.document(), page, image, props, name);
-                            tc.touchPage(page);
-                            return ref;
-                        });
+    return session.edit(
+        QString::fromStdString(createStepName(AnnotType::Stamp)),
+        [page, image = std::move(image), props = std::move(props), name = std::move(name)](TaskContext& tc) {
+            AnnotRef ref = ot::annot::createImageStamp(tc.document(), page, image, props, name);
+            tc.touchPage(page);
+            return ref;
+        });
 }
 
 QFuture<void> setStampRotation(DocumentSession& session, AnnotRef ref, float degrees) {

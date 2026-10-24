@@ -19,12 +19,13 @@
 #include <QVBoxLayout>
 
 #include "ui/theme/theme.h"
+#include "ui/widgets/row_delegate.h"
 
 namespace ot::ui {
 
 namespace {
 
-constexpr int kIdRole = Qt::UserRole + 1;
+constexpr int kStampIdRole = Qt::UserRole + 1;
 
 struct KnownStamp {
     const char* id;
@@ -53,9 +54,10 @@ constexpr const char* kUserCategory = "user:";
 // Миниатюры по id и времени файла (пользовательские меняются).
 QImage cachedThumbnail(const stamps::StampCatalog& catalog, const stamps::StampEntry& e, QSize box) {
     static QHash<QString, QImage> cache;
-    const QString key = e.id + QLatin1Char('|') +
-                        (e.builtIn ? QString() : QString::number(QFileInfo(e.path).lastModified().toMSecsSinceEpoch())) +
-                        QLatin1Char('|') + QString::number(box.width());
+    const QString key =
+        e.id + QLatin1Char('|') +
+        (e.builtIn ? QString() : QString::number(QFileInfo(e.path).lastModified().toMSecsSinceEpoch())) +
+        QLatin1Char('|') + QString::number(box.width());
     auto it = cache.find(key);
     if (it == cache.end()) {
         it = cache.insert(key, stamps::thumbnail(catalog.pdf(e), 0, box));
@@ -103,6 +105,10 @@ StampsPalette::StampsPalette(QWidget* parent) : QDialog(parent) {
     categories_ = new QListWidget(this);
     categories_->setObjectName(QStringLiteral("stampCategories"));
     categories_->setAccessibleName(tr("Категории штампов"));
+    categories_->setFrameShape(QFrame::NoFrame);
+    categories_->setSelectionMode(QAbstractItemView::SingleSelection);
+    categories_->setItemDelegate(new RowDelegate(categories_));
+    categories_->setMouseTracking(true);
     categories_->setFixedWidth(m.dialogNav);
     row->addWidget(categories_);
     stamps_ = new QListWidget(this);
@@ -138,7 +144,7 @@ StampsPalette::StampsPalette(QWidget* parent) : QDialog(parent) {
     rename_->setObjectName(QStringLiteral("stampRename"));
     delete_ = new QPushButton(tr("&Удалить"), this);
     delete_->setObjectName(QStringLiteral("stampDelete"));
-    identity_ = new QPushButton(tr("I&dentity…"), this);
+    identity_ = new QPushButton(tr("&Личные данные…"), this);
     identity_->setObjectName(QStringLiteral("stampIdentity"));
     identity_->setToolTip(tr("Имя, должность и организация для динамических штампов"));
     for (QPushButton* b : {create_, clipboard_, favorite_, rename_, delete_, identity_}) {
@@ -164,7 +170,7 @@ StampsPalette::StampsPalette(QWidget* parent) : QDialog(parent) {
     connect(categories_, &QListWidget::currentRowChanged, this, [this] { fillStamps(); });
     connect(stamps_, &QListWidget::itemSelectionChanged, this, [this] { updateButtons(); });
     connect(stamps_, &QListWidget::itemActivated, this, [this](QListWidgetItem* item) {
-        emit stampChosen(item->data(kIdRole).toString());
+        emit stampChosen(item->data(kStampIdRole).toString());
         accept();
     });
     connect(create_, &QPushButton::clicked, this, &StampsPalette::createStamp);
@@ -186,20 +192,20 @@ void StampsPalette::reload() {
 void StampsPalette::fillCategories() {
     const QSignalBlocker block(categories_);
     categories_->clear();
-    QStringList ids{QLatin1String(kFavorites), QLatin1String(stamps::kStandard), QLatin1String(stamps::kSignHere),
-                    QLatin1String(stamps::kDynamic)};
+    QStringList ids{QLatin1String(kFavorites), QLatin1String(stamps::kStandard),
+                    QLatin1String(stamps::kSignHere), QLatin1String(stamps::kDynamic)};
     for (const QString& c : catalog_.userCategories()) {
         ids << QLatin1String(kUserCategory) + c;
     }
     for (const QString& id : ids) {
         auto* item = new QListWidgetItem(categoryTitle(id), categories_);
-        item->setData(kIdRole, id);
+        item->setData(kStampIdRole, id);
     }
 }
 
 void StampsPalette::showCategory(const QString& category) {
     for (int i = 0; i < categories_->count(); ++i) {
-        if (categories_->item(i)->data(kIdRole).toString() == category) {
+        if (categories_->item(i)->data(kStampIdRole).toString() == category) {
             categories_->setCurrentRow(i);
             fillStamps();
             return;
@@ -213,7 +219,7 @@ void StampsPalette::showCategory(const QString& category) {
 
 QString StampsPalette::currentCategory() const {
     const QListWidgetItem* item = categories_->currentItem();
-    return item != nullptr ? item->data(kIdRole).toString() : QString();
+    return item != nullptr ? item->data(kStampIdRole).toString() : QString();
 }
 
 void StampsPalette::fillStamps() {
@@ -243,8 +249,12 @@ void StampsPalette::fillStamps() {
     for (const stamps::StampEntry& e : entries) {
         auto* item = new QListWidgetItem(stamps_);
         item->setText(stampTitle(e));
-        item->setData(kIdRole, e.id);
-        item->setIcon(QIcon(QPixmap::fromImage(cachedThumbnail(catalog_, e, stamps_->iconSize()))));
+        item->setData(kStampIdRole, e.id);
+        // Миниатюра и у выбранного — без подкраски (выбор показывает фон подписи).
+        const QPixmap thumb = QPixmap::fromImage(cachedThumbnail(catalog_, e, stamps_->iconSize()));
+        QIcon icon(thumb);
+        icon.addPixmap(thumb, QIcon::Selected);
+        item->setIcon(icon);
         item->setToolTip(stampTitle(e));
     }
     if (entries.empty() && category == QLatin1String(kFavorites)) {
@@ -258,7 +268,7 @@ void StampsPalette::fillStamps() {
 
 void StampsPalette::selectStamp(const QString& id) {
     for (int i = 0; i < stamps_->count(); ++i) {
-        if (stamps_->item(i)->data(kIdRole).toString() == id) {
+        if (stamps_->item(i)->data(kStampIdRole).toString() == id) {
             stamps_->setCurrentRow(i);
             return;
         }
@@ -267,7 +277,7 @@ void StampsPalette::selectStamp(const QString& id) {
 
 QString StampsPalette::selectedStamp() const {
     const QListWidgetItem* item = stamps_->currentItem();
-    return item != nullptr && item->isSelected() ? item->data(kIdRole).toString() : QString();
+    return item != nullptr && item->isSelected() ? item->data(kStampIdRole).toString() : QString();
 }
 
 std::optional<stamps::StampEntry> StampsPalette::selectedEntry() const {
@@ -312,9 +322,10 @@ std::optional<std::pair<QString, QString>> StampsPalette::askName(const QString&
 }
 
 void StampsPalette::createStamp() {
-    const QString file = filePrompt_ ? filePrompt_()
-                                     : QFileDialog::getOpenFileName(this, tr("Создать штамп"), QString(),
-                                                                    tr("Картинки и PDF (*.png *.jpg *.jpeg *.pdf)"));
+    const QString file = filePrompt_
+                             ? filePrompt_()
+                             : QFileDialog::getOpenFileName(this, tr("Создать штамп"), QString(),
+                                                            tr("Картинки и PDF (*.png *.jpg *.jpeg *.pdf)"));
     if (file.isEmpty()) {
         return;
     }
@@ -323,7 +334,8 @@ void StampsPalette::createStamp() {
         return;
     }
     QString error;
-    const std::optional<stamps::StampEntry> e = catalog_.createFromFile(file, 0, named->first, named->second, &error);
+    const std::optional<stamps::StampEntry> e =
+        catalog_.createFromFile(file, 0, named->first, named->second, &error);
     if (!e) {
         note_->setText(tr("Не удалось создать штамп из «%1».").arg(QFileInfo(file).fileName()));
         note_->setVisible(true);
@@ -385,10 +397,10 @@ void StampsPalette::deleteStamp() {
     }
     const QString title = stampTitle(*e);
     const bool yes = confirm_ ? confirm_(title)
-                              : QMessageBox::question(this, tr("Удалить штамп"),
-                                                      tr("Удалить штамп «%1»? Файл штампа будет удалён.").arg(title),
-                                                      QMessageBox::Yes | QMessageBox::No,
-                                                      QMessageBox::No) == QMessageBox::Yes;
+                              : QMessageBox::question(
+                                    this, tr("Удалить штамп"),
+                                    tr("Удалить штамп «%1»? Файл штампа будет удалён.").arg(title),
+                                    QMessageBox::Yes | QMessageBox::No, QMessageBox::No) == QMessageBox::Yes;
     if (!yes || !catalog_.remove(e->id)) {
         return;
     }

@@ -185,7 +185,80 @@ void AnnotSelectTool::deleteSelection() {
 
 void AnnotSelectTool::selectionChanged() {
     loadVertices();
+    loadStampAngle();
     controller_.emitAnnotSelectionChanged();
+}
+
+// Угол одной выбранной /Stamp — задачей документа; ответ на прежний выбор отбрасывается.
+void AnnotSelectTool::loadStampAngle() {
+    const quint64 request = ++stampRequest_;
+    stampAngle_.reset();
+    stampRef_ = {};
+    DocumentSession* session = view_.document();
+    if (selected_.size() != 1 || session == nullptr || selected_.front().type != annot::AnnotType::Stamp ||
+        !movable(selected_.front())) {
+        return;
+    }
+    const AnnotRef ref = selected_.front().ref;
+    annot::stampRotation(*session, ref).then(&controller_, [this, request, ref](QFuture<float> f) {
+        float angle = 0;
+        try {
+            angle = f.result();
+        } catch (const std::exception&) {  // нет вида — маркера нет
+            return;
+        }
+        if (request != stampRequest_) {
+            return;
+        }
+        stampAngle_ = angle;
+        stampRef_ = ref;
+        view_.viewport()->update();
+    });
+}
+
+std::optional<QPointF> AnnotSelectTool::rotateHandle() const {
+    if (!stampAngle_ || selected_.size() != 1 || !(selected_.front().ref == stampRef_)) {
+        return std::nullopt;
+    }
+    const auto frame = frameOf(selected_.front());
+    if (!frame) {
+        return std::nullopt;
+    }
+    return QPointF(frame->center().x(), frame->top() - Theme::sizes().handle * 3.0);
+}
+
+// Угол перетаскивания маркера (градусы по часовой на экране): от направления нажатия к текущему вокруг центра
+// рамки; Shift — итоговый угол шагом 15°.
+double AnnotSelectTool::rotateDelta() const {
+    const auto frame = selected_.size() == 1 ? frameOf(selected_.front()) : std::nullopt;
+    if (!frame || !stampAngle_) {
+        return 0;
+    }
+    const QPointF c = frame->center();
+    const QPointF a = press_.viewport - c;
+    const QPointF b = current_ - c;
+    double delta = (std::atan2(b.y(), b.x()) - std::atan2(a.y(), a.x())) * 180.0 / std::numbers::pi;
+    if (rotateShift_) {
+        delta = std::round((*stampAngle_ + delta) / 15.0) * 15.0 - *stampAngle_;
+    }
+    return delta;
+}
+
+void AnnotSelectTool::finishRotate() {
+    drag_ = Drag::None;
+    DocumentSession* session = view_.document();
+    const double delta = rotateDelta();
+    if (!moved() || session == nullptr || !controller_.editable() || !stampAngle_ || std::fabs(delta) < 0.5) {
+        view_.viewport()->update();
+        return;
+    }
+    double angle = std::fmod(*stampAngle_ + delta, 360.0);
+    if (angle < 0) {
+        angle += 360.0;
+    }
+    stampAngle_ = static_cast<float>(angle);
+    annot::setStampRotation(*session, stampRef_, static_cast<float>(angle));
+    view_.viewport()->update();
 }
 
 // Вершины одной выбранной — задачей документа (свойства); ответ на прежний выбор отбрасывается.
@@ -465,6 +538,12 @@ bool AnnotSelectTool::mousePress(QMouseEvent* event) {
     pressing_ = true;
     const bool shift = (event->modifiers() & Qt::ShiftModifier) != 0;
     if (button == Qt::LeftButton) {
+        if (const auto rotate = rotateHandle();
+            rotate && QLineF(*rotate, pos).length() <= Theme::sizes().handle / 2.0 + kHandleSlopPx) {
+            drag_ = Drag::Rotate;
+            rotateShift_ = shift;
+            return true;
+        }
         if (const auto vertex = vertexAt(pos)) {
             drag_ = Drag::Vertex;
             vertex_ = *vertex;
@@ -577,6 +656,9 @@ bool AnnotSelectTool::mouseMove(QMouseEvent* event) {
     if (drag_ == Drag::Vertex) {
         vertexShift_ = (event->modifiers() & Qt::ShiftModifier) != 0;
         view_.viewport()->update();
+    } else if (drag_ == Drag::Rotate) {
+        rotateShift_ = (event->modifiers() & Qt::ShiftModifier) != 0;
+        view_.viewport()->update();
     } else if (drag_ == Drag::Move || drag_ == Drag::Resize) {
         publish();
     } else if (drag_ == Drag::Marquee) {
@@ -611,6 +693,10 @@ bool AnnotSelectTool::mouseRelease(QMouseEvent* event) {
         case Drag::Vertex:
             vertexShift_ = (event->modifiers() & Qt::ShiftModifier) != 0;
             finishVertex();
+            break;
+        case Drag::Rotate:
+            rotateShift_ = (event->modifiers() & Qt::ShiftModifier) != 0;
+            finishRotate();
             break;
         default:
             break;  // Pending — доделает ответ хит-теста
@@ -1007,6 +1093,9 @@ void AnnotSelectTool::pageChanged(int page) {
     if (vertexRef_.valid() && vertexRef_.page == page && drag_ != Drag::Vertex) {
         loadVertices();  // правка или undo сдвинули вершины
     }
+    if (stampRef_.valid() && stampRef_.page == page && drag_ != Drag::Rotate) {
+        loadStampAngle();  // undo поворота
+    }
     if (affected || bands_.count(page) > 0) {
         annotList(page);
     }
@@ -1044,6 +1133,24 @@ void AnnotSelectTool::paintOverlay(QPainter& painter) {
             painter.drawRect(QRectF(c - QPointF(s / 2, s / 2), QSizeF(s, s)));
         }
     }
+    if (const auto rotate = rotateHandle()) {
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        painter.drawLine(QPointF(frame->center().x(), frame->top()), *rotate + QPointF(0, s / 2));
+        painter.drawEllipse(*rotate, s / 2, s / 2);
+        if (drag_ == Drag::Rotate && moved()) {
+            // Предпросмотр: рамка, повёрнутая вокруг центра.
+            QTransform turn;
+            turn.translate(frame->center().x(), frame->center().y());
+            turn.rotate(rotateDelta());
+            turn.translate(-frame->center().x(), -frame->center().y());
+            QPen dash(colors.accent.color(), sizes.pageBorder, Qt::DashLine);
+            dash.setCosmetic(true);
+            painter.setPen(dash);
+            painter.setBrush(Qt::NoBrush);
+            painter.drawPolygon(turn.map(QPolygonF(*frame)));
+        }
+        return;
+    }
     if (!vertices) {
         return;
     }
@@ -1079,6 +1186,11 @@ void AnnotSelectTool::paintOverlay(QPainter& painter) {
 QCursor AnnotSelectTool::cursor(QPointF point, Qt::KeyboardModifiers /*modifiers*/) const {
     if (drag_ == Drag::Vertex || (drag_ == Drag::None && vertexAt(point))) {
         return QCursor(Qt::CrossCursor);
+    }
+    const auto rotate = drag_ == Drag::None ? rotateHandle() : std::nullopt;
+    if (drag_ == Drag::Rotate ||
+        (rotate && QLineF(*rotate, point).length() <= Theme::sizes().handle / 2.0 + kHandleSlopPx)) {
+        return QCursor(Qt::PointingHandCursor);
     }
     if (drag_ == Drag::Move) {
         return QCursor(Qt::SizeAllCursor);

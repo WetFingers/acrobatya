@@ -1,5 +1,6 @@
 // Штампы (план 5.2, п. 4; эталон 3.4 «Инструмент»: Штамп (K) — палитра категорий, из буфера (comment-41), из
-// файла PNG/JPEG/PDF; «Acrobat»: штампы с именами Acrobat; 1.4 — comment-13 частично; comment-11, comment-12):
+// файла PNG/JPEG/PDF; «Acrobat»: штампы с именами Acrobat; 1.4 — comment-13 частично; comment-11,
+// comment-12):
 //   * источник штампа — страница PDF (свои штампы assets/stamps/<категория>/<имя>.pdf, пользовательские из
 //     %LOCALAPPDATA%\AcroBatya\stamps\<категория>\): страница → display list → /AP /N аннотации /Stamp
 //     (pdf_set_annot_appearance_from_display_list — графика и картинки страницы векторно, /BBox — размер
@@ -55,7 +56,7 @@ std::string expandStampText(std::string_view text, const StampValues& values);
 
 // Источник штампа: страница PDF и строки шаблона.
 struct StampSource {
-    std::string pdf;   // байты PDF
+    std::string pdf;  // байты PDF
     int page = 0;
     std::string name;  // /Name: «#Approved», «#Draft», своё
     std::vector<StampLine> lines;

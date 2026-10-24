@@ -1,8 +1,9 @@
-// Вложить файл (план 5.2, п. 4; эталон 3.4 «Инструмент»: Вложить файл (/FileAttachment с иконкой); comment-14):
-// щелчок — выбор файла (диалог «Открыть»; тесты подменяют setFilePrompt), значок 20 × 20 пт центром в точке
-// щелчка, файл встраивается в PDF (/FS /EF, имя — /UF), текст комментария — имя файла, значок — стиль
-// инструмента «attach» (булавка по умолчанию; Скрепка, График, Ярлык — в свойствах). Больше kMaxAttachMb —
-// отказ. Открытие двойным щелчком — с чёрным списком и подтверждением панели «Вложения» (эталон 7.3, 2.4).
+// Вложить файл (план 5.2, п. 4; эталон 3.4 «Инструмент»: Вложить файл (/FileAttachment с иконкой);
+// comment-14): щелчок — выбор файла (диалог «Открыть»; тесты подменяют setFilePrompt), значок 20 × 20 пт
+// центром в точке щелчка, файл встраивается в PDF (/FS /EF, имя — /UF), текст комментария — имя файла, значок
+// — стиль инструмента «attach» (булавка по умолчанию; Скрепка, График, Ярлык — в свойствах). Больше
+// kMaxAttachMb — отказ. Открытие двойным щелчком — с чёрным списком и подтверждением панели «Вложения»
+// (эталон 7.3, 2.4).
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -56,8 +57,10 @@ void CommentMode::attachPress(const Locator& at) {
     const QByteArray bytes = file.readAll();
     const QSizeF size = view_.pageSizePoints(at.page);
     const float half = kNoteIconSize / 2;
-    const float x = std::clamp(static_cast<float>(at.point.x()), half, static_cast<float>(size.width()) - half);
-    const float y = std::clamp(static_cast<float>(at.point.y()), half, static_cast<float>(size.height()) - half);
+    const float x =
+        std::clamp(static_cast<float>(at.point.x()), half, static_cast<float>(size.width()) - half);
+    const float y =
+        std::clamp(static_cast<float>(at.point.y()), half, static_cast<float>(size.height()) - half);
     annot::AnnotProps props = newProps(CommentAction::Attach);
     props.rect = {x - half, y - half, x + half, y + half};
     const std::string name = QFileInfo(path).fileName().toStdString();

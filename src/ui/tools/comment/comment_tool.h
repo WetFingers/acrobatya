@@ -3,11 +3,12 @@
 // панель слева 320 с действиями группы (Записка, Текстовое поле, Текстовая выноска, Выделить, Подчеркнуть,
 // Зачеркнуть, Волнистая, Вставить текст, Заменить текст, Рисовать, Ластик); выбор действия — режим
 // CommentMode в слоте ViewToolId::Comment вида вкладки; «Фигуры» — линия, стрелка, прямоугольник, овал,
-// многоугольник, облако, ломаная (comment-07). Клавиши — S и Ctrl+6 (записка), J (текстовое поле), U
-// (выделить текст), D, R (прямоугольник). «Формат текста» (шрифт, кегль, цвет, выравнивание) правит открытый
-// редактор поля, выбранные поля FreeText или — без них — стиль следующего поля. Добавлять комментарии нельзя
-// (защищённый просмотр, только чтение, не PDF, право /P) — кнопки серые, причина — строкой панели и
-// подсказкой.
+// многоугольник, облако, ломаная (comment-07); «Штамп и вложение» — Штамп (K, текущий штамп подписью под
+// кнопкой), «Палитра штампов…» (ui/dialogs/stamps_palette.h; comment-11, 12, 13, 41) и Вложить файл
+// (comment-14). Клавиши — S и Ctrl+6 (записка), J (текстовое поле), U (выделить текст), D, R (прямоугольник),
+// K. «Формат текста» (шрифт, кегль, цвет, выравнивание) правит открытый редактор поля, выбранные поля
+// FreeText или — без них — стиль следующего поля. Добавлять комментарии нельзя (защищённый просмотр, только
+// чтение, не PDF, право /P) — кнопки серые, причина — строкой панели и подсказкой.
 #pragma once
 
 #include <QLabel>
@@ -33,6 +34,7 @@ class QVBoxLayout;
 namespace ot::ui {
 
 class PageView;
+class StampsPalette;
 
 class ToolRegistry;
 
@@ -55,7 +57,7 @@ public:
     // Режим комментариев вида (ставится в слот при первом обращении).
     static CommentMode& modeOf(PageView& view);
     CommentMode* mode() const;
-    DocumentView* view() const { return view_; }
+    DocumentView* view() const;
     QString lockReason() const { return lock_; }
 
     // Включить действие на вкладке инструмента: режим вида + кнопка панели.
@@ -79,6 +81,10 @@ public:
     ColorSwatch* fillSwatch() const { return fill_; }
     QComboBox* lineStartBox() const { return lineStart_; }
     QComboBox* lineEndBox() const { return lineEnd_; }
+    // Штамп (5.2): палитра — окно-модальный диалог (WA_DeleteOnClose); выбор штампа или картинки буфера сразу
+    // включает действие «Штамп»; «Личные данные…» — Установки → Комментирование. Подпись — текущий штамп.
+    StampsPalette* showStampPalette();
+    QLabel* stampLabel() const { return stampLabel_; }
 
 signals:
     void lockChanged(const QString& reason);
@@ -96,6 +102,7 @@ private:
     void buildFormat(QVBoxLayout* column);
     void formatChanged();
     void loadFormatFromSelection();
+    void updateStampLabel();
     static bool textAction(CommentAction action) noexcept;
 
     ToolRegistry& registry_;
@@ -119,6 +126,8 @@ private:
     QPointer<ColorSwatch> fill_;
     QPointer<QComboBox> lineStart_;
     QPointer<QComboBox> lineEnd_;
+    QPointer<QLabel> stampLabel_;
+    QPointer<ToolButton> paletteButton_;
     std::vector<annot::AnnotRef> formatTargets_;  // выбранные поля FreeText
     bool loadingStyle_ = false;
     std::vector<QMetaObject::Connection> connections_;

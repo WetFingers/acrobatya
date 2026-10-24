@@ -13,7 +13,7 @@
     {"id": "sign-here/initial-here", "file": "sign-here/initial-here.pdf", "name": "#InitialHere", "caption": "ИНИЦИАЛЫ", "color": "#EF6C00", "shape": "arrow"},
     {"id": "sign-here/witness", "file": "sign-here/witness.pdf", "name": "#Witness", "caption": "СВИДЕТЕЛЬ", "color": "#1565C0", "shape": "arrow"},
     {"id": "dynamic/approved", "file": "dynamic/approved.pdf", "name": "#DApproved", "caption": "УТВЕРЖДЕНО", "color": "#2E7D32", "dynamic": true,
-     "lines": [{"text": "{name}", "x": 100, "y": 47, "size": 9}, {"text": "{date} {time}", "x": 100, "y": 58, "size": 9}]},
+     "lines": [{"text": "{name}", "x": 100, "y": 45.5, "size": 8}, {"text": "{date} {time}", "x": 100, "y": 54.5, "size": 8}]},
     {"id": "dynamic/received", "file": "dynamic/received.pdf", "name": "#DReceived", "caption": "ПОЛУЧЕНО", "color": "#1565C0", "dynamic": true,
      "lines": [{"text": "{date} {time}", "x": 100, "y": 53, "size": 10}]},
     {"id": "dynamic/reviewed", "file": "dynamic/reviewed.pdf", "name": "#DReviewed", "caption": "ПРОВЕРЕНО", "color": "#6A1B9A", "dynamic": true,

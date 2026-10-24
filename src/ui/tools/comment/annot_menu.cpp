@@ -12,6 +12,10 @@
 #include "services/comment_settings.h"
 #include "services/document_session.h"
 #include "services/settings.h"
+#include "ui/panes/attachments_pane.h"
+#include "ui/shell/document_view.h"
+#include "ui/shell/main_window.h"
+#include "ui/shell/nav_pane.h"
 #include "ui/tools/comment/comment_mode.h"
 #include "ui/tools/comment/comment_tool.h"
 #include "ui/tools/comment/popup_widget.h"
@@ -77,6 +81,26 @@ void makeDefault(DocumentSession& session, const annot::AnnotRef& ref) {
     });
 }
 
+// Вложение комментария (/FileAttachment, comment-14): панель «Вложения» окна открывает или сохраняет файл с
+// чёрным списком и подтверждением (эталон 7.3, 2.4).
+void openAttachment(PageView& view, const annot::AnnotRef& ref, bool save) {
+    auto* w = qobject_cast<MainWindow*>(view.window());
+    if (w == nullptr) {
+        return;
+    }
+    DocumentView* document = nullptr;
+    for (QWidget* p = view.parentWidget(); p != nullptr && document == nullptr; p = p->parentWidget()) {
+        document = qobject_cast<DocumentView*>(p);
+    }
+    if (document == nullptr) {
+        return;
+    }
+    w->navPane().showPane(QStringLiteral("attachments"));
+    if (auto* pane = qobject_cast<AttachmentsPane*>(w->navPane().page(QStringLiteral("attachments")))) {
+        pane->openAnnotation(document, ref.page, ref.objnum, save);
+    }
+}
+
 void fill(PageView& view, QMenu* menu) {
     const auto& selection = view.tools().annotSelect().selection();
     if (selection.empty()) {
@@ -105,6 +129,23 @@ void fill(PageView& view, QMenu* menu) {
     editText->setObjectName(QStringLiteral("commentEditText"));
     editText->setVisible(freeText);
     editText->setEnabled(freeText && view.tools().editable() && !selection.front().locked());
+    const bool attachment = single && selection.front().type == annot::AnnotType::FileAttachment;
+    QAction* openFile =
+        menu->addAction(QCoreApplication::translate("ot::ui::CommentMenu", "Открыть вложение"), [guard, ref] {
+            if (guard != nullptr) {
+                openAttachment(*guard, ref, false);
+            }
+        });
+    openFile->setObjectName(QStringLiteral("commentOpenAttachment"));
+    openFile->setVisible(attachment);
+    QAction* saveFile = menu->addAction(
+        QCoreApplication::translate("ot::ui::CommentMenu", "Сохранить вложение…"), [guard, ref] {
+            if (guard != nullptr) {
+                openAttachment(*guard, ref, true);
+            }
+        });
+    saveFile->setObjectName(QStringLiteral("commentSaveAttachment"));
+    saveFile->setVisible(attachment);
     for (const char* later : {QT_TRANSLATE_NOOP("ot::ui::CommentMenu", "Ответить"),
                               QT_TRANSLATE_NOOP("ot::ui::CommentMenu", "Статус")}) {
         QAction* a = menu->addAction(QCoreApplication::translate("ot::ui::CommentMenu", later));
@@ -169,9 +210,14 @@ void saveAsDefault(const annot::AnnotProps& p) {
 void installCommentMenu(PageView& view) {
     QObject::connect(&view.tools(), &ToolController::annotContextMenu, &view,
                      [v = &view](QMenu* menu) { fill(*v, menu); });
-    // Двойной щелчок по выбранному: поле FreeText — правка на странице, записка и прочие — окно записки.
+    // Двойной щелчок по выбранному: поле FreeText — правка на странице, вложение — открыть файл (и в только
+    // чтении), записка и прочие — окно записки.
     QObject::connect(&view.tools(), &ToolController::annotDoubleClicked, &view,
                      [v = &view](const annot::AnnotInfo& info) {
+                         if (info.type == annot::AnnotType::FileAttachment) {
+                             openAttachment(*v, info.ref, false);
+                             return;
+                         }
                          if (!v->tools().editable() || info.locked()) {
                              return;
                          }

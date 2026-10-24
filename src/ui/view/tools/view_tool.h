@@ -407,6 +407,12 @@ public:
     // страницы выбранной; пусто — маркеров нет (или ещё не прочитаны).
     const std::vector<QPointF>& vertexPoints() const noexcept { return vertexPoints_; }
     std::optional<int> vertexAt(QPointF viewportPoint) const;
+    // Поворот штампа (5.2, comment-11): у одной выбранной /Stamp — маркер над серединой верхней стороны рамки
+    // (вьюпорт; нет — угол штампа ещё не прочитан или его нельзя двигать); перетаскивание — поворот вокруг
+    // центра рамки (Shift — шагом 15°), по отпусканию — шаг «Rotate stamp» (annot::setStampRotation). Угол —
+    // /Rotate штампа, градусы по часовой.
+    std::optional<QPointF> rotateHandle() const;
+    std::optional<float> stampAngle() const { return stampAngle_; }
     // Аннотации страницы (для рамки выбора): загружены — указатель, нет — запрос и nullptr.
     const std::vector<AnnotInfo>* annotList(int page);
     bool hasAnnotList(int page) const { return lists_.contains(page); }
@@ -415,7 +421,7 @@ public:
     void pageChanged(int page);
 
 private:
-    enum class Drag { None, Pending, Move, Resize, Marquee, Vertex };
+    enum class Drag { None, Pending, Move, Resize, Marquee, Vertex, Rotate };
     struct Press {
         QPointF viewport;
         QPoint global;
@@ -441,6 +447,9 @@ private:
     void loadVertices(bool retry = false);
     QPointF draggedVertex() const;
     void finishVertex();
+    void loadStampAngle();
+    double rotateDelta() const;
+    void finishRotate();
 
     std::vector<AnnotInfo> selected_;
     Drag drag_ = Drag::None;
@@ -465,6 +474,11 @@ private:
     quint64 vertexRequest_ = 0;
     int vertexTries_ = 0;
     bool vertexShift_ = false;
+    // Поворот штампа (5.2).
+    std::optional<float> stampAngle_;
+    AnnotRef stampRef_;
+    quint64 stampRequest_ = 0;
+    bool rotateShift_ = false;
 };
 
 }  // namespace ot::ui

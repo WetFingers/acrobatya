@@ -1,12 +1,14 @@
-// Каталог штампов (план 5.2, п. 4; эталон 3.4 «Инструмент»: Штамп — палитра категорий Стандартные/Динамические/
-// Подписи/Пользовательские, из буфера, из файла; 4.7: %LOCALAPPDATA%\AcroBatya\stamps\ — пользовательские штампы
-// PDF; comment-11, comment-12, comment-13, comment-41):
+// Каталог штампов (план 5.2, п. 4; эталон 3.4 «Инструмент»: Штамп — палитра категорий
+// Стандартные/Динамические/Подписи/Пользовательские, из буфера, из файла; 4.7:
+// %LOCALAPPDATA%\AcroBatya\stamps\ — пользовательские штампы PDF; comment-11, comment-12, comment-13,
+// comment-41):
 //   * свои — ресурс :/stamps (assets/stamps: stamps.json — id, файл, /Name Acrobat, надпись, цвет, строки
 //     динамического; PDF по категориям «standard», «sign-here», «dynamic»);
-//   * пользовательские — <каталог данных>/stamps/<категория>/<имя>.pdf (категория и имя — имена папки и файла;
-//     id — «user/<категория>/<имя>»): создать из PNG/JPEG (одностраничный PDF с картинкой), из страницы PDF, из
-//     картинки буфера обмена (comment-41); переименовать, удалить; удаление последнего штампа категории удаляет
-//     папку категории;
+//   * пользовательские — <каталог данных>/stamps/<категория>/<имя>.pdf (категория и имя — имена папки и
+//   файла;
+//     id — «user/<категория>/<имя>»): создать из PNG/JPEG (одностраничный PDF с картинкой), из страницы PDF,
+//     из картинки буфера обмена (comment-41); переименовать, удалить; удаление последнего штампа категории
+//     удаляет папку категории;
 //   * избранное — state.sqlite stamp_favorites (миграция 6);
 //   * значения динамических штампов — Identity Установок (имя или имя входа, должность, организация), дата
 //     dd.MM.yyyy и время HH:mm.
@@ -66,12 +68,12 @@ public:
     // Размер штампа (страница PDF, пункты); не читается — 0 × 0.
     annot::StampSize size(const StampEntry& entry) const;
 
-    // Пользовательские. Имя и категория — без \ / : * ? " < > | (заменяются на «_»), пустые — ошибка. Ошибка —
-    // nullopt и текст (английский журнал) в error.
+    // Пользовательские. Имя и категория — без \ / : * ? " < > | (заменяются на «_»), пустые — ошибка. Ошибка
+    // — nullopt и текст (английский журнал) в error.
     std::optional<StampEntry> createFromFile(const QString& file, int page, const QString& category,
                                              const QString& name, QString* error = nullptr);
-    std::optional<StampEntry> createFromImage(const QImage& image, const QString& category, const QString& name,
-                                              QString* error = nullptr);
+    std::optional<StampEntry> createFromImage(const QImage& image, const QString& category,
+                                              const QString& name, QString* error = nullptr);
     std::optional<StampEntry> createFromPdf(const QByteArray& pdf, int page, const QString& category,
                                             const QString& name, QString* error = nullptr);
     std::optional<StampEntry> rename(const QString& id, const QString& name, const QString& category = {});
@@ -89,7 +91,8 @@ private:
 // Безопасное имя файла и папки (без запрещённых в Windows символов); пусто — пусто.
 QString safeName(const QString& name);
 // Значения подстановок динамических штампов: Identity, дата dd.MM.yyyy и время HH:mm момента when.
-annot::StampValues stampValues(const Settings& settings, const QDateTime& when = QDateTime::currentDateTime());
+annot::StampValues stampValues(const Settings& settings,
+                               const QDateTime& when = QDateTime::currentDateTime());
 // Миниатюра страницы штампа в рамке box (с полями, на прозрачном); не PDF — пустая.
 QImage thumbnail(const QByteArray& pdf, int page, QSize box);
 

@@ -1,10 +1,11 @@
-// Генератор своих штампов (план 5.2, п. 4; эталон 3.4 «Acrobat» — штампы с именами Acrobat; comment-11, comment-13):
-// stamps_assets.DISABLED_generate читает assets/stamps/stamps.json и пишет assets/stamps/<категория>/<имя>.pdf —
-// одностраничные векторные PDF: «Стандартные» — двойная скруглённая рамка цветом штампа с бледной заливкой и
-// надписью; «Подписать здесь» — стрелка-ярлык с белой надписью; «Динамические» — рамка повыше с надписью сверху
-// и пустым местом под строки-шаблоны (их кладёт ядро при постановке, core/annot/stamps.h). Надписи — контурами
-// глифов Helvetica Bold MuPDF (URW Nimbus Sans; нет глифа — segoeuib.ttf): шрифтов в файлах нет.
-// Запуск (каталог вывода — OTTISK_STAMPS_OUT, иначе assets/stamps репозитория):
+// Генератор своих штампов (план 5.2, п. 4; эталон 3.4 «Acrobat» — штампы с именами Acrobat; comment-11,
+// comment-13): stamps_assets.DISABLED_generate читает assets/stamps/stamps.json и пишет
+// assets/stamps/<категория>/<имя>.pdf — одностраничные векторные PDF: «Стандартные» — двойная скруглённая
+// рамка цветом штампа с бледной заливкой и надписью; «Подписать здесь» — стрелка-ярлык с белой надписью;
+// «Динамические» — рамка повыше с надписью сверху и пустым местом под строки-шаблоны (их кладёт ядро при
+// постановке, core/annot/stamps.h). Надписи — контурами глифов Helvetica Bold MuPDF (URW Nimbus Sans; нет
+// глифа — segoeuib.ttf): шрифтов в файлах нет. Запуск (каталог вывода — OTTISK_STAMPS_OUT, иначе
+// assets/stamps репозитория):
 //   unit_tests --gtest_also_run_disabled_tests --gtest_filter=stamps_assets.*
 #include <gtest/gtest.h>
 
@@ -65,13 +66,14 @@ struct Glyph {
 };
 
 // Надпись контурами: центр по x = cx, базовая линия y, кегль size (внутри mu::call).
-void drawCaption(fz_context* ctx, fz_device* dev, const Glyph* glyphs, std::size_t count, float width, float size,
-                 float cx, float y, const float* color) {
+void drawCaption(fz_context* ctx, fz_device* dev, const Glyph* glyphs, std::size_t count, float width,
+                 float size, float cx, float y, const float* color) {
     float x = cx - width * size / 2;
     for (std::size_t i = 0; i < count; ++i) {
         const fz_matrix trm = fz_make_matrix(size, 0, 0, -size, x, y);
         if (fz_path* path = fz_outline_glyph(ctx, glyphs[i].font, glyphs[i].gid, trm)) {
-            fz_fill_path(ctx, dev, path, 0, fz_identity, fz_device_rgb(ctx), color, 1.0f, fz_default_color_params);
+            fz_fill_path(ctx, dev, path, 0, fz_identity, fz_device_rgb(ctx), color, 1.0f,
+                         fz_default_color_params);
             fz_drop_path(ctx, path);
         }
         x += glyphs[i].adv * size;
@@ -79,8 +81,8 @@ void drawCaption(fz_context* ctx, fz_device* dev, const Glyph* glyphs, std::size
 }
 
 // Рисунок штампа (внутри mu::call): рамка или стрелка и надпись.
-void drawStamp(fz_context* ctx, fz_device* dev, float w, float h, bool arrow, bool dynamic, const Glyph* glyphs,
-               std::size_t count, float textW, float size, const float* color) {
+void drawStamp(fz_context* ctx, fz_device* dev, float w, float h, bool arrow, bool dynamic,
+               const Glyph* glyphs, std::size_t count, float textW, float size, const float* color) {
     fz_path* path = fz_new_path(ctx);
     fz_stroke_state* stroke = fz_new_stroke_state(ctx);
     const float white[3] = {1, 1, 1};
@@ -91,11 +93,13 @@ void drawStamp(fz_context* ctx, fz_device* dev, float w, float h, bool arrow, bo
         fz_lineto(ctx, path, w - 21, h - 1);
         fz_lineto(ctx, path, 1, h - 1);
         fz_closepath(ctx, path);
-        fz_fill_path(ctx, dev, path, 0, fz_identity, fz_device_rgb(ctx), color, 0.9f, fz_default_color_params);
+        fz_fill_path(ctx, dev, path, 0, fz_identity, fz_device_rgb(ctx), color, 0.9f,
+                     fz_default_color_params);
         drawCaption(ctx, dev, glyphs, count, textW, size, (w - 20) / 2 + 2, h / 2 + size * 0.36f, white);
     } else {
         roundedRect(ctx, path, fz_make_rect(2, 2, w - 2, h - 2), 8);
-        fz_fill_path(ctx, dev, path, 0, fz_identity, fz_device_rgb(ctx), color, 0.08f, fz_default_color_params);
+        fz_fill_path(ctx, dev, path, 0, fz_identity, fz_device_rgb(ctx), color, 0.08f,
+                     fz_default_color_params);
         stroke->linewidth = 2.5f;
         fz_stroke_path(ctx, dev, path, stroke, fz_identity, fz_device_rgb(ctx), color, 1.0f,
                        fz_default_color_params);
