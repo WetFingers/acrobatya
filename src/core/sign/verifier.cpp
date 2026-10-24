@@ -368,6 +368,8 @@ public:
     void integrity();
     // (3) доверие и время, (4) отзыв — у целой подписи с сертификатом подписанта.
     void trust(const VerifyOptions& options, const RevocationData& dss);
+    // Есть ли в CMS метка подписи (цела или нет) — для уровня PAdES.
+    bool hasSignatureTimestamp() const { return !token_.empty(); }
     // Сертификаты CMS и метки — для DocumentVerification::embeddedCertificates.
     const std::vector<CertSummary>& seenCertificates() const { return seen_; }
 
@@ -375,6 +377,12 @@ private:
     void add(Issue issue, std::string detail) { sig_.findings.push_back({issue, std::move(detail)}); }
     void checkCms(bool sha1Content);
     void checkDocTimestamp();
+    // Цепочка до якорей flags на момент at; отзыв — по политике. Итог — в sig_ (trusted, chain, revocation).
+    void establishTrust(X509* leaf, ChainPurpose purpose, unsigned flags, std::time_t at,
+                        const VerifyOptions& options, const RevocationData& dss);
+    // Доверие службы времени токена на момент метки (без отзыва): true — путь до якоря «подписи».
+    bool tsaTrusted(X509* tsa, STACK_OF(X509) * tokenCerts, std::time_t genTime,
+                    const VerifyOptions& options);
     bool checkAlgorithms(const std::string& digestOid, const std::string& signatureOid);
 
     fz_context* ctx_;
@@ -386,6 +394,8 @@ private:
     Ossl<STACK_OF(X509)> cmsCerts_;
     RevocationData archival_;  // adbe-revocationInfoArchival подписи
     std::vector<CertSummary> seen_;
+    Bytes token_;           // метка подписи (unsigned-атрибут), пусто — нет
+    Bytes signatureValue_;  // значение подписи — imprint метки
 };
 
 bool SignatureCheck::structure(pdf_obj* v) {
@@ -541,6 +551,11 @@ void SignatureCheck::checkDocTimestamp() {
         sig_.ess = cms.signingCertificateV2.has_value() || cms.hasSigningCertificateV1;
         if (cms.signerCertIndex >= 0) {
             sig_.signer = cms.certificates[static_cast<std::size_t>(cms.signerCertIndex)];
+            signer_ = loadCertificate(sig_.signer->der);
+        }
+        cmsCerts_.reset(ossl::checkPtr(sk_X509_new_null(), "sk_X509_new_null"));
+        for (const CertSummary& c : cms.certificates) {
+            sk_X509_push(cmsCerts_.get(), loadCertificate(c.der).release());
         }
     } catch (const std::exception& e) {
         add(Issue::CmsDamaged, std::string("time-stamp token: ") + e.what());
@@ -566,6 +581,8 @@ void SignatureCheck::checkDocTimestamp() {
         return;
     }
     sig_.intact = true;
+    sig_.timestamp = info;
+    sig_.timestampIntact = true;
 }
 
 void SignatureCheck::checkCms(bool sha1Content) {
@@ -580,6 +597,8 @@ void SignatureCheck::checkCms(bool sha1Content) {
     sig_.signatureAlgorithm = info.signatureAlgorithm;
     sig_.certificates = info.certificates;
     seen_ = info.certificates;
+    token_ = info.timestampToken;
+    signatureValue_ = info.signature;
     if (!info.timestampToken.empty()) {
         try {
             const CmsInfo token = parseCms(info.timestampToken);
@@ -752,22 +771,119 @@ void SignatureCheck::checkCms(bool sha1Content) {
     sig_.intact = ok;
 }
 
+bool SignatureCheck::tsaTrusted(X509* tsa, STACK_OF(X509) * tokenCerts, std::time_t genTime,
+                                const VerifyOptions& options) {
+    if (options.trust == nullptr) {
+        return false;
+    }
+    Ossl<X509_STORE> anchors = options.trust->x509Store(kTrustSignatures);
+    ChainBuilder builder(anchors.get(), genTime, true);
+    for (int i = 0; tokenCerts != nullptr && i < sk_X509_num(tokenCerts); ++i) {
+        builder.addUntrusted(sk_X509_value(tokenCerts, i));
+    }
+    for (int i = 0; extra_ != nullptr && i < sk_X509_num(extra_); ++i) {
+        builder.addUntrusted(sk_X509_value(extra_, i));
+    }
+    // Назначение не проверяется строже подписи токена: у старых служб EKU timeStamping не критический.
+    return builder.build(tsa).trusted();
+}
+
 void SignatureCheck::trust(const VerifyOptions& options, const RevocationData& dss) {
     const std::time_t now = options.now.value_or(std::time(nullptr));
-    std::time_t at = now;
-    sig_.timeSource = TimeSource::Now;
-    if (const auto claimed = isoToTime(sig_.claimedTime)) {
-        at = *claimed;
-        sig_.timeSource = TimeSource::Claimed;
-    }
-    sig_.validationTime = timeToIsoUtc(at);
-    if (!sig_.intact || !signer_ || sig_.kind == SignatureKind::DocTimestamp) {
+    const std::optional<std::time_t> claimed = isoToTime(sig_.claimedTime);
+    std::time_t at = claimed.value_or(now);
+    sig_.timeSource = claimed ? TimeSource::Claimed : TimeSource::Now;
+    const auto expiredNow = [&](X509* cert) {
+        std::time_t t = now;
+        return X509_cmp_time(X509_get0_notAfter(cert), &t) < 0;
+    };
+
+    // Метка документа: служба времени — «подписант», время — её.
+    if (sig_.kind == SignatureKind::DocTimestamp) {
+        if (sig_.timestamp) {
+            if (const auto gen = isoToTime(sig_.timestamp->genTime)) {
+                at = *gen;
+                sig_.timeSource = TimeSource::Timestamp;
+            }
+        }
+        sig_.validationTime = timeToIsoUtc(at);
+        if (!sig_.intact || !signer_) {
+            return;
+        }
+        if (expiredNow(signer_.get())) {
+            add(Issue::TimestampExpired, "the time-stamping certificate expired on " + sig_.signer->notAfter);
+        }
+        establishTrust(signer_.get(), ChainPurpose::Any, kTrustSignatures, at, options, dss);
+        sig_.timestampTrusted = sig_.trusted;
         return;
     }
 
+    // Метка подписи: imprint — хэш значения подписи алгоритмом токена.
+    if (!token_.empty()) {
+        std::string error;
+        TimestampInfo info;
+        bool intact = false;
+        try {
+            info = parseTimestampToken(token_);
+            const EVP_MD* md = mdByOid(info.hashAlgorithm);
+            intact = md != nullptr &&
+                     verifyTimestampToken(token_, digestOf(signatureValue_, md), nullptr, &error, &info);
+            if (md == nullptr) {
+                error = "imprint algorithm " + info.hashAlgorithm + " is unknown";
+            }
+        } catch (const std::exception& e) {
+            error = e.what();
+        }
+        if (!intact) {
+            add(Issue::TimestampInvalid, "signature time-stamp: " + error);
+        } else {
+            sig_.timestamp = info;
+            sig_.timestampIntact = true;
+            Ossl<X509> tsa;
+            Ossl<STACK_OF(X509)> tokenCerts(ossl::checkPtr(sk_X509_new_null(), "sk_X509_new_null"));
+            try {
+                const CmsInfo cms = parseCms(token_);
+                for (const CertSummary& c : cms.certificates) {
+                    sk_X509_push(tokenCerts.get(), loadCertificate(c.der).release());
+                }
+                if (cms.signerCertIndex >= 0) {
+                    tsa =
+                        loadCertificate(cms.certificates[static_cast<std::size_t>(cms.signerCertIndex)].der);
+                }
+            } catch (const std::exception& e) {
+                spdlog::debug("verifier: {}: time-stamp certificates: {}", sig_.field, e.what());
+            }
+            const auto gen = isoToTime(info.genTime);
+            sig_.timestampTrusted = tsa && gen && tsaTrusted(tsa.get(), tokenCerts.get(), *gen, options);
+            bool usable = sig_.timestampTrusted;
+            if (!sig_.timestampTrusted) {
+                add(Issue::TimestampUntrusted, "the time-stamping authority is not trusted");
+            } else if (expiredNow(tsa.get())) {
+                add(Issue::TimestampExpired,
+                    "the time-stamping certificate expired on " + summarize(tsa.get()).notAfter);
+                usable = options.acceptExpiredTimestamps;
+            }
+            if (usable && gen) {
+                at = *gen;
+                sig_.timeSource = TimeSource::Timestamp;
+            }
+            if (claimed && gen && *claimed > *gen + 300) {
+                add(Issue::ClaimedTimeAfterTimestamp,
+                    "/M " + sig_.claimedTime + " is later than the time-stamp " + info.genTime);
+            }
+        }
+    }
+    sig_.validationTime = timeToIsoUtc(at);
+    if (!sig_.intact || !signer_) {
+        return;
+    }
+    const unsigned flags = sig_.kind == SignatureKind::Certification ? kTrustCertification : kTrustSignatures;
+    establishTrust(signer_.get(), ChainPurpose::DocumentSigning, flags, at, options, dss);
+}
+
+void SignatureCheck::establishTrust(X509* leaf, ChainPurpose purposeCheck, unsigned purpose, std::time_t at,
+                                    const VerifyOptions& options, const RevocationData& dss) {
     // (3) Цепочка до якорей нужного назначения на момент проверки.
-    const unsigned purpose =
-        sig_.kind == SignatureKind::Certification ? kTrustCertification : kTrustSignatures;
     Ossl<X509_STORE> anchors;
     if (options.trust != nullptr) {
         anchors = options.trust->x509Store(purpose);
@@ -779,11 +895,11 @@ void SignatureCheck::trust(const VerifyOptions& options, const RevocationData& d
     for (int i = 0; extra_ != nullptr && i < sk_X509_num(extra_); ++i) {
         builder.addUntrusted(sk_X509_value(extra_, i));
     }
-    builder.setPurpose(ChainPurpose::DocumentSigning);
+    builder.setPurpose(purposeCheck);
     if (anchors) {
         builder.setFetcher(options.fetcher);  // AIA — только когда есть до чего строить
     }
-    const ChainResult chain = builder.build(signer_.get());
+    const ChainResult chain = builder.build(leaf);
     sig_.chain = chain.chain;
     sig_.chainError = chain.error;
     switch (chain.status) {
@@ -888,6 +1004,22 @@ const char* timeSourceName(TimeSource source) {
     return "?";
 }
 
+const char* padesLevelName(PadesLevel level) {
+    switch (level) {
+        case PadesLevel::None:
+            return "";
+        case PadesLevel::B:
+            return "B";
+        case PadesLevel::T:
+            return "T";
+        case PadesLevel::LT:
+            return "LT";
+        case PadesLevel::LTA:
+            return "LTA";
+    }
+    return "";
+}
+
 const char* verdictName(Verdict verdict) {
     switch (verdict) {
         case Verdict::Valid:
@@ -950,6 +1082,14 @@ const char* issueName(Issue issue) {
             return "RevocationUnknown";
         case Issue::RevocationUnchecked:
             return "RevocationUnchecked";
+        case Issue::TimestampInvalid:
+            return "TimestampInvalid";
+        case Issue::TimestampUntrusted:
+            return "TimestampUntrusted";
+        case Issue::TimestampExpired:
+            return "TimestampExpired";
+        case Issue::ClaimedTimeAfterTimestamp:
+            return "ClaimedTimeAfterTimestamp";
     }
     return "?";
 }
@@ -972,6 +1112,7 @@ std::optional<Verdict> issueSeverity(Issue issue) {
         case Issue::NoSignerCertificate:
         case Issue::ModifiedAfterSigning:
         case Issue::RevocationUnknown:
+        case Issue::TimestampInvalid:
             return Verdict::Unknown;
         case Issue::Untrusted:
         case Issue::CertExpired:
@@ -981,6 +1122,9 @@ std::optional<Verdict> issueSeverity(Issue issue) {
             return Verdict::ValidUntrusted;
         case Issue::WeakAlgorithm:
         case Issue::RevocationUnchecked:
+        case Issue::TimestampUntrusted:
+        case Issue::TimestampExpired:
+        case Issue::ClaimedTimeAfterTimestamp:
             return std::nullopt;
     }
     return Verdict::Unknown;
@@ -1179,9 +1323,50 @@ DocumentVerification verifyDocument(Document& doc, const VerifyOptions& options)
         for (const CertSummary& c : check.seenCertificates()) {
             remember(c);
         }
+        if (sig.kind != SignatureKind::DocTimestamp) {
+            sig.level = check.hasSignatureTimestamp() ? PadesLevel::T : PadesLevel::B;
+        }
         spdlog::debug("verifier: {}: {} ({} findings)", sig.field, verdictName(sig.verdict),
                       sig.findings.size());
         out.signatures.push_back(std::move(sig));
+    }
+    // Уровни PAdES: метка документа после подписи — T, /DSS после неё — LT, метка не раньше /DSS — LTA.
+    int dssRevision = 0;
+    mu::call(ctx, [&] {
+        pdf_obj* root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf), PDF_NAME(Root));
+        pdf_obj* dssRef = pdf_dict_gets(ctx, root, "DSS");
+        bool filled = false;
+        for (const char* key : {"Certs", "OCSPs", "CRLs"}) {
+            filled = filled || pdf_array_len(ctx, pdf_dict_gets(ctx, dssRef, key)) > 0;
+        }
+        if (filled) {
+            pdf_obj* holder = pdf_is_indirect(ctx, dssRef) ? dssRef : root;
+            dssRevision = std::max(1, out.versions - pdf_find_version_for_obj(ctx, pdf, holder));
+        }
+    });
+    std::vector<int> dtsRevisions;
+    for (const SignatureInfo& s : out.signatures) {
+        if (s.kind == SignatureKind::DocTimestamp) {
+            dtsRevisions.push_back(s.revision);
+        }
+    }
+    for (SignatureInfo& s : out.signatures) {
+        if (s.kind == SignatureKind::DocTimestamp) {
+            continue;
+        }
+        const bool laterDts =
+            std::any_of(dtsRevisions.begin(), dtsRevisions.end(), [&](int r) { return r > s.revision; });
+        if (s.level == PadesLevel::B && !laterDts) {
+            continue;
+        }
+        if (dssRevision == 0 || dssRevision <= s.revision) {
+            s.level = PadesLevel::T;
+        } else if (std::any_of(dtsRevisions.begin(), dtsRevisions.end(),
+                               [&](int r) { return r > s.revision && r >= dssRevision; })) {
+            s.level = PadesLevel::LTA;
+        } else {
+            s.level = PadesLevel::LT;
+        }
     }
     out.status = documentStatus(out.signatures);
     return out;

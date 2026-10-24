@@ -50,5 +50,12 @@
   "pades-5-signatures-and-1-document-timestamp.pdf": {
    "count": 6, "approval": 5, "docTimestamps": 1, "allIntact": true
   }
+ },
+ "levels": {
+  "pades-bes.pdf": [{"field": "Signature1", "level": "B", "timestamped": false}],
+  "doc-firmado-T.pdf": [{"level": "T", "timestamped": true}],
+  "doc-firmado-LT.pdf": [{"level": "LT", "timestamped": true}],
+  "PAdES-LTA.pdf": [{"kind": "Approval", "level": "LTA"}, {"kind": "DocTimestamp", "intact": true}],
+  "pades-5-signatures-and-1-document-timestamp.pdf": [{"kind": "DocTimestamp", "intact": true, "secureTime": true}]
  }
 }

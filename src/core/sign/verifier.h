@@ -25,6 +25,13 @@
 //     «недействительна», после — нет; нет данных — «Неизвестно (нет данных об отзыве)»: при «обязательно» —
 //     вердикт Unknown, при «по возможности» — предупреждение; retroactive — данные отзыва годятся задним
 //     числом (как Acrobat; pyHanko --retroactive-revinfo).
+// (5) метки времени — метка подписи (unsigned id-aa-timeStampToken: imprint — хэш значения подписи) и метка
+//     документа (ETSI.RFC3161: imprint — хэш /ByteRange): токен цел, служба времени доверена на момент метки
+//     (якоря «подписи») — «secure time», время проверки подписи — время метки; служба не доверена или метка
+//     испорчена — время «заявленное»; сертификат службы истёк к «сейчас» — «просроченная метка», принимается
+//     по VerifyOptions::acceptExpiredTimestamps; /M позже метки — предупреждение. Уровень PAdES — по
+//     структуре: B; T — метка подписи или метка документа после неё; LT — T и непустой /DSS, изменённый после
+//     подписи; LTA — LT и метка документа не раньше ревизии /DSS (то же правило — tools/compare_pyhanko.py).
 //
 // Вердикт — как у Acrobat (Verdict); причины — Finding с кодом Issue и английской подробностью (журнал,
 // «Подробнее»); сводка документа — полоса сообщений (DocumentStatus). Объекты OpenSSL наружу не выходят.
@@ -41,6 +48,7 @@
 #include "core/sign/ossl.h"
 #include "core/sign/revocation.h"
 #include "core/sign/trust_store.h"
+#include "core/sign/tsa.h"
 #include "core/sign/x509_info.h"
 #include "core/util/geometry.h"
 #include "core/util/http_fetcher.h"
@@ -96,6 +104,11 @@ enum class Issue {
     Revoked,              // отозван до момента проверки
     RevocationUnknown,    // нет данных об отзыве при политике «обязательно»
     RevocationUnchecked,  // отзыв не проверен (нет данных при «по возможности», политика «никогда»)
+    // метки времени
+    TimestampInvalid,           // метка подписи испорчена (imprint, подпись токена)
+    TimestampUntrusted,         // служба времени не доверена — время «заявленное»
+    TimestampExpired,           // сертификат службы времени истёк к «сейчас»
+    ClaimedTimeAfterTimestamp,  // /M позже времени метки
 };
 const char* issueName(Issue issue);
 std::optional<Verdict> issueSeverity(Issue issue);
@@ -107,6 +120,10 @@ enum class TimeSource {
     Timestamp,  // метка времени подписи (служба времени)
 };
 const char* timeSourceName(TimeSource source);
+
+// Уровень PAdES (ETSI EN 319 142-1) по структуре; у метки документа — None.
+enum class PadesLevel { None, B, T, LT, LTA };
+const char* padesLevelName(PadesLevel level);  // "", "B", "T", "LT", "LTA"
 
 // Политика проверки отзыва (Установки → Подписи → Проверка).
 enum class RevocationPolicy {
@@ -169,6 +186,12 @@ struct SignatureInfo {
     std::vector<RevocationResult> revocationDetails;          // по сертификатам цепочки, кроме якоря
     bool ltv = false;  // «LTV включено»: цепочка доверена, отзыв всей цепочки — по данным файла
 
+    // Метка времени: подписи (B-T) или сама метка документа.
+    std::optional<TimestampInfo> timestamp;
+    bool timestampIntact = false;   // токен цел, imprint сходится
+    bool timestampTrusted = false;  // служба времени доверена на момент метки
+    PadesLevel level = PadesLevel::None;
+
     // Итог.
     bool structureOk = false;  // (1)
     bool intact = false;       // (1) и (2): данные не изменены, подпись сходится
@@ -203,7 +226,9 @@ struct VerifyOptions {
     net::HttpFetcher* fetcher = nullptr;  // OCSP, CRL, AIA; nullptr — без сети
     RevocationPolicy revocation = RevocationPolicy::BestEffort;
     bool retroactiveRevocation = true;  // данные отзыва годятся задним числом (Acrobat)
-    std::optional<std::time_t> now;     // «сейчас» (тесты); nullopt — часы
+    bool acceptExpiredTimestamps =
+        true;                        // «просроченная метка» — время всё равно метки (Acrobat по умолчанию)
+    std::optional<std::time_t> now;  // «сейчас» (тесты); nullopt — часы
 };
 
 // Проверить все подписанные поля документа. Не PDF — пустой результат (NotSigned).

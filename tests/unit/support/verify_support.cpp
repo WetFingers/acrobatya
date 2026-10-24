@@ -108,6 +108,16 @@ void expectSignature(const SignatureInfo& sig, const json& want, const std::stri
     if (want.contains("verdict")) {
         EXPECT_EQ(std::string(ot::sign::verdictName(sig.verdict)), want["verdict"].get<std::string>());
     }
+    if (want.contains("level")) {
+        EXPECT_EQ(std::string(ot::sign::padesLevelName(sig.level)), want["level"].get<std::string>());
+    }
+    if (want.contains("timestamped")) {
+        EXPECT_EQ(sig.timestamp.has_value(), want["timestamped"].get<bool>());
+    }
+    if (want.contains("secureTime")) {
+        EXPECT_EQ(sig.timeSource == ot::sign::TimeSource::Timestamp && sig.timestampTrusted,
+                  want["secureTime"].get<bool>());
+    }
     for (const auto& name : want.value("issues", json::array())) {
         EXPECT_TRUE(hasIssueNamed(sig, name.get<std::string>())) << "нет " << name.get<std::string>();
     }
