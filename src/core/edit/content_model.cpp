@@ -1,6 +1,7 @@
 #include "core/edit/content_model.h"
 
 #include <algorithm>
+#include <charconv>
 #include <cmath>
 #include <cstdio>
 #include <memory>
@@ -9,6 +10,8 @@
 #include <utility>
 
 #include "core/doc/document.h"
+#include "core/doc/journal.h"
+#include "core/edit/text_blocks.h"
 #include "core/mu/call.h"
 #include "core/mu/context.h"
 #include "core/mu/handles.h"
@@ -254,11 +257,208 @@ std::string ContentModel::serialize(int stream) const {
     std::string out;
     out.reserve(cs.bytes.size());
     for (int op : cs.ops) {
+        if (const auto it = replaced_.find(op); it != replaced_.end()) {
+            out += it->second;
+            continue;
+        }
         const Operation& o = ops_[static_cast<std::size_t>(op)];
         out.append(cs.bytes, o.offset, o.length);
     }
     out.append(cs.bytes, cs.tail, std::string::npos);
     return out;
+}
+
+bool ContentModel::modified(int stream) const {
+    for (const auto& [op, bytes] : replaced_) {
+        if (ops_[static_cast<std::size_t>(op)].stream == stream) {
+            return true;
+        }
+    }
+    return false;
+}
+
+namespace {
+
+// Число для контент-потока: кратчайшая запись, которая читается обратно в то же float, без экспоненты.
+void putNumber(std::string& out, float v) {
+    if (!std::isfinite(v) || std::fabs(v) < 1e-7f) {
+        out += '0';
+        return;
+    }
+    char buf[96];
+    const auto res = std::to_chars(buf, buf + sizeof buf, v, std::chars_format::fixed);
+    out.append(buf, res.ptr);
+}
+
+void putMatrix(std::string& out, const Matrix& m) {
+    for (float v : {m.a, m.b, m.c, m.d, m.e, m.f}) {
+        putNumber(out, v);
+        out += ' ';
+    }
+    out += "Tm";
+}
+
+}  // namespace
+
+RebuildResult ContentModel::rebuildParagraph(const TextBlock& block) {
+    RebuildResult result;
+    if (!block.editable()) {
+        return result;
+    }
+    std::vector<int> ops;
+    for (int si : block.spans) {
+        const TextSpan& span = spans_.at(static_cast<std::size_t>(si));
+        if (!span.editable() || span.size == 0 || span.scale == 0 ||
+            fonts_[static_cast<std::size_t>(span.font)].vertical) {
+            return result;
+        }
+        if (std::find(ops.begin(), ops.end(), span.op) == ops.end()) {
+            ops.push_back(span.op);
+        }
+    }
+    static const char kHex[] = "0123456789ABCDEF";
+    for (int index : ops) {
+        const Operation& op = ops_[static_cast<std::size_t>(index)];
+        const TextSpan& span = spans_[static_cast<std::size_t>(op.span)];
+        // Пробелы перед операцией — как были; без них новая запись (число) склеилась бы с прошлым ключевым
+        // словом («TD[(…)]TJ» → «TD1 0 0 1 …»).
+        std::string out(raw(index).substr(0, op.tokenOffset - op.offset));
+        if (out.empty()) {
+            out = " ";
+        }
+        auto number = [&](std::size_t i) {
+            std::size_t k = 0;
+            for (const Operand& o : op.operands) {
+                if (o.isNumber() && k++ == i) {
+                    return static_cast<float>(o.number);
+                }
+            }
+            return 0.0f;
+        };
+        if (op.kind == OpKind::NextLineShowSpaced) {
+            putNumber(out, number(0));
+            out += " Tw ";
+            putNumber(out, number(1));
+            out += " Tc ";
+        }
+        if (op.kind == OpKind::NextLineShow || op.kind == OpKind::NextLineShowSpaced) {
+            out += "T* ";
+        }
+        // Оператор с начала строки (Tm = Tlm) — со своей матрицей текста из модели: она ставит ту же Tm и
+        // Tlm, что были. С середины строки Tm не пишется: Tlm она сбросила бы, а перо там — уже на месте.
+        const Matrix& tm = span.tm;
+        const Matrix& tlm = span.tlm;
+        if (tm.a == tlm.a && tm.b == tlm.b && tm.c == tlm.c && tm.d == tlm.d && tm.e == tlm.e &&
+            tm.f == tlm.f) {
+            putMatrix(out, tm);
+            out += ' ';
+        }
+        // Элементы TJ по порядку: сдвиги — исходными числами (повтор чисел даёт те же float-позиции, что у
+        // MuPDF), глифы — кодами; между глифами без исходного сдвига — сдвиг из позиций модели, если они
+        // расходятся с естественной шириной (код, который кодировка не знает, — его Tw — и т. п.).
+        std::vector<const Operand*> items;
+        if (op.kind == OpKind::ShowArray) {
+            for (auto it = op.operands.rbegin(); it != op.operands.rend(); ++it) {
+                if (it->kind == Operand::Kind::Array) {
+                    for (const Operand& o : it->items) {
+                        items.push_back(&o);
+                    }
+                    break;
+                }
+            }
+        }
+        if (items.size() > 0xFFFF) {
+            items.clear();  // у глифа номер элемента — 16 бит: такой массив — сдвигами из позиций модели
+        }
+        const float unit =
+            span.size * span.scale * 0.001f;  // сдвиг TJ на 1 — столько по x пространства текста
+        out += '[';
+        bool inString = false;
+        float pen = 0;  // перо нового TJ от Tm спана (пространство текста)
+        auto putAdjust = [&](float n) {
+            if (inString) {
+                out += '>';
+                inString = false;
+            }
+            out += ' ';
+            putNumber(out, n);
+            out += ' ';
+            pen -= n * unit;
+        };
+        int g = span.firstGlyph;
+        const int end = span.firstGlyph + span.glyphCount;
+        const std::size_t count = items.empty() ? 1 : items.size();
+        for (std::size_t k = 0; k < count; ++k) {
+            if (!items.empty() && items[k]->isNumber()) {
+                putAdjust(static_cast<float>(items[k]->number));
+                continue;
+            }
+            for (; g < end && (items.empty() || glyphs_[static_cast<std::size_t>(g)].item == k); ++g) {
+                const Glyph& gl = glyphs_[static_cast<std::size_t>(g)];
+                const float n = -(gl.x - pen) / unit;
+                if (std::fabs(n) >= 0.001f) {
+                    putAdjust(n);
+                }
+                if (!inString) {
+                    out += '<';
+                    inString = true;
+                }
+                for (int b = gl.codeBytes - 1; b >= 0; --b) {
+                    const unsigned byte = (gl.code >> (8 * b)) & 0xFF;
+                    out += kHex[byte >> 4];
+                    out += kHex[byte & 15];
+                }
+                pen = gl.x + (gl.w0 * span.size + span.charSpace) * span.scale +
+                      (gl.wordSpace() ? span.wordSpace * span.scale : 0.0f);
+                ++result.glyphs;
+            }
+        }
+        if (inString) {
+            out += '>';
+        }
+        out += "] TJ";
+        replaced_[index] = std::move(out);
+        ++result.ops;
+    }
+    result.ok = true;
+    return result;
+}
+
+int ContentModel::apply(Document& doc, const std::string& operation) const {
+    std::vector<int> streams;
+    for (std::size_t s = 0; s < streams_.size(); ++s) {
+        if (!streams_[s].form && streams_[s].objnum > 0 && modified(static_cast<int>(s))) {
+            streams.push_back(static_cast<int>(s));
+        }
+    }
+    if (streams.empty()) {
+        return 0;
+    }
+    fz_context* ctx = doc.context().get();
+    pdf_document* pdf = doc.pdf();
+    Journal::Operation op(doc, operation);
+    for (int s : streams) {
+        const std::string bytes = serialize(s);
+        const ContentStream& cs = streams_[static_cast<std::size_t>(s)];
+        mu::BufferHandle plain(ctx);
+        mu::BufferHandle packed(ctx);
+        mu::PdfObjHandle ref(ctx);
+        mu::call(ctx, [&] {
+            plain.reset(fz_new_buffer_from_copied_data(
+                ctx, reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size()));
+            size_t length = 0;
+            unsigned char* data = fz_new_deflated_data_from_buffer(ctx, &length, plain, FZ_DEFLATE_DEFAULT);
+            packed.reset(fz_new_buffer_from_data(ctx, data, length));
+            ref.reset(pdf_new_indirect(ctx, pdf, cs.objnum, cs.gen));
+            pdf_dict_put(ctx, ref, PDF_NAME(Filter), PDF_NAME(FlateDecode));
+            pdf_dict_del(ctx, ref, PDF_NAME(DecodeParms));
+            pdf_update_stream(ctx, pdf, ref, packed, 1);
+        });
+    }
+    op.invalidate(page_);
+    op.markHeavy();  // правка редактора — полная запись файла (эталон 4.4)
+    op.commit();
+    return static_cast<int>(streams.size());
 }
 
 std::string ContentModel::spanText(int span) const {

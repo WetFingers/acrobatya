@@ -26,6 +26,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -38,6 +39,8 @@ class Document;
 }
 
 namespace ot::edit {
+
+struct TextBlock;
 
 // Операнд оператора — своё значение (без pdf_obj).
 struct Operand {
@@ -168,6 +171,13 @@ struct TextSpan {
     bool editable() const noexcept { return reason == ReadOnly::None; }
 };
 
+// Итог пересборки абзаца (rebuildParagraph).
+struct RebuildResult {
+    bool ok = false;  // блок можно править, операторы заменены
+    int ops = 0;      // заменённых операторов показа
+    int glyphs = 0;
+};
+
 // Итог перекрёстной проверки геометрии (crossCheck).
 struct CrossCheck {
     int modelChars = 0;  // символов модели (глиф с несколькими Unicode — несколько символов)
@@ -201,6 +211,23 @@ public:
     // Декодированный поток stream заново: байты операций по порядку и хвост. Без правок — байт в байт как
     // ContentStream::bytes (массив /Contents — по элементу, inline image и BX/EX — как были).
     std::string serialize(int stream) const;
+    // Поток изменён пересборкой (есть заменённые операции).
+    bool modified(int stream) const;
+    // Заменённые операции: индекс → новые байты (с пробелами перед ней, как у исходной).
+    const std::map<int, std::string>& replacements() const noexcept { return replaced_; }
+
+    // «Пустая правка» (эталон 3.9 «Стабильность»): операторы показа абзаца block (Tj, TJ, ', ") заменяются
+    // новыми байтами без изменения текста — явная матрица текста (Tm) и TJ с кодами глифов и сдвигами по их
+    // позициям в модели; ' и " — своим T* (и Tw/Tc); Tm и Tlm после оператора — как были (Tlm возвращается
+    // Tm, перо — сдвигом TJ). Совпадение рендера и fz_stext после записи — проверка того, что модель поняла
+    // позиции так же, как MuPDF. Блок «только чтение» не трогается (ok = false). Операции блока заменяются
+    // целиком.
+    RebuildResult rebuildParagraph(const TextBlock& block);
+    // Записать изменённые потоки страницы в документ одной операцией журнала (operation — её имя): поток
+    // сжимается FlateDecode, pdf_update_stream(…, compressed = 1), /DecodeParms снимается. Потоки форм не
+    // пишутся (формы не редактируются). Возвращает число записанных потоков. Поток, общий с другими
+    // страницами, меняется и у них.
+    int apply(Document& doc, const std::string& operation = "Edit text") const;
     // Текст спана в UTF-8 (только глифы потока, без добавленных пробелов).
     std::string spanText(int span) const;
 
@@ -223,6 +250,7 @@ private:
     std::vector<Glyph> glyphs_;
     std::vector<FontInfo> fonts_;
     int syntaxErrors_ = 0;
+    std::map<int, std::string> replaced_;
 };
 
 }  // namespace ot::edit
