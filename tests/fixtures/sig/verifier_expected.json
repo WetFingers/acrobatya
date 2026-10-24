@@ -1,0 +1,54 @@
+{
+ "about": "Ожидания unit-тестов валидатора (план 4.4) на файлах корпуса EU DSS (dss-pades/src/test/resources/validation; корпуса нет — тест пропускается). Подписи — по имени поля (field) или по порядку; ключи: structureOk, intact, coversWholeFile, kind (Approval/Certification/DocTimestamp), subFilter, signedAttributes, verdict, issues — коды Issue, которые обязаны быть, noIssues — которых быть не должно. Записано до кода сессии 4.4; pkcs7-no-message-digest.pdf — без signed-атрибутов вообще (подпись RFC 5652 5.4 прямо над хэшем данных, pyHanko INTACT): цела, SHA-1 — «устаревший алгоритм» (план ждал Invalid — разбор в журнале 4.4).",
+ "structure": {
+  "pdf-byterange-overlap.pdf": [
+   {"field": "Signature1", "structureOk": true},
+   {"field": "Signature2", "structureOk": false, "intact": false, "verdict": "Invalid", "issues": ["BadByteRange"]}
+  ],
+  "pdf-signed-out-of-byteRange.pdf": [
+   {"field": "Signature1", "structureOk": false, "intact": false, "verdict": "Invalid", "issues": ["BadByteRange"]}
+  ],
+  "hello_signed_INCSAVE_signed_EDITED.pdf": [
+   {"field": "Signature1", "structureOk": true, "intact": true},
+   {"field": "Signature2", "structureOk": false, "intact": false, "verdict": "Invalid", "issues": ["BadByteRange"], "note": "словарь /V переписан последней секцией: /Contents вне «дыры» /ByteRange"}
+  ],
+  "dss-818/Signature-P-DE_CRY-2 (HASH_FAILURE).pdf": [
+   {"structureOk": true, "intact": true, "noIssues": ["DigestMismatch", "SignatureMismatch"], "note": "имя файла — прежний ложный HASH_FAILURE DSS (DSS-818): message-digest сходится, подпись над атрибутами в байтах файла сходится (OpenSSL и cryptography); pyHanko 0.38 — «cryptographically unsound»: asn1crypto untag().dump() перекодирует атрибуты с adbe-revocationInfoArchival 9,5 КБ"}
+  ],
+  "pkcs7-no-message-digest.pdf": [
+   {"field": "Signature_0", "structureOk": true, "intact": true, "kind": "Certification", "subFilter": "adbe.pkcs7.detached", "signedAttributes": false, "issues": ["WeakAlgorithm"], "noIssues": ["NoMessageDigest", "DigestMismatch", "SignatureMismatch"]}
+  ],
+  "modified_after_signature.pdf": [
+   {"field": "Signature1", "structureOk": true, "intact": true, "coversWholeFile": false}
+  ],
+  "pades-bes.pdf": [
+   {"field": "Signature1", "structureOk": true, "intact": true, "coversWholeFile": true, "kind": "Approval", "subFilter": "ETSI.CAdES.detached", "signedAttributes": true, "noIssues": ["WeakAlgorithm", "ModifiedAfterSigning"]}
+  ],
+  "pades-bes-no-certificates.pdf": [
+   {"field": "Signature1", "structureOk": true, "intact": false, "verdict": "Unknown", "issues": ["NoSignerCertificate"]}
+  ],
+  "pades-enveloping-cms.pdf": [
+   {"field": "Signature1", "structureOk": true, "intact": true}
+  ],
+  "pades-enveloping-empty-bytes-cms.pdf": [
+   {"field": "signature1", "structureOk": true, "intact": false, "verdict": "Invalid", "issues": ["DigestMismatch"]}
+  ],
+  "pades-unsupported-signature-algorithm.pdf": [
+   {"field": "Signature1", "structureOk": true, "intact": false, "verdict": "Unknown", "issues": ["UnsupportedAlgorithm"]}
+  ],
+  "dss-PLAIN-ECDSA/TeleSec_PKS_eIDAS_QES_CA_1-baseline-b.pdf": [
+   {"field": "Signature3", "structureOk": true, "intact": false, "verdict": "Unknown", "issues": ["UnsupportedAlgorithm"]}
+  ],
+  "malformed-rsa-digestinfo.pdf": [
+   {"field": "Signature1", "structureOk": true, "intact": false, "verdict": "Invalid", "issues": ["SignatureMismatch"]}
+  ],
+  "pades-lt-extended-dss.pdf": [
+   {"field": "Signature1", "structureOk": true, "intact": true, "kind": "Approval"},
+   {"field": "Signature2", "structureOk": true, "intact": true, "kind": "DocTimestamp", "subFilter": "ETSI.RFC3161"},
+   {"field": "Signature3", "structureOk": true, "intact": true, "coversWholeFile": true}
+  ],
+  "pades-5-signatures-and-1-document-timestamp.pdf": {
+   "count": 6, "approval": 5, "docTimestamps": 1, "allIntact": true
+  }
+ }
+}

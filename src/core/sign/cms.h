@@ -130,6 +130,7 @@ struct CmsInfo {
     Bytes messageDigest;                     // атрибут message-digest
     std::optional<std::string> signingTime;  // атрибут signing-time (ISO), у CAdES-B PAdES — нет
     std::optional<EssCertId> signingCertificateV2;
+    std::optional<EssCertId> signingCertificateV1;  // ESS v1: хэш SHA-1 (старые подписи)
     bool hasSigningCertificateV1 = false;
     Bytes timestampToken;  // unsigned id-aa-timeStampToken (ContentInfo), пусто — нет
 

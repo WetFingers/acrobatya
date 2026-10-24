@@ -410,7 +410,10 @@ CmsInfo parseCms(std::span<const std::uint8_t> bytes) {
         if (const CmsAttribute* ess = info.signedAttribute(oid::kSigningCertificateV2)) {
             info.signingCertificateV2 = parseEss(ess->value, true);
         }
-        info.hasSigningCertificateV1 = info.signedAttribute(oid::kSigningCertificate) != nullptr;
+        if (const CmsAttribute* ess1 = info.signedAttribute(oid::kSigningCertificate)) {
+            info.hasSigningCertificateV1 = true;
+            info.signingCertificateV1 = parseEss(ess1->value, false);
+        }
         if (const CmsAttribute* ts = info.unsignedAttribute(oid::kTimeStampToken)) {
             info.timestampToken = ts->value;
         }

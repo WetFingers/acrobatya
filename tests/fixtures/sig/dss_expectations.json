@@ -1,0 +1,795 @@
+{
+ "about": "Ожидания валидатора на корпусе EU DSS (план 4.4, п. 5): retroactive, якоря — самоподписанные сертификаты файла, время — метка подписи, иначе /M. Сначала — pyHanko 0.38 (tools/compare_pyhanko.py expect), затем правки с причиной в note. modified: none — подпись покрывает файл; ltv/form/annot — разрешённые изменения; illegal — запрещённые или покрытие не по ревизии.",
+ "files": {
+  "51sigs.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature2", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature3", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature4", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature5", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature6", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature7", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature8", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature9", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature10", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature11", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature12", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature13", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature14", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature15", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature16", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature17", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature18", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature19", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature20", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature21", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature22", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature23", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature24", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature25", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature26", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature27", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature28", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature29", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature30", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature31", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature32", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature33", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature34", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature35", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature36", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature37", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature38", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature39", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature40", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature41", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature42", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature43", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature44", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature45", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature46", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature47", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature48", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature49", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature50", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature51", "kind": "sig", "intact": true, "trusted": true, "modified": "ltv", "level": "LT"}
+   ]
+  },
+  "AD-RB.pdf": {
+   "signatures": [
+    {"field": "SignHere_827f69f3-6da4-46a7-b473-9ba175a32d41", "kind": "sig", "intact": true, "trusted": false, "modified": "illegal", "level": "T"},
+    {"field": "ENVELOPEID_04E32142CACE4C9DAB875C0FC264F2CF", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "BadEncodedCMS.pdf": {
+   "signatures": [
+    {"field": "Test Signature", "kind": "sig", "error": true, "note": "pyHanko: AssertionError: "}
+   ]
+  },
+  "DSS-1443.pdf": {
+   "signatures": [
+    {"field": "Cryptolog-918022117", "kind": "sig", "intact": true, "trusted": true, "modified": "ltv", "level": "LTA"},
+    {"field": "Cryptolog-1082825226", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "DSS-1683.pdf": {
+   "signatures": [
+    {"field": "Signature_0", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "DSS-1983.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LTA"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "DSS-2025.pdf": {
+   "signatures": [
+    {"field": "SigCS-1432220495366", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "DSS-2155.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "T"}
+   ]
+  },
+  "DSS-2199.pdf": {
+   "signatures": [
+    {"field": "ENVELOPEID_924ED0CBBAD34947B69968B44C02BE17", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature1", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "DSS-2601.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LTA"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "DSS-2821.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"},
+    {"field": "6831d54d-907d-4ddc-8d58-94a6ac69697b", "kind": "sig", "intact": true, "trusted": true, "modified": "ltv", "level": "B"}
+   ]
+  },
+  "DSS-3226.pdf": {
+   "signatures": [
+    {"field": "Signaturefield", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "B"},
+    {"field": "Signaturefield_1", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "B"}
+   ]
+  },
+  "DSS-3298.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LTA"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "DSS-3567.pdf": {
+   "signatures": [
+    {"field": "Assinatura 1", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "B"}
+   ]
+  },
+  "DSS-3577.pdf": {
+   "signatures": [
+    {"field": "SignHere_4c04142c-ee5a-448b-a3d5-b4c6d5063e59", "kind": "sig", "intact": true, "trusted": false, "modified": "illegal", "level": "T"}
+   ]
+  },
+  "PAdES-LT.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature2", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature3", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Signature4", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"}
+   ]
+  },
+  "PAdES-LTA.pdf": {
+   "signatures": [
+    {"field": "Cryptolog-918022117", "kind": "sig", "intact": true, "trusted": true, "modified": "ltv", "level": "LTA"},
+    {"field": "Cryptolog-1082825226", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "PAdESWithCrossCertificateOCSP.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "T"}
+   ]
+  },
+  "Signature-P-BG_BOR-1.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "T"}
+   ]
+  },
+  "Signature-P-BG_BOR-2.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "T"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "Signature-P-DE_SCI-4.pdf": {
+   "signatures": [
+    {"field": "Signatur_1459435797602", "kind": "sig", "intact": true, "trusted": false, "modified": "illegal", "level": "LTA"},
+    {"field": "Signatur_1459438391137", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"}
+   ]
+  },
+  "Signature-P-FR_CS-5.pdf": {
+   "signatures": [
+    {"field": "PRF_1", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LTA"},
+    {"field": "SigCS-1460553902201", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "SigCS-1460553902672", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "Signature-P-HU_MIC-1.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "T"}
+   ]
+  },
+  "Signature-P-HU_MIC-3.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "T"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"}
+   ]
+  },
+  "Signature-P-HU_NET-2.pdf": {
+   "signatures": [
+    {"field": "NlSignature551711527623", "kind": "sig", "error": true, "note": "pyHanko: AttributeError: module 'cryptography.hazmat.primitives.hashes' has no attribute '1.2.840.113549.1.1.11'"}
+   ]
+  },
+  "Signature-P-HU_POL-3.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "T"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "Signature-P-HU_POL-7.pdf": {
+   "signatures": [
+    {"field": "Signature-20191101-155347", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "T"},
+    {"field": "DocumentTimeStamp-20191101-155421", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"},
+    {"field": "Signature-20191101-155926", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "T"},
+    {"field": "DocumentTimeStamp-20191101-160031", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "Signature-P-PK7-2.pdf": {
+   "signatures": [
+    {"field": "SigCS-1432220521731", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "T"}
+   ]
+  },
+  "Signature-P-SK-6.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "T"},
+    {"field": "Signature2", "kind": "sig", "error": true, "note": "pyHanko: SignatureValidationError: /ETSI.RFC3161 is not a recognized SubFilter type in signatures."},
+    {"field": "Signature3", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "T"}
+   ]
+  },
+  "TEST2_signed_with_zero_policy_hash.pdf": {
+   "signatures": [
+    {"field": "Sig1", "kind": "sig", "intact": true, "trusted": true, "modified": "ltv", "level": "LT"}
+   ]
+  },
+  "Test.signed_Certipost-2048-SHA512.extended-LTA.pdf": {
+   "signatures": [
+    {"field": "Cryptolog-846272363", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LTA"},
+    {"field": "Cryptolog-1895426501", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Signature1", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "TestToSignPDFSHA256_TST_SIG_NOT_FOUND.pdf": {
+   "signatures": [
+    {"field": "Signature2", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "T"}
+   ]
+  },
+  "adbe_crl_signed.pdf": {
+   "signatures": [
+    {"field": "Signature2", "kind": "sig", "intact": true, "trusted": false, "modified": "illegal", "level": "T"},
+    {"field": "Sig 2", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Sig 3", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "adbe_ocsp_signed.pdf": {
+   "signatures": [
+    {"field": "Signature2", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "B"}
+   ]
+  },
+  "belgian_pki_multiple_ocsps.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LTA"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"}
+   ]
+  },
+  "belgian_pki_multiple_ocsps_lt.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "ltv", "level": "LT"}
+   ]
+  },
+  "doc-firmado-LT.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "ltv", "level": "LT"}
+   ]
+  },
+  "doc-firmado-T.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "T"}
+   ]
+  },
+  "doc-firmado.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LTA"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "dss-1188/Test.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "dss-1376/DSS1376-rev_n-1.pdf": {
+   "signatures": [
+    {"field": "Sig1", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "B"}
+   ]
+  },
+  "dss-1376/DSS1376-rev_n-2.pdf": {
+   "signatures": [
+    {"field": "Sig1", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "B"}
+   ]
+  },
+  "dss-1376/DSS1376-rev_n-3.pdf": {
+   "signatures": [
+    {"field": "Sig1", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "B"}
+   ]
+  },
+  "dss-1376/DSS1376-rev_n-4.pdf": {
+   "signatures": [
+    {"field": "Sig1", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "B"}
+   ]
+  },
+  "dss-1376/DSS1376-rev_n-5.pdf": {
+   "signatures": [
+    {"field": "Sig1", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "B"}
+   ]
+  },
+  "dss-1376/DSS1376-rev_n.pdf": {
+   "signatures": [
+    {"field": "Sig1", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "B"},
+    {"field": "Sig2", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "B"}
+   ]
+  },
+  "dss-1420/PAdES-BpB-att-SHA256-SHA3_224withRSA.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": false, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "dss-1420/PAdES-BpB-att-SHA256-SHA3_256withRSA.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": false, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "dss-1696/Test.signed_Certipost-2048-SHA512.extended.extended-2019-07-02.pdf": {
+   "signatures": [
+    {"field": "Cryptolog-846272363", "kind": "sig", "intact": true, "trusted": false, "modified": "ltv", "level": "LTA"},
+    {"field": "Cryptolog-1895426501", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Cryptolog-871200259", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Cryptolog-152608441", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "dss-1696/Test.signed_Certipost-2048-SHA512.extended.extended-LTA-2019-07-02(DSS).pdf": {
+   "signatures": [
+    {"field": "Cryptolog-846272363", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LTA"},
+    {"field": "Cryptolog-1895426501", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Cryptolog-871200259", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Signature1", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "dss-1696/Test.signed_Certipost-2048-SHA512.extended.extended-LTA-dss-5.4.pdf": {
+   "signatures": [
+    {"field": "Cryptolog-846272363", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LTA"},
+    {"field": "Cryptolog-1895426501", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Cryptolog-871200259", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Signature1", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "dss-1696/Test.signed_Certipost-2048-SHA512.extended.pdf": {
+   "signatures": [
+    {"field": "Cryptolog-846272363", "kind": "sig", "intact": true, "trusted": false, "modified": "ltv", "level": "LTA"},
+    {"field": "Cryptolog-1895426501", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Cryptolog-871200259", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "dss-1959/pades-revoc-removed-from-dss-dict.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LTA"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Signature3", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Signature4", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "dss-1959/pades-tst-with-orphan-refs.pdf": {
+   "signatures": [
+    {"field": "Signature-20191101-155347", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "T"},
+    {"field": "DocumentTimeStamp-20191101-155421", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"},
+    {"field": "Signature-20191101-155926", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "T"},
+    {"field": "DocumentTimeStamp-20191101-160031", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "dss-2058/dss-2058-LTA-test.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LTA"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "dss-2058/dss-2058-QC-LTA-test.pdf": {
+   "signatures": [
+    {"field": "Cryptolog-914858229", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LTA"},
+    {"field": "Cryptolog-1843871212", "kind": "sig", "intact": true, "trusted": true, "modified": "ltv", "level": "LTA"},
+    {"field": "Cryptolog-173366828", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "dss-2236/annotation-and-visible-change.pdf": {
+   "signatures": [
+    {"field": "Digital Signature 1", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "T"},
+    {"field": "ES_CERTIFYING_SIGNATURE", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "T"},
+    {"field": "ES_LOCKING_SIGNATURE", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "T"}
+   ]
+  },
+  "dss-2236/hide.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "error": true, "note": "pyHanko: PdfReadError: Unable to find 'endstream' marker after stream at byte 0x5f9."}
+   ]
+  },
+  "dss-2236/replace.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "B"}
+   ]
+  },
+  "dss-2554/certified-changes-permitted.pdf": {
+   "signatures": [
+    {"field": "signature-test", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "dss-2554/certified-no-change-permitted.pdf": {
+   "signatures": [
+    {"field": "Sign993545267", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "T"}
+   ]
+  },
+  "dss-2554/fieldmdp-exclude-signed.pdf": {
+   "signatures": [
+    {"field": "Handtekening houder", "kind": "sig", "intact": true, "trusted": false, "modified": "ltv", "level": "T"}
+   ]
+  },
+  "dss-2554/fieldmdp-include.pdf": {
+   "signatures": [
+    {"field": "Signature2", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "B"}
+   ]
+  },
+  "dss-818/Signature-P-DE_CRY-2 (HASH_FAILURE).pdf": {
+   "signatures": [
+    {"field": "Matthias Schlede  /  2014-11-13, 10:19:31 GMT  /  3955", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B", "note": "pyHanko: «cryptographically unsound» — ложное (asn1crypto перекодирует signed-атрибуты); OpenSSL и cryptography — подпись цела"}
+   ]
+  },
+  "dss-818/Signature-P-IT_ADO-1 (HASH_FAILURE) (ECDSA).pdf": {
+   "signatures": [
+    {"field": "PrimeSign Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "dss-818/Signature-P-SK-1 (HASH_FAILURE).pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "T"},
+    {"field": "Signature2", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "T"},
+    {"field": "Signature3", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "T"},
+    {"field": "Signature4", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "T"},
+    {"field": "Signature5", "kind": "sig", "intact": true, "trusted": true, "modified": "ltv", "level": "T"},
+    {"field": "Signature6", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"}
+   ]
+  },
+  "dss-PLAIN-ECDSA/TeleSec_PKS_eIDAS_QES_CA_1-baseline-b.pdf": {
+   "signatures": [
+    {"field": "Signature3", "kind": "sig", "intact": false, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "evidence-record/PAdES_with_er.pdf": {
+   "signatures": [
+    {"field": "Podpis", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "evidence-record/Signature-P-B-7da49953-d837-4f0b-8f38-aa5aa4181e3c.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "evidence-record/Signature-P-LT-ef971596-8f2e-407d-a413-aae9cb9b8e4a.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "error": true, "note": "pyHanko: KeyError: Reference(idnum=60, generation=0)"},
+    {"field": "Signature2", "kind": "dts", "error": true, "note": "pyHanko: KeyError: Reference(idnum=60, generation=0)"}
+   ]
+  },
+  "hello_signed_INCSAVE_signed.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "ltv", "level": "B"},
+    {"field": "Signature2", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "hello_signed_INCSAVE_signed_EDITED.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "ltv", "level": "B"},
+    {"field": "Signature2", "kind": "sig", "intact": false, "trusted": false, "modified": "illegal", "level": "B"}
+   ]
+  },
+  "lt-short.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature2", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature3", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Signature4", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature5", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature6", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature7", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature8", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature9", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature10", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature11", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature12", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature13", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature14", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature15", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature16", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature17", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature18", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature19", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature20", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature21", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature22", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature23", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature24", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature25", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"}
+   ]
+  },
+  "malformed-rsa-digestinfo.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": false, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "modified_after_signature.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "illegal", "level": "B"}
+   ]
+  },
+  "muestra-firmado-firmado.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LTA"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Signature3", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LTA"},
+    {"field": "Signature4", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "pades-alter-signature-appearance-modify-stream.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "illegal", "level": "B"},
+    {"field": "Signature2", "kind": "sig", "intact": true, "trusted": false, "modified": "illegal", "level": "B"}
+   ]
+  },
+  "pades-alter-signature-appearance-new-stream.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "illegal", "level": "B"},
+    {"field": "Signature2", "kind": "sig", "intact": true, "trusted": false, "modified": "illegal", "level": "B"}
+   ]
+  },
+  "pades-bes-no-certificates.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "error": true, "note": "pyHanko: SignatureValidationError: signer certificate not included in signature [AdESIndeterminate.NO_SIGNING_CERTIFICATE_FOUND]"}
+   ]
+  },
+  "pades-bes.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "pades-enveloping-cms.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "error": true, "note": "pyHanko: SignatureValidationError: CMS structural error: detached signatures should not have encapsulated data [AdESFailure.FORMA"}
+   ]
+  },
+  "pades-enveloping-empty-bytes-cms.pdf": {
+   "signatures": [
+    {"field": "signature1", "kind": "sig", "error": true, "note": "pyHanko: KeyError: Reference(idnum=21, generation=65535)"}
+   ]
+  },
+  "pades-enveloping-other-pdf.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LTA"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"}
+   ]
+  },
+  "pades-epes.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "pades-level-b-sig-policy-invalid-digest-algo.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "pades-lt-extended-abde.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LT"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"},
+    {"field": "Signature3", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "T"}
+   ]
+  },
+  "pades-lt-extended-dss.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "note": "pyHanko: KeyError: Reference(idnum=70, generation=0) — висячая ссылка; подпись цела, отзыв — по /DSS без сети (unit-тест verifier_trust)"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"},
+    {"field": "Signature3", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "T"}
+   ]
+  },
+  "pades-lta-copied-doctst.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LTA"},
+    {"field": "Signature2", "kind": "dts", "intact": false, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "pades-ltv-from-epes.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "error": true, "note": "pyHanko: KeyError: Reference(idnum=60, generation=0)"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"},
+    {"field": "Signature3", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"}
+   ]
+  },
+  "pades-ltv-with-reason.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "error": true, "note": "pyHanko: KeyError: Reference(idnum=60, generation=0)"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"},
+    {"field": "Signature3", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"}
+   ]
+  },
+  "pades-ltv.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "error": true, "note": "pyHanko: KeyError: Reference(idnum=60, generation=0)"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"},
+    {"field": "Signature3", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"}
+   ]
+  },
+  "pades-multiple-pages-annots-overlap.pdf": {
+   "signatures": [
+    {"field": "Sign1868207534", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LTA"},
+    {"field": "Sign1345267312", "kind": "sig", "intact": true, "trusted": false, "modified": "ltv", "level": "LTA"},
+    {"field": "Sign203052179", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "pades-not-epes.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "pades-ocsp-archiveCutOff-invalid.pdf": {
+   "signatures": [
+    {"field": "Signature2", "kind": "sig", "intact": true, "trusted": false, "modified": "illegal", "level": "B"},
+    {"field": "Signature3", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "pades-ocsp-sign-cert.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "ltv", "level": "LTA"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"}
+   ]
+  },
+  "pades-same-border-annotations.pdf": {
+   "signatures": [
+    {"field": "El.Podpis - PAdES [0]", "kind": "sig", "error": true, "note": "pyHanko: PdfReadError: Partial names must not contain periods"}
+   ]
+  },
+  "pades-signed-annot-added.pdf": {
+   "signatures": [
+    {"field": "Signature2", "kind": "sig", "intact": true, "trusted": false, "modified": "illegal", "level": "B"}
+   ]
+  },
+  "pades-signed-filled-form.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "illegal", "level": "B"}
+   ]
+  },
+  "pades-spoofing-replaced-reason.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "illegal", "level": "B"}
+   ]
+  },
+  "pades-t-duplicated-doctst.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "error": true, "note": "pyHanko: KeyError: Reference(idnum=62, generation=0)"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"},
+    {"field": "Signature3", "kind": "dts", "intact": false, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "pades-t-duplicated-sigtst.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "T"}
+   ]
+  },
+  "pades-t-level-extended.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "T"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": true, "level": "DTS"}
+   ]
+  },
+  "pades-tst-with-null-type.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "LT"},
+    {"field": "Signature2", "kind": "sig", "error": true, "note": "pyHanko: SignatureValidationError: /ETSI.RFC3161 is not a recognized SubFilter type in signatures."}
+   ]
+  },
+  "pades-tst-with-sig-type.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "LT"},
+    {"field": "Signature2", "kind": "sig", "error": true, "note": "pyHanko: SignatureValidationError: /ETSI.RFC3161 is not a recognized SubFilter type in signatures."}
+   ]
+  },
+  "pades-two-sig-copied-tst.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "T"},
+    {"field": "Signature2", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "T"}
+   ]
+  },
+  "pades-unsupported-signature-algorithm.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": false, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "pades3_Baseline_B.pdf": {
+   "signatures": [
+    {"field": "Cryptolog-846272363", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LTA"},
+    {"field": "Cryptolog-1895426501", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Cryptolog-871200259", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "pades_with_orphan_ocsp_cert_refs.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LT"},
+    {"field": "Signature2", "kind": "sig", "error": true, "note": "pyHanko: SignatureValidationError: /ETSI.RFC3161 is not a recognized SubFilter type in signatures."}
+   ]
+  },
+  "pdf-byterange-overlap.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "form", "level": "B"},
+    {"field": "Signature2", "kind": "sig", "intact": false, "trusted": false, "modified": "illegal", "level": "B"}
+   ]
+  },
+  "pdf-eof.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "error": true, "note": "pyHanko: ValueError: moment is a naive datetime object, meaning the tzinfo attribute is not set to a valid timezone"}
+   ]
+  },
+  "pdf-removed-pages.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "illegal", "level": "T"}
+   ]
+  },
+  "pdf-self-issued-ocsp.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "form", "level": "LTA"},
+    {"field": "Signature2", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"}
+   ]
+  },
+  "pdf-signed-added-page.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "illegal", "level": "B"}
+   ]
+  },
+  "pdf-signed-original.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "pdf-signed-out-of-byteRange.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": false, "trusted": false, "modified": "illegal", "level": "B"}
+   ]
+  },
+  "pdf-structtreeroot-changes.pdf": {
+   "signatures": [
+    {"field": "sign3", "kind": "sig", "intact": true, "trusted": false, "modified": "illegal", "level": "B"},
+    {"field": "sign4", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "pdf-with-eof-cr.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "T"}
+   ]
+  },
+  "pkcs7-no-message-digest.pdf": {
+   "signatures": [
+    {"field": "Signature_0", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "pkcs7.pdf": {
+   "signatures": [
+    {"field": "SIGN1", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "T"}
+   ]
+  },
+  "pkcs7_sha1.pdf": {
+   "signatures": [
+    {"field": "Signature2", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "self-issued-qesig.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  },
+  "signature-referenced-from-multiple-fields.pdf": {
+   "signatures": [
+    {"field": "signature-test", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "B"},
+    {"field": "signature-test2", "kind": "sig", "intact": true, "trusted": true, "modified": "none", "level": "B"}
+   ]
+  },
+  "siwa.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "sig", "intact": true, "trusted": true, "modified": "illegal", "level": "B"}
+   ]
+  },
+  "timestamped_and_signed.pdf": {
+   "signatures": [
+    {"field": "Signature1", "kind": "dts", "intact": true, "trusted": false, "level": "DTS"},
+    {"field": "Signature2", "kind": "sig", "intact": true, "trusted": false, "modified": "none", "level": "B"}
+   ]
+  }
+ }
+}

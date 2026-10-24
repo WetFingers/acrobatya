@@ -1,0 +1,152 @@
+// Проверка подписей документа — валидатор (эталон 3.8 «Валидатор», «Граничные случаи», 4.5; план 4.4; sign-25
+// — ядро, sign-27 — данные для свойств подписи). Для каждого подписанного поля /Sig (обход /AcroForm
+// /Fields):
+//
+// (1) структура — /ByteRange из 4 чисел от 0, отрезки по возрастанию в пределах файла, «дыра» между ними —
+//     ровно шестнадцатеричная строка /Contents (иначе «неверный ByteRange»); конец диапазона раньше конца
+//     файла — «есть изменения после подписи» (их разбирает анализ ревизий, changes.h);
+// (2) целостность — CMS SignerInfo по шагам CMS_verify без CMS_CADES (с ним флаги NO_* игнорируются):
+//     сертификат подписанта (CMS, затем /DSS /Certs), хэш данных /ByteRange потоком против message-digest
+//     (CMS_SignerInfo_verify_content), подпись над signed-атрибутами (CMS_SignerInfo_verify) или — без
+//     атрибутов — над хэшем данных; ESS signing-certificate(-v2) сверяется с сертификатом подписанта;
+//     /SubFilter: ETSI.CAdES.detached, adbe.pkcs7.detached, adbe.pkcs7.sha1 (eContent — SHA-1 данных;
+//     «устаревший алгоритм»), ETSI.RFC3161 (метка документа: imprint — хэш /ByteRange); adbe.x509.rsa_sha1 и
+//     прочие — «не поддерживается»; MD5/MD2 — отказ, SHA-1 — предупреждение; CMS без ESS, RSA-PSS, ECDSA —
+//     читаются; «обёрнутая» CMS (eContent при detached) — данные подписи обязаны совпасть с /ByteRange.
+//
+// Вердикт — как у Acrobat (Verdict); причины — Finding с кодом Issue и английской подробностью (журнал,
+// «Подробнее»); сводка документа — полоса сообщений (DocumentStatus). Объекты OpenSSL наружу не выходят.
+// Байты подписи читаются из потока документа (файл или память). Поток — поток документа.
+#pragma once
+
+#include <cstdint>
+#include <ctime>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "core/sign/ossl.h"
+#include "core/sign/x509_info.h"
+#include "core/util/geometry.h"
+
+namespace ot {
+class Document;
+}
+
+namespace ot::sign {
+
+enum class SignatureKind {
+    Approval,       // обычная (утверждающая) подпись
+    Certification,  // сертифицирующая: /Perms /DocMDP указывает на неё (синяя лента)
+    DocTimestamp,   // метка времени документа (/SubFilter /ETSI.RFC3161)
+};
+const char* signatureKindName(SignatureKind kind);
+
+// Статус подписи — как в панели «Подписи» Acrobat (по убыванию тяжести снизу вверх).
+enum class Verdict {
+    Valid,             // зелёная галочка
+    ValidWithChanges,  // зелёная галочка: после подписи внесены разрешённые изменения
+    ValidUntrusted,    // жёлтый треугольник: подпись цела, подписант не доверен
+    Unknown,           // «Проблемы»: отзыв неизвестен, метка не проверена, формат не поддерживается
+    Invalid,           // красный крест: документ изменён или подпись повреждена
+};
+const char* verdictName(Verdict verdict);
+
+// Причины. Тяжесть — issueSeverity: Invalid, Unknown, ValidUntrusted или nullopt (предупреждение).
+enum class Issue {
+    // структура
+    NoByteRange,   // нет /ByteRange
+    BadByteRange,  // не 4 числа от 0, отрезки вне файла, «дыра» — не /Contents
+    NoContents,    // нет /Contents или пусто
+    // целостность
+    CmsDamaged,            // /Contents — не CMS SignedData (или не токен метки)
+    UnsupportedSubFilter,  // adbe.x509.rsa_sha1 и неизвестные
+    UnsupportedAlgorithm,  // алгоритм подписи или хэша неизвестен OpenSSL
+    NoSignerCertificate,   // сертификата подписанта нет ни в CMS, ни в /DSS
+    NoMessageDigest,       // signed-атрибуты без message-digest
+    DigestMismatch,        // хэш /ByteRange не совпал — документ изменён
+    SignatureMismatch,     // подпись не сходится с сертификатом
+    EssMismatch,           // ESS signing-certificate не о сертификате подписанта
+    ForbiddenAlgorithm,    // MD5, MD2 — отказ
+    WeakAlgorithm,         // SHA-1 — предупреждение «устаревший алгоритм»
+    // изменения после подписи
+    ModifiedAfterSigning,  // после подписи дописаны секции (не разобраны)
+};
+const char* issueName(Issue issue);
+std::optional<Verdict> issueSeverity(Issue issue);
+
+struct Finding {
+    Issue issue;
+    std::string detail;  // английский — журнал и «Подробнее»
+};
+
+// Сила алгоритма хэша или подписи по OID.
+enum class AlgorithmStrength { Ok, Weak, Forbidden };
+AlgorithmStrength algorithmStrength(std::string_view oid);
+
+struct SignatureInfo {
+    int index = 0;      // по порядку обхода /AcroForm /Fields
+    std::string field;  // полное имя поля (UTF-8)
+    int page = -1;      // страница виджета (−1 — не найдена)
+    RectF rect;         // рамка виджета в координатах страницы MuPDF
+    bool visible = false;
+    SignatureKind kind = SignatureKind::Approval;
+
+    // Словарь /V.
+    std::string type;  // /Type: Sig, DocTimeStamp или пусто
+    std::string filter;
+    std::string subFilter;
+    std::string name;  // /Name
+    std::string reason;
+    std::string location;
+    std::string contact;
+    std::string claimedTime;  // /M — «заявленное» время подписи (ISO, UTC), пусто — нет
+    std::vector<ByteRange> byteRange;
+    std::int64_t rangeEnd = 0;  // конец подписанной ревизии
+    std::int64_t fileSize = 0;
+    bool coversWholeFile = false;
+    int revision = 0;              // номер подписанной ревизии файла: 1 — исходная запись
+    std::size_t contentsSize = 0;  // DER подписи без дополнения нулями
+
+    // CMS (у метки документа — токен).
+    std::string digestAlgorithm;     // OID
+    std::string signatureAlgorithm;  // OID
+    std::optional<CertSummary> signer;
+    std::vector<CertSummary> certificates;  // CMS в порядке файла
+    bool signedAttributes = false;
+    bool ess = false;  // есть ESS signing-certificate(-v2)
+
+    // Итог.
+    bool structureOk = false;  // (1)
+    bool intact = false;       // (1) и (2): данные не изменены, подпись сходится
+    Verdict verdict = Verdict::Unknown;
+    std::vector<Finding> findings;
+
+    bool has(Issue issue) const;
+};
+
+// Сводка документа — полоса сообщений: синяя «Подписано, все подписи действительны» (у сертифицированного —
+// «Сертифицировано»), жёлтая «Проблемы с подписью», красная «Подпись недействительна».
+enum class DocumentStatus { NotSigned, Valid, Certified, Problems, Invalid };
+const char* documentStatusName(DocumentStatus status);
+
+struct DocumentVerification {
+    std::vector<SignatureInfo> signatures;
+    DocumentStatus status = DocumentStatus::NotSigned;
+    int versions = 0;  // ревизий файла
+    std::int64_t fileSize = 0;
+};
+
+// Сводка по вердиктам подписей: Invalid — хоть одна недействительна; Problems — хоть одна Unknown или
+// ValidUntrusted; иначе Certified (есть сертифицирующая) или Valid.
+DocumentStatus documentStatus(const std::vector<SignatureInfo>& signatures);
+// Худший вердикт по находкам (без находок — Valid).
+Verdict verdictFromFindings(const std::vector<Finding>& findings);
+
+struct VerifyOptions {};
+
+// Проверить все подписанные поля документа. Не PDF — пустой результат (NotSigned).
+DocumentVerification verifyDocument(Document& doc, const VerifyOptions& options = {});
+
+}  // namespace ot::sign
