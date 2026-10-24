@@ -8,6 +8,15 @@
 Новые пункты — сверху, с номером сессии или рубежа. Ничего из этого не блокирует очередь: она работает на
 `Fake*`-реализациях и фикстурах, живая часть ждёт здесь (эталон 8.1 «Человек отдельно», 9.7).
 
+- **Сессия 4.2 · Подписанные файлы в Acrobat Reader** — после
+  `cmd /c "tools\vcenv.cmd && ctest --test-dir build/debug -R compat.sign --output-on-failure"` открыть в Acrobat Reader
+  файлы `build\debug\compat\sign\{b,b-multi,t,dts}\*.pdf`: без предложений восстановить файл; панель подписей
+  показывает подписи «АкроБатя тест» с причиной «Согласовано» и местом «Москва»; после «Доверять» корню
+  `tests\fixtures\pki\root.cer` (Установки → Подписи → Удостоверения и доверенные сертификаты) — зелёные галочки,
+  у `t\*.pdf` — «Подпись содержит встроенную метку времени», у `dts\*.pdf` — метка времени документа; `locked-bb.pdf`
+  — поле «Имя» не редактируется; видимые подписи — кириллица читается, вид как в эталонах
+  `tests\fixtures\sig\appearance\*.png`. Живая метка DigiCert при подписи — интерфейсом в 4.6.
+
 - **Сессия 4.1 · Публичные службы времени и .pfx в Windows** — (1) с сетью:
   `$env:OTTISK_LIVE_NET='1'; cmd /c "tools\vcenv.cmd && ctest --test-dir build/debug -R compat.tsa.public --output-on-failure"`
   — DigiCert, Sectigo и GlobalSign выдают метку времени (в выводе — время, размер токена < 12 КБ и CN службы),
@@ -1963,3 +1972,72 @@
   инкремент `unit_tests` 7–33 с; `verify.py` — 66 с (525 тестов).
 - Проверки: `verify.py` зелёный; сцен нет — интерфейса в сессии нет; `compat.tsa.public` без сети — пропуск (живая
   часть — в «Нужна ручная проверка»).
+
+### 2026-10-24 · Сессия 4.2 · Подписание B-B/B-T, патч `/V`, внешний вид и удостоверения
+- Сделано:
+  1. **Подписант и словарь:** `core/sign/signer` — `PdfSigner` (объект MuPDF `pdf_pkcs7_signer` со счётчиком ссылок:
+     `max_digest_size` — константа 16 384, `create_digest` — хэш потока /ByteRange → DER, исключения не выходят в C:
+     0 и `error()`), `AcroBatyaSigner` (CMS CAdES-B по готовому хэшу), `signDocument(doc, SignRequest, target)`:
+     существующее пустое поле /Sig по имени или новое (невидимое — `/Rect [0 0 0 0]`), «Заблокировать» —
+     `/Lock <</Type /SigFieldLock /Action /All>>` (поля формы ReadOnly, FieldMDP /All), патч `/V` (`/SubFilter`
+     ETSI.CAdES.detached или adbe.pkcs7.detached, `/Reason`, `/Location`, `/ContactInfo`, `/Name`, `/Prop_Build`),
+     каталог — `/Extensions /ESIC` уровня 2 (и `/Version /1.7` у старых файлов); несохранённое — сначала запись,
+     подпись — `Saver::Incremental`, сбой — `Saver::revert` (новый: документ возвращается к файлу); `DocumentSession::
+     sign`. `unit.signer` (13), `compat.sign.b` (6 файлов: pyHanko INTACT, TRUSTED, UNTOUCHED; qpdf, pdfcpu strict,
+     mutool, pdfium), `compat.sign.b.multi` (две подписи: первая — EXTENDED_WITH_FORM_FILLING, ACCEPTABLE). sign-12,
+     sign-14, sign-15, sign-18, forms-17.
+  2. **Метки времени B-T и DocTimeStamp:** метка по хэшу значения подписи unsigned-атрибутом в `create_digest`;
+     служба недоступна — колбэк `withoutTimestamp` (да — B-B, нет — `SignError TimestampFailed` со статусом TSA, файл и
+     документ как были); `core/sign/doc_timestamp` (`TimestampSigner`, `addDocumentTimestamp` — отдельная секция,
+     поле `Timestamp<N>`, `/Type /DocTimeStamp`, `/SubFilter /ETSI.RFC3161`, без `/M /Name /Reason /Location
+     /Reference`, `/ESIC` ≥ 1, повторяемо); `core/sign/sign_field` — общий ход подписи поля для обоих; `core/sign/
+     tsa_servers` (DigiCert по умолчанию, Sectigo, GlobalSign; JSON без паролей; `checkTsaServer` — тестовый запрос;
+     `TimestampFallback`), `services/tsa_settings`, ключи `signatures/`, `DocumentSession::timestampDocument`;
+     `tools/compat_check.py` — метки документа (`validate_pdf_timestamp`, `--expect-ts`, токены TIMESTAMPED,
+     TIMESTAMP_TRUSTED, DOC_TIMESTAMP). `unit.timestamp` (10), `compat.sign.t`, `compat.sign.dts` (pyHanko видит
+     B-T и document timestamp, после метки документа подпись — EXTENDED_WITH_LTA_UPDATES). sign-19, sign-20.
+  3. **Внешний вид подписи:** `core/sign/appearance` — готовые режимы MuPDF (`fromFlags`/`flags`) и конструктор:
+     графика нет / имя / картинка PNG с альфой, «только изображение», текст (имя, DN, причина, место, дата как в
+     Acrobat, ярлыки — переводы даёт интерфейс), логотип PNG фоном, язык; `previewAppearance`; картинки
+     проверяются до записи (`SignError BadAppearance`). `unit.sig_appearance` (6: снимки виджета 144 dpi против
+     `tests/fixtures/sig/appearance/*.png` — просмотрены глазами; предпросмотр = виджет). sign-13.
+  4. **Удостоверения:** `core/sign/identity` — самоподписанное RSA-3072/ECDSA P-256 на 5 лет (v3, CA:false,
+     KU digitalSignature + nonRepudiation, EKU emailProtection/documentSigning/Adobe), PKCS#12 AES-256-CBC + MAC
+     SHA-256 (openssl pkcs12 -info подтверждает), `importToWindows` (PFXImportCertStore; в тестах — без сохранения
+     ключа), экспорт .cer/.p7c/.fdf и чтение FDF, `IdentityStore` (state.sqlite, миграция 5: .pfx в `ids\`,
+     хранилище Windows по отпечатку, по умолчанию, пароль: аргумент → кэш с тайм-аутом → запомненный, смена пароля,
+     удаление); `services/dpapi` (CryptProtectData с энтропией программы), `services/identities`. `unit.identity`
+     (6), `unit.dpapi` (4). sign-05, sign-06, sign-10, sign-11.
+- Решения:
+  - Патч `/V` после `pdf_sign_signature_with_appearance` — под `disallow_new_increments = 1` (`SameIncrement`): MuPDF
+    после подписи заводит под каждую правку новую инкрементальную секцию, и словарь /V записывался бы после конца
+    /ByteRange (диапазон с отрицательной длиной). Каталог (`/Extensions`) правится до подписи.
+  - У нового поля MuPDF ставит `/Lock /Action /All` — снимается (иначе каждая подпись блокирует всю форму); пустое
+    правило FieldMDP `/Include []`, которое MuPDF пишет без блокировки, удаляется. `/Lock` готового поля автора
+    формы сохраняется.
+  - Подпись документа с несохранёнными правками: сначала обычная запись по правилам Saver, затем подпись чистого
+    файла — так сбой подписи (служба времени, картинка) откатывается `Saver::revert` без потери правок.
+  - Текст внешнего вида — контурами глифов Segoe UI (`fz_outline_glyph`), а не встроенным CID-шрифтом (план): pdf-
+    device MuPDF встраивает шрифт целиком (~1 МБ и полная /ToUnicode на каждую подпись), а `pdf_subset_fonts` в
+    инкременте пересобрал бы чужие шрифты. Раскладка своя: `pdf_layout_fit_text` рвёт имя посреди слова.
+  - DocTimeStamp — поле на первой странице, `/F` Print (как у MuPDF), без `/Prop_Build`. Уровень `/ESIC` не
+    понижается (метка после CAdES — остаётся 2).
+  - Пароли служб времени в `settings.ini` не пишутся (JSON без паролей, только в памяти); удостоверения — DPAPI по
+    флажку «запомнить», иначе кэш до тайм-аута (−1 — до выхода, 0 — спрашивать всегда).
+  - Сертификат удостоверения хранится в `identities.cert` — экспорт .cer/.p7c/.fdf без пароля .pfx. Файлы в `ids\` —
+    ASCII-имя по SHA-256 сертификата.
+  - Удостоверение хранилища Windows в `IdentityStore` — запись по отпечатку; `open` для него — `WindowsStore`
+    (подпись через CNG — сессия 4.3). `importToWindows(persist = true)` пишет в «Личное» — только действием человека
+    (4.6), автотесты — `PKCS12_NO_PERSIST_KEY`.
+- Подводные камни:
+  - `TsaClient` держит `HttpFetcher` ссылкой: временный `Tsa` в тесте оставлял висячую ссылку (статус NetworkError
+    вместо HttpError) — держать fetcher живым.
+  - Рамка теста внешнего вида легла на текст страницы фикстуры — снимки и предпросмотр разошлись; рамка — в пустой
+    области (y 400–472).
+  - Длинный heredoc в Bash-инструменте обрывается на кавычках — правки скриптами-файлами во `%TEMP%`.
+  - `ui.shots` в общем прогоне `verify.py` один раз упал под нагрузкой (72 с вместо ~24 с), отдельно — зелёный;
+    интерфейс в сессии не менялся.
+- Замеры: новые 39 тестов — ~4 с (подпись файла 30–60 мс, RSA-3072 — до 0,3 с), `compat.sign.*` — 7 с; инкремент
+  `unit_tests` 7–23 с; `verify.py` — первый прогон ~4 мин (ctest 189 с), повторный 42 с (563 теста).
+- Проверки: `verify.py` зелёный; `compat.sign.b`, `.b.multi`, `.t`, `.dts` зелёные; сцен нет — интерфейса в сессии
+  нет (снимки вида подписи — эталоны unit-теста, просмотрены).
