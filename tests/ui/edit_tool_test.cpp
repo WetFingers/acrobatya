@@ -15,6 +15,7 @@
 #include "services/app_info.h"
 #include "services/document_session.h"
 #include "support/ui_test.h"
+#include "ui/panes/find_bar.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
 #include "ui/tools/edit/edit_mode.h"
@@ -105,6 +106,21 @@ private slots:
         QCOMPARE(doc->view().viewport()->cursor().shape(), Qt::ArrowCursor);
         QTest::mouseMove(doc->view().viewport(), frames[0].rect.center().toPoint());
         QCOMPARE(doc->view().viewport()->cursor().shape(), Qt::IBeamCursor);
+    }
+
+    // Рубеж Р2: в панели «Редактировать PDF» есть «Найти и заменить» (эталон 6.2) — поле «Заменить на» панели
+    // «Найти», как Ctrl+Shift+H.
+    void panelFindReplaceOpensReplaceField() {
+        MainWindow w;
+        w.setCloseConfirm([](DocumentView&) { return MainWindow::CloseAnswer::Discard; });
+        DocumentView* doc = openEdit(w, "edit/latin.pdf");
+        QVERIFY(doc != nullptr);
+        auto* button = editTool().panel()->findChild<ot::ui::ToolButton*>(QStringLiteral("editFindReplace"));
+        QVERIFY(button != nullptr);
+        QVERIFY(button->isEnabled());
+        QVERIFY(!doc->findBar().replaceMode());
+        button->click();
+        QTRY_VERIFY(doc->findBar().replaceMode());
     }
 
     void readOnlyBlocksHaveLockAndTip() {

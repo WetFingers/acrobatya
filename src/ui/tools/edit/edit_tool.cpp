@@ -10,6 +10,7 @@
 #include "services/edit_ops.h"
 #include "services/settings.h"
 #include "services/system_fonts_dwrite.h"
+#include "ui/panes/find_bar.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
 #include "ui/theme/icons.h"
@@ -254,6 +255,11 @@ void EditTool::syncButtons() {
         addText_->setChecked(editable && m != nullptr && m->addTextArmed());
         addText_->setToolTip(editable ? tr("Щёлкните на странице, чтобы добавить блок текста") : lock_);
     }
+    if (replace_ != nullptr) {
+        replace_->setEnabled(editable);
+        replace_->setToolTip(editable ? tr("Найти текст и заменить его во всём документе (Ctrl+Shift+H)")
+                                      : lock_);
+    }
     if (addImage_ != nullptr) {
         addImage_->setEnabled(editable);
         addImage_->setToolTip(editable ? tr("Вставить изображение из файла на текущую страницу") : lock_);
@@ -340,6 +346,14 @@ void EditTool::buildPanel() {
         editText();
         if (EditMode* m = mode()) {
             m->addImageFromFile();
+        }
+    });
+    // «Найти и заменить» (эталон 6.2): поле «Заменить на» панели «Найти» — как Ctrl+Shift+H (edit.replace).
+    replace_ = addRow(column, QStringLiteral("replace"), tr("Найти и заменить"));
+    replace_->setObjectName(QStringLiteral("editFindReplace"));
+    connect(replace_, &ToolButton::clicked, this, [this] {
+        if (view_ != nullptr) {
+            view_->findBar().activateReplace();
         }
     });
 

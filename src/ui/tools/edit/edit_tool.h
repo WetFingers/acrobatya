@@ -80,6 +80,7 @@ private:
     QPointer<ToolButton> text_;
     QPointer<ToolButton> addText_;
     QPointer<ToolButton> addImage_;
+    QPointer<ToolButton> replace_;
     QList<QPointer<ToolButton>> objects_;
     QPointer<FormatPanel> format_;
     QPointer<QLabel> lockLabel_;

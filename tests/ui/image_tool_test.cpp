@@ -174,6 +174,8 @@ private slots:
         EditMode& mode = EditTool::modeOf(v);
         mode.selectImage({0, 0});
         std::unique_ptr<QMenu> menu(mode.imageMenu(nullptr));
+        // Рубеж Р2: и произвольный угол (план 3.4: поворот 90°/произвольный) — диалог угла.
+        QVERIFY(menu->findChild<QAction*>(QStringLiteral("imageRotateAngle")) != nullptr);
         menu->findChild<QAction*>(QStringLiteral("imageRotateCw"))->trigger();
         waitStep(*doc, mode, QStringLiteral("Rotate image"));
         QTRY_VERIFY_WITH_TIMEOUT(near(imageOf(mode, 0).bbox.width(), 144), 10000);

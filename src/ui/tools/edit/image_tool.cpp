@@ -13,6 +13,7 @@
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QImage>
+#include <QInputDialog>
 #include <QMenu>
 #include <QMimeData>
 #include <QPainter>
@@ -654,6 +655,16 @@ QMenu* EditMode::imageMenu(QWidget* parent) {
         [this] { rotateImage(90); });
     add("imageRotateCcw", tr("Повернуть против часовой стрелки"), QStringLiteral("rotate-ccw"),
         [this] { rotateImage(-90); });
+    // Произвольный угол (план 3.4, «Осторожно»: поворот 90°/произвольный; ядро — ImageOps::rotate): по
+    // часовой — положительный, как у кнопок.
+    add("imageRotateAngle", tr("Повернуть на угол…"), QString(), [this, parent] {
+        bool ok = false;
+        const double angle = QInputDialog::getDouble(parent, tr("Повернуть изображение"), tr("Угол, °:"),
+                                                     15.0, -360.0, 360.0, 1, &ok);
+        if (ok && angle != 0.0) {
+            rotateImage(static_cast<float>(angle));
+        }
+    });
     add("imageFlipH", tr("Отразить по горизонтали"), QStringLiteral("flip-horizontal-2"),
         [this] { flipImage(true); });
     add("imageFlipV", tr("Отразить по вертикали"), QStringLiteral("flip-vertical-2"),
