@@ -57,7 +57,7 @@ include(cmake/pch.cmake)
 include(cmake/mupdf.cmake)
 include(cmake/qt.cmake)
 
-find_package(OpenSSL REQUIRED)
+include(cmake/openssl.cmake)
 find_package(TIFF REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
