@@ -229,8 +229,11 @@ void MainWindow::registerCommands() {
     r.add({.id = QStringLiteral("edit.replace"),
            .title = tr("Найти и &заменить…"),
            .shortcuts = {key(Qt::CTRL | Qt::SHIFT | Qt::Key_H)},
-           .menu = QStringLiteral("edit"),
-           .stage = 3});
+           .icon = QStringLiteral("replace"),
+           .run = onFind([](FindBar& f) { f.activateReplace(); }),
+           .enabled = editable,
+           .blocked = editBlocked,
+           .menu = QStringLiteral("edit")});
     r.add({.id = QStringLiteral("app.preferences"),
            .title = tr("&Установки…"),
            .shortcuts = {key(Qt::CTRL | Qt::Key_K)},

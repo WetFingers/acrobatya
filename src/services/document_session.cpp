@@ -470,6 +470,60 @@ QFuture<edit::ParagraphEditor> DocumentSession::layoutText(edit::ParagraphEditor
         TaskPriority::High, QStringLiteral("layout text"));
 }
 
+QFuture<std::vector<edit::ReplaceMatch>> DocumentSession::findReplace(QString needle, SearchOptions options,
+                                                                      QString replacement) {
+    return post(
+        [this, needle = needle.toStdString(), options,
+         replacement = replacement.toStdString()](TaskContext& tc) {
+            edit::Replacer replacer(tc.document(), rewriter(tc.document()));
+            return replacer.findAll(needle, options, replacement,
+                                    [&tc] { return tc.cookie() != nullptr && tc.cookie()->abort != 0; });
+        },
+        TaskPriority::Normal, QStringLiteral("find replace"));
+}
+
+QFuture<edit::ReplaceReport> DocumentSession::replaceHit(SearchHit hit, QString needle, SearchOptions options,
+                                                         QString replacement) {
+    return edit(QStringLiteral("Replace text"), [this, hit, needle = needle.toStdString(), options,
+                                                 replacement = replacement.toStdString()](TaskContext& tc) {
+        edit::Replacer replacer(tc.document(), rewriter(tc.document()));
+        edit::ReplaceReport report;
+        for (const edit::ReplaceMatch& m : replacer.find(hit.page, needle, options, replacement)) {
+            if (m.hit.page == hit.page && m.hit.firstChar == hit.firstChar) {
+                report = replacer.replaceOne(m, replacement, "Replace text");
+                report.found = 1;
+                break;
+            }
+        }
+        if (report.replaced > 0) {
+            tc.touchPage(hit.page);
+            tc.markHeavyEdit();
+        }
+        return report;
+    });
+}
+
+QFuture<edit::ReplaceReport> DocumentSession::replaceAll(
+    QString needle, SearchOptions options, QString replacement,
+    std::function<void(const edit::ReplaceProgress&)> progress, std::function<bool()> cancel) {
+    return edit(
+        QStringLiteral("Replace all"),
+        [this, needle = needle.toStdString(), options, replacement = replacement.toStdString(),
+         progress = std::move(progress), cancel = std::move(cancel)](TaskContext& tc) {
+            edit::Replacer replacer(tc.document(), rewriter(tc.document()));
+            edit::ReplaceReport report = replacer.replaceAll(needle, options, replacement, progress, [&] {
+                return (tc.cookie() != nullptr && tc.cookie()->abort != 0) || (cancel && cancel());
+            });
+            for (const int page : report.pages) {
+                tc.touchPage(page);
+            }
+            if (report.replaced > 0) {
+                tc.markHeavyEdit();
+            }
+            return report;
+        });
+}
+
 void DocumentSession::setEditFallback(const edit::FallbackFonts& fallback) {
     {
         const std::lock_guard lock(mutex_);

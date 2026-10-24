@@ -1,0 +1,12 @@
+{
+  "comment": "Правка текста через --script (план 3.4, п. 4; рубеж Р2): вставка в первый абзац latin.pdf, «Заменить все», копия с правками в ${OUT_DIR}/edited.pdf, отмена обеих правок, копия ${OUT_DIR}/undone.pdf.",
+  "steps": [
+    {"cmd": "doc.open", "args": {"path": "../fixtures/edit/latin.pdf"}},
+    {"cmd": "edit.insertText", "args": {"page": 1, "block": 1, "pos": 0, "text": "Hello, "}, "name": "вставка"},
+    {"cmd": "edit.replaceAll", "args": {"find": "paragraph", "replace": "passage"}, "name": "замена"},
+    {"cmd": "doc.saveCopy", "args": {"path": "${OUT_DIR}/edited.pdf", "mode": "full"}},
+    {"cmd": "doc.undo", "args": {"n": 2}},
+    {"cmd": "doc.saveCopy", "args": {"path": "${OUT_DIR}/undone.pdf", "mode": "full"}},
+    {"cmd": "doc.close"}
+  ]
+}

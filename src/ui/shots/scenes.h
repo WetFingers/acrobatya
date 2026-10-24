@@ -76,7 +76,7 @@ std::vector<Scene> modeScenes();
 // prefs_scenes.cpp — preferences-general, preferences-page-display, palette (2.4b),
 // preferences-page-display-full (2.5b).
 std::vector<Scene> prefsScenes();
-// search_scenes.cpp — find-bar, search-window (2.5).
+// search_scenes.cpp — find-bar, search-window (2.5), find-replace (3.4).
 std::vector<Scene> searchScenes();
 // dialog_scenes.cpp — properties-description, properties-fonts, properties-initial-view, xmp-editor,
 // password-dialog, recover-dialog, pdfa-bar (2.5).

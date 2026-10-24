@@ -2,8 +2,8 @@
 // углу документа с фокусом в поле; find.pdf — «печать» 12 раз: подсвечены все 12, счётчик «1 из 12», F3
 // обходит по кругу (12 → 1), Shift+F3 — назад; «Только целые слова» не находит «печат», «С учётом регистра» —
 // 10; поиск начинается с текущей страницы; неверное выражение — чип «Неверное выражение»; Esc закрывает и
-// снимает подсветку; скан без OCR — «Нет текста — распознать?» и серая «Распознать текст»; «Заменить» серая
-// до 0.3.
+// снимает подсветку; скан без OCR — «Нет текста — распознать?» и серая «Распознать текст»; «Заменить» — 3.4
+// (ui.replace).
 #include <QDir>
 #include <QLabel>
 #include <QSettings>
@@ -135,10 +135,10 @@ private slots:
         QVERIFY(bar.hasError());
         QVERIFY(bar.stateChip()->isVisible());
         QCOMPARE(bar.stateChip()->tone(), ot::ui::Tone::Danger);
-        // «Заменить» — кнопка есть, серая до 0.3.
+        // «Заменить» (3.4) — кнопка есть и включена: поле замены — по ней (ui.replace).
         QVERIFY(bar.replaceButton()->isVisible());
-        QVERIFY(!bar.replaceButton()->isEnabled());
-        QVERIFY(bar.replaceButton()->toolTip().contains(QStringLiteral("0.3")));
+        QVERIFY(bar.replaceButton()->isEnabled());
+        QVERIFY(!bar.replaceMode());
     }
 
     void startsFromCurrentPage() {

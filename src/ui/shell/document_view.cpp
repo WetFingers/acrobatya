@@ -55,6 +55,7 @@ DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool*
     view_->tools().setCopyAllowed(permissions_.copy);
     find_ = new FindBar(*session_, *view_, this);
     find_->installEventFilter(this);
+    updateReplaceBlocked();
 
     connect(session_.get(), &DocumentSession::undoStateChanged, this, &DocumentView::updateModified,
             Qt::QueuedConnection);
@@ -69,6 +70,7 @@ DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool*
             view_->tools().setEditable(canAnnotate());
             view_->tools().setCopyAllowed(permissions_.copy);
             view_->setRenderStyle(viewStyle_.styleFor(pdfx_));
+            updateReplaceBlocked();
         },
         Qt::QueuedConnection);
     updateModified();
@@ -102,6 +104,7 @@ void DocumentView::setReadOnly(bool readOnly) {
     }
     readOnly_ = readOnly;
     view_->tools().setEditable(canAnnotate());
+    updateReplaceBlocked();
     emit readOnlyChanged(readOnly);
 }
 
@@ -149,9 +152,27 @@ void DocumentView::setProtectedView(protected_view::Origin origin) {
     const bool was = isProtectedView();
     protected_ = origin;
     view_->tools().setEditable(canAnnotate());
+    updateReplaceBlocked();
     if (was != isProtectedView()) {
         emit protectedViewChanged(isProtectedView());
     }
+}
+
+// «Заменить» панели «Найти» (3.4): только PDF, который можно править; подписанный — правка сломает подпись.
+void DocumentView::updateReplaceBlocked() {
+    QString reason;
+    if (isViewOnly()) {
+        reason = tr("Заменять можно только в PDF");
+    } else if (isProtectedView()) {
+        reason = tr("Защищённый просмотр: правка отключена");
+    } else if (readOnly_) {
+        reason = tr("Документ открыт только для чтения");
+    } else if (!permissions_.allows(Perm::Edit)) {
+        reason = tr("Документ защищён: изменение содержимого запрещено");
+    } else if (session_->summary().isSigned) {
+        reason = tr("Документ подписан: правка сломает подпись");
+    }
+    find_->setReplaceBlocked(reason);
 }
 
 MessageBar* DocumentView::addMessage(Tone tone, const QString& text) { return stack_->add(tone, text); }

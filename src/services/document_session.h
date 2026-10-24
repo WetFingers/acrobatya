@@ -42,6 +42,7 @@
 #include "core/doc/permissions.h"
 #include "core/doc/saver.h"
 #include "core/edit/paragraph_editor.h"
+#include "core/edit/replace.h"
 #include "core/edit/rewriter.h"
 #include "core/links/initial_view.h"
 #include "core/mu/error.h"
@@ -183,6 +184,18 @@ public:
     QFuture<edit::ParagraphEditor> layoutText(edit::ParagraphEditor editor);
     // Запасные шрифты редактора (edit-49, ключ editing/fallbackFont) — для следующих правок.
     void setEditFallback(const edit::FallbackFonts& fallback);
+
+    // Найти и заменить (план 3.4, п. 4; core/edit/replace.h Replacer над Rewriter документа; edit-05,
+    // view-18): совпадения документа с предпросмотром замены и пропусками; замена совпадения поиска hit
+    // (шаг «Replace text»); «Заменить все» — один шаг истории «Replace all» на всю команду (страницы — своими
+    // вложенными операциями), прогресс — из потока документа, cancel — между страницами.
+    QFuture<std::vector<edit::ReplaceMatch>> findReplace(QString needle, SearchOptions options,
+                                                         QString replacement);
+    QFuture<edit::ReplaceReport> replaceHit(SearchHit hit, QString needle, SearchOptions options,
+                                            QString replacement);
+    QFuture<edit::ReplaceReport> replaceAll(QString needle, SearchOptions options, QString replacement,
+                                            std::function<void(const edit::ReplaceProgress&)> progress = {},
+                                            std::function<bool()> cancel = {});
 
     // Растр страницы при dpi (BGRA → QImage ARGB32_Premultiplied) с ожиданием; пустой — ошибка
     // (errorString()). Для окна этапа 0 — до тайлов PageView (сессия 2.2).

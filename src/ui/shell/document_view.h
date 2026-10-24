@@ -124,6 +124,7 @@ private:
     // pageDisplay/defaultZoom: подгонка или проценты; auto — ничего.
     void applyDefaultZoom(const QString& value);
     void placeFindBar();
+    void updateReplaceBlocked();
 
     std::shared_ptr<DocumentSession> session_;
     RenderPool* pool_ = nullptr;

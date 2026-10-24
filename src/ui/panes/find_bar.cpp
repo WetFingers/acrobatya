@@ -13,6 +13,7 @@
 #include "services/background_tasks.h"
 #include "services/document_session.h"
 #include "services/search_ops.h"
+#include "ui/dialogs/replace_dialog.h"
 #include "ui/theme/theme.h"
 #include "ui/view/page_view.h"
 #include "ui/widgets/chip.h"
@@ -48,9 +49,19 @@ FindBar::FindBar(DocumentSession& session, PageView& view, QWidget* parent)
     previous_ = addButton(QStringLiteral("previous"), QStringLiteral("chevron-up"), QString(), false);
     next_ = addButton(QStringLiteral("next"), QStringLiteral("chevron-down"), QString(), false);
     optionsButton_ = addButton(QStringLiteral("options"), QStringLiteral("ellipsis"), QString(), false);
-    replace_ = addButton(QStringLiteral("replace"), QString(), QString(), false);
-    replace_->setLabelVisible(true);
-    replace_->setEnabled(false);  // «Найти и заменить» — 3.4
+    replace_ = addButton(QStringLiteral("replace"), QStringLiteral("replace"), QString(), false);
+    replace_->setCheckable(true);
+    replaceField_ = new SearchField(this);
+    replaceField_->setObjectName(QStringLiteral("replaceField"));
+    replaceField_->installEventFilter(this);
+    addWidget(QStringLiteral("replaceField"), replaceField_);
+    replaceOne_ = addButton(QStringLiteral("replaceOne"), QString(), QString(), false);
+    replaceOne_->setLabelVisible(true);
+    replaceAll_ = addButton(QStringLiteral("replaceAll"), QString(), QString(), false);
+    replaceAll_->setLabelVisible(true);
+    for (QWidget* w : std::initializer_list<QWidget*>{replaceField_, replaceOne_, replaceAll_}) {
+        w->hide();
+    }
     addSeparator();
     close_ = addButton(QStringLiteral("close"), QStringLiteral("x"), QString(), false);
 
@@ -80,6 +91,12 @@ FindBar::FindBar(DocumentSession& session, PageView& view, QWidget* parent)
             options_->popup(optionsButton_->mapToGlobal(QPoint(0, optionsButton_->height())));
         } else if (id == QLatin1String("close")) {
             dismiss();
+        } else if (id == QLatin1String("replace")) {
+            setReplaceMode(!replaceMode_);
+        } else if (id == QLatin1String("replaceOne")) {
+            replaceCurrent();
+        } else if (id == QLatin1String("replaceAll")) {
+            replaceAllPreview();
         }
     });
     connect(field_, &SearchField::searchRequested, this, [this](const QString& text) {
@@ -91,7 +108,10 @@ FindBar::FindBar(DocumentSession& session, PageView& view, QWidget* parent)
         }
     });
     connect(field_, &SearchField::previousRequested, this, [this] { findPrevious(); });
-    connect(field_, &QLineEdit::textEdited, this, [this] { typing_.start(); });
+    connect(field_, &QLineEdit::textEdited, this, [this] {
+        typing_.start();
+        updateCounter();
+    });
     connect(field_, &SearchField::cleared, this, [this] {
         cancelSearch();
         query_.clear();
@@ -146,6 +166,136 @@ void FindBar::activate() {
     raise();
     field_->setFocus(Qt::ShortcutFocusReason);
     field_->selectAll();
+}
+
+ReplaceDialog* FindBar::replaceDialog() const { return dialog_.data(); }
+
+void FindBar::activateReplace() {
+    setReplaceMode(true);
+    activate();
+    if (!field_->text().isEmpty()) {
+        replaceField_->setFocus(Qt::ShortcutFocusReason);
+        replaceField_->selectAll();
+    }
+}
+
+void FindBar::setReplaceMode(bool on) {
+    replaceMode_ = on;
+    replace_->setChecked(on);
+    for (QWidget* w : std::initializer_list<QWidget*>{replaceField_, replaceOne_, replaceAll_}) {
+        w->setVisible(on);
+    }
+    updateCounter();
+    adjustSize();
+}
+
+void FindBar::setReplaceBlocked(const QString& reason) {
+    replaceBlocked_ = reason;
+    retranslate();
+    updateCounter();
+}
+
+void FindBar::replaceCurrent() {
+    if (!replaceBlocked_.isEmpty() || replacing_ || field_->text().isEmpty()) {
+        return;
+    }
+    if (hits_.empty() || current_ < 0 || stale_ || field_->text() != query_) {
+        startSearch();  // сначала найти — «Заменить» по найденному
+        return;
+    }
+    const SearchHit hit = hits_[static_cast<std::size_t>(current_)];
+    replacing_ = true;
+    updateCounter();
+    session_.replaceHit(hit, query_, searchedOptions_, replaceField_->text())
+        .then(this, [this, hit](QFuture<edit::ReplaceReport> done) {
+            replacing_ = false;
+            int count = 0;
+            try {
+                const edit::ReplaceReport report = done.result();
+                count = report.replaced;
+                if (count == 0) {
+                    const edit::ReplaceSkip skip =
+                        report.skipped.empty() ? edit::ReplaceSkip::NoGlyphs : report.skipped.front().skip;
+                    emit replaceFailed(ReplaceDialog::skipText(skip));
+                }
+            } catch (const std::exception&) {
+                emit replaceFailed(tr("Не удалось заменить текст"));
+            }
+            // Найденное устарело — заново с того же места (следующее совпадение).
+            focusPage_ = hit.page;
+            focusChar_ = hit.firstChar;
+            stale_ = false;
+            typing_.stop();
+            find(field_->text(), searchedOptions_, hit.page, hit.firstChar);
+            updateCounter();
+            if (count > 0) {
+                emit replaced(count);
+            }
+        });
+}
+
+void FindBar::replaceAllPreview() {
+    if (!replaceBlocked_.isEmpty() || replacing_ || field_->text().isEmpty()) {
+        return;
+    }
+    const QString needle = field_->text();
+    const QString replacement = replaceField_->text();
+    const SearchOptions opts = options();
+    replacing_ = true;
+    updateCounter();
+    session_.findReplace(needle, opts, replacement)
+        .then(this, [this, needle, replacement, opts](QFuture<std::vector<edit::ReplaceMatch>> done) {
+            replacing_ = false;
+            std::vector<edit::ReplaceMatch> matches;
+            try {
+                matches = done.result();
+            } catch (const std::exception&) {
+                emit replaceFailed(tr("Не удалось найти совпадения"));
+                updateCounter();
+                return;
+            }
+            updateCounter();
+            if (dialog_ != nullptr) {
+                dialog_->close();
+            }
+            auto* dialog = new ReplaceDialog(needle, replacement, std::move(matches), window());
+            dialog->setAttribute(Qt::WA_DeleteOnClose);
+            dialog_ = dialog;
+            connect(dialog, &ReplaceDialog::replaceAllRequested, this,
+                    [this, dialog, needle, replacement, opts] {
+                        replacing_ = true;
+                        const quint64 task = BackgroundTasks::shared().start(tr("Замена «%1»").arg(needle),
+                                                                             std::function<void()>());
+                        session_
+                            .replaceAll(needle, opts, replacement,
+                                        [task](const edit::ReplaceProgress& p) {
+                                            if (p.pageCount > 0) {
+                                                BackgroundTasks::shared().setProgress(
+                                                    task, p.pagesDone * 100 / p.pageCount);
+                                            }
+                                        })
+                            .then(this, [this, dialog, task](QFuture<edit::ReplaceReport> finished) {
+                                replacing_ = false;
+                                BackgroundTasks::shared().finish(task);
+                                int count = 0;
+                                try {
+                                    const edit::ReplaceReport report = finished.result();
+                                    count = report.replaced;
+                                    if (dialog_ == dialog) {
+                                        dialog->showReport(report);
+                                    }
+                                } catch (const std::exception&) {
+                                    emit replaceFailed(tr("Не удалось заменить текст"));
+                                }
+                                stale_ = false;
+                                startSearch();
+                                if (count > 0) {
+                                    emit replaced(count);
+                                }
+                            });
+                    });
+            dialog->open();
+        });
 }
 
 void FindBar::find(const QString& text, std::optional<SearchOptions> opts, int focusPage, int focusChar) {
@@ -397,10 +547,29 @@ void FindBar::updateCounter() {
     ocr_->setVisible(noText_);
     previous_->setEnabled(count() > 0);
     next_->setEnabled(count() > 0);
+    const bool canReplace = replaceBlocked_.isEmpty();
+    replace_->setEnabled(canReplace);
+    if (!canReplace && replaceMode_) {
+        setReplaceMode(false);
+    }
+    replaceOne_->setEnabled(canReplace && !replacing_ && !field_->text().isEmpty());
+    replaceAll_->setEnabled(canReplace && !replacing_ && !field_->text().isEmpty());
     adjustSize();
 }
 
 bool FindBar::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == replaceField_ && event->type() == QEvent::KeyPress) {
+        auto* key = static_cast<QKeyEvent*>(event);
+        if (key->key() == Qt::Key_Escape) {
+            dismiss();
+            return true;
+        }
+        if ((key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) &&
+            key->modifiers() == Qt::NoModifier) {
+            replaceCurrent();
+            return true;
+        }
+    }
     if (watched == field_ && event->type() == QEvent::KeyPress) {
         auto* key = static_cast<QKeyEvent*>(event);
         if (key->key() == Qt::Key_Escape) {
@@ -434,8 +603,14 @@ void FindBar::retranslate() {
     previous_->setToolTip(tr("Предыдущее (Shift+F3)"));
     next_->setToolTip(tr("Следующее (F3)"));
     optionsButton_->setToolTip(tr("Параметры поиска"));
-    replace_->setLabel(tr("Заменить"));
-    replace_->setToolTip(tr("«Найти и заменить» появится в версии 0.3"));
+    replace_->setLabel(tr("Найти и заменить (Ctrl+Shift+H)"));
+    if (!replaceBlocked_.isEmpty()) {
+        replace_->setToolTip(replaceBlocked_);
+    }
+    replaceField_->setPlaceholderText(tr("Заменить на"));
+    replaceField_->setAccessibleName(tr("Заменить на"));
+    replaceOne_->setLabel(tr("Заменить"));
+    replaceAll_->setLabel(tr("Заменить все…"));
     ocr_->setToolTip(tr("«Распознать текст» появится в версии 0.8"));
     close_->setToolTip(tr("Закрыть (Esc)"));
     wholeWord_->setText(tr("Только &целые слова"));

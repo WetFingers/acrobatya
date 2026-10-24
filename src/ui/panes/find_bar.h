@@ -1,11 +1,13 @@
 // Панель «Найти» (план 2.5; эталон 3.2 «Поиск», 6.1 «Глобальная панель»; view-18): плавающая панель в правом
 // верхнем углу документа (у каждой вкладки своя) — поле, счётчик «3 из 17», ▲ ▼ (Shift+F3 / F3, Ctrl+G),
-// параметры «Только целые слова», «С учётом регистра», «Регулярное выражение», «Заменить» (серая до 0.3),
-// закрыть (Esc). Поиск — задачей потока документа (services/search_ops.h) страницами: совпадения приходят по
-// мере поиска (опрос раз в 100 мс общего буфера — без вызовов из чужого потока в виджет), подсвечиваются все
-// (PageView::setSearchHits), первым выбирается совпадение на текущей странице или после неё; новая строка или
-// параметры, закрытие и Esc отменяют идущий поиск; долгий (> 0,5 с) — ещё и строкой фоновой задачи с отменой.
-// Документ без текста (скан без OCR) — «Нет текста — распознать?» с кнопкой «Распознать текст» (8.1).
+// параметры «Только целые слова», «С учётом регистра», «Регулярное выражение», «Заменить» (3.4: поле
+// «Заменить на», «Заменить» — текущее совпадение, «Заменить все» — предпросмотр и отчёт ReplaceDialog;
+// Ctrl+Shift+H; edit-05), закрыть (Esc). Поиск — задачей потока документа (services/search_ops.h) страницами:
+// совпадения приходят по мере поиска (опрос раз в 100 мс общего буфера — без вызовов из чужого потока в
+// виджет), подсвечиваются все (PageView::setSearchHits), первым выбирается совпадение на текущей странице или
+// после неё; новая строка или параметры, закрытие и Esc отменяют идущий поиск; долгий (> 0,5 с) — ещё и
+// строкой фоновой задачи с отменой. Документ без текста (скан без OCR) — «Нет текста — распознать?» с кнопкой
+// «Распознать текст» (8.1).
 #pragma once
 
 #include <QPointer>
@@ -32,6 +34,7 @@ namespace ot::ui {
 
 class Chip;
 class PageView;
+class ReplaceDialog;
 class SearchField;
 class ToolButton;
 
@@ -55,6 +58,10 @@ public:
     ToolButton* replaceButton() const { return replace_; }
     ToolButton* ocrButton() const { return ocr_; }
     QMenu* optionsMenu() const { return options_; }
+    SearchField* replaceField() const { return replaceField_; }
+    ToolButton* replaceOneButton() const { return replaceOne_; }
+    ToolButton* replaceAllButton() const { return replaceAll_; }
+    ReplaceDialog* replaceDialog() const;
 
     // Ctrl+F: показать, фокус в поле, текст выделен.
     void activate();
@@ -69,6 +76,18 @@ public:
     void findPrevious();
     // Esc, «×»: скрыть, отменить поиск, снять подсветку; фокус — документу.
     void dismiss();
+
+    // «Найти и заменить» (Ctrl+Shift+H): панель с полем «Заменить на»; фокус — в поле поиска (пустое) или в
+    // поле замены.
+    void activateReplace();
+    void setReplaceMode(bool on);
+    bool replaceMode() const { return replaceMode_; }
+    // Документ нельзя править (только просмотр, только чтение, подпись): «Заменить» серая с причиной.
+    void setReplaceBlocked(const QString& reason);
+    // «Заменить» — текущее совпадение (потом — следующее); «Заменить все» — предпросмотр в ReplaceDialog.
+    void replaceCurrent();
+    void replaceAllPreview();
+    bool isReplacing() const { return replacing_; }
 
     SearchOptions options() const;
     void setOptions(const SearchOptions& options);
@@ -85,6 +104,9 @@ signals:
     void advancedSearchRequested(const QString& text);
     void searchFinished(int count);
     void dismissed();
+    // Замена сделана (заменено count) или не удалась (текст по-русски).
+    void replaced(int count);
+    void replaceFailed(const QString& message);
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
@@ -110,6 +132,13 @@ private:
     ToolButton* next_ = nullptr;
     ToolButton* optionsButton_ = nullptr;
     ToolButton* replace_ = nullptr;
+    SearchField* replaceField_ = nullptr;
+    ToolButton* replaceOne_ = nullptr;
+    ToolButton* replaceAll_ = nullptr;
+    QPointer<ReplaceDialog> dialog_;
+    bool replaceMode_ = false;
+    bool replacing_ = false;
+    QString replaceBlocked_;
     ToolButton* ocr_ = nullptr;
     ToolButton* close_ = nullptr;
     QMenu* options_ = nullptr;

@@ -11,6 +11,7 @@
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
 #include "ui/shots/scenes.h"
+#include "ui/widgets/search_field.h"
 
 namespace ot::ui {
 
@@ -38,6 +39,28 @@ std::vector<Scene> searchScenes() {
                doc->findBar().current() == 1 && sceneDocumentReady(w);
     };
     scenes.push_back(bar);
+
+    // 3.4: «Найти и заменить» — поле «Заменить на», «Заменить», «Заменить все…».
+    Scene replace;
+    replace.name = QStringLiteral("find-replace");
+    replace.make = withMainWindow([](MainWindow& w) {
+        w.openFile(sceneFixture(QStringLiteral("text/find.pdf")));
+        QTimer::singleShot(0, &w, [&w] {
+            if (DocumentView* doc = w.currentDocument()) {
+                FindBar& find = doc->findBar();
+                find.activateReplace();
+                find.replaceField()->setText(MainWindow::tr("оттиск"));
+                find.find(MainWindow::tr("печать"));
+            }
+        });
+    });
+    replace.ready = [](QWidget* w) {
+        auto* window = static_cast<MainWindow*>(w);
+        DocumentView* doc = window->currentDocument();
+        return doc != nullptr && doc->findBar().isVisible() && doc->findBar().replaceMode() &&
+               !doc->findBar().isSearching() && doc->findBar().count() > 0 && sceneDocumentReady(w);
+    };
+    scenes.push_back(replace);
 
     Scene window;
     window.name = QStringLiteral("search-window");

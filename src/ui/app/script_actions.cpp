@@ -19,6 +19,7 @@
 #include "services/script_runner.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
+#include "ui/tools/edit/edit_script.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tile_painter.h"
 
@@ -329,6 +330,9 @@ void registerBaseActions(ScriptRunner& runner, MainWindow& w) {
                                   QThread::msleep(1);
                               }
                           });
+
+    // ---- действия инструментов (сессии-владельцы)
+    registerEditScriptActions(runner, w);  // 3.4: edit.insertText, edit.replaceAll
 }
 
 int runScript(const QString& file, const QString& outDir) {
