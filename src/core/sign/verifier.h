@@ -32,6 +32,10 @@
 //     по VerifyOptions::acceptExpiredTimestamps; /M позже метки — предупреждение. Уровень PAdES — по
 //     структуре: B; T — метка подписи или метка документа после неё; LT — T и непустой /DSS, изменённый после
 //     подписи; LTA — LT и метка документа не раньше ревизии /DSS (то же правило — tools/compare_pyhanko.py).
+// (6) изменения после подписи — анализ ревизий (changes.h) по DocMDP документа и FieldMDP подписи: только
+// /DSS и
+//     метки документа — не изменения; разрешённые — «внесены разрешённые изменения» (ValidWithChanges);
+//     запрещённые и правка заблокированного поля — «недействительна»; анализ не удался — «Неизвестно».
 //
 // Вердикт — как у Acrobat (Verdict); причины — Finding с кодом Issue и английской подробностью (журнал,
 // «Подробнее»); сводка документа — полоса сообщений (DocumentStatus). Объекты OpenSSL наружу не выходят.
@@ -45,6 +49,8 @@
 #include <string_view>
 #include <vector>
 
+#include "core/sign/changes.h"
+#include "core/sign/docmdp.h"
 #include "core/sign/ossl.h"
 #include "core/sign/revocation.h"
 #include "core/sign/trust_store.h"
@@ -109,6 +115,10 @@ enum class Issue {
     TimestampUntrusted,         // служба времени не доверена — время «заявленное»
     TimestampExpired,           // сертификат службы времени истёк к «сейчас»
     ClaimedTimeAfterTimestamp,  // /M позже времени метки
+    // изменения после подписи (разобраны)
+    AllowedChanges,      // разрешённые изменения (формы, подписи, комментарии по правам)
+    DisallowedChanges,   // изменения вне разрешённых
+    LockedFieldChanged,  // изменено поле, заблокированное подписью (FieldMDP)
 };
 const char* issueName(Issue issue);
 std::optional<Verdict> issueSeverity(Issue issue);
@@ -192,6 +202,11 @@ struct SignatureInfo {
     bool timestampTrusted = false;  // служба времени доверена на момент метки
     PadesLevel level = PadesLevel::None;
 
+    // Права и изменения после подписи.
+    MdpPermission docMdp = MdpPermission::None;  // DocMDP документа (у сертифицирующей — её /P)
+    std::vector<FieldLock> locks;                // FieldMDP подписи
+    ChangeReport changes;                        // пусто — подпись покрывает файл
+
     // Итог.
     bool structureOk = false;  // (1)
     bool intact = false;       // (1) и (2): данные не изменены, подпись сходится
@@ -213,6 +228,7 @@ struct DocumentVerification {
     std::int64_t fileSize = 0;
     // Все сертификаты файла без повторов: CMS подписей и меток, /DSS /Certs («Доверять» в свойствах).
     std::vector<CertSummary> embeddedCertificates;
+    MdpPermission docMdp = MdpPermission::None;  // документ сертифицирован с этими правами
 };
 
 // Сводка по вердиктам подписей: Invalid — хоть одна недействительна; Problems — хоть одна Unknown или

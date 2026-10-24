@@ -4,11 +4,21 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <cstring>
+#include <ctime>
 #include <regex>
 #include <stdexcept>
 
 #include <openssl/ocsp.h>
 
+#include "core/doc/document.h"
+#include "core/doc/journal.h"
+#include "core/doc/saver.h"
+#include "core/mu/call.h"
+#include "core/mu/context.h"
+#include "core/mu/handles.h"
+#include "core/sign/sign_field.h"
+#include "core/sign/signer.h"
 #include "core/util/paths.h"
 #include "support/pki.h"
 #include "support/sign_support.h"
@@ -262,6 +272,73 @@ std::int64_t utc(int year, int month, int day) {
     tm.tm_mon = month - 1;
     tm.tm_mday = day;
     return static_cast<std::int64_t>(_mkgmtime(&tm));
+}
+
+void certify(const fs::path& file, int p) {
+    auto doc = ot::Document::openOrThrow(file);
+    auto signer = std::make_shared<ot::sign::AcroBatyaSigner>(pkiIdentity());
+    ot::sign::detail::FieldJob job;
+    job.operation = "Certify document";
+    job.placement.field = "Certification";
+    job.time = static_cast<std::int64_t>(std::time(nullptr));
+    job.patch = [p](fz_context* ctx, pdf_document* pdf, pdf_obj* v, bool) {
+        ot::mu::call(ctx, [&] {
+            pdf_dict_put(ctx, v, PDF_NAME(SubFilter), PDF_NAME(adbe_pkcs7_detached));
+            pdf_obj* refs = pdf_dict_put_array(ctx, v, PDF_NAME(Reference), 1);
+            pdf_obj* ref = pdf_array_push_dict(ctx, refs, 3);
+            pdf_dict_put(ctx, ref, PDF_NAME(Type), PDF_NAME(SigRef));
+            pdf_dict_put(ctx, ref, PDF_NAME(TransformMethod), PDF_NAME(DocMDP));
+            pdf_obj* params = pdf_dict_put_dict(ctx, ref, PDF_NAME(TransformParams), 3);
+            pdf_dict_put(ctx, params, PDF_NAME(Type), PDF_NAME(TransformParams));
+            pdf_dict_put_int(ctx, params, PDF_NAME(P), p);
+            pdf_dict_put_name(ctx, params, PDF_NAME(V), "1.2");
+            pdf_obj* root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf), PDF_NAME(Root));
+            pdf_obj* perms = pdf_dict_put_dict(ctx, root, PDF_NAME(Perms), 1);
+            pdf_dict_put(ctx, perms, PDF_NAME(DocMDP), v);
+        });
+    };
+    (void)ot::sign::detail::signField(*doc, job, *signer, {});
+}
+
+void editIncrementally(const fs::path& file,
+                       const std::function<void(fz_context*, pdf_document*, pdf_page*)>& edit) {
+    auto doc = ot::Document::openOrThrow(file);
+    fz_context* ctx = doc->context().get();
+    pdf_document* pdf = doc->pdf();
+    {
+        ot::Journal::Operation op(*doc, "Edit after signing");
+        ot::mu::PageHandle page(ctx);
+        ot::mu::call(ctx, [&] { page.reset(fz_load_page(ctx, &pdf->super, 0)); });
+        ot::mu::call(ctx, [&] { edit(ctx, pdf, pdf_page_from_fz_page(ctx, page)); });
+        op.commit();
+    }
+    ot::SaveOptions options;
+    options.mode = ot::SaveMode::Incremental;
+    const ot::SaveReport r = ot::Saver::save(*doc, options);
+    if (!r.ok()) {
+        throw std::runtime_error("incremental save failed: " + r.message);
+    }
+}
+
+void setTextField(fz_context* ctx, pdf_page* page, const char* field, const char* value) {
+    for (pdf_annot* w = pdf_first_widget(ctx, page); w != nullptr; w = pdf_next_widget(ctx, w)) {
+        char* name = pdf_load_field_name(ctx, pdf_annot_obj(ctx, w));
+        const bool match = name != nullptr && std::strcmp(name, field) == 0;
+        fz_free(ctx, name);
+        if (match) {
+            pdf_set_text_field_value(ctx, w, value);
+            return;
+        }
+    }
+    fz_throw(ctx, FZ_ERROR_ARGUMENT, "no field %s", field);
+}
+
+void addTextNote(fz_context* ctx, pdf_page* page) {
+    pdf_annot* a = pdf_create_annot(ctx, page, PDF_ANNOT_TEXT);
+    pdf_set_annot_rect(ctx, a, fz_make_rect(20, 20, 40, 40));
+    pdf_set_annot_contents(ctx, a, "Note after signing");
+    pdf_update_annot(ctx, a);
+    pdf_drop_annot(ctx, a);
 }
 
 }  // namespace ot::test

@@ -1090,6 +1090,12 @@ const char* issueName(Issue issue) {
             return "TimestampExpired";
         case Issue::ClaimedTimeAfterTimestamp:
             return "ClaimedTimeAfterTimestamp";
+        case Issue::AllowedChanges:
+            return "AllowedChanges";
+        case Issue::DisallowedChanges:
+            return "DisallowedChanges";
+        case Issue::LockedFieldChanged:
+            return "LockedFieldChanged";
     }
     return "?";
 }
@@ -1106,7 +1112,11 @@ std::optional<Verdict> issueSeverity(Issue issue) {
         case Issue::EssMismatch:
         case Issue::ForbiddenAlgorithm:
         case Issue::Revoked:
+        case Issue::DisallowedChanges:
+        case Issue::LockedFieldChanged:
             return Verdict::Invalid;
+        case Issue::AllowedChanges:
+            return Verdict::ValidWithChanges;
         case Issue::UnsupportedSubFilter:
         case Issue::UnsupportedAlgorithm:
         case Issue::NoSignerCertificate:
@@ -1226,6 +1236,8 @@ DocumentVerification verifyDocument(Document& doc, const VerifyOptions& options)
         sk_X509_push(extra.get(), x.get());
     }
     const RevocationData dssRevocationData = dssRevocation(ctx, pdf);
+    const DocMdp documentMdp = readDocMdp(ctx, pdf);
+    out.docMdp = documentMdp.permission;
     pdf_obj* docMdp = nullptr;
     mu::call(ctx, [&] { docMdp = pdf_dict_getp(ctx, pdf_trailer(ctx, pdf), "Root/Perms/DocMDP"); });
     const auto remember = [&](const CertSummary& c) {
@@ -1311,12 +1323,55 @@ DocumentVerification verifyDocument(Document& doc, const VerifyOptions& options)
             sig.findings.push_back({Issue::CmsDamaged, std::string("verification failed: ") + e.what()});
             sig.intact = false;
         }
+        // (6) Изменения после подписи — по DocMDP документа (у сертифицирующей — её /P) и FieldMDP подписи.
+        try {
+            sig.docMdp = documentMdp.permission;
+            if (sig.kind == SignatureKind::Certification) {
+                if (const MdpPermission own = signatureDocMdp(ctx, v); own != MdpPermission::None) {
+                    sig.docMdp = own;
+                }
+            }
+            sig.locks = fieldLocks(ctx, field, v);
+            if (sig.structureOk && !sig.coversWholeFile) {
+                ChangeRules rules;
+                rules.docMdp = sig.docMdp;
+                rules.locks = sig.locks;
+                sig.changes = analyzeChanges(doc, sig.rangeEnd, rules);
+                std::erase_if(sig.findings,
+                              [](const Finding& f) { return f.issue == Issue::ModifiedAfterSigning; });
+                if (sig.changes.modified) {
+                    const bool locked =
+                        std::any_of(sig.changes.changes.begin(), sig.changes.changes.end(),
+                                    [](const Change& c) { return c.kind == ChangeKind::LockedField; });
+                    std::string detail;
+                    for (const Change& c : sig.changes.changes) {
+                        if (!sig.changes.allowed && c.allowed) {
+                            continue;
+                        }
+                        detail += (detail.empty() ? "" : "; ") + c.detail;
+                        if (detail.size() > 400) {
+                            detail += "…";
+                            break;
+                        }
+                    }
+                    if (locked) {
+                        sig.findings.push_back({Issue::LockedFieldChanged, detail});
+                    } else if (!sig.changes.allowed) {
+                        sig.findings.push_back({Issue::DisallowedChanges, detail});
+                    } else if (sig.changes.level != ChangeLevel::LtvOnly) {
+                        sig.findings.push_back({Issue::AllowedChanges, detail});
+                    }
+                }
+            }
+        } catch (const std::exception& e) {
+            spdlog::info("verifier: {}: changes after signing are not analyzed: {}", sig.field, e.what());
+        }
         Verdict verdict = verdictFromFindings(sig.findings);
         if (!sig.intact && verdict == Verdict::Valid) {
             verdict = Verdict::Unknown;
         }
-        // Цела, но не доверена (метка документа — доверие службы времени в п. 3).
-        if (verdict == Verdict::Valid && !sig.trusted) {
+        // Цела, но не доверена.
+        if ((verdict == Verdict::Valid || verdict == Verdict::ValidWithChanges) && !sig.trusted) {
             verdict = Verdict::ValidUntrusted;
         }
         sig.verdict = verdict;

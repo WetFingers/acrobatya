@@ -16,6 +16,12 @@
 #include "core/sign/verifier.h"
 #include "core/util/http_fetcher.h"
 
+extern "C" {
+typedef struct fz_context fz_context;
+typedef struct pdf_document pdf_document;
+typedef struct pdf_page pdf_page;
+}
+
 namespace ot::test {
 
 // <корпус>/dss/dss-pades/src/test/resources/validation/<rel>; нет файла — nullopt.
@@ -46,6 +52,15 @@ std::shared_ptr<const ot::sign::SigningKey> revokedIdentity();
 // Якоря — самоподписанные сертификаты, встроенные в файл (CMS подписей и меток, /DSS): корпус DSS без своих
 // корней (режим сверки с pyHanko).
 ot::sign::TrustStore embeddedRoots(const ot::sign::DocumentVerification& v);
+// Сертифицировать файл (DocMDP P=p) подписью PKI: /Reference DocMDP в /V и /Perms /DocMDP каталога — вручную
+// через detail::FieldJob (запись сертифицирующей подписи — сессия 4.5); поле «Certification».
+void certify(const std::filesystem::path& file, int p);
+// Правка документа напрямую MuPDF (первая страница) одной операцией журнала и запись инкрементом.
+void editIncrementally(const std::filesystem::path& file,
+                       const std::function<void(fz_context*, pdf_document*, pdf_page*)>& edit);
+// Правки для editIncrementally (внутри mu::call): значение текстового поля и комментарий-записка.
+void setTextField(fz_context* ctx, pdf_page* page, const char* field, const char* value);
+void addTextNote(fz_context* ctx, pdf_page* page);
 // Секунды Unix для даты UTC.
 std::int64_t utc(int year, int month, int day);
 

@@ -57,5 +57,11 @@
   "doc-firmado-LT.pdf": [{"level": "LT", "timestamped": true}],
   "PAdES-LTA.pdf": [{"kind": "Approval", "level": "LTA"}, {"kind": "DocTimestamp", "intact": true}],
   "pades-5-signatures-and-1-document-timestamp.pdf": [{"kind": "DocTimestamp", "intact": true, "secureTime": true}]
+ },
+ "changes": {
+  "modified_after_signature.pdf": [{"field": "Signature1", "intact": true, "verdict": "Invalid", "issues": ["DisallowedChanges"], "noIssues": ["ModifiedAfterSigning"]}],
+  "pdf-signed-added-page.pdf": [{"intact": true, "verdict": "Invalid", "issues": ["DisallowedChanges"]}],
+  "dss-1376/DSS1376-rev_n-1.pdf": [{"kind": "Certification", "intact": true, "issues": ["AllowedChanges"], "noIssues": ["DisallowedChanges", "LockedFieldChanged", "ModifiedAfterSigning"]}],
+  "doc-firmado-LT.pdf": [{"intact": true, "noIssues": ["AllowedChanges", "DisallowedChanges", "ModifiedAfterSigning"]}]
  }
 }
