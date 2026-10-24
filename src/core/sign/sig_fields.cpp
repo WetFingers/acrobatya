@@ -9,6 +9,7 @@
 #include "core/doc/journal.h"
 #include "core/doc/revisions.h"
 #include "core/mu/call.h"
+#include "core/mu/context.h"
 #include "core/mu/handles.h"
 #include "core/sign/sign_field.h"
 

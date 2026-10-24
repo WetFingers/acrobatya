@@ -71,5 +71,7 @@ using ImageHandle = Handle<fz_image, fz_drop_image>;
 using StextPageHandle = Handle<fz_stext_page, fz_drop_stext_page>;
 using FontHandle = Handle<fz_font, fz_drop_font>;
 using ColorspaceHandle = Handle<fz_colorspace, fz_drop_colorspace>;
+using PdfAnnotHandle = Handle<pdf_annot, pdf_drop_annot>;
+using GraftMapHandle = Handle<pdf_graft_map, pdf_drop_graft_map>;
 
 }  // namespace ot::mu

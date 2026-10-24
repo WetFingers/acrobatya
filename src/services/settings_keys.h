@@ -190,4 +190,25 @@ inline constexpr IntKey kEditDefaultFontSize{"editing/defaultFontSize", 12, 4, 1
 // Системные шрифты в списке FORMAT TEXT (кроме шрифтов документа).
 inline constexpr BoolKey kEditSystemFonts{"editing/showSystemFonts", true};
 
+// --- Комментирование (commenting/; эталон 3.4, 3.18; страница Установок — 5.1; comment-24, comment-42) ---
+// Identity: имя, должность, организация; «всегда имя входа» (по умолчанию, как у Acrobat) — автор /T новых
+// комментариев — имя пользователя Windows (core/annot/defaults.h authorName).
+inline constexpr StringKey kCommentIdentityName{"commenting/identityName", ""};
+inline constexpr StringKey kCommentIdentityTitle{"commenting/identityTitle", ""};
+inline constexpr StringKey kCommentIdentityOrganization{"commenting/identityOrganization", ""};
+inline constexpr BoolKey kCommentAlwaysLoginName{"commenting/alwaysLoginName", true};
+// Окно записки: шрифт и кегль текста, открывать окно при наведении и при создании записки, линии-связки от
+// значка к окну.
+inline constexpr StringKey kCommentPopupFont{"commenting/popupFont", "Segoe UI"};
+inline constexpr IntKey kCommentPopupFontSize{"commenting/popupFontSize", 10, 6, 36};
+inline constexpr BoolKey kCommentPopupOnHover{"commenting/popupOnHover", true};
+inline constexpr BoolKey kCommentOpenPopupOnCreate{"commenting/openPopupOnCreate", true};
+inline constexpr BoolKey kCommentConnectorLines{"commenting/connectorLines", true};
+// «Закрепить инструмент» (comment-42): инструмент комментария остаётся выбранным после действия.
+inline constexpr BoolKey kCommentKeepTool{"commenting/keepToolSelected", false};
+// Стиль нового комментария по инструменту — JSON {"<инструмент>": {"color": "#rrggbb", "opacity": 1,
+// "width": 1, "icon": "Comment"}} (панель инструмента «Добавить комментарии»; «Сделать свойствами по
+// умолчанию»).
+inline constexpr StringKey kCommentToolStyles{"commenting/toolStyles", ""};
+
 }  // namespace ot::settings

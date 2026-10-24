@@ -1,10 +1,23 @@
 #include "services/annot_ops.h"
 
-#include <algorithm>
+#include <set>
 
 #include "services/task_context.h"
 
 namespace ot::annot {
+
+namespace {
+
+void touchPages(TaskContext& tc, const std::vector<AnnotRef>& refs) {
+    std::set<int> pages;
+    for (const AnnotRef& ref : refs) {
+        if (pages.insert(ref.page).second) {
+            tc.touchPage(ref.page);
+        }
+    }
+}
+
+}  // namespace
 
 QFuture<std::vector<AnnotInfo>> list(DocumentSession& session, int page, TaskPriority priority) {
     return session.post([page](TaskContext& tc) { return listAnnots(tc.document(), page); }, priority,
@@ -18,6 +31,11 @@ QFuture<std::optional<AnnotInfo>> at(DocumentSession& session, int page, PointF 
         priority, QStringLiteral("Annotation at point"));
 }
 
+QFuture<std::optional<AnnotProps>> props(DocumentSession& session, AnnotRef ref, TaskPriority priority) {
+    return session.post([ref](TaskContext& tc) { return readProps(tc.document(), ref); }, priority,
+                        QStringLiteral("Annotation properties"));
+}
+
 QFuture<void> setRect(DocumentSession& session, AnnotRef ref, RectF rect) {
     return session.edit(QString::fromLatin1(kSetRectStep), [ref, rect](TaskContext& tc) {
         ot::annot::setRect(tc.document(), ref, rect);
@@ -27,11 +45,10 @@ QFuture<void> setRect(DocumentSession& session, AnnotRef ref, RectF rect) {
 
 QFuture<void> setRects(DocumentSession& session, std::vector<RectEdit> edits) {
     return session.edit(QString::fromLatin1(kSetRectStep), [edits = std::move(edits)](TaskContext& tc) {
-        std::vector<int> pages;
+        std::set<int> pages;
         for (const RectEdit& e : edits) {
             ot::annot::setRect(tc.document(), e.ref, e.rect);
-            if (std::find(pages.begin(), pages.end(), e.ref.page) == pages.end()) {
-                pages.push_back(e.ref.page);
+            if (pages.insert(e.ref.page).second) {
                 tc.touchPage(e.ref.page);
             }
         }
@@ -41,14 +58,74 @@ QFuture<void> setRects(DocumentSession& session, std::vector<RectEdit> edits) {
 QFuture<void> remove(DocumentSession& session, std::vector<AnnotRef> refs) {
     return session.edit(QString::fromLatin1(kDeleteStep), [refs = std::move(refs)](TaskContext& tc) {
         ot::annot::remove(tc.document(), refs);
-        std::vector<int> pages;
-        for (const AnnotRef& ref : refs) {
-            if (std::find(pages.begin(), pages.end(), ref.page) == pages.end()) {
-                pages.push_back(ref.page);
-                tc.touchPage(ref.page);
-            }
-        }
+        touchPages(tc, refs);
     });
+}
+
+QFuture<AnnotRef> create(DocumentSession& session, int page, AnnotProps props, QString step) {
+    const QString name = step.isEmpty() ? QString::fromStdString(createStepName(props.type)) : step;
+    return session.edit(name, [page, props = std::move(props), name](TaskContext& tc) {
+        AnnotRef ref = ot::annot::create(tc.document(), page, props, name.toStdString());
+        tc.touchPage(page);
+        return ref;
+    });
+}
+
+QFuture<std::vector<AnnotRef>> createGroup(DocumentSession& session, int page, std::vector<AnnotProps> items,
+                                           QString step) {
+    return session.edit(step, [page, items = std::move(items), step](TaskContext& tc) {
+        std::vector<AnnotRef> refs = ot::annot::createGroup(tc.document(), page, items, step.toStdString());
+        tc.touchPage(page);
+        return refs;
+    });
+}
+
+QFuture<void> update(DocumentSession& session, AnnotRef ref, AnnotPatch patch, QString step) {
+    return session.edit(step, [ref, patch = std::move(patch), step](TaskContext& tc) {
+        ot::annot::update(tc.document(), ref, patch, step.toStdString());
+        tc.touchPage(ref.page);
+    });
+}
+
+QFuture<void> setFlags(DocumentSession& session, std::vector<AnnotRef> refs, int set, int clear) {
+    return session.edit(QString::fromLatin1(kFlagsStep),
+                        [refs = std::move(refs), set, clear](TaskContext& tc) {
+                            ot::annot::setFlags(tc.document(), refs, set, clear);
+                            touchPages(tc, refs);
+                        });
+}
+
+QFuture<void> translate(DocumentSession& session, std::vector<AnnotRef> refs, float dx, float dy) {
+    return session.edit(QString::fromLatin1(kMoveStep), [refs = std::move(refs), dx, dy](TaskContext& tc) {
+        ot::annot::translate(tc.document(), refs, dx, dy);
+        touchPages(tc, refs);
+    });
+}
+
+QFuture<bool> eraseInk(DocumentSession& session, AnnotRef ref, std::vector<PointF> path, float radius) {
+    return session.edit(QString::fromLatin1(kEraseStep),
+                        [ref, path = std::move(path), radius](TaskContext& tc) {
+                            const bool erased = ot::annot::eraseInk(tc.document(), ref, path, radius);
+                            if (erased) {
+                                tc.touchPage(ref.page);
+                            }
+                            return erased;
+                        });
+}
+
+QFuture<AnnotClip> copy(DocumentSession& session, std::vector<AnnotRef> refs) {
+    return session.post(
+        [refs = std::move(refs)](TaskContext& tc) { return ot::annot::copy(tc.document(), refs); },
+        TaskPriority::High, QStringLiteral("Copy annotations"));
+}
+
+QFuture<std::vector<AnnotRef>> paste(DocumentSession& session, int page, AnnotClip clip, PointF offset) {
+    return session.edit(QString::fromLatin1(kPasteStep),
+                        [page, clip = std::move(clip), offset](TaskContext& tc) {
+                            std::vector<AnnotRef> refs = ot::annot::paste(tc.document(), page, clip, offset);
+                            tc.touchPage(page);
+                            return refs;
+                        });
 }
 
 }  // namespace ot::annot
