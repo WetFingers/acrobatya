@@ -195,30 +195,20 @@ const char* subFilterName(SubFilter subFilter) noexcept {
 
 namespace {
 
-// Текст справа во внешнем виде по умолчанию: причина, место, дата «2026.10.27 11:00:00 +03'00'».
-std::string infoText(const SignRequest& request, std::int64_t t) {
-    std::string info;
-    const auto line = [&info](const std::string& s) {
-        if (!s.empty()) {
-            if (!info.empty()) {
-                info += '\n';
-            }
-            info += s;
-        }
-    };
-    line(request.reason);
-    line(request.location);
-    const std::time_t tt = static_cast<std::time_t>(t);
-    std::tm local{};
-    if (localtime_s(&local, &tt) == 0) {
-        char date[40];
-        char zone[8];
-        if (std::strftime(date, sizeof date, "%Y.%m.%d %H:%M:%S", &local) > 0 &&
-            std::strftime(zone, sizeof zone, "%z", &local) == 5) {
-            line(std::string(date) + ' ' + std::string(zone, 3) + '\'' + std::string(zone + 3, 2) + '\'');
-        }
+// Картинка и логотип внешнего вида читаются — до записи и правки документа.
+void checkAppearanceFiles(const SignRequest& request) {
+    const SignatureAppearance& look = request.appearance;
+    if (request.placement.rect.empty() && request.placement.field.empty()) {
+        return;  // невидимая подпись — вида нет
     }
-    return info;
+    std::error_code ec;
+    if ((look.imageOnly || look.graphic == AppearanceGraphic::Image) &&
+        !fs::is_regular_file(look.image, ec)) {
+        throw SignError(SignStatus::BadAppearance, "signature image not found: " + paths::toUtf8(look.image));
+    }
+    if (!look.logo.empty() && !fs::is_regular_file(look.logo, ec)) {
+        throw SignError(SignStatus::BadAppearance, "signature logo not found: " + paths::toUtf8(look.logo));
+    }
 }
 
 }  // namespace
@@ -235,26 +225,33 @@ SignResult signDocument(Document& doc, const SignRequest& request, const fs::pat
     if (!doc.allowed(Perm::FillForms)) {
         throw SignError(SignStatus::NotAllowed, "document permissions do not allow signing");
     }
+    checkAppearanceFiles(request);
     auto signer = std::make_shared<AcroBatyaSigner>(request.identity, request.digest, request.timestamp,
                                                     request.withoutTimestamp);
     const std::int64_t t =
         request.signingTime != 0 ? request.signingTime : static_cast<std::int64_t>(std::time(nullptr));
     const std::string name =
         request.name.empty() ? commonName(X509_get_subject_name(request.identity->cert.get())) : request.name;
-    const std::string info = infoText(request, t);
+    AppearanceData data;
+    data.name = name;
+    data.dn = nameToString(X509_get_subject_name(request.identity->cert.get()));
+    data.reason = request.reason;
+    data.location = request.location;
+    data.time = t;
 
     detail::FieldJob job;
     job.placement = request.placement;
     job.lock = request.lock;
     job.time = t;
-    // Внешний вид по умолчанию: имя слева, причина, место и дата справа (конструктор — п. 3).
-    job.appearance = [&](fz_context* ctx, fz_rect rect, fz_text_language lang) {
-        fz_display_list* list = nullptr;
-        const char* left = name.c_str();
-        const char* right = info.c_str();
-        mu::call(ctx,
-                 [&] { list = pdf_signature_appearance_signed(ctx, rect, lang, nullptr, left, right, 0); });
-        return list;
+    // Внешний вид — конструктор appearance.h по рамке виджета.
+    job.appearance = [&](fz_context* ctx, fz_rect rect, fz_text_language) {
+        try {
+            return buildAppearance(ctx, RectF{rect.x0, rect.y0, rect.x1, rect.y1}, request.appearance, data);
+        } catch (const MuError&) {
+            throw;
+        } catch (const std::runtime_error& e) {
+            throw SignError(SignStatus::BadAppearance, e.what());
+        }
     };
     if (request.subFilter == SubFilter::CadesDetached) {
         job.before = [](fz_context* ctx, pdf_document* pdf) { detail::ensureEsic(ctx, pdf, 2); };

@@ -36,6 +36,7 @@
 #include <string>
 
 #include "core/doc/saver.h"
+#include "core/sign/appearance.h"
 #include "core/sign/cms.h"
 #include "core/sign/pkcs12.h"
 #include "core/sign/tsa.h"
@@ -71,6 +72,8 @@ struct SignRequest {
     std::string name;                            // /Name и имя во внешнем виде; пусто — CN сертификата
     SubFilter subFilter = SubFilter::CadesDetached;
     SignaturePlacement placement;
+    // Внешний вид видимой подписи (п. 3, appearance.h); данные — имя, DN сертификата, причина, место, /M.
+    SignatureAppearance appearance;
     // «Заблокировать документ после подписи» (sign-15): /Lock <</Type /SigFieldLock /Action /All>> на поле до
     // подписания — все поля формы (и сама подпись) становятся ReadOnly, /Reference FieldMDP в подписи.
     // false — /Lock поля остаётся, как его поставил автор формы (у нового поля его нет).
@@ -96,6 +99,7 @@ enum class SignStatus {
     CmsFailed,          // OpenSSL при сборке CMS
     TimestampFailed,    // служба времени, причина — tsaStatus()
     TooLarge,           // CMS больше резерва /Contents
+    BadAppearance,      // картинка или логотип внешнего вида не читаются
     SaveFailed,         // запись (предварительная или с подписью), причина — saveError()
 };
 

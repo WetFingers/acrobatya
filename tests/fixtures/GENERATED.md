@@ -176,6 +176,11 @@ O=Оттиск, C=RU, 2026-01-01 + 3650 дней, KeyUsage digitalSignature+nonR
 `INTACT:TRUSTED,UNTOUCHED` (запуск pyhanko.exe — с `PYTHONUTF8=1`, иначе «Generic processing error» на кириллице).
 Полная PKI (ЦС, TSA, OCSP/CRL, `.pfx`) — `tests/fixtures/pki/`, сессия 4.1.
 
+`appearance/*.png` (сессия 4.2, sign-13) — эталоны вида подписи: растр рамки виджета 240 × 72 pt при 144 dpi
+после подписи `unsigned.pdf` (`name-text`, `image-text`, `image-only`, `text-only`, `logo`; картинки PNG с альфой
+рисует сам тест). Пересоздать: `OTTISK_UPDATE_SIG_APPEARANCE=1` и `unit_tests --gtest_filter=sig_appearance.*`, затем
+посмотреть PNG глазами. Зависят от Segoe UI машины (`%WINDIR%\Fonts\segoeui.ttf`).
+
 ### `tests/fixtures/pki/` — `tools/pki/make_test_pki.ps1` + `make_ocsp_fixtures.ps1` (состав и ожидания — `pki.json`)
 
 Не из `tools/gen`: openssl 3.5 из Git for Windows, ключи случайные (файлы не детерминированы, коммитятся как есть);
