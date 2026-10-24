@@ -6,6 +6,7 @@
 // после P=2 — разрешена; невидимая сертификация; правила mdpAllows.
 #include <gtest/gtest.h>
 
+#include <cstdlib>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -251,4 +252,26 @@ TEST(docmdp_write, rules) {
     EXPECT_FALSE(mdpAllows(MdpPermission::Annotations, MdpAction::EditPages));
     EXPECT_FALSE(mdpAllows(MdpPermission::Annotations, MdpAction::EditContent));
     EXPECT_TRUE(mdpAllows(MdpPermission::None, MdpAction::EditPages));
+}
+
+// Файлы compat.sign.certified: сертификация P=1/2/3 на forms-all.pdf (видимая) и P=2 невидимая с блокировкой;
+// P=2 с заполненным после сертификации полем (pyHanko: подпись цела и доверена, изменения допустимы).
+TEST(sign_compat, DISABLED_write_certified) {
+    const char* outEnv = std::getenv("OTTISK_COMPAT_OUT");  // NOLINT(concurrency-mt-unsafe)
+    ASSERT_NE(outEnv, nullptr) << "нужен OTTISK_COMPAT_OUT";
+    const fs::path out = fs::path(ot::paths::fromUtf8(outEnv)) / L"sign" / L"certified";
+    fs::remove_all(out);
+    fs::create_directories(out);
+    (void)sign(formsCopy(out, L"p1.pdf"), certifyRequest(MdpPermission::NoChanges));
+    (void)sign(formsCopy(out, L"p2.pdf"), certifyRequest(MdpPermission::FormFilling));
+    (void)sign(formsCopy(out, L"p3.pdf"), certifyRequest(MdpPermission::Annotations));
+    SignRequest invisible = certifyRequest(MdpPermission::FormFilling);
+    invisible.placement.rect = ot::RectF{};
+    invisible.lock = true;
+    (void)sign(formsCopy(out, L"p2-invisible-locked.pdf"), invisible);
+    const fs::path filled = formsCopy(out, L"p2-filled.pdf");
+    (void)sign(filled, certifyRequest(MdpPermission::FormFilling));
+    ot::test::editIncrementally(filled, [](fz_context* ctx, pdf_document*, pdf_page* page) {
+        ot::test::setTextField(ctx, page, "name", "Petr Ivanov");
+    });
 }

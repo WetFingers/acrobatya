@@ -8,6 +8,22 @@
 Новые пункты — сверху, с номером сессии или рубежа. Ничего из этого не блокирует очередь: она работает на
 `Fake*`-реализациях и фикстурах, живая часть ждёт здесь (эталон 8.1 «Человек отдельно», 9.7).
 
+- **Сессия 4.5 · LTV, B-LTA, сертификация и списки доверия против Acrobat Reader и живой сети** — интерфейса ещё
+  нет (4.6). (1) После `cmd /c "tools\vcenv.cmd && ctest --test-dir build/debug -R compat.sign --output-on-failure"`
+  открыть в Acrobat Reader `build\debug\compat\sign\lt\*.pdf` и `lta\*.pdf`, «Доверять» корню
+  `tests\fixtures\pki\root.cer` (подписи и сертифицированные документы): у подписи — «LTV включено» и «Подпись
+  содержит встроенную метку времени»; у `lta\*.pdf` — метка времени документа (у `rsa-lta-extended.pdf` — две), без
+  предупреждений об изменениях; отключить сеть — статусы те же. (2) Сертификация: `build\debug\compat\sign\certified\*.pdf` (тот же ctest) — Acrobat
+  показывает синюю ленту «Сертифицировано» с правами P=1/2/3, у `p2-filled.pdf` заполненное после сертификации поле
+  статус не ломает; в P=2 заполнить поле в Reader и сохранить — подпись остаётся действительной, добавить комментарий —
+  Reader предупреждает о запрещённом изменении. (3) С сетью: `$env:OTTISK_LIVE_NET='1';
+  cmd /c "tools\vcenv.cmd && ctest --test-dir build/debug -R compat.trust.live --output-on-failure"` — подписант
+  живого EU LOTL есть в `assets\trust\lotl_pins.json` (снимок 2026-10-23, LOTL № 397); не так — обновить pins
+  генератором `tools\gen\make_trust_fixtures.py` по свежему снимку (сверить с OJ C «list of trusted lists signing
+  certificates») и записать сюда. (4) После 4.6 — «Обновить списки доверия» в Установках: EUTL загружает все
+  национальные списки (немецкий — 5 МБ) и спрашивает перед установкой, AATL с trustlist.adobe.com даёт ~311
+  сертификатов.
+
 - **Сессия 4.4 · Вердикты валидатора против Acrobat Reader** — валидатор пока без интерфейса (панель «Подписи» — 4.6).
   После `cmd /c "tools\vcenv.cmd && ctest --test-dir build/debug -R compat.sign --output-on-failure"` открыть в Acrobat
   Reader `build\debug\compat\sign\b\*.pdf` и `t\*.pdf` и сравнить с `build\debug\dss\ours.json` (там же вердикты 124
@@ -2223,3 +2239,76 @@
 - Замеры: новые 39 unit-тестов — ~2 с (подпись и проверка файла 30–80 мс); `engine.sig.dss` — 6–11 с на 124 файла;
   survey pyHanko — ~55 с; инкремент `unit_tests` 6–20 с; `verify.py` — 62 с (630 тестов).
 - Проверки: `verify.py` зелёный; `engine.sig.dss` и `compat.sig.pyhanko` зелёные; сцен нет — интерфейса в сессии нет.
+
+### 2026-10-24 · Сессия 4.5 · LTV, DocTimeStamp в потоке, сертификация DocMDP, EUTL и AATL
+- Сделано:
+  1. **DSS и «Добавить сведения для проверки»:** `core/sign/ltv` — сбор материала для каждой подписи и метки документа:
+     цепочка подписанта и службы времени метки подписи до якоря хранилища или самоподписанного корня (корень — в
+     /Certs), отзыв каждого сертификата цепочек через `RevocationChecker` (данные файла — /DSS и
+     adbe-revocationInfoArchival, затем сеть, задним числом, на момент метки или /M), сертификаты из ответов OCSP и
+     отзыв делегированного респондера; запись /DSS (`/Type /DSS`, /Certs, /OCSPs — `OCSPResponse`, Basic оборачивается,
+     /CRLs) одной операцией журнала отдельной инкрементальной секцией, без повторов по DER, прежние элементы остаются;
+     /VRI — по опции; нового нет — без записи; `ltvStatus`/`ltvEnabled` — «LTV включено» без сети; `decideAutoLtv`;
+     `DocumentSession::addValidationInfo`; ключи `signatures/autoAddLtv` (never|ask|always), `signatures/ltvVri`.
+     `unit.ltv` (8), `compat.sign.lt` (RSA, ECDSA, с /VRI: pyHanko — подпись и её метка доверены по данным /DSS без сети
+     с обязательным отзывом). sign-21.
+  2. **B-LT/B-LTA при подписании:** `SignRequest::level` (`SignLevel` B/T/LT/LTA), последовательность секций подпись →
+     /DSS → метка времени документа, `SignResult` — достигнутый уровень, итоги /DSS и метки; продление архивной метки
+     `extendArchiveTimestamp` и `DocumentSession::extendTimestamp`. `unit.sign_levels` (6), `compat.sign.lta` (pyHanko
+     `ades_lta_validation` — PASSED, у LT-файла — NO_POE). sign-21, sign-20.
+  3. **Сертификация DocMDP и сканер предупреждений:** `docmdp` — `writeDocMdp` (/Reference DocMDP первым, FieldMDP
+     блокировки после, /Perms /DocMDP в той же секции), `certifyBlock`, `mdpAllows`; `SignRequest::certify`,
+     `SignStatus::CannotCertify`; `warnings_scan` — JavaScript (дерево имён, /OpenAction, /AA каталога, страниц,
+     комментариев и полей, цепочки /Next, закладки), /Launch, /URI, внешние файлы, мультимедиа, вложения, /XFA,
+     /NeedAppearances, уровни Info/Warning/Danger; фикстура `tests/fixtures/sig/warnings.pdf` (`make_warnings.py`).
+     `unit.docmdp_write` (6), `unit.warnings_scan` (2), `compat.sign.certified` (P=1/2/3, невидимая с блокировкой,
+     P=2 с заполненным полем: pyHanko INTACT, TRUSTED). sign-16, sign-17.
+  4. **EUTL и AATL:** `core/sign/eutl` (модели, `TrustListSource`, pins, `buildEutl`), `core/sign/aatl` (разбор «по факту»),
+     `services/trust_lists` (QXmlStreamReader, сеть, кеш, установка), `services/trust_updater` (раз в 14 дней, согласие),
+     `assets/trust/lotl_pins.json` (ресурс `:/trust`), фикстуры `tests/fixtures/trust` (`make_trust_fixtures.py` из
+     снимка корпуса), `TrustStore::replaceSource`. `unit.eutl` (5), `unit.aatl_reject` (2), `unit.trust_updater` (4),
+     `engine.aatl` (настоящий tl12: 311 сертификатов, подпись Adobe Certified Document Service Program цела, Adobe Root
+     CA G2), `compat.trust.live` (`OTTISK_LIVE_NET=1`). sign-31.
+  5. **Хранилище доверия целиком:** `trustFromSignature`, `importWindows` + `windowsStoreCertificates(Root|Ca)`,
+     `exportAnchor`/`exportAll`, корни Windows по назначениям (`windowsRootsFlags`), `certifiedPrivileges`.
+     `unit.trust_store_full` (5). sign-30, sign-34, sign-08.
+- Решения:
+  - Ключ /VRI — SHA-1 HEX DER подписи **без** дополнения нулями (как pyHanko `sig_content_identifier`; «байты
+    hex-строки /Contents» плана поняты так); /VRI по умолчанию выкл.; /Extensions /ESIC при /DSS не трогается.
+  - В /Certs — вся цепочка с корнем (или якорем хранилища), сертификаты служб времени и респондеров OCSP; отзыв
+    респондера без id-pkix-ocsp-nocheck — тоже (иначе pyHanko в режиме «require» не доверяет). Неполная цепочка или
+    нет данных отзыва — `LtvSignature::missing`, запись всё равно делается (что нашлось).
+  - Шаги после подписи (/DSS, метка документа) подпись не отменяют: сбой — `ltvError`/`archiveError`; LT/LTA без службы
+    времени — отказ до записи; `SignLevel` по умолчанию T (нет службы — B, как раньше).
+  - Подпись LOTL (XAdES) — проверка отпечатка подписанта по pins и NextUpdate, без криптографической проверки XMLDSig:
+    канонизации XML (exc-c14n) в стеке нет, новые зависимости запрещены. Национальный TL принимается, если сертификат
+    его подписи объявлен в указателе LOTL (замена проверки подписи TL). Pins — сертификат подписи снимка и пять
+    сертификатов указателя EU (список OJ C), снимок 2026-10-23, LOTL № 397.
+  - Якоря EUTL — службы CA/QC, TSA/QTST, TSA, NationalRootCA-QC со статусом granted / recognisedatnationallevel /
+    accredited / undersupervision / setbynationallaw, флаги «подписи + сертифицированные документы»; просроченный TL —
+    помечен, но применяется; LOTL не pinned или просрочен, подписант TL не объявлен — только по согласию.
+  - AATL: флаги из `<Trust>` (`Root` → подписи, `CertifiedDocuments` → + сертификация, `DynamicContent`, `JavaScript`);
+    подпись файла проверяется на целостность (не на доверие); в ожидании — Adobe Root CA **G2** (исходного «Adobe Root
+    CA» в tl12 нет — он встроен в Acrobat).
+  - `TrustUpdater` засчитывает попытку и при неудаче (сеть не дёргается на каждом запуске; следующая — через 14 дней).
+  - Корни Windows по назначениям: `setUseWindowsRoots(true)` — только подписи (как было), `windowsRootsFlags` — подписи
+    и (или) сертифицированные документы; в anchors.json — `windowsRootsFlags` и прежний `windowsRoots`.
+  - Сканер: JavaScript и /Launch — «опасно», /URI — «сведения», остальное — «предупреждение»; одно предупреждение на
+    владельца и ключ.
+- Подводные камни:
+  - `python3` в Git Bash — заглушка Microsoft Store: команда висела 30 минут; `python -I -` с пустым stdin запускает
+    REPL, который бесконечно пишет ошибки консоли. Только `"$OTTISK_PYTHON" -X utf8 -I <файл>`.
+  - Хук `guard.ps1` принимает текст heredoc вида «/SecuritySettings» за путь записи вне проекта — скрипты правок писать
+    инструментом Write в `%TEMP%\ot45`, а не heredoc.
+  - В таблице имён MuPDF нет `OpenAction`, `Win` (и `DSS`) — `pdf_dict_gets`.
+  - pyHanko `validate_pdf_signature` сам /DSS не читает — `DocumentSecurityStore.read_dss(r).as_validation_context(...)`;
+    режим `revocation_mode="require"` без данных отзыва падает ValueError — признак настоящей проверки.
+  - В TL-DE свой `PointersToOtherTSL` (13 КБ сертификатов EU) — вырезан, иначе фикстура > 50 КБ.
+  - Висячая ссылка на временный `DocumentVerification` в тесте (`certification(verify(...))` в объявлении) давала
+    ложный результат — держать результат в переменной.
+  - В `unit_tests` нет QtTest (`QSignalSpy`) — свои счётчики сигналов.
+- Замеры: новые 38 unit-тестов — ~10 с (из них `docmdp_write` 7 с — шесть подписей и правки forms-all.pdf); подпись
+  B-LTA (три секции) ~0,1 с; `engine.aatl` — 1 с (разбор 311 сертификатов и проверка подписи списка); `compat.sign.lt/
+  lta` — 2–3 с; инкремент `unit_tests` 12–60 с; `verify.py` — 171 с (668 тестов).
+- Проверки: `verify.py` зелёный; `compat.sign.{b,b.multi,t,dts,cng,lt,lta,certified}`, `engine.sig.dss`, `compat.sig.pyhanko`,
+  `engine.aatl` зелёные, `compat.trust.live` — пропуск (нет `OTTISK_LIVE_NET`); сцен нет — экранов в сессии нет.

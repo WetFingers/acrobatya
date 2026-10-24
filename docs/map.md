@@ -3,8 +3,30 @@
 Где что лежит и как добавляется типовая вещь. Сессия читает этот файл **первым**, до поиска по коду.
 Дерево и состав — эталон `docs/design.md` 5.1–5.3; здесь — короткий путеводитель и рецепты.
 
-> **Состояние: сессия 4.4 — валидатор: статусы Acrobat, анализ изменений, DSS-корпус** (этап 4; интерфейса подписей
-> ещё нет — 4.6). `core/sign/` — `verifier.h` (`verifyDocument(doc, VerifyOptions{trust, fetcher, revocation
+> **Состояние: сессия 4.5 — LTV, DocTimeStamp, сертификация DocMDP, EUTL и AATL** (этап 4; интерфейса подписей
+> ещё нет — 4.6). `core/sign/` — `ltv.h` (`collectLtv(doc, LtvOptions{trust, fetcher, vri, now})` → `LtvCollection
+> {signatures (LtvSignature: field, kind, vriKey, material, chainComplete, revocationComplete, missing), material,
+> existing, added()}`, `writeDss`, `addValidationInfo(doc, options, target)` → `LtvResult{collected, dss, save}` —
+> /DSS отдельной секцией; `ltvStatus`/`ltvEnabled` — «LTV включено» без сети; `ocspResponseDer`; `extendArchiveTimestamp`
+> → `ArchiveResult` — продление B-LTA; `LtvAutoAdd`/`decideAutoLtv` — вопрос 12.3), `signer.h` — `SignLevel` B/T/LT/LTA,
+> `SignRequest::level/trust/revocationFetcher/vri/certify`, `SignResult::level/dss*/ltv*/docTimestamp*/archiveError`,
+> `SignStatus::CannotCertify`; `docmdp.h` — `writeDocMdp`, `certifyBlock`, `mdpAllows(MdpPermission, MdpAction)`;
+> `warnings_scan.h` (`scanWarnings(doc)` → `WarningScan{warnings (DocumentWarning: kind, level, page, object, where,
+> detail)}`, `WarningKind`, `WarningLevel`); `eutl.h` (модели `Lotl`/`ListPointer`/`TrustedList`/`TrustService`,
+> `TrustListSource`, `LotlPins`, `usableService`, `buildEutl` → `EutlResult{pinned, lotlExpired, territories,
+> certificates, trustworthy()}`), `aatl.h` (`parseAatl/parseAatlFile` → `AatlResult{status, certificates, signedList,
+> signatureIntact, signer}`, порог `kAatlMinCertificates`), `trust_store.h` — `ListedCertificate`, `replaceSource`,
+> `TrustAnchor::label`, `importWindows`, `windowsStoreCertificates(WindowsStore::Root|Ca)`, `exportAnchor`/`exportAll`,
+> `windowsRootsFlags`, `trustFromSignature`; `verifier.h` — `certifiedPrivileges`; `revocation.h` — `archivalRevocation`;
+> `ossl.h` — `base64Encode/Decode`; `sign_field.h` — `detail::needsPreSave`. Службы — `DocumentSession::addValidationInfo/
+> extendTimestamp`, `trust_lists.h` (`parseLotl`/`parseTrustedList` на QXmlStreamReader, `lotlPins()` — ресурс
+> `:/trust/lotl_pins.json` из `assets/trust`, `HttpTrustListSource`, `downloadTrustLists` → `TrustListUpdate`, кеш
+> `trust/{eutl,aatl}.json`, `installTrustLists`), `trust_updater.h` (`TrustUpdater::check/install/discard`, раз в 14
+> дней, `setClock`); ключи `signatures/autoAddLtv`, `signatures/ltvVri`, `trust/eutl`, `trust/aatl`,
+> `trust/listsAskBeforeInstall`, `trust/listsCheckedAt`; фикстуры `tests/fixtures/trust/` (`make_trust_fixtures.py` из
+> снимка корпуса), `tests/fixtures/sig/warnings.pdf` (`make_warnings.py`); ctest `compat.sign.lt`, `compat.sign.lta`
+> (токены `LTV`, `LTA` в `compat_check.py`), `engine.aatl`, `compat.trust.live` (только `OTTISK_LIVE_NET=1`).
+> Из 4.4 — валидатор: статусы Acrobat, анализ изменений, DSS-корпус. `core/sign/` — `verifier.h` (`verifyDocument(doc, VerifyOptions{trust, fetcher, revocation
 > Required/BestEffort/Never, retroactiveRevocation, acceptExpiredTimestamps, now})` → `DocumentVerification{signatures,
 > status (DocumentStatus — полоса), versions, embeddedCertificates, docMdp}`; `SignatureInfo` — поле, страница и рамка,
 > /V, /ByteRange, CMS, подписант, `structureOk`/`intact`/`trusted`, `chain`, `validationTime` + `TimeSource`,
@@ -250,8 +272,12 @@ InvertAll, `recolorRgb` — по яркости между «текст/фон»
 ETSI.CAdES.detached/PBAD.PAdES, adbe.pkcs7.detached, adbe.pkcs7.sha1, ETSI.RFC3161; (3) цепочка до якорей на момент метки
 или /M; (4) отзыв — /DSS и adbe-revocationInfoArchival, затем сеть только для сертификатов без данных, «LTV»; (5) метки;
 (6) изменения — `changes.h`), `trust_store.h`, `docmdp.h`, `changes.h` (роли объектов по достижимости из каталога,
-разбор каталога/страницы/`/Annots`/`/AcroForm`/поля, подписанная ревизия — временный документ той же семьи); дальше
-`ltv.h`, `eutl.h`, `aatl.h`, `warnings_scan.h` | 4.1–4.6 |
+разбор каталога/страницы/`/Annots`/`/AcroForm`/поля, подписанная ревизия — временный документ той же семьи); 4.5 —
+`ltv.h` (сбор цепочек подписанта и службы времени, отзыв и респонденты OCSP — `Collector`; запись /DSS — `DssArray`,
+потоки без повторов по DER, /VRI по опции; «LTV включено»; продление B-LTA), `warnings_scan.h` (`Scanner` — каталог,
+дерево имён, страницы, комментарии, поля, закладки, цепочки /Next), `eutl.h` (логика EUTL без XML), `aatl.h` (разбор
+SecuritySettings.xml по факту), в `docmdp.h` — запись DocMDP и правила, в `signer.h` — уровни и сертификация, в
+`trust_store.h` — импорт/экспорт и корни Windows по назначениям | 4.1–4.6 |
 | `annot/` | `annots.h` (2.2, минимум: `AnnotRef{page, objnum}`, `AnnotType` — 28 подтипов в порядке `pdf_annot_type`, `AnnotInfo{ref, type, subtype, rect, flags}`; `listAnnots` — весь `/Annots`, с Link/Popup/Widget, которых нет в списке `pdf_annot` MuPDF; рамки — координаты страницы MuPDF (`pdf_bound_annot`, NoZoom/NoRotate, `/Rotate`); `findAnnot`, `annotAt` — верхняя, без Popup и скрытых; `setRect` — `/Rect` без пересоздания `/AP`; `remove` — `pdf_delete_annot` (с его Popup) или из `/Annots`; правки — `Journal::Operation`; 28 типов, сеттеры и JSON — 5.1), дальше `appearance.h`, `popups.h`, `fdf.h`, `xfdf.h`, `stamps.h`, `measure.h`, `summary.h`, `fillsign.h` | 2.2, 5.1–5.5 |
 | `forms/` | `fields.h`, `field_factory.h`, `js_bridge.h`, `data_io.h`, `submit.h`, `detect.h`, `tab_order.h` | 6.1–6.4 |
 | `pages/` | 2.4 — `labels.h` (чтение `/PageLabels`: `pageLabels`, `pageLabel`, `parsePageInput` — «iv», «3» (логический, иначе физический), «(3)»); 2.5b — `boxes.h` (`pageBoxes(doc, page)` — Media/Crop/Bleed/Trim/Art в координатах `fz_bound_page_box`, `has*` — задана с наследованием); 7.1 — `organizer.h`, `graft.h`, `split.h`, запись в `labels.h` и `boxes.h`, `insert.h` | 2.4, 2.5b, 7.1 |
@@ -345,6 +371,7 @@ QGuiApplication; `PrintDevices::printers/defaultPrinter/supportsDuplex/paperFor/
 sheet, dpi)` — тот же растр в QImage; `printFileSilently(path, printer)` — `/p`, `/pt`), в `settings_keys.h` — `print/`
 (принтер, качество, масштаб, папка и шаблон «Печать в PDF», «спрашивать»), в `single_instance.h` — `Request::print/printer`,
 в `app_info.cpp` — `--self-check` «print verbs» (ProgID `shell\print`, `shell\printto`).
+4.5: `DocumentSession::addValidationInfo(trust, vri, target)` / `extendTimestamp(tsa, trust, target)` — /DSS и продление метки (сеть — `httpFetcher()`); `trust_lists.h` (`parseLotl`/`parseTrustedList` — QXmlStreamReader в модели `core/sign/eutl.h`, `lotlPins()` — `:/trust/lotl_pins.json` (`qt_add_resources` у `ottisk_services`), `HttpTrustListSource` (Purpose::Signatures, TL до 64 МиБ), `downloadTrustLists(fetcher, eutl, aatl, now)` → `TrustListUpdate{eutl, aatl, needsConsent()}`, `saveTrustListCache`/`loadTrustListCache` — `<данные>\trust\{eutl,aatl}.json`, `installTrustLists` → `TrustStore::replaceSource` + anchors.json), `trust_updater.h` (`TrustUpdater(settings, fetcher, trustDir)`: `check(force)` → `Outcome` NotDue/Disabled/Failed/Pending/Installed, попытка засчитывается всегда, `install`/`discard`, сигналы `updateAvailable(eutl, aatl, needsConsent)`/`installed`); в `settings_keys.h` — `kAutoAddLtv`, `kLtvVri`, `kTrustEutl`, `kTrustAatl`, `kTrustListsAsk`, `kTrustListsCheckedAt`.
 4.2: `DocumentSession::sign(SignRequest, target)` / `timestampDocument(tsa, target)` — задачи потока документа с записью и переоткрытием (`afterSave(report, reloaded)`), ошибка — `sign::SignError` в QFuture; `tsa_settings.h` (`loadTsaServers`/`saveTsaServers` — ключ `signatures/tsaServers`, `timestampFallback`, `makeTsaClient`/`defaultTsaClient` поверх `httpFetcher()`), `dpapi.h` (`dpapi::protect/unprotect` с энтропией программы, `DpapiProtector`), `identities.h` (`Identities::shared()` — `IdentityStore` над `StateDb::shared()` и `<данные>\ids`, `with(fn)` под замком базы); 4.3: `cert_picker.h` (`CertPicker::available()` — есть QGuiApplication не offscreen/minimal, `pick(hwnd, заголовок, подсказка)` → `PickedCertificate{thumbprint, name, subject, issuer, notAfter, der, smartCard}` — `CryptUIDlgSelectCertificateFromStore` над `cng::filtered(«Личное»)`); в `settings_keys.h` — `kTsaServers`, `kTimestampFallback`, `kTimestampSignatures`, `kSignCompatibility`; state.sqlite — миграция 5 (`identities`).
 4.1: `http_fetcher.h` (`QtHttpFetcher` — `net::HttpFetcher` на QNAM синхронно в потоке вызова: свой QNAM и `QEventLoop`, общий срок `timeoutMs`, `UserVerifiedRedirectPolicy` — только тот же хост и схема не слабее (`sameHostRedirectsOnly`), `maxResponseBytes`, журнал spdlog «net: метод адрес -> код (байты, мс)» без тела и userinfo; `NetworkAccess` Allowed/SignaturesOnly/Off — `networkAccess(Settings)` по `trust/network`, без аргумента — из настроек на каждый запрос; `httpFetcher()` процесса, `setHttpFetcher`, `ScopedHttpFetcher`); в `settings_keys.h` — `kNetworkAccess`.
 3.4: `edit_ops.h` (`editing::pageContent` → `PageContent{page, blocks, images}`, `Block{bbox, reason, editor}`;
@@ -825,6 +852,26 @@ OCSP-ответы отдельно — `make_ocsp_fixtures.ps1`.
 
 1. Подписать — `sign::signDocument(doc, SignRequest, target)` (в окне — `DocumentSession::sign`): удостоверение — `IdentityStore::open(id, пароль)` (`NeedPassword` — спросить; запись `WindowsStore` — `WindowsCert{record.thumbprint, hwnd окна}`, выбор нового — `CertPicker::pick`, ключ CNG, PIN — окно Windows), вид — `SignatureAppearance` (ярлыки — переводы `tr()` в `AppearanceLabels`), метка B-T — `defaultTsaClient(Settings)` и `withoutTimestamp` по `timestampFallback`. Свой подписант или своё поле (DocTimeStamp, DSS) — `detail::FieldJob` + `signField` (`sign_field.h`): правки после `pdf_sign_signature_with_appearance` — только в `patch` (секция подписи), каталог — в `before`.
 2. Тесты — `support/sign_support.h` (`pkiIdentity`, `windowsIdentity` — тот же .pfx как сертификат «хранилища» через PFX-импорт в памяти, без окон; `localTsa`, `unsignedCopy`, `makeFormFile`, `readSignatures` → `DocView`, `expectCmsValid`, `coversFile`; в `engine_tests` те же помощники подключены `target_sources`); метка — `FakeHttpFetcher` + `localTsaReply` (TsaClient держит fetcher ссылкой — держать оба живыми); внешняя проверка — `sign_compat.DISABLED_*` в `OTTISK_COMPAT_OUT/sign/<набор>` и `compat.sign.*` (`compat_check.py --trust root.pem --expect-sig …`, метки документа — `--expect-ts`; токены `TIMESTAMPED`, `TIMESTAMP_TRUSTED`, `DOC_TIMESTAMP`). Вид — эталоны `tests/fixtures/sig/appearance/*.png` (`OTTISK_UPDATE_SIG_APPEARANCE=1`).
+
+### Сведения LTV, уровни, сертификация и списки доверия (с 4.5)
+
+1. «Добавить сведения для проверки» — `sign::addValidationInfo(doc, LtvOptions{trust, fetcher, vri})` (в окне —
+   `DocumentSession::addValidationInfo`): материал собирает `collectLtv` (цепочки до якоря или самоподписанного корня,
+   отзыв через `RevocationChecker` — сначала данные файла), пишет `writeDss` одной операцией журнала, `Saver::Incremental`;
+   нового нет — без записи. «LTV включено» в интерфейсе — `ltvEnabled(doc, sig, {trust})` (сеть не нужна); при
+   сохранении — `decideAutoLtv(ltvAutoAddFromName(settings kAutoAddLtv), размер файла, collected.added().bytes())`.
+2. Уровень подписи — `SignRequest::level` (LT/LTA — нужны `timestamp`, `trust`, `revocationFetcher`); продление архивной
+   метки — `extendArchiveTimestamp` (`DocumentSession::extendTimestamp`); сертификация — `SignRequest::certify` (до
+   подписи интерфейс зовёт `certifyBlock`), что можно делать с сертифицированным — `mdpAllows(readDocMdp(doc).permission,
+   MdpAction::…)`; «Проверить документ» перед подписью — `scanWarnings(doc)`.
+3. Списки доверия — `TrustUpdater` (раз в 14 дней; ожидающее — `pending()`, согласие — `install()`); вручную —
+   `downloadTrustLists` + `installTrustLists`; новые pins LOTL — `tools/gen/make_trust_fixtures.py` по свежему снимку
+   (человек) и `compat.trust.live`. Доверие из подписи — `trustFromSignature(store, sig, flags[, отпечаток])`, права
+   сертифицированного документа (JavaScript, динамический контент — 6.1) — `certifiedPrivileges(verification, store)`.
+4. Тесты — `support/verify_support.h` и `sign_support.h`; сеть PKI — `pkiResponder()` (OCSP signer-rsa/ec, CRL ЦС), служба
+   времени — `localTsa()`; внешняя проверка — `compat_check.py --expect-sig …,LTV[,LTA]` (pyHanko по данным /DSS без
+   сети с обязательным отзывом; LTA — `ades_lta_validation`); списки — `tests/fixtures/trust/` и `FakeHttpFetcher` по
+   адресам `kLotlUrl` и TL из `expected.json`.
 
 ### Проверка подписей (с 4.4)
 
