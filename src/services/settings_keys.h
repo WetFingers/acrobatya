@@ -95,6 +95,12 @@ inline constexpr StringKey kInternetAccess{"trust/internetAccess", "ask", "ask|a
 // Сеть самой программы (эталон 7.4; security-36; план 4.1): «разрешена» / «только подписи» (TSA, OCSP, CRL,
 // AIA, списки доверия) / «выключена» — services/http_fetcher.h, единая точка сети.
 inline constexpr StringKey kNetworkAccess{"trust/network", "allowed", "allowed|signaturesOnly|off"};
+// Списки доверия (эталон 3.8 «Доверие», вопрос 12.4; services/trust_updater.h): EUTL — включён, AATL —
+// попытка; «спрашивать перед установкой»; время последней проверки (ISO, UTC; раз в 14 дней).
+inline constexpr BoolKey kTrustEutl{"trust/eutl", true};
+inline constexpr BoolKey kTrustAatl{"trust/aatl", true};
+inline constexpr BoolKey kTrustListsAsk{"trust/listsAskBeforeInstall", true};
+inline constexpr StringKey kTrustListsCheckedAt{"trust/listsCheckedAt", ""};
 
 // --- Подписи (signatures/; эталон 3.8, вопросы 12.2, 12.3; страница «Установок» — 4.6) ---
 // Серверы времени — JSON core/sign/tsa_servers.h (имя, адрес, логин; по умолчанию DigiCert), пусто —

@@ -37,6 +37,14 @@ struct TrustAnchor {
     std::string sha256;
     unsigned flags = kTrustSignatures;
     TrustSource source = TrustSource::User;
+    std::string label;  // подпись в списке (EUTL — «DE: поставщик — служба»), пусто — субъект
+};
+
+// Сертификат из списка доверия (EUTL, AATL) — для TrustStore::replaceSource и кеша списков.
+struct ListedCertificate {
+    Bytes der;
+    unsigned flags = kTrustSignatures;
+    std::string label;
 };
 
 // Отпечаток без пробелов, разделителей и невидимых символов, верхним регистром («a1 b2:…» → «A1B2…»).
@@ -53,7 +61,10 @@ public:
     // Добавить якорь (DER или PEM одного сертификата). Уже есть — false, флаги не меняются. Не сертификат —
     // OsslError.
     bool add(std::span<const std::uint8_t> cert, unsigned flags = kTrustSignatures,
-             TrustSource source = TrustSource::User);
+             TrustSource source = TrustSource::User, std::string label = {});
+    // Заменить якоря списка (EUTL, AATL) новым набором: прежние якоря источника уходят, сертификат, который
+    // уже есть с другим источником (свой), остаётся своим. Число якорей источника после замены.
+    int replaceSource(TrustSource source, const std::vector<ListedCertificate>& certs);
     // Импорт сертификатов из байтов файла: .cer/.crt/.pem (DER или PEM, в т. ч. несколько), .p7b/.p7c
     // (PKCS#7 только сертификаты, DER или PEM), .fdf (обмен сертификатами Acrobat). Число новых якорей; в
     // данных нет сертификатов — 0.

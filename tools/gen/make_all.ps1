@@ -7,7 +7,7 @@
         [-Python <python.exe>] [-SkipWord] [-SkipBig] [-NoVerify]
 
     Порядок (каждый следующий может читать результат предыдущих):
-      make_images.py → make_mini.py → make_annots.py → make_forms.py → make_enc.py → make_sig.py → make_warnings.py →
+      make_images.py → make_mini.py → make_annots.py → make_forms.py → make_enc.py → make_sig.py → make_warnings.py → make_trust_fixtures.py (корпус trust) →
       make_cyr_fixtures.ps1 (Word) → make_office_fixtures.ps1 (Word) → make_office_fixtures.py →
       make_scans.py → make_demo.py → make_imgcmp.py → make_text.py → stext_expected.py → make_view.py → make_pages.py →
       make_edit_fixtures.ps1 (Word + make_edit_fixtures.py; без Word — только make_edit_fixtures.py) →
@@ -117,6 +117,7 @@ Invoke-Step 'make_forms.py' { Invoke-Gen 'make_forms.py' }
 Invoke-Step 'make_enc.py' { Invoke-Gen 'make_enc.py' }
 Invoke-Step 'make_sig.py' { Invoke-Gen 'make_sig.py' }
 Invoke-Step 'make_warnings.py' { Invoke-Gen 'make_warnings.py' }
+Invoke-Step 'make_trust_fixtures.py' { Invoke-Gen 'make_trust_fixtures.py' }
 if (-not $SkipWord) {
     Invoke-Step 'make_cyr_fixtures.ps1' { Invoke-Ps 'make_cyr_fixtures.ps1' }
     Invoke-Step 'make_office_fixtures.ps1' { Invoke-Ps 'make_office_fixtures.ps1' }

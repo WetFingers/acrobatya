@@ -1,0 +1,32 @@
+{
+  "about": "Сертификаты подписантов EU LOTL (ETSI TS 119 612): ds:X509Certificate подписи и сертификаты указателя EU — список, опубликованный в Официальном журнале ЕС (OJ C, «list of trusted lists signing certificates»). Источник — снимок eu-lotl.xml корпуса trust (этап 0); пересоздать — tools/gen/make_trust_fixtures.py; сверка с живым файлом — ctest compat.trust.live (OTTISK_LIVE_NET=1).",
+  "url": "https://ec.europa.eu/tools/lotl/eu-lotl.xml",
+  "snapshot": "2026-10-23",
+  "sequence": 397,
+  "pins": [
+    {
+      "sha256": "E0A620FBB6747362BB933AC44169D676A553444716CF5F31605F12A22B8396B1",
+      "from": "signature"
+    },
+    {
+      "sha256": "D2064FDD70F6982DCC516B86D9D5C56AEA939417C624B2E478C0B29DE54F8474",
+      "from": "EU pointer (OJ C)"
+    },
+    {
+      "sha256": "C0641C4F7D56C431B1C924742DB7FCE9C1EEF7D7FD212113A2768486B3ABCDC5",
+      "from": "EU pointer (OJ C)"
+    },
+    {
+      "sha256": "DF7E29360C34B2B8D6D5F40325C1D4D12C9922CECD33B7407674A74B2B3CA1E5",
+      "from": "EU pointer (OJ C)"
+    },
+    {
+      "sha256": "B63D416744E7098BF9EC2CAA596A93BC2468E37F8284BA65ECC061711BCBAA18",
+      "from": "EU pointer (OJ C)"
+    },
+    {
+      "sha256": "236103F03A8031AE8F47F9059BF8DE38564CDBFEBEDDE4A597D50F8980AA653B",
+      "from": "EU pointer (OJ C)"
+    }
+  ]
+}

@@ -187,6 +187,17 @@ O=Оттиск, C=RU, 2026-01-01 + 3650 дней, KeyUsage digitalSignature+nonR
 /FileAttachment), /XFA, /NeedAppearances true — 16 предупреждений; ожидания — `tests/unit/warnings_scan_test.cpp`;
 `compat_check.py` зелёный.
 
+### `tests/fixtures/trust/` — `make_trust_fixtures.py` (сессия 4.5, sign-31; ожидания — `expected.json`)
+
+Из снимка корпуса `trust` (этап 0; только чтение, сеть не нужна): `eu-lotl.xml` — урезанный EU LOTL (заголовок
+по-английски, указатели DE и EU, подпись ds:Signature как в снимке — её сертификат pinned), `TL-DE.xml` — урезанный
+TL Германии (4 поставщика: CA/QC и TSA/QTST «granted», один «withdrawn»; без ServiceHistory и расширений, подпись
+как в снимке — подписант объявлен в указателе DE). Байты XML не пересериализуются — вырезаются куски текста.
+`expected.json` — номера и даты списков, отпечатки подписантов, SHA-256 шести якорей. `not-a-list.acrobatsecuritysettings`
+— искусственный «AATL» (PDF с SecuritySettings.xml и тремя сертификатами тестовой PKI) для ветки «не похоже на
+список». Тот же генератор пишет `assets/trust/lotl_pins.json` (pins подписантов LOTL: подпись снимка и указатель
+EU — сертификаты из OJ C). Списки ЕС — публичные данные.
+
 ### `tests/fixtures/pki/` — `tools/pki/make_test_pki.ps1` + `make_ocsp_fixtures.ps1` (состав и ожидания — `pki.json`)
 
 Не из `tools/gen`: openssl 3.5 из Git for Windows, ключи случайные (файлы не детерминированы, коммитятся как есть);

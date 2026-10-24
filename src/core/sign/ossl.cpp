@@ -2,11 +2,14 @@
 
 #include <openssl/crypto.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/opensslv.h>
 #include <openssl/provider.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <mutex>
+#include <stdexcept>
 
 #include "core/util/paths.h"
 
@@ -283,6 +286,40 @@ Bytes digestRanges(const EVP_MD* md, const std::filesystem::path& file, std::spa
 
 Bytes sha256Ranges(const std::filesystem::path& file, std::span<const ByteRange> ranges) {
     return digestRanges(EVP_sha256(), file, ranges);
+}
+
+std::string base64Encode(std::span<const std::uint8_t> data) {
+    std::string out(4 * ((data.size() + 2) / 3) + 1, '\0');
+    const int n = EVP_EncodeBlock(reinterpret_cast<unsigned char*>(out.data()), data.data(),
+                                  static_cast<int>(data.size()));
+    out.resize(static_cast<std::size_t>(std::max(n, 0)));
+    return out;
+}
+
+Bytes base64Decode(std::string_view input) {
+    std::string text;
+    text.reserve(input.size());
+    for (const char c : input) {
+        if (c != ' ' && c != '\r' && c != '\n' && c != '\t') {
+            text.push_back(c);
+        }
+    }
+    if (text.size() % 4 != 0) {
+        throw std::runtime_error("bad base64");
+    }
+    Bytes out(3 * (text.size() / 4) + 3);
+    const int n = EVP_DecodeBlock(out.data(), reinterpret_cast<const unsigned char*>(text.data()),
+                                  static_cast<int>(text.size()));
+    if (n < 0) {
+        throw std::runtime_error("bad base64");
+    }
+    std::size_t len = static_cast<std::size_t>(n);
+    // EVP_DecodeBlock не учитывает дополнение «=».
+    for (auto it = text.rbegin(); it != text.rend() && *it == '=' && len > 0; ++it) {
+        --len;
+    }
+    out.resize(len);
+    return out;
 }
 
 std::string toHex(std::span<const std::uint8_t> data) {

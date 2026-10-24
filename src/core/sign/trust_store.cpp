@@ -38,30 +38,6 @@ std::string hexDigest(const Bytes& der, const EVP_MD* md) {
     return ossl::toHex(out);
 }
 
-std::string base64Encode(const Bytes& data) {
-    std::string out(4 * ((data.size() + 2) / 3) + 1, '\0');
-    const int n = EVP_EncodeBlock(reinterpret_cast<unsigned char*>(out.data()), data.data(),
-                                  static_cast<int>(data.size()));
-    out.resize(static_cast<std::size_t>(std::max(n, 0)));
-    return out;
-}
-
-Bytes base64Decode(const std::string& text) {
-    Bytes out(3 * (text.size() / 4) + 3);
-    const int n = EVP_DecodeBlock(out.data(), reinterpret_cast<const unsigned char*>(text.data()),
-                                  static_cast<int>(text.size()));
-    if (n < 0) {
-        throw std::runtime_error("bad base64");
-    }
-    std::size_t len = static_cast<std::size_t>(n);
-    // EVP_DecodeBlock не учитывает дополнение «=».
-    for (auto it = text.rbegin(); it != text.rend() && *it == '='; ++it) {
-        --len;
-    }
-    out.resize(len);
-    return out;
-}
-
 const char* flagNames[] = {"signatures", "certification", "dynamicContent", "javaScript"};
 
 json flagsToJson(unsigned flags) {
@@ -160,9 +136,10 @@ TrustStore TrustStore::load(const fs::path& dir) {
         const json j = json::parse(paths::readFile(file));
         store.windowsRoots_ = j.value("windowsRoots", false);
         for (const json& a : j.at("anchors")) {
-            store.add(base64Decode(a.at("der").get<std::string>()),
+            store.add(ossl::base64Decode(a.at("der").get<std::string>()),
                       flagsFromJson(a.value("flags", json::array())),
-                      sourceFromName(a.value("source", std::string("user"))));
+                      sourceFromName(a.value("source", std::string("user"))),
+                      a.value("label", std::string()));
         }
     } catch (const std::exception& e) {
         spdlog::warn("trust: {} is damaged ({}), starting with an empty trust store", paths::toUtf8(file),
@@ -180,7 +157,8 @@ void TrustStore::save(const fs::path& dir) const {
                            {"subject", a.cert.subject},
                            {"flags", flagsToJson(a.flags)},
                            {"source", trustSourceName(a.source)},
-                           {"der", base64Encode(a.cert.der)}});
+                           {"label", a.label},
+                           {"der", ossl::base64Encode(a.cert.der)}});
     }
     const json j = {{"version", 1}, {"windowsRoots", windowsRoots_}, {"anchors", anchors}};
     std::error_code ec;
@@ -188,9 +166,11 @@ void TrustStore::save(const fs::path& dir) const {
     paths::writeFile(dir / kFile, j.dump(1));
 }
 
-bool TrustStore::add(std::span<const std::uint8_t> cert, unsigned flags, TrustSource source) {
+bool TrustStore::add(std::span<const std::uint8_t> cert, unsigned flags, TrustSource source,
+                     std::string label) {
     Ossl<X509> x = loadCertificate(cert);
     TrustAnchor a;
+    a.label = std::move(label);
     a.cert = summarize(x.get());
     a.sha1 = hexDigest(a.cert.der, EVP_sha1());
     a.sha256 = ossl::toHex(a.cert.sha256);
@@ -201,6 +181,22 @@ bool TrustStore::add(std::span<const std::uint8_t> cert, unsigned flags, TrustSo
     }
     anchors_.push_back(std::move(a));
     return true;
+}
+
+int TrustStore::replaceSource(TrustSource source, const std::vector<ListedCertificate>& certs) {
+    anchors_.erase(std::remove_if(anchors_.begin(), anchors_.end(),
+                                  [source](const TrustAnchor& a) { return a.source == source; }),
+                   anchors_.end());
+    int added = 0;
+    for (const ListedCertificate& c : certs) {
+        try {
+            added += add(c.der, c.flags, source, c.label) ? 1 : 0;
+        } catch (const std::exception& e) {
+            spdlog::info("trust: {} certificate skipped: {}", trustSourceName(source), e.what());
+        }
+    }
+    spdlog::info("trust: {} anchors replaced: {} of {}", trustSourceName(source), added, certs.size());
+    return added;
 }
 
 int TrustStore::import(std::span<const std::uint8_t> bytes, unsigned flags) {

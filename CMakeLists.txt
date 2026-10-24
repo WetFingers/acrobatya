@@ -91,6 +91,9 @@ target_link_libraries(ottisk_services PUBLIC ottisk_core Qt6::Core Qt6::Gui Qt6:
 ottisk_qt(ottisk_services)
 ottisk_warnings(ottisk_services STRICT)
 ottisk_pch(ottisk_services "${CMAKE_SOURCE_DIR}/src/services/pch.h")
+# Pinned-сертификаты подписантов EU LOTL (план 4.5, п. 4) — ресурс :/trust/lotl_pins.json (services/trust_lists.h).
+qt_add_resources(ottisk_services ottisk_trust PREFIX "/trust" BASE "${CMAKE_SOURCE_DIR}/assets/trust"
+  FILES "${CMAKE_SOURCE_DIR}/assets/trust/lotl_pins.json")
 
 # --- ui: Qt Widgets; всё, кроме app/main.cpp, — статическая ottisk_ui_lib (её берут ui_tests)
 file(GLOB_RECURSE OTTISK_UI_SRC CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/ui/*.cpp" "${CMAKE_SOURCE_DIR}/src/ui/*.h")
@@ -315,6 +318,14 @@ if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_test(NAME compat.tsa.public
     COMMAND unit_tests --gtest_also_run_disabled_tests --gtest_filter=tsa_compat.*)
   set_tests_properties(compat.tsa.public PROPERTIES LABELS "compat;slow" SKIP_REGULAR_EXPRESSION "\\[  SKIPPED \\]"
+    TIMEOUT 180)
+endif()
+# Живой EU LOTL (план 4.5, п. 4): trust_live.DISABLED_lotl_pins_match_live_list — подписант настоящего LOTL из
+# assets/trust/lotl_pins.json; только с OTTISK_LIVE_NET=1, иначе пропуск (GTEST_SKIP).
+if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_test(NAME compat.trust.live
+    COMMAND unit_tests --gtest_also_run_disabled_tests --gtest_filter=trust_live.*)
+  set_tests_properties(compat.trust.live PROPERTIES LABELS "compat;slow" SKIP_REGULAR_EXPRESSION "\\[  SKIPPED \\]"
     TIMEOUT 180)
 endif()
 # Печать в файл через GDI (план 2.6): print_compat.DISABLED_gdi_to_file — «Microsoft Print to PDF» без окна драйвера

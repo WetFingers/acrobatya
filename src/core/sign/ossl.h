@@ -156,6 +156,10 @@ Bytes sha256Ranges(const std::filesystem::path& file, std::span<const ByteRange>
 
 // Байты в верхнем шестнадцатеричном виде («00AB10») — ключи VRI, серийные номера в журнале.
 std::string toHex(std::span<const std::uint8_t> data);
+// Base64 (RFC 4648, без переносов). decode: пробелы и переводы строк пропускаются; не base64 —
+// std::runtime_error.
+std::string base64Encode(std::span<const std::uint8_t> data);
+Bytes base64Decode(std::string_view text);
 
 // DER объекта (i2d_*) в Bytes; ошибка — OsslError.
 template <typename T, typename F>

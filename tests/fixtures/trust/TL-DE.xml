@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><TrustServiceStatusList xmlns="http://uri.etsi.org/02231/v2#" xmlns:ns2="http://www.w3.org/2000/09/xmldsig#" xmlns:ns3="http://uri.etsi.org/02231/v2/additionaltypes#" xmlns:ns4="http://uri.etsi.org/01903/v1.3.2#" xmlns:ns5="http://uri.etsi.org/TrstSvc/SvcInfoExt/eSigDir-1999-93-EC-TrustedList/#" xmlns:ns6="http://uri.etsi.org/01903/v1.4.1#" Id="TrustServiceStatusList-1" TSLTag="http://uri.etsi.org/19612/TSLTag">
+    <SchemeInformation>
+        <TSLVersionIdentifier>6</TSLVersionIdentifier>
+        <TSLSequenceNumber>162</TSLSequenceNumber>
+        <TSLType>http://uri.etsi.org/TrstSvc/TrustedList/TSLType/EUgeneric</TSLType>
+        <SchemeOperatorName>
+            <Name xml:lang="en">Federal Network Agency</Name>
+        </SchemeOperatorName>
+        <SchemeOperatorAddress>
+            <PostalAddresses>
+                <PostalAddress xml:lang="en">
+                    <StreetAddress>Canisiusstr. 21</StreetAddress>
+                    <Locality>Mainz</Locality>
+                    <PostalCode>55122</PostalCode>
+                    <CountryName>DE</CountryName>
+                </PostalAddress>
+            </PostalAddresses>
+            <ElectronicAddress>
+                <URI xml:lang="en">mailto:eIDAS@bnetza.de</URI>
+                <URI xml:lang="en">https://www.elektronische-Vertrauensdienste.de</URI>
+                <URI xml:lang="en">https://davedata.bundesnetzagentur.de/TL-Links/repository.html</URI>
+            </ElectronicAddress>
+        </SchemeOperatorAddress>
+        <SchemeName>
+            <Name xml:lang="en">DE:Trusted list including information related to the qualified trust service providers which are supervised by the issuing Member State, together with information related to the qualified trust services provided by them, in accordance with the relevant provisions laid down in Regulation (EU) No 910/2014 of the European Parliament and of the Council of 23 July 2014 on electronic identification and trust services for electronic transactions in the internal market and repealing Directive 1999/93/EC.</Name>
+        </SchemeName>
+        <SchemeInformationURI>
+            <URI xml:lang="en">https://tl.bundesnetzagentur.de/TL-Links/tsl_e.html</URI>
+        </SchemeInformationURI>
+        <StatusDeterminationApproach>http://uri.etsi.org/TrstSvc/TrustedList/StatusDetn/EUappropriate</StatusDeterminationApproach>
+        <SchemeTypeCommunityRules>
+            <URI xml:lang="en">http://uri.etsi.org/TrstSvc/TrustedList/schemerules/EUcommon</URI>
+            <URI xml:lang="en">http://uri.etsi.org/TrstSvc/TrustedList/schemerules/DE</URI>
+        </SchemeTypeCommunityRules>
+        <SchemeTerritory>DE</SchemeTerritory>
+        <PolicyOrLegalNotice>
+            <TSLLegalNotice xml:lang="en">The applicable legal framework for the present trusted list is Regulation (EU) No 910/2014 of the European Parliament and of the Council of 23 July 2014 on electronic identification and trust services for electronic transactions in the internal market and repealing Directive 1999/93/EC.</TSLLegalNotice>
+        </PolicyOrLegalNotice>
+        <HistoricalInformationPeriod>65535</HistoricalInformationPeriod>
+        <ListIssueDateTime>2026-10-08T07:30:00Z</ListIssueDateTime>
+        <NextUpdate>
+            <dateTime>2027-04-08T07:30:00Z</dateTime>
+        </NextUpdate>
+        <DistributionPoints>
+            <URI>https://tl.bundesnetzagentur.de/TL-DE.xml</URI>
+        </DistributionPoints>
+    </SchemeInformation>
+    <TrustServiceProviderList>
+        <TrustServiceProvider>
+            <TSPInformation>
+                <TSPName>
+                    <Name xml:lang="en">Federal Employment Agency </Name>
+                </TSPName>
+                <TSPTradeName>
+                    <Name xml:lang="en">VATDE-811458858</Name>
+                    <Name xml:lang="en">NTRDE-4</Name>
+                </TSPTradeName>
+                <TSPAddress>
+                    <PostalAddresses>
+                        <PostalAddress xml:lang="en">
+                            <StreetAddress>Regensburger Str. 104</StreetAddress>
+                            <Locality>Nürnberg</Locality>
+                            <PostalCode>90478</PostalCode>
+                            <CountryName>DE</CountryName>
+                        </PostalAddress>
+                    </PostalAddresses>
+                    <ElectronicAddress>
+                        <URI xml:lang="en">https://www.pki.arbeitsagentur.de</URI>
+                        <URI xml:lang="en">mailto:IT-Systemhaus.Zertifizierungsdienst@arbeitsagentur.de</URI>
+                    </ElectronicAddress>
+                </TSPAddress>
+                <TSPInformationURI>
+                    <URI xml:lang="en">https://www.pki.arbeitsagentur.de</URI>
+                </TSPInformationURI>
+            </TSPInformation>
+            <TSPServices>
+<TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/TrstSvc/Svctype/CA/QC</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">BA-QC-Wurzel-CA-1:PN</Name>
+                            <Name xml:lang="de">BA-QC-Wurzel-CA-1:PN</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+<X509Certificate>MIIDmDCCAoCgAwIBAgIBATANBgkqhkiG9w0BAQsFADBQMQswCQYDVQQGEwJERTEiMCAGA1UECgwZQnVuZGVzYWdlbnR1ciBmdWVyIEFyYmVpdDEdMBsGA1UEAwwUQkEtUUMtV3VyemVsLUNBLTE6UE4wHhcNMTAwNjE3MTE0ODA1WhcNMTUwNjE2MTE0ODA1WjBQMQswCQYDVQQGEwJERTEiMCAGA1UECgwZQnVuZGVzYWdlbnR1ciBmdWVyIEFyYmVpdDEdMBsGA1UEAwwUQkEtUUMtV3VyemVsLUNBLTE6UE4wggEkMA0GCSqGSIb3DQEBAQUAA4IBEQAwggEMAoIBAQDdkMYp9ZBWIzqgRtl3qcbyp+0zrIq3xe5xSfmNYqrKJepN4q8pq1in3lFa1dDA3p0Bi7CtRBR4JUyRiT0wPtzjOstbGqkzBdX12h6y69RJlDHarLEMNZbsmVK20ZrTlkB3ic2nHy5oEh/0uiq8dWrX+ueEiMI3YR0Bu+k34zyHqKXH0cQ6NyDZ6RvNM1nd4O7BChEbz2AfXAhXEvItBP9RzeBiNMcBrSMEWo7n0egQbmP1k/37nkuP66tLKgCG1beUCNoHWid//95k7zBl2b5Tj2ru+spss2b1X/MAgnOMAvcL7x22lfhhnk+70hbmkEUfi6QyDRRcgjoXOhO7/irLAgUA9ExruaN7MHkwHQYDVR0OBBYEFFhdg1pnzNJh2vXwYSMBz5wYHsZSMA4GA1UdDwEB/wQEAwIBBjAaBgNVHSAEEzARMA8GDSsGAQQBgakvAQEFAgAwEgYDVR0TAQH/BAgwBgEB/wIBATAYBggrBgEFBQcBAwQMMAowCAYGBACORgEBMA0GCSqGSIb3DQEBCwUAA4IBAQB5gu79udf3CaPxeBtEKc+sxWX7bE61TDmYXFG247Tw2y7Ns6e/2jIQvz+siBp2Po469+lZYS8FTB4D3oRAQS/86D/vufSOBmfRuU9cRL+LJF3am4FZ1QSdOG6KFnvmuGlc55kc1+x9diibEY2XYDqLMHgqluM5+g1WS9v37yk0JKccE2LBpfd6fmNoY71jyLZbHjAB3ThrzxcpfyNknn+9NPC2lOsII2GX7GdtnErikWH69+4DU2j/g+JOz5RJj3OpfEh9MmjLBFwQsMqCI/9lIqHN6vjSMNGweiqG2RIZmRFoZ6jEr3MtLRz9a181W7i4XOmh7e3ACw1JK2vqytJU</X509Certificate>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/granted</ServiceStatus>
+                        <StatusStartingTime>2025-09-16T14:00:00Z</StatusStartingTime>
+                    </ServiceInformation>
+                </TSPService>
+<TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/TrstSvc/Svctype/CA/QC</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">BA-QC-Wurzel-CA-2:PN</Name>
+                            <Name xml:lang="de">BA-QC-Wurzel-CA-2:PN</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+<X509Certificate>MIID/jCCArKgAwIBAgIBATBBBgkqhkiG9w0BAQowNKAPMA0GCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUAogMCASAwUDELMAkGA1UEBhMCREUxIjAgBgNVBAoMGUJ1bmRlc2FnZW50dXIgZnVlciBBcmJlaXQxHTAbBgNVBAMMFEJBLVFDLVd1cnplbC1DQS0yOlBOMB4XDTE0MDYwNTEyMDk0OFoXDTE5MDYwNDEyMDk0OFowUDELMAkGA1UEBhMCREUxIjAgBgNVBAoMGUJ1bmRlc2FnZW50dXIgZnVlciBBcmJlaXQxHTAbBgNVBAMMFEJBLVFDLVd1cnplbC1DQS0yOlBOMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvDRV06/SI0jkVIP17FagWLrQ1Oo514nFS5C0S9wAbbXn2KfYApI/RQKi4k65vebTPONXMcjeQseZRQdlVvqJxs2MJwOwsLKqI4lTkCwuTuyP3SG2TJNtsVd9piulL8UKFQPdNqeafK+ocvV/ihHoUcjG9w+S+kd3GIoVEl/NpIIiiMTEzyUdEMTvy3SJav8cgCPpRwnAqHFVBSpIGz1FRbR3/zdB5xO3eqQVO7RPyc4fQ2LVkWO/zOGQSJL2btljqeWam26yAFax3iijq8YbtEClIES/BL0YXK8PR9jbVxXyW15mMjhfPd9sNoy7dRgxXWLatTbIAJNT6e2QLdihQQIDAQABo3sweTAdBgNVHQ4EFgQU2WGUqgfFVc4MHZPJlNlLcKlxBb8wDgYDVR0PAQH/BAQDAgEGMBoGA1UdIAQTMBEwDwYNKwYBBAGBqS8BAQUCATASBgNVHRMBAf8ECDAGAQH/AgEBMBgGCCsGAQUFBwEDBAwwCjAIBgYEAI5GAQEwQQYJKoZIhvcNAQEKMDSgDzANBglghkgBZQMEAgEFAKEcMBoGCSqGSIb3DQEBCDANBglghkgBZQMEAgEFAKIDAgEgA4IBAQCm5Fdi51GSnB8Z5/kqzU2o3ElgF1MKoHMHgqog+ncipG6Jt7wYnubk6g/MDQoMQkZFSrPlbu/u4kk7flIxDrpqKxlUMXaqFrdSX3vrbnSK2Am/dcBPb7z1fipQ80vPcn4/4zUuzPonTxyXeJyVX2hIRL7DIEt2tU7Umba/YEQ82HEf/BaatZghgngV1PZT+TlPir+uLmkhNA1gMDS89bLVRbcrAjG2YNMzhuN3GiAozo96F9slUCAhGQi8xHADjR0LuliwKwcY1A8X6ccM/IeZl8gIdUxvxvoNyYg8Fjzgk4Ln8ivSvpoEodnb1rsOCBUNJqNFaTTq+y29INlC3sP2</X509Certificate>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/granted</ServiceStatus>
+                        <StatusStartingTime>2025-09-16T14:00:00Z</StatusStartingTime>
+                    </ServiceInformation>
+                </TSPService>
+</TSPServices>
+        </TrustServiceProvider>
+<TrustServiceProvider>
+            <TSPInformation>
+                <TSPName>
+                    <Name xml:lang="en">Federal Chamber of Notaries</Name>
+                </TSPName>
+                <TSPTradeName>
+                    <Name xml:lang="en">VATDE-122788238</Name>
+                    <Name xml:lang="en">BNotK</Name>
+                    <Name xml:lang="en">NTRDE-2</Name>
+                </TSPTradeName>
+                <TSPAddress>
+                    <PostalAddresses>
+                        <PostalAddress xml:lang="en">
+                            <StreetAddress>Anton-Wilhelm-Amo-Straße 34</StreetAddress>
+                            <Locality>Berlin</Locality>
+                            <PostalCode>10117</PostalCode>
+                            <CountryName>DE</CountryName>
+                        </PostalAddress>
+                    </PostalAddresses>
+                    <ElectronicAddress>
+                        <URI xml:lang="en">mailto:zs@bnotk.de</URI>
+                        <URI xml:lang="en">https://zertifizierungsstelle.bnotk.de/hilfe</URI>
+                    </ElectronicAddress>
+                </TSPAddress>
+                <TSPInformationURI>
+                    <URI xml:lang="en">https://zertifizierungsstelle.bnotk.de/</URI>
+                </TSPInformationURI>
+            </TSPInformation>
+            <TSPServices>
+<TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/TrstSvc/Svctype/CA/QC</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">BNotK qualifizierte Zertifikate für elektronische Signaturen</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+<X509Certificate>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</X509Certificate>
+                            </DigitalId>
+                            <DigitalId>
+<X509SubjectName>C=DE, O=Bundesnotarkammer, OID.2.5.4.97=DE122788238, OU=Zertifizierungsstelle, CN=BNotK qSig CA 2017</X509SubjectName>
+                            </DigitalId>
+                            <DigitalId>
+<X509SKI>jvjoA7Vg/GQV9SrPcg0ztI1ObkY=</X509SKI>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/granted</ServiceStatus>
+                        <StatusStartingTime>2018-06-13T13:30:00Z</StatusStartingTime>
+                    </ServiceInformation>
+                </TSPService>
+<TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/TrstSvc/Svctype/TSA/QTST</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">BNotK qualifizierte elektronische Zeitstempel</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+<X509Certificate>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</X509Certificate>
+                            </DigitalId>
+                            <DigitalId>
+<X509SubjectName>C=DE, O=Bundesnotarkammer, OID.2.5.4.97=DE122788238, OU=Zertifizierungsstelle, CN=BNotK TSA Signer 2019</X509SubjectName>
+                            </DigitalId>
+                            <DigitalId>
+<X509SKI>217qQAvSjPh2MFO2Ug8UZoWQ028=</X509SKI>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/granted</ServiceStatus>
+                        <StatusStartingTime>2019-11-21T15:30:00Z</StatusStartingTime>
+                    </ServiceInformation>
+                </TSPService>
+</TSPServices>
+        </TrustServiceProvider>
+<TrustServiceProvider>
+            <TSPInformation>
+                <TSPName>
+                    <Name xml:lang="en">D-Trust GmbH</Name>
+                    <Name xml:lang="en">D-TRUST GmbH</Name>
+                </TSPName>
+                <TSPTradeName>
+                    <Name xml:lang="en">VATDE-202620438 </Name>
+                </TSPTradeName>
+                <TSPAddress>
+                    <PostalAddresses>
+                        <PostalAddress xml:lang="en">
+                            <StreetAddress>Kommandantenstraße 15</StreetAddress>
+                            <Locality>Berlin</Locality>
+                            <PostalCode>10969</PostalCode>
+                            <CountryName>DE</CountryName>
+                        </PostalAddress>
+                    </PostalAddresses>
+                    <ElectronicAddress>
+                        <URI xml:lang="en">mailto:support@bundesdruckerei.de</URI>
+                        <URI xml:lang="en">https://www.d-trust.net</URI>
+                        <URI xml:lang="en">https://www.bundesdruckerei.de/de/53-support-fuer-behoerden-buerger-unternehmen</URI>
+                        <URI xml:lang="en">https://www.bundesdruckerei.de/de/2832-sperrung</URI>
+                    </ElectronicAddress>
+                </TSPAddress>
+                <TSPInformationURI>
+                    <URI xml:lang="en">https://www.bundesdruckerei.de/de/2833-repository</URI>
+                    <URI xml:lang="en">http://www.d-trust.de</URI>
+                    <URI xml:lang="en">https://www.bundesdruckerei.de/de/bestellen</URI>
+                </TSPInformationURI>
+            </TSPInformation>
+            <TSPServices>
+<TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/TrstSvc/Svctype/CA/QC</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">D-Trust qualified signature card</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+<X509Certificate>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</X509Certificate>
+                            </DigitalId>
+                            <DigitalId>
+<X509SubjectName>OID.2.5.4.97=NTRDE-HRB74346, CN=D-TRUST CA 3-1 2016, O=D-Trust GmbH, C=DE</X509SubjectName>
+                            </DigitalId>
+                            <DigitalId>
+<X509SKI>++3frUvwJbXSet2fmh0vbQlQIcc=</X509SKI>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/granted</ServiceStatus>
+                        <StatusStartingTime>2023-03-16T18:00:00Z</StatusStartingTime>
+                    </ServiceInformation>
+                </TSPService>
+<TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/TrstSvc/Svctype/CA/QC</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">D-TRUST qualified EV SSL ID</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+<X509Certificate>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</X509Certificate>
+                            </DigitalId>
+                            <DigitalId>
+<X509SubjectName>OID.2.5.4.97=NTRDE-HRB74346, CN=D-TRUST CA 2-2 EV 2016, O=D-Trust GmbH, C=DE</X509SubjectName>
+                            </DigitalId>
+                            <DigitalId>
+<X509SKI>Ia9qJphx6SYK1duhjPfbpp2lJVw=</X509SKI>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/granted</ServiceStatus>
+                        <StatusStartingTime>2017-03-20T08:30:00Z</StatusStartingTime>
+                    </ServiceInformation>
+                </TSPService>
+</TSPServices>
+        </TrustServiceProvider>
+<TrustServiceProvider>
+            <TSPInformation>
+                <TSPName>
+                    <Name xml:lang="en">DATEV eG</Name>
+                </TSPName>
+                <TSPTradeName>
+                    <Name xml:lang="en">VATDE-133546770</Name>
+                </TSPTradeName>
+                <TSPAddress>
+                    <PostalAddresses>
+                        <PostalAddress xml:lang="en">
+                            <StreetAddress>Canisiusstr. 21</StreetAddress>
+                            <Locality>Mainz</Locality>
+                            <PostalCode>55122</PostalCode>
+                            <CountryName>DE</CountryName>
+                        </PostalAddress>
+                    </PostalAddresses>
+                    <ElectronicAddress>
+                        <URI xml:lang="en">mailto:eIDAS@bnetza.de</URI>
+                        <URI xml:lang="en">https://davedata.bundesnetzagentur.de/TL-Links/1999_93EG.html</URI>
+                    </ElectronicAddress>
+                </TSPAddress>
+                <TSPInformationURI>
+                    <URI xml:lang="en">https://davedata.bundesnetzagentur.de/TL-Links/repository.html</URI>
+                    <URI xml:lang="en">https://davedata.bundesnetzagentur.de/TL-Links/1999_93EG.html</URI>
+                </TSPInformationURI>
+            </TSPInformation>
+            <TSPServices>
+<TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/TrstSvc/Svctype/CA/QC</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">CA DATEV D01 1:PN</Name>
+                            <Name xml:lang="de">CA DATEV D01 1:PN</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+<X509Certificate>MIICRDCCAbCgAwIBAgIEAKbwkjAKBgYrJAMDAQIFADBvMQswCQYDVQQGEwJERTE9MDsGA1UEChQ0UmVndWxpZXJ1bmdzYmVoyG9yZGUgZsh1ciBUZWxla29tbXVuaWthdGlvbiB1bmQgUG9zdDEhMAwGBwKCBgEKBxQTATEwEQYDVQQDFAo1Ui1DQSAxOlBOMCIYDzIwMDEwNDA1MDgwMjI2WhgPMjAwNTA0MDUwODAyMjZaMEoxCzAJBgNVBAYTAkRFMREwDwYDVQQKFAhEQVRFViBlRzEoMAwGBwKCBgEKBxQTATEwGAYDVQQDFBFDQSBEQVRFViBEMDEgMTpQTjCBoTANBgkqhkiG9w0BAQEFAAOBjwAwgYsCgYEAiESWT6xVcJV1SZsf1uikNktguhJY/lps2Q1zqJJsiBo3QpMBSt3zXF9BBGbPoNONbwcMnPZ/U03sP+wXI4m/zCWjejiaICGpCbAat2nhyXd6lI3hv5uhgkEAB3y6yFe8qY1HLl4/x6R/KdcmBz7yuSCP6cg2dvlt5u/ZjlV1sVcCBQDAAAABoxIwEDAOBgNVHQ8BAf8EBAMCAQYwCgYGKyQDAwECBQADgYEAOWeogV+SMHW6GSsSer6fporWE5oHJYuBCxeXcEbavqii7neKCLyAUjx/hUkVOg+CWyo3L7ZubNKRawmzB9m3yAgH9nlPq11rJ9JDN871bi080XHplhx0Qr7AbRqzbIuSA1/pZn5rRgB0uDV4n54bRhnwmv5qmIL+uUlhlzdgGbo=</X509Certificate>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/withdrawn</ServiceStatus>
+                        <StatusStartingTime>2017-04-06T10:00:00Z</StatusStartingTime>
+                    </ServiceInformation>
+                </TSPService>
+<TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/TrstSvc/Svctype/CA/QC</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">CA DATEV D02 1:PN</Name>
+                            <Name xml:lang="de">CA DATEV D02 1:PN</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+<X509Certificate>MIICRDCCAbCgAwIBAgIEAKbwkzAKBgYrJAMDAQIFADBvMQswCQYDVQQGEwJERTE9MDsGA1UEChQ0UmVndWxpZXJ1bmdzYmVoyG9yZGUgZsh1ciBUZWxla29tbXVuaWthdGlvbiB1bmQgUG9zdDEhMAwGBwKCBgEKBxQTATEwEQYDVQQDFAo1Ui1DQSAxOlBOMCIYDzIwMDEwNDA1MDgwNDI5WhgPMjAwNTA0MDUwODA0MjlaMEoxCzAJBgNVBAYTAkRFMREwDwYDVQQKFAhEQVRFViBlRzEoMAwGBwKCBgEKBxQTATEwGAYDVQQDFBFDQSBEQVRFViBEMDIgMTpQTjCBoTANBgkqhkiG9w0BAQEFAAOBjwAwgYsCgYEAhYe19CwVQbPEEFp24GY79BkWgnoheYgikzHtUsppL9edYeGv9VoJvksDOD+oZFAbQziDOcPHX7KvBf6I94QTe+rrfIn3WzBtZr3JOqnuxLrs5SWSuR+/CCIDtkgHQ4PKGF1RsodtcdBFdDCtMANWGqGwcXeRRkZ2Eq9Dmp9WK8ECBQDAAAABoxIwEDAOBgNVHQ8BAf8EBAMCAQYwCgYGKyQDAwECBQADgYEAKUx9ujUWFJYhUTqISm+k0CZ4ncrbSVHihVwxy7V2MsBhLi/5TaVzQw6aBmUpIeKq4xt8k8o2jysn45JNFOo7RHadRbNTqWikYokMSlvBe0F72RIPx4PuweXGhztG1xSMiF0jOV46Ir+Fpxv9htKoUN+NPWqIQGy0uZkcmBwq/Zw=</X509Certificate>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/withdrawn</ServiceStatus>
+                        <StatusStartingTime>2017-04-06T10:00:00Z</StatusStartingTime>
+                    </ServiceInformation>
+                </TSPService>
+</TSPServices>
+        </TrustServiceProvider>
+    </TrustServiceProviderList>
+<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id="id-22884c10d3ba32a72b306add786f653f"><ds:SignedInfo><ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/><ds:SignatureMethod Algorithm="http://www.w3.org/2007/05/xmldsig-more#sha256-rsa-MGF1"/><ds:Reference Id="ref-enveloped-signature" URI=""><ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue>vzb9yJkFH20Z5nFDm0RLXV/ngpvzSXxpIi/UBSAj4Ek=</ds:DigestValue></ds:Reference><ds:Reference Type="http://uri.etsi.org/01903#SignedProperties" URI="#xades-id-22884c10d3ba32a72b306add786f653f"><ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue>/9ZXjhCE5DQ8N/SHtLzSy4mH0S3hSXMQjOduSqx5n6Q=</ds:DigestValue></ds:Reference></ds:SignedInfo><ds:SignatureValue Id="value-id-22884c10d3ba32a72b306add786f653f">VprVNSsSGBQ8lUjNoh4+RA0ba4TiYHqtfWJ91V6cTwQHIQKq7Yuf9ueABDL1TDLds0mGGoM8J35nzSiTwUaPI6FFuZ+tlqt9K3It55chue0nktijKjUGdiOAVdRPu1m6EHm+Ij0aZvVFRB5u67pzh7g6ATqblewKN/q7Pc33CQ19jvfcvvbtnS8YFv9FnzkhEFCvGOgb2fRbXOYtbwkCPbSgZFTeg9XVp0h17LeAtPqHlcCSxK9Fk0KbO5Jux91NyAu133bnbKj7iVX/it/uVvUDivfeITby5Atotmg89JLx/d7uZ9M6VAZBAiRmfATqMfTrEMSRDydUsQudxEzmfHJueqpsYABwnPZjyPpv0zUg+6JwMxOO4hzyyEPmdb/LtvlFKyJ0BVXcnsujCHgQuicehnbN7A8uRKNpHbs401V68H4J0sroqR/rcfSoPLCJ2FEKhQ7w/Kw9f0uKR8wTqx+hVR7ClOXcjcmydXkmoQvgAA5rZCgeUsy6QRhlzWMiGYz/uASHR3A+bJ6fFdSC67OBBiskBIFmLvuoTz/R07bpusUH0uPxBOY+Iwki74dv2SgxBFt4dk6zE0f8EJ8U6e7B5kCl83qOhXlNxeeEG7DkcBlutOBdCj6FrLbO8oHUVken/C0hELiA+98bRhFZSbOa1YTDLJ+8WMNJqsBlRMw=</ds:SignatureValue><ds:KeyInfo><ds:X509Data><ds:X509Certificate>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</ds:X509Certificate></ds:X509Data></ds:KeyInfo><ds:Object><xades:QualifyingProperties xmlns:xades="http://uri.etsi.org/01903/v1.3.2#" Target="#id-22884c10d3ba32a72b306add786f653f"><xades:SignedProperties Id="xades-id-22884c10d3ba32a72b306add786f653f"><xades:SignedSignatureProperties><xades:SigningTime>2026-10-08T07:22:41Z</xades:SigningTime><xades:SigningCertificateV2><xades:Cert><xades:CertDigest><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha512"/><ds:DigestValue>arKzM1NUZa268XzsHJYQwNecJs2h4qQClXKGcbUezgbyPpFQToNTDvAJmwAoe3XD7r2Pu7YjZwfqelz2kW0i0A==</ds:DigestValue></xades:CertDigest><xades:IssuerSerialV2>MF8wWqRYMFYxJjAkBgNVBAMMHUdlcm1hbiBUcnVzdGVkIExpc3QgU2lnbmVyIDE0MR8wHQYDVQQKDBZGZWRlcmFsIE5ldHdvcmsgQWdlbmN5MQswCQYDVQQGEwJERQIBDg==</xades:IssuerSerialV2></xades:Cert></xades:SigningCertificateV2></xades:SignedSignatureProperties><xades:SignedDataObjectProperties><xades:DataObjectFormat ObjectReference="#ref-enveloped-signature"><xades:MimeType>text/xml</xades:MimeType></xades:DataObjectFormat></xades:SignedDataObjectProperties></xades:SignedProperties></xades:QualifyingProperties></ds:Object></ds:Signature></TrustServiceStatusList>
