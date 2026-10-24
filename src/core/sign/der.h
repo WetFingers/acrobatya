@@ -1,12 +1,17 @@
 // Свой разбор DER (и BER с неопределённой длиной у составных — встречается в чужих CMS) без OpenSSL:
 // структура CMS SignedData, атрибуты CAdES, ESS, TSTInfo (план 4.1, п. 3: подписанные атрибуты проверяются
-// независимым от OpenSSL CMS разбором). Ошибка кодирования — DerError.
+// независимым от OpenSSL CMS разбором). Ошибка кодирования — DerError. Запись (план 4.3, п. 2) —
+// signed-атрибуты CAdES для внешней подписи (cms_external.h): TLV с длиной DER, SET OF по возрастанию
+// кодировок, OID.
 #pragma once
 
 #include <cstdint>
+#include <initializer_list>
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
+#include <vector>
 
 namespace ot::sign::der {
 
@@ -63,5 +68,18 @@ std::string toOid(std::span<const std::uint8_t> value);
 std::int64_t toInt(const Node& node);
 // UTCTime (0x17) / GeneralizedTime (0x18) → «2026-06-01T12:30:00Z» (доли секунд отбрасываются).
 std::string toTime(std::uint8_t tag, std::span<const std::uint8_t> value);
+
+// --- запись DER
+
+using Encoded = std::vector<std::uint8_t>;
+
+// TLV: однооктетный тег, длина (краткая < 128, иначе 0x81…0x84), содержимое.
+Encoded encode(std::uint8_t tag, std::span<const std::uint8_t> content);
+// Содержимое из готовых TLV подряд.
+Encoded join(std::initializer_list<std::span<const std::uint8_t>> parts);
+// SET OF (tag 0x31 или неявный контекстный): элементы по возрастанию кодировок (X.690 11.6).
+Encoded encodeSetOf(std::vector<Encoded> elements, std::uint8_t tag = kSet);
+// OID «1.2.840.113549.1.9.4» → TLV; не OID — DerError.
+Encoded encodeOid(std::string_view dotted);
 
 }  // namespace ot::sign::der

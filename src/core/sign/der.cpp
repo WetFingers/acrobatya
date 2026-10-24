@@ -1,5 +1,7 @@
 #include "core/sign/der.h"
 
+#include <algorithm>
+#include <charconv>
 #include <cstdio>
 #include <string>
 
@@ -194,6 +196,88 @@ std::string toTime(std::uint8_t tag, std::span<const std::uint8_t> value) {
         ss = s.substr(rest + 8, 2);
     }
     return year + "-" + mm + "-" + dd + "T" + hh + ":" + mi + ":" + ss + "Z";
+}
+
+// --- запись DER
+
+Encoded encode(std::uint8_t tag, std::span<const std::uint8_t> content) {
+    Encoded out;
+    out.reserve(content.size() + 6);
+    out.push_back(tag);
+    const std::size_t n = content.size();
+    if (n < 0x80) {
+        out.push_back(static_cast<std::uint8_t>(n));
+    } else {
+        int bytes = 0;
+        for (std::size_t v = n; v != 0; v >>= 8) {
+            ++bytes;
+        }
+        if (bytes > 4) {
+            throw DerError("DER: element too long");
+        }
+        out.push_back(static_cast<std::uint8_t>(0x80 | bytes));
+        for (int i = bytes - 1; i >= 0; --i) {
+            out.push_back(static_cast<std::uint8_t>((n >> (8 * i)) & 0xff));
+        }
+    }
+    out.insert(out.end(), content.begin(), content.end());
+    return out;
+}
+
+Encoded join(std::initializer_list<std::span<const std::uint8_t>> parts) {
+    Encoded out;
+    for (const auto& p : parts) {
+        out.insert(out.end(), p.begin(), p.end());
+    }
+    return out;
+}
+
+Encoded encodeSetOf(std::vector<Encoded> elements, std::uint8_t tag) {
+    // Как der_cmp OpenSSL: общий префикс, затем короче — раньше.
+    std::sort(elements.begin(), elements.end(),
+              [](const Encoded& a, const Encoded& b) { return std::ranges::lexicographical_compare(a, b); });
+    Encoded content;
+    for (const Encoded& e : elements) {
+        content.insert(content.end(), e.begin(), e.end());
+    }
+    return encode(tag, content);
+}
+
+Encoded encodeOid(std::string_view dotted) {
+    std::vector<std::uint64_t> arcs;
+    std::size_t pos = 0;
+    while (pos <= dotted.size()) {
+        const std::size_t dot = std::min(dotted.find('.', pos), dotted.size());
+        std::uint64_t v = 0;
+        const char* first = dotted.data() + pos;
+        const char* last = dotted.data() + dot;
+        const auto [ptr, ec] = std::from_chars(first, last, v);
+        if (first == last || ec != std::errc() || ptr != last) {
+            throw DerError("DER: bad OID " + std::string(dotted));
+        }
+        arcs.push_back(v);
+        pos = dot + 1;
+    }
+    if (arcs.size() < 2 || arcs[0] > 2 || (arcs[0] < 2 && arcs[1] >= 40)) {
+        throw DerError("DER: bad OID " + std::string(dotted));
+    }
+    Encoded content;
+    auto put = [&](std::uint64_t v) {
+        std::uint8_t tmp[10];
+        int n = 0;
+        do {
+            tmp[n++] = static_cast<std::uint8_t>(v & 0x7f);
+            v >>= 7;
+        } while (v != 0);
+        for (int i = n - 1; i >= 0; --i) {
+            content.push_back(static_cast<std::uint8_t>(tmp[i] | (i != 0 ? 0x80 : 0)));
+        }
+    };
+    put(arcs[0] * 40 + arcs[1]);
+    for (std::size_t i = 2; i < arcs.size(); ++i) {
+        put(arcs[i]);
+    }
+    return encode(kOid, content);
 }
 
 }  // namespace ot::sign::der
