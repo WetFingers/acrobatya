@@ -31,6 +31,7 @@ class TileCache;
 namespace ot::ui {
 
 class FindBar;
+class QuickActionsBar;
 class MessageBar;
 class MessageStack;
 class PageView;
@@ -88,6 +89,8 @@ public:
 
     // Панель «Найти» (Ctrl+F, 2.5) — плавающая в правом верхнем углу вида; у вкладки своя.
     FindBar& findBar() const { return *find_; }
+    // 5.1: быстрые действия над выделенным текстом (comment-10).
+    QuickActionsBar& quickActions() const { return *quickActions_; }
     // Подписи вкладки (4.6, ui/shell/signature_status.h): проверка, полоса, значки на полях.
     SignatureStatus& signatures() const { return *signatures_; }
 
@@ -134,6 +137,7 @@ private:
     PageView* view_ = nullptr;
     MessageStack* stack_ = nullptr;
     FindBar* find_ = nullptr;
+    QuickActionsBar* quickActions_ = nullptr;  // 5.1: действия над выделенным текстом (вьюпорт вида)
     QPointer<QWidget> floating_;
     QString error_;
     int initialPage_ = -1;

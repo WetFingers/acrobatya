@@ -6,6 +6,7 @@
 
 #include "ui/theme/icons.h"
 #include "ui/tools/certificate/certificate_tool.h"
+#include "ui/tools/comment/comment_tool.h"
 #include "ui/tools/edit/edit_tool.h"
 #include "ui/tools/print/print_tool.h"
 #include "ui/tools/stub_tool.h"
@@ -29,7 +30,7 @@ std::unique_ptr<Tool> stub(const char* id, const char* title, int stage) {
 void registerBuiltinTools(ToolRegistry& registry) {
     registry.add(std::make_unique<EditTool>(registry));
     registry.add(stub("organize", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Упорядочить страницы"), 7));
-    registry.add(stub("comment", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Добавить комментарии"), 5));
+    registry.add(std::make_unique<CommentTool>(registry));
     registry.add(stub("fillsign", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Заполнить и подписать"), 5));
     registry.add(stub("prepareform", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Подготовить форму"), 6));
     registry.add(stub("create", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Создать PDF"), 7));

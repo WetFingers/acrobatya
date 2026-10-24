@@ -157,7 +157,8 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(o.session.revision() > revision, 10000);
         const RectF squeezed = bySubtype(annots(o), AnnotType::Circle).rect;
         QVERIFY2(squeezed.width() > 0 && squeezed.height() > 0, qPrintable(rectText(squeezed)));
-        QVERIFY(std::fabs(squeezed.x1 - grown.x1) < 0.6);
+        // Вид круга после смены размера синтезирует MuPDF (5.1): рамка — с полями /RD на толщину линии.
+        QVERIFY2(std::fabs(squeezed.x1 - grown.x1) < 1.5, qPrintable(rectText(squeezed) + rectText(grown)));
     }
 
     void marqueeSelectsTwoAndDeleteRemovesBoth() {

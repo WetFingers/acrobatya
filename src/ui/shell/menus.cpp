@@ -26,6 +26,7 @@
 #include "ui/shell/quick_bar.h"
 #include "ui/shell/status_bar.h"
 #include "ui/shell/tool_panel.h"
+#include "ui/shell/undo_titles.h"
 #include "ui/theme/icons.h"
 #include "ui/tools/tool_registry.h"
 #include "ui/view/page_view.h"
@@ -740,6 +741,15 @@ void MainWindow::updateActions() {
         const QList<QKeySequence> keys = commands_->effectiveShortcuts(c->id);
         if (act->shortcuts() != keys) {
             act->setShortcuts(keys);
+        }
+        // «Отменить: записка» / «Вернуть: штрих» (эталон 4.3): шаг истории текущей вкладки.
+        if (c->id == QLatin1String("edit.undo") || c->id == QLatin1String("edit.redo")) {
+            QString step;
+            if (DocumentView* d = currentDocument()) {
+                const UndoState state = d->session().undoState();
+                step = undoStepTitle(c->id == QLatin1String("edit.undo") ? state.undoName : state.redoName);
+            }
+            act->setText(step.isEmpty() ? c->title : QStringLiteral("%1: %2").arg(c->title, step));
         }
         QString plain = c->title;
         plain.remove(QLatin1Char('&')).remove(QStringLiteral("…"));

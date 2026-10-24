@@ -96,6 +96,8 @@ std::vector<Scene> editScenes();
 // sig-bar-problems, pane-signatures, certificate-viewer, preferences-identities, preferences-trusted,
 // preferences-tsa, preferences-verification, preferences-sign-creation (4.6).
 std::vector<Scene> signScenes();
+// comment_scenes.cpp — annot-note-open (+ -dark), annot-markup, annot-caret, annot-quick-actions (5.1).
+std::vector<Scene> commentScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.
 bool waitSceneReady(const Scene& scene, QWidget* window, int timeoutMs = 30000);

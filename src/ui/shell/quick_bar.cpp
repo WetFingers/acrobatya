@@ -103,6 +103,7 @@ void QuickBar::sync(ViewToolId tool) {
         case ViewToolId::AnnotSelect:
         case ViewToolId::Edit:
         case ViewToolId::Sign:
+        case ViewToolId::Comment:
             break;
     }
 }

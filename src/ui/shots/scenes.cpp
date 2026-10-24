@@ -119,6 +119,10 @@ const std::vector<Scene>& sceneTable() {
         for (Scene& s : signScenes()) {  // 4.6: sign-dialog, certify-dialog, панель «Подписи», полосы…
             table.push_back(std::move(s));
         }
+        for (Scene& s :
+             commentScenes()) {  // 5.1: annot-note-open, annot-markup, annot-caret, annot-quick-actions
+            table.push_back(std::move(s));
+        }
         return table;
     }();
     return SCENES;

@@ -82,6 +82,9 @@ ACTIONS: dict[str, str] = {
     "tool.zoomCycle": "цикл зума",
     "tool.snapshot": "снимок",
     "tool.editText": "редактировать текст",
+    "tool.note": "записка",
+    "tool.highlight": "выделить текст",
+    "comment.note": "Комментарии: записка",
 }
 
 # Одна физическая клавиша — разные имена QKeySequence.

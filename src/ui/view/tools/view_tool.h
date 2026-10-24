@@ -46,9 +46,21 @@ class PageView;
 class ToolController;
 
 // Edit — слот инструмента «Редактировать PDF» (3.4): экземпляр ставит EditTool (ToolController::install);
-// Sign — рамка подписи «Использовать сертификат» (4.6: SignPlacementTool ставит CertificateTool).
-enum class ViewToolId { Select, Hand, MarqueeZoom, Loupe, PanZoom, Snapshot, AnnotSelect, Edit, Sign };
-inline constexpr int kViewToolCount = 9;
+// Sign — рамка подписи «Использовать сертификат» (4.6: SignPlacementTool ставит CertificateTool); Comment —
+// инструменты «Добавить комментарии» (5.1: CommentMode ставит CommentTool).
+enum class ViewToolId {
+    Select,
+    Hand,
+    MarqueeZoom,
+    Loupe,
+    PanZoom,
+    Snapshot,
+    AnnotSelect,
+    Edit,
+    Sign,
+    Comment
+};
+inline constexpr int kViewToolCount = 10;
 
 class ViewTool {
 public:

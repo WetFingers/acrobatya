@@ -186,6 +186,8 @@ struct Metrics {
     int toolWindowWidth = 280;   // окно «Лупы» и «Панорамирования и масштаба» (эталон 3.1)
     int toolWindowHeight = 220;  //   и его высота
     int handle = 8;              // ручка рамки выбранного объекта на странице (AnnotSelectTool)
+    int notePopupWidth = 240;    // окно записки на странице (5.1; эталон 3.4 «Попапы и ответы»)
+    int notePopupHeight = 160;   //   и его высота
     int dialogWidth = 880;       // диалог с категориями слева: «Установки» (2.4b)
     int dialogHeight = 600;      //   и его высота
     int dialogNav = 220;         //   список категорий
@@ -240,6 +242,8 @@ inline constexpr int Metrics::* kMetricSizes[] = {
     &Metrics::dialogNav,
     &Metrics::paletteWidth,
     &Metrics::printPreview,
+    &Metrics::notePopupWidth,
+    &Metrics::notePopupHeight,
 };
 
 struct Tokens {

@@ -123,3 +123,13 @@ eraser
 file-check
 upload
 refresh-cw
+
+# 5.1 — «Добавить комментарии»: разметка, правки текста, быстрые действия, карандаш, ластик, панель
+strikethrough
+message-square-plus
+copy
+pin-off
+text-cursor
+spline
+pen-tool
+shapes
