@@ -2445,9 +2445,9 @@
     принимает field, lock, pkcs7, хотя комментарий `sign_script.cpp` — «как у sign.sign»; в сообщении 8f4d74c —
     `ui.sign_settings (9)`, слотов 8; отметки `[x]` шли следующим коммитом (п. 4 — отдельным 6bce3f5).
     `docs/map.md` в 4.6 не менялся (последняя правка — 610835f): sign_script, crypto_worker, signature_status,
-    signatures_pane, certificate_tool, trust_service и страницы «Подписи» в карту не внесены.
+    signatures_pane, certificate_tool, trust_service и страницы «Подписи» в карту дописал оператор отдельным коммитом.
 - Проверки: сессия остановилась по лимиту ходов (321) до итогового `verify.py`; запись оператор восстановил по
-  коммитам, карта кода не обновлена. Зелёный прогон новых тестов (`unit.sig_fields`, `unit.sig_clear`,
+  коммитам и дописал карту кода. Зелёный прогон новых тестов (`unit.sig_fields`, `unit.sig_clear`,
   `unit.cert_details`, `unit.verifier_time`, `ui.sign_dialog`, `ui.signatures_pane`, `ui.sign_settings`,
   `ui.shots.stage4`, `ui.script_sign`) и сцены журналом не подтверждены — их покрывает `verify.py --full` рубежа Р2,
   начатого сразу после.
