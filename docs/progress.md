@@ -8,6 +8,15 @@
 Новые пункты — сверху, с номером сессии или рубежа. Ничего из этого не блокирует очередь: она работает на
 `Fake*`-реализациях и фикстурах, живая часть ждёт здесь (эталон 8.1 «Человек отдельно», 9.7).
 
+- **Сессия 4.1 · Публичные службы времени и .pfx в Windows** — (1) с сетью:
+  `$env:OTTISK_LIVE_NET='1'; cmd /c "tools\vcenv.cmd && ctest --test-dir build/debug -R compat.tsa.public --output-on-failure"`
+  — DigiCert, Sectigo и GlobalSign выдают метку времени (в выводе — время, размер токена < 12 КБ и CN службы),
+  политики совпадают (DigiCert `2.16.840.1.114412.7.1`, Sectigo `1.3.6.1.4.1.6449.2.1.1`, GlobalSign
+  `1.3.6.1.4.1.4146.2.3.2.2`); за прокси — что запрос вообще проходит; (2) `tests\fixtures\pki\signer-rsa.pfx`
+  (пароль `acrobatya`) двойным щелчком импортируется в «Личное» текущего пользователя без ошибок, в свойствах
+  сертификата — «АкроБатя тест», путь сертификации до «АкроБатя тест — корневой ЦС» (корень недоверенный — это
+  нормально); после проверки сертификат удалить (certmgr.msc).
+
 - **Сессия 3.4 · Инструмент «Редактировать PDF» вживую** — `build\debug\bin\AcroBatya.exe` на копии своего PDF:
   (1) «Все инструменты → Редактировать PDF», щелчок в абзаце, набор с настоящей клавиатуры в русской и
   английской раскладке и через IME (например, Microsoft IME японской раскладки — составная строка видна
@@ -1877,3 +1886,80 @@
 - Проверки: `verify.py` зелёный; `compat.edit`, `compat.images`, `compat.fonts`, `engine.edit_render.*`
   зелёные; сцены просмотрены: edit-mode, edit-caret, edit-readonly-block, edit-format-panel, edit-add-text,
   preferences-editing, edit-image-crop, find-replace, scan-bar, edit-mode-dark.
+
+### 2026-10-24 · Сессия 4.1 · Крипто-ядро, тестовая PKI и локальный TSA
+- Сделано:
+  1. **OpenSSL в сборке и обёртки:** `cmake/openssl.cmake` (OpenSSL 3.5.4 из `overrides` vcpkg.json, configure падает
+     ниже 3.5; в коде — `static_assert(OPENSSL_VERSION_NUMBER >= 0x30500000)`), `core/sign/ossl` — `Ossl<T>` с
+     освобождением по типу, `OsslError::fromQueue` (вся очередь ERR строкой), `check/checkPtr`, BIO в памяти и BIO по
+     `/ByteRange` файла (своё устройство над `_wfopen_s`, отрезки проверяются при открытии), SHA-256 частей файла,
+     провайдер legacy по требованию. `unit.ossl` (8).
+  2. **Тестовая PKI и локальный TSA:** `tools/pki/` — `make_test_pki.ps1` + `pki.cnf` (корень RSA-4096 → выпускающий
+     ЦС RSA-3072 → подписанты RSA-2048 и ECDSA P-256 «АкроБатя тест», отозванный, TSA с единственным критическим
+     EKU timeStamping, OCSP-респондер с nocheck; `.pfx` AES-256/SHA-256, `-legacy` и с паролем «пароль»; CRL пустые
+     и с отозванным; `pki.json`), `make_ocsp_fixtures.ps1` (good, ec-good, revoked, unknown — со сверкой
+     `openssl ocsp -respin`), `tsa.cnf`, `tsa_serve.py` (`http.server` на 127.0.0.1, порт — первая строка, выход по
+     закрытию stdin; пути-сбои `/reject`, `/garbage`, `/wrongtype`, `/http500`, `/slow`, `/redirect`); результат —
+     `tests/fixtures/pki/` (раздел в `GENERATED.md`); `tests/unit/support/tsa_server` (QProcess через `OTTISK_PYTHON` —
+     теперь в окружении ctest, `cmake/tests.cmake`), `support/pki`. `unit.pki` (2: файлы, сроки > 5 лет, ключи,
+     цепочки, роли, CRL, OCSP; живой TSA отвечает проверяемым токеном).
+  3. **CMS CAdES-B и PKCS#12:** `core/sign/cms` (`CmsBuilder` — detached CAdES-B по потоку и по готовому хэшу,
+     ESS signing-certificate-v2, без signing-time и S/MIME capabilities, метка времени unsigned-атрибутом;
+     `cmsVerifyDetached`; `parseCms` → `CmsInfo` своим DER-разбором), `core/sign/der` (DER и BER с неопределённой
+     длиной), `core/sign/x509_info`, `core/sign/pkcs12` (статусы `BadPassword`/`Damaged`/`NoKey`/…). `unit.cms` (7: RSA
+     и ECDSA проходят внешний `openssl cms -verify -cades`, атрибуты своим разбором, чужие CMS — signing-time, ESS v1,
+     RSA-PSS только чтение), `unit.pkcs12` (4), `unit.der` (1). sign-18, sign-06.
+  4. **TSA-клиент и HttpFetcher:** `core/util/http_fetcher` (интерфейс без Qt + `FakeHttpFetcher`),
+     `services/http_fetcher` (`QtHttpFetcher` на QNAM синхронно: срок 15 с, перенаправления только на тот же хост,
+     предел размера, журнал URL без тела, выключатель `trust/network` «разрешена / только подписи / выключена»,
+     `httpFetcher()`/`ScopedHttpFetcher`), `core/sign/tsa` (`TsaClient`: запрос с nonce и certReq, Basic-аутентификация,
+     `checkTsaResponse` — TS_RESP_verify_response: подпись, версия, imprint, nonce, подписант; `verifyTimestampToken`
+     на время метки; `parseTimestampToken`); страж `boundaries` — сеть только в `http_fetcher.cpp`. `unit.tsa` (6: служба
+     времени PKI в процессе за `FakeHttpFetcher` и живой `tsa_serve.py`, чужой nonce и imprint — отказ, сбои → статусы,
+     токен в CMS, внешний `openssl ts -verify`), `unit.http_fetcher` (5), `compat.tsa.public` (только `OTTISK_LIVE_NET=1`).
+     sign-19 (ядро), security-36.
+  5. **Цепочки и отзыв:** `core/sign/chain` (`ChainBuilder`: якоря, промежуточные, момент проверки, partialChain,
+     назначение «подпись документа» и «метка времени», недостающий промежуточный по AIA caIssuers, CRL в цепочке;
+     итог по RFC 5280), `core/sign/revocation` (`RevocationChecker`: OCSP, затем CRL; данные документа, затем сеть по AIA
+     OCSP и CRL DP; подпись респондера, nonce, окно действия на момент проверки, retroactive, причины RFC 5280).
+     `unit.chain` (8), `unit.revocation` (10). sign-33 (ядро).
+- Решения:
+  - `tests/support/tsa_server` плана — в `tests/unit/support/` (каталог цели `unit_tests` по GLOB; отдельный
+    `tests/support` потребовал бы правки целей); рядом — `support/pki`.
+  - `FakeHttpFetcher` — в `core/util/http_fetcher.h` рядом с интерфейсом (карта ставила его в services): чистый C++, им
+    пользуются тесты ядра (`TsaClient`, `ChainBuilder`, `RevocationChecker`) без Qt.
+  - openssl.exe для скриптов и внешней проверки — Git `mingw64\bin` (у MSYS-сборки `usr\bin` нет провайдера legacy для
+    `pkcs12 -legacy`); путь можно задать `OTTISK_OPENSSL`. Кириллица в аргументах — только с `OPENSSL_WIN32_UTF8=1`
+    (иначе ANSI и «Invalid argument»); имена в сертификатах — из `pki.cnf` (UTF-8 без BOM, секция по `$ENV::PKI_DN`).
+  - Даты PKI фиксированы (2026-01-01 … 2036-01-01; отзыв 2026-06-01 — правкой `index.txt` после `openssl ca -revoke`;
+    CRL с отозванным — с 2026-07-01), ключи случайные — файлы не детерминированы и коммитятся как есть; у OCSP-ответов
+    thisUpdate — момент генерации (`openssl ocsp` его не задаёт). Адреса отзыва и AIA — `http://pki.acrobatya.test/…`.
+  - TSA без якорей (публичные службы, их корней у нас нет) — проверка согласованности: подпись токена по сертификату из
+    токена (PARTIAL_CHAIN), imprint, nonce, ESS-подписант; `trusted = false`. Доверие — дело валидатора (4.4).
+  - Отзыв — своей логикой поверх OpenSSL (`OCSP_basic_verify`, `X509_CRL_verify`, `X509_CRL_get0_by_cert`), а не только
+    `X509_V_FLAG_CRL_CHECK`: нужны момент проверки и retroactive. Окно: строго — thisUpdate ≤ T + 5 мин ≤ nextUpdate +
+    5 мин, у OCSP без nextUpdate — неделя; retroactive снимает нижнюю границу; отзыв позже T — «действует» с датой
+    отзыва (эталон: «отозван после подписи — действительна»); из нескольких данных отзыв главнее, затем самые свежие.
+    CRL внутри цепочки (`CrlCheck::All`) — тоже есть, по плану.
+  - «Подпись документа»: KU digitalSignature или nonRepudiation; EKU, если есть, — emailProtection, documentSigning
+    (RFC 9336), Adobe Authentic Documents, MS Document Signing, anyEKU. У подписантов PKI есть emailProtection —
+    `openssl cms -verify -purpose smimesign` проходит.
+  - Сеть: ключ `trust/network` = `allowed|signaturesOnly|off` (по умолчанию `allowed`; страница «Установок» — 4.6),
+    `Purpose::Signatures` (TSA, OCSP, CRL, AIA, списки доверия) и `General`; для CRL и AIA перенаправления на другой хост
+    разрешены (CDN), для TSA и OCSP — нет. `/redirect` у `tsa_serve.py` — 307, чтобы POST остался POST.
+  - Своё DER-чтение (`der.h`) — атрибуты CMS независимо от OpenSSL CMS (план) и BER чужих подписей для 4.4.
+- Подводные камни:
+  - `ASN1_INTEGER`/`ASN1_OCTET_STRING`/`ASN1_TIME` — один тип `asn1_string_st`: отдельные специализации `OsslFree` —
+    C2766; одна на `ASN1_STRING`.
+  - clang-format 19 неидемпотентен на выравнивании хвостового комментария в enum: после первого `-i` страж format
+    красный, второй проход чинит.
+  - В Bash-инструменте `\\` в heredoc схлопывается (regex `\b` стал backspace — собирать через `chr(92)`), длинный
+    heredoc обрезается — скрипт файлом во `%TEMP%`.
+  - `CRL_CHECK_ALL` без CRL корня: OpenSSL раньше находит отзыв конечного (revoked); «нет CRL» видно только у
+    неотозванного.
+  - QNAM: сигнал `redirected` приходит и при `NoLessSafeRedirectPolicy` — свой обработчик не должен отказывать, если
+    ограничения нет. `openssl cms -verify -out /dev/null` в mingw-сборке не работает — вывод в файл.
+- Замеры: PKI — 3 с; `tsa_serve.py` стартует за ~0,4 с; новые 51 тест — ~10 с (живой TSA ~0,5 с на тест);
+  инкремент `unit_tests` 7–33 с; `verify.py` — 66 с (525 тестов).
+- Проверки: `verify.py` зелёный; сцен нет — интерфейса в сессии нет; `compat.tsa.public` без сети — пропуск (живая
+  часть — в «Нужна ручная проверка»).

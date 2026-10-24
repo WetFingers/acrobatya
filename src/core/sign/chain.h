@@ -38,7 +38,7 @@ enum class ChainPurpose {
     DocumentSigning,  // KU digitalSignature или nonRepudiation; EKU (если есть) — emailProtection,
                       // documentSigning (RFC 9336), Adobe Authentic Documents, Microsoft Document Signing или
                       // anyExtendedKeyUsage
-    Timestamping,  // служба времени: единственный критический EKU timeStamping (RFC 3161 2.3)
+    Timestamping,     // служба времени: единственный критический EKU timeStamping (RFC 3161 2.3)
 };
 
 enum class CrlCheck { None, Leaf, All };
