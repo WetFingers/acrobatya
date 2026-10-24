@@ -40,6 +40,12 @@ public:
         return static_cast<AnnotSelectTool&>(toolFor(ViewToolId::AnnotSelect));
     }
     static constexpr ViewToolId defaultTool() noexcept { return ViewToolId::Select; }
+    // Инструмент правки в своём слоте (3.4: ViewToolId::Edit — «Редактировать PDF»): ставит инструмент
+    // ToolRegistry при первом включении на виде, тот же id заменяет прежний; пустой слот setTool не включает.
+    ViewTool* install(std::unique_ptr<ViewTool> tool);
+    ViewTool* find(ViewToolId id) const { return tools_[static_cast<std::size_t>(id)].get(); }
+    // Инструмент начал или кончил принимать ввод IME (acceptsInputMethod) — у вида включается метод ввода.
+    void inputMethodChanged();
 
     void setTool(ViewToolId id);
     // Shift+Z: Увеличение области → Лупа → Панорамирование и масштаб → Увеличение области.
@@ -73,6 +79,8 @@ public:
     bool mouseDoubleClick(QMouseEvent* event);
     bool keyPress(QKeyEvent* event);
     bool keyRelease(QKeyEvent* event);
+    bool inputMethodEvent(QInputMethodEvent* event);
+    QVariant inputMethodQuery(Qt::InputMethodQuery query) const;
     void updateCursor(QPointF point, Qt::KeyboardModifiers modifiers,
                       Qt::MouseButtons buttons = Qt::NoButton);
     // Текущий инструмент ходит по ссылкам (Выделение, Рука, Панорамирование).

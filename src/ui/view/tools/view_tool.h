@@ -5,13 +5,16 @@
 // щелчок, Ctrl — уменьшить), цикл зума (Shift+Z), Лупа (панель 200–800 %), Панорамирование и масштаб (панель
 // с миниатюрой и рамкой), Снимок (X: область → PNG в буфер, Alt — 300 dpi; однократный). Выбор объектов
 // (план 2.2b; эталон 3.4 «Выделение и правка на странице»; общий для этапов 3–6) — аннотации страницы:
-// щелчок, Shift, рамка, перемещение и масштаб ручками, Del.
+// щелчок, Shift, рамка, перемещение и масштаб ручками, Del. Инструменты правки (3.4: «Редактировать PDF»,
+// дальше — комментарии, формы) живут в своих папках ui/tools/<папка>/ и ставятся в слот ToolController
+// (install) при первом включении на виде; им — клавиатура раньше ярлыков окна и ввод IME.
 #pragma once
 
 #include <QCursor>
 #include <QElapsedTimer>
 #include <QHash>
 #include <QImage>
+#include <QInputMethodEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPainter>
@@ -20,6 +23,7 @@
 #include <QRectF>
 #include <QSet>
 #include <QString>
+#include <QVariant>
 
 #include <functional>
 #include <map>
@@ -41,8 +45,9 @@ namespace ot::ui {
 class PageView;
 class ToolController;
 
-enum class ViewToolId { Select, Hand, MarqueeZoom, Loupe, PanZoom, Snapshot, AnnotSelect };
-inline constexpr int kViewToolCount = 7;
+// Edit — слот инструмента «Редактировать PDF» (3.4): экземпляр ставит EditTool (ToolController::install).
+enum class ViewToolId { Select, Hand, MarqueeZoom, Loupe, PanZoom, Snapshot, AnnotSelect, Edit };
+inline constexpr int kViewToolCount = 8;
 
 class ViewTool {
 public:
@@ -72,6 +77,19 @@ public:
     virtual bool cancel() { return false; }
     // Esc после cancel(): true — инструмент поглотил Esc (бросил действие, снял выбор) и остаётся текущим.
     virtual bool escape(bool /*cancelled*/) { return false; }
+
+    // Документ вида сменился / страница изменена правкой (инструменты из слотов ToolController::install).
+    virtual void documentChanged() {}
+    virtual void pageChanged(int /*page*/) {}
+    // Набор текста (3.4): true — клавиши сначала инструменту (пробел, Esc, однобуквенные — тоже его), а те,
+    // что нужны ему (wantsShortcut), — и раньше ярлыков окна (Ctrl+B, Del, Home…).
+    virtual bool capturesKeyboard() const { return false; }
+    virtual bool wantsShortcut(const QKeyEvent* /*event*/) const { return false; }
+    // Метод ввода (IME: составные символы, рукописный ввод): включён у вида, пока acceptsInputMethod();
+    // запросы — координаты вьюпорта (ImCursorRectangle).
+    virtual bool acceptsInputMethod() const { return false; }
+    virtual bool inputMethodEvent(QInputMethodEvent* /*event*/) { return false; }
+    virtual QVariant inputMethodQuery(Qt::InputMethodQuery /*query*/) const { return {}; }
 
 protected:
     PageView& view_;

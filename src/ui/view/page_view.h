@@ -185,6 +185,8 @@ public:
     RectOverlay& annotationOverlay() noexcept { return annotFrames_; }
     // Инструменты просмотра (ui/view/tool_controller.h): мышь и клавиши вида идут текущему инструменту.
     ToolController& tools() const noexcept { return *controller_; }
+    // Метод ввода (IME) — у инструмента правки текста (ToolController::inputMethodQuery).
+    QVariant inputMethodQuery(Qt::InputMethodQuery query) const override;
 
 signals:
     void zoomChanged(float zoom);
@@ -207,6 +209,7 @@ protected:
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseDoubleClickEvent(QMouseEvent* event) override;
+    void inputMethodEvent(QInputMethodEvent* event) override;
     void showEvent(QShowEvent* event) override;
     bool event(QEvent* event) override;
     bool focusNextPrevChild(bool next) override;

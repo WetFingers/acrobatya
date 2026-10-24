@@ -101,6 +101,7 @@ void QuickBar::sync(ViewToolId tool) {
             break;
         case ViewToolId::Snapshot:
         case ViewToolId::AnnotSelect:
+        case ViewToolId::Edit:
             break;
     }
 }

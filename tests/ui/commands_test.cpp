@@ -147,9 +147,10 @@ private slots:
         QStringList toolTitles = titles(tools->actions());
         QVERIFY(toolTitles.contains(QStringLiteral("Редактировать PDF")));
         QVERIFY(toolTitles.contains(QStringLiteral("Использовать JavaScript")));
-        QVERIFY(!action(w, "tools.edit")->isEnabled());
-        QCOMPARE(action(w, "tools.edit")->toolTip(),
-                 QStringLiteral("«Редактировать PDF» появится в версии 0.3"));
+        QVERIFY(action(w, "tools.edit")->isEnabled());  // 3.4 — настоящий инструмент
+        QVERIFY(!action(w, "tools.organize")->isEnabled());
+        QCOMPARE(action(w, "tools.organize")->toolTip(),
+                 QStringLiteral("«Упорядочить страницы» появится в версии 0.7"));
         QVERIFY(!action(w, "doc.print")->isEnabled());  // «Печать» (2.6) — на Главной документа нет
         QCOMPARE(action(w, "doc.open")->shortcut(), QKeySequence(QStringLiteral("Ctrl+O")));
         QVERIFY(!action(w, "doc.close")->isEnabled());  // на Главной документа нет

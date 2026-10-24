@@ -205,19 +205,36 @@ struct Rewriter::Impl {
     RewriteReport rewrite(ParagraphEditor& e, const RewriteOptions& options);
 };
 
-bool Rewriter::Impl::protectedDocument() const {
+const char* editLockCode(EditLock lock) noexcept {
+    switch (lock) {
+        case EditLock::None:
+            return "";
+        case EditLock::Signed:
+            return "signed";
+        case EditLock::Perms:
+            return "perms";
+    }
+    return "";
+}
+
+EditLock editLock(Document& doc) {
     if (doc.isSigned()) {
-        return true;
+        return EditLock::Signed;
     }
     fz_context* ctx = doc.context().get();
     pdf_document* pdf = doc.pdf();
+    if (pdf == nullptr) {
+        return EditLock::None;
+    }
     int perms = 0;
     mu::call(ctx, [&] {
         pdf_obj* root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf), PDF_NAME(Root));
         perms = pdf_dict_get(ctx, root, PDF_NAME(Perms)) != nullptr;
     });
-    return perms != 0;
+    return perms != 0 ? EditLock::Perms : EditLock::None;
 }
+
+bool Rewriter::Impl::protectedDocument() const { return editLock(doc) != EditLock::None; }
 
 std::optional<RewriteError> Rewriter::Impl::validate(const ParagraphEditor& e, const ContentModel& m,
                                                      std::string& why) const {

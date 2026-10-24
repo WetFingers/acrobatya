@@ -538,6 +538,23 @@ std::vector<Rule> componentRules(const Palette& p, const Metrics& m) {
          {},
          S,
          none},
+        // «Редактировать PDF» (3.4): подписи разделов панели — textMuted 600, причина запрета правки — полоса
+        // тона warn.
+        {QStringLiteral("#editToolPanel QLabel#editSectionCaption"),
+         QStringLiteral("EditPanel"),
+         QStringLiteral("caption"),
+         TM,
+         {},
+         S,
+         QStringLiteral("font-weight: 600;")},
+        {QStringLiteral("#editToolPanel QLabel#editLockNote"),
+         QStringLiteral("EditPanel"),
+         QStringLiteral("lock"),
+         T,
+         softBackground(p, p.warn),
+         {},
+         QStringLiteral("border: 1px solid %1; border-radius: %2; padding: %3;")
+             .arg(css(toneBorder(p, p.warn)), r, pxv(m.grid * 2))},
     };
     // Тоны: полосы сообщений, тосты и чипы.
     const std::pair<const char*, Rgba> tones[] = {

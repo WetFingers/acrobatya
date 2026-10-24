@@ -56,6 +56,12 @@ enum class RewriteError : std::uint8_t {
 };
 const char* rewriteErrorCode(RewriteError error) noexcept;  // "", "stale", "readOnly", "signed", "failed"
 
+// Правка содержимого запрещена (эталон 3.9 «Граничные случаи»): подписанный документ (подпись сломается) и
+// документ с /Perms (DocMDP, права UR3) — редактор текста и картинок отключён с объяснением.
+enum class EditLock : std::uint8_t { None, Signed, Perms };
+const char* editLockCode(EditLock lock) noexcept;  // "", "signed", "perms"
+EditLock editLock(Document& doc);
+
 struct RewriteOptions {
     std::string operation = "Edit text";  // имя операции журнала (ui подписывает «Отменить: …»)
 };

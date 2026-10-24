@@ -1009,6 +1009,25 @@ void PageView::mouseDoubleClickEvent(QMouseEvent* event) {
     }
 }
 
+void PageView::inputMethodEvent(QInputMethodEvent* event) {
+    if (controller_->inputMethodEvent(event)) {
+        event->accept();
+        return;
+    }
+    QAbstractScrollArea::inputMethodEvent(event);
+}
+
+QVariant PageView::inputMethodQuery(Qt::InputMethodQuery query) const {
+    QVariant v = controller_->inputMethodQuery(query);
+    if (!v.isValid()) {
+        return QAbstractScrollArea::inputMethodQuery(query);
+    }
+    if (query == Qt::ImCursorRectangle || query == Qt::ImAnchorRectangle) {
+        v = v.toRectF().translated(viewport()->pos());  // вьюпорт → виджет вида
+    }
+    return v;
+}
+
 bool PageView::event(QEvent* event) {
     // Клавиши вида не отдаются ярлыкам окна, пока фокус у вида (Ctrl+0…3, Alt+←/→, Home/End…).
     if (event->type() == QEvent::ShortcutOverride) {
@@ -1036,7 +1055,9 @@ bool PageView::event(QEvent* event) {
         const bool annotDelete = mods == Qt::NoModifier && k == Qt::Key_Delete &&
                                  controller_->tool() == ViewToolId::AnnotSelect &&
                                  !controller_->annotSelect().selection().empty();
-        if (ctrlZoom || rotate || history || tool || copy || annotDelete) {
+        // Инструмент правки набирает текст (3.4): его клавиши — раньше ярлыков окна.
+        const bool toolKey = controller_->current().wantsShortcut(key);
+        if (ctrlZoom || rotate || history || tool || copy || annotDelete || toolKey) {
             event->accept();
             return true;
         }

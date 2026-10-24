@@ -88,6 +88,8 @@ std::vector<Scene> renderScenes();
 // print_scenes.cpp — print-dialog, print-dialog-booklet, print-dialog-poster, print-preview-nup,
 // print-from-thumbnails (2.6).
 std::vector<Scene> printScenes();
+// edit_scenes.cpp — edit-mode, edit-caret, edit-readonly-block (3.4).
+std::vector<Scene> editScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.
 bool waitSceneReady(const Scene& scene, QWidget* window, int timeoutMs = 30000);

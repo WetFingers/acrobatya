@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QCursor>
+#include <QInputMethod>
 
 #include "ui/view/link_layer.h"
 #include "ui/view/page_view.h"
@@ -22,8 +23,28 @@ ToolController::ToolController(PageView& view) : QObject(&view), view_(view) {
 
 ToolController::~ToolController() = default;
 
+ViewTool* ToolController::install(std::unique_ptr<ViewTool> tool) {
+    if (!tool) {
+        return nullptr;
+    }
+    const ViewToolId id = tool->id();
+    auto& slot = tools_[static_cast<std::size_t>(id)];
+    if (slot && current_ == id) {
+        switchTo(defaultTool(), false);
+    }
+    slot = std::move(tool);
+    return slot.get();
+}
+
+void ToolController::inputMethodChanged() {
+    view_.setAttribute(Qt::WA_InputMethodEnabled, current().acceptsInputMethod());
+    if (view_.hasFocus()) {
+        QGuiApplication::inputMethod()->update(Qt::ImEnabled | Qt::ImCursorRectangle | Qt::ImQueryInput);
+    }
+}
+
 void ToolController::switchTo(ViewToolId id, bool remember) {
-    if (id == current_) {
+    if (id == current_ || !tools_[static_cast<std::size_t>(id)]) {
         return;
     }
     current().cancel();
@@ -33,6 +54,7 @@ void ToolController::switchTo(ViewToolId id, bool remember) {
     }
     current_ = id;
     current().activate();
+    inputMethodChanged();
     view_.viewport()->setCursor(
         current().cursor(view_.viewport()->mapFromGlobal(QCursor::pos()), Qt::NoModifier));
     view_.viewport()->update();
@@ -93,12 +115,18 @@ void ToolController::documentChanged() {
     loupe().documentChanged();
     panZoom().refresh();
     annotSelect().documentChanged();
+    if (ViewTool* edit = find(ViewToolId::Edit)) {
+        edit->documentChanged();
+    }
 }
 
 void ToolController::pageChanged(int page) {
     select().forgetPage(page);
     loupe().pageChanged(page);
     annotSelect().pageChanged(page);
+    if (ViewTool* edit = find(ViewToolId::Edit)) {
+        edit->pageChanged(page);
+    }
     if (page == view_.currentPage()) {
         panZoom().refresh();
     }
@@ -147,6 +175,11 @@ bool ToolController::mouseDoubleClick(QMouseEvent* event) { return current().mou
 bool ToolController::keyPress(QKeyEvent* event) {
     const Qt::KeyboardModifiers mods = event->modifiers() & ~Qt::KeypadModifier;
     const int key = event->key();
+    // Набор текста: клавиши — сначала инструменту (пробел — это пробел, буква — не однобуквенный ярлык).
+    const bool captured = current().capturesKeyboard();
+    if (captured && current().keyPress(event)) {
+        return true;
+    }
     if (key == Qt::Key_Escape && mods == Qt::NoModifier) {
         reset();
         return true;
@@ -159,10 +192,10 @@ bool ToolController::keyPress(QKeyEvent* event) {
         }
         return true;
     }
-    if (current().keyPress(event)) {
+    if (!captured && current().keyPress(event)) {
         return true;
     }
-    if (!singleKeys_) {
+    if (!singleKeys_ || captured) {
         return false;
     }
     if (mods == Qt::ShiftModifier && key == Qt::Key_Z) {
@@ -200,6 +233,12 @@ bool ToolController::keyRelease(QKeyEvent* event) {
     // Ctrl меняет курсор зума (увеличить ↔ уменьшить) без движения мыши.
     updateCursor(view_.viewport()->mapFromGlobal(QCursor::pos()), event->modifiers());
     return false;
+}
+
+bool ToolController::inputMethodEvent(QInputMethodEvent* event) { return current().inputMethodEvent(event); }
+
+QVariant ToolController::inputMethodQuery(Qt::InputMethodQuery query) const {
+    return current().inputMethodQuery(query);
 }
 
 void ToolController::updateCursor(QPointF point, Qt::KeyboardModifiers modifiers, Qt::MouseButtons buttons) {

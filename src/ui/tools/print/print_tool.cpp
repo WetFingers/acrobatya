@@ -16,7 +16,7 @@ namespace ot::ui {
 
 namespace {
 
-const QString kMsPrintToPdf = QStringLiteral("Microsoft Print to PDF");
+const QString kToolPrintToPdf = QStringLiteral("Microsoft Print to PDF");
 
 MainWindow* windowOf(DocumentView* view) {
     return view != nullptr ? qobject_cast<MainWindow*>(view->window()) : nullptr;
@@ -73,8 +73,8 @@ QWidget* PrintTool::panel() {
     pdf_->setObjectName(QStringLiteral("printToolPdf"));
     pdf_->setToolTip(QCoreApplication::translate(
         "ot::ui::PrintTool", "Принтер «Microsoft Print to PDF»: файл — в папку из «Установки → Печать»"));
-    pdf_->setEnabled(PrintDevices::printers().contains(kMsPrintToPdf));
-    QObject::connect(pdf_, &QPushButton::clicked, &context_, [this] { openDialog(kMsPrintToPdf); });
+    pdf_->setEnabled(PrintDevices::printers().contains(kToolPrintToPdf));
+    QObject::connect(pdf_, &QPushButton::clicked, &context_, [this] { openDialog(kToolPrintToPdf); });
     column->addWidget(pdf_);
     prefs_ = new QPushButton(Icons::icon(QStringLiteral("settings")),
                              QCoreApplication::translate("ot::ui::PrintTool", "Установки печати…"), panel);

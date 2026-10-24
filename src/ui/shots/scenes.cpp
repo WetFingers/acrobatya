@@ -111,6 +111,9 @@ const std::vector<Scene>& sceneTable() {
         for (Scene& s : printScenes()) {  // 2.6: print-dialog, print-dialog-booklet, print-dialog-poster…
             table.push_back(std::move(s));
         }
+        for (Scene& s : editScenes()) {  // 3.4: edit-mode, edit-caret, edit-readonly-block…
+            table.push_back(std::move(s));
+        }
         return table;
     }();
     return SCENES;

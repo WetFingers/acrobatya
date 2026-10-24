@@ -84,3 +84,26 @@ folder
 download
 pin
 list
+
+# Редактировать PDF (3.4): текст, изображения, формат, объекты, найти и заменить
+text-cursor-input
+image
+image-plus
+bold
+italic
+underline
+align-left
+align-center
+align-right
+align-justify
+superscript
+subscript
+replace
+crop
+flip-horizontal-2
+flip-vertical-2
+trash-2
+stamp
+link
+square-pen
+scan

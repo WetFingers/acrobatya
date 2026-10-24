@@ -1,0 +1,214 @@
+// Режим «Редактировать» инструмента «Редактировать PDF» (план 3.4, п. 1; эталон 3.9 «Инструмент», 6.2 п. 1;
+// edit-01 — UI): инструмент вида в слоте ViewToolId::Edit. По входу у видимых страниц — рамки блоков
+// (абзацев модели контент-потока, services/edit_ops.h): серые пунктирные, «только чтение» — с замком и
+// подсказкой причины. Щелчок в блоке — каретка (ParagraphEditor::positionAt), перетаскивание — выделение,
+// двойной щелчок — слово, Shift+стрелки, Ctrl+A — весь блок, Ctrl+B/I/U — начертание выделенного; набор —
+// keyPressEvent и QInputMethodEvent (IME для кириллицы и составных символов); Ctrl+C/X/V — простой текст.
+//
+// Правка идёт в копию редактора блока сразу: курсор и раскладка — по раскладке Rewriter (layoutText, задачей
+// потока документа), локальная копия блока рисуется слоем поверх старого растра (маска цветом бумаги по
+// старой и новой рамкам), пока документ не перерисован. Запись в документ (DocumentSession::editText, шаг
+// истории «Edit text») — при выходе из блока, Esc, смене инструмента и через 1,5 с без набора; после неё
+// страница перерисовывается, блоки страницы — заново. Ctrl+Z до записи бросает незаписанную правку блока,
+// после — отменяет шаг истории (команда окна). Документ подписан, с /Perms или открыт только для чтения —
+// рамки видны, каретка не ставится (setLocked: причина — в подсказке).
+#pragma once
+
+#include <QElapsedTimer>
+#include <QHash>
+#include <QObject>
+#include <QPointer>
+#include <QSet>
+#include <QString>
+#include <QTimer>
+
+#include <optional>
+#include <vector>
+
+#include "core/edit/paragraph_editor.h"
+#include "core/edit/rewriter.h"
+#include "services/edit_ops.h"
+#include "ui/view/tools/view_tool.h"
+
+namespace ot::ui {
+
+class EditMode : public QObject, public ViewTool {
+    Q_OBJECT
+public:
+    static constexpr int kCommitDelayMs = 1500;  // запись после паузы в наборе
+    static constexpr int kBlinkMs = 530;         // мигание каретки
+    static constexpr int kRenderWaitMs = 3000;   // локальная копия после записи — пока растр не готов
+
+    // Рамка блока на экране (вьюпорт).
+    struct Frame {
+        int page = -1;
+        int block = -1;
+        QRectF rect;
+        bool editable = false;
+        bool active = false;
+        QString reason;  // код readOnlyCode у «только чтение»
+    };
+
+    EditMode(PageView& view, ToolController& controller);
+    ~EditMode() override;
+
+    ViewToolId id() const noexcept override { return ViewToolId::Edit; }
+    QString title() const override;
+    void activate() override;
+    void deactivate() override;
+    bool mousePress(QMouseEvent* event) override;
+    bool mouseMove(QMouseEvent* event) override;
+    bool mouseRelease(QMouseEvent* event) override;
+    bool mouseDoubleClick(QMouseEvent* event) override;
+    bool keyPress(QKeyEvent* event) override;
+    void paintOverlay(QPainter& painter) override;
+    QCursor cursor(QPointF point, Qt::KeyboardModifiers modifiers) const override;
+    bool cancel() override;
+    bool escape(bool cancelled) override;
+    void documentChanged() override;
+    void pageChanged(int page) override;
+    bool capturesKeyboard() const override { return active_.has_value(); }
+    bool wantsShortcut(const QKeyEvent* event) const override;
+    bool acceptsInputMethod() const override { return active_.has_value(); }
+    bool inputMethodEvent(QInputMethodEvent* event) override;
+    QVariant inputMethodQuery(Qt::InputMethodQuery query) const override;
+
+    // Правка документа запрещена (подписан, /Perms, только чтение): reason — подсказка по-русски; пусто —
+    // можно.
+    void setLocked(const QString& reason);
+    bool locked() const noexcept { return !locked_.isEmpty(); }
+    const QString& lockedReason() const noexcept { return locked_; }
+
+    // Блоки страницы: загружены — указатель, нет — запрос в сессию и nullptr (придут — contentLoaded).
+    const editing::PageContent* content(int page);
+    bool hasContent(int page) const { return pages_.contains(page); }
+    // Рамки блоков видимых страниц на экране (что рисует слой).
+    std::vector<Frame> frames() const;
+    // Блок под точкой вьюпорта: {страница, блок}; нет — {−1, −1}.
+    std::pair<int, int> blockAt(QPointF viewportPoint) const;
+    // Подсказка «только чтение» над точкой (пусто — не над таким блоком).
+    QString readOnlyTip(QPointF viewportPoint) const;
+    static QString reasonText(const QString& code);
+
+    // Каретка в блоке.
+    bool editing() const noexcept { return active_.has_value(); }
+    int activePage() const noexcept { return active_ ? active_->page : -1; }
+    int activeBlock() const noexcept { return active_ ? active_->block : -1; }
+    const edit::ParagraphEditor* editor() const noexcept { return active_ ? &active_->editor : nullptr; }
+    int caretPosition() const noexcept { return active_ ? active_->caret : 0; }
+    edit::TextRange selection() const noexcept;
+    bool hasSelection() const noexcept { return !selection().empty(); }
+    // Правка блока не записана в документ (или пишется сейчас).
+    bool hasPendingEdit() const noexcept { return (active_ && active_->dirty) || committing_; }
+    bool isCommitting() const noexcept { return committing_; }
+    // Локальная копия блока рисуется поверх растра.
+    bool showsLocalCopy() const noexcept;
+
+    // Войти в блок block страницы page, каретка — pos (−1 — в конце); false — блок нельзя править.
+    bool enterBlock(int page, int block, int pos = -1);
+    void setSelection(int anchor, int caret);
+    void selectAllInBlock();
+    // Набрать текст в позиции каретки (вместо выделения).
+    void insertText(const QString& text);
+    void eraseSelectionOrChar(bool forward);
+    // Стиль к выделению (без выделения — к стилю набора у каретки, следующий набор пойдёт им).
+    void applyStyle(const edit::StyleChange& change);
+    void toggleBold();
+    void toggleItalic();
+    void toggleUnderline();
+    // Стиль символа у каретки (или первого выделенного) — панель FORMAT TEXT показывает его.
+    std::optional<edit::CharStyle> currentStyle() const;
+    // Записать незаписанную правку сейчас (таймер не ждёт).
+    void commit();
+    // Записать и выйти из блока.
+    void leaveBlock();
+    // Ctrl+Z до записи: бросить незаписанную правку блока; false — бросать нечего.
+    bool revertPending();
+
+signals:
+    void editingChanged(bool editing);
+    // Каретка, выделение или стиль под кареткой сменились (панель FORMAT TEXT).
+    void caretChanged();
+    void contentLoaded(int page);
+    // Абзац записан (отчёт Rewriter) или запись не удалась (текст по-русски).
+    void committed(const ot::edit::RewriteReport& report);
+    void editFailed(const QString& message);
+
+private:
+    struct Active {
+        quint64 id = 0;  // номер копии: ответ записи находит свою (активную или отложенную)
+        int page = -1;
+        int block = -1;  // индекс в PageContent::blocks (по нему рамка); −1 — блок ещё не найден заново
+        RectF original;  // рамка блока до правки (координаты страницы) — маска локальной копии
+        edit::ParagraphEditor editor;
+        edit::ParagraphEditor clean;  // как в документе (Ctrl+Z до записи)
+        int caret = 0;
+        int anchor = 0;
+        bool dirty = false;
+        quint64 change = 0;                     // номер правки копии (раскладка, запись)
+        std::optional<edit::CharStyle> typing;  // стиль набора у каретки (Ctrl+B без выделения)
+        QString preedit;                        // строка IME, ещё не набранная
+    };
+
+    // edit_mode.cpp — страницы, вход и выход, запись.
+    void requestContent(int page);
+    void contentArrived(int page, quint64 generation, editing::PageContent content);
+    void matchActive(int page);
+    void changed();
+    void requestLayout();
+    void commitCopy(Active& copy);
+    Active* copyById(quint64 id);
+    void finishCommit(quint64 id, quint64 change, const EditTextResult& result);
+    void failCommit(quint64 id, const QString& message);
+    void rebaseActive(int page);
+    void dropActive();
+    void startRenderWait();
+    PointF pagePoint(int page, QPointF viewportPoint) const;
+
+    // caret.cpp — клавиши, курсор, буфер обмена.
+    bool editKey(QKeyEvent* event);
+    void moveCaret(int pos, bool extend);
+    int lineEdge(int pos, bool end) const;
+    int wordStep(int pos, int delta) const;
+    void copySelection(bool cut);
+    void paste();
+    void caretMoved();
+    void restartBlink();
+
+    // edit_overlay.cpp — рамки, замки, локальная копия, каретка и выделение.
+    void paintFrames(QPainter& painter) const;
+    void paintLocalCopy(QPainter& painter, const edit::ParagraphEditor& editor, int page,
+                        const RectF& original) const;
+    void paintCaret(QPainter& painter) const;
+
+    QHash<int, editing::PageContent> pages_;
+    QHash<int, quint64> generation_;  // правка страницы делает ответы старше неё устаревшими
+    QSet<int> requested_;
+    quint64 epoch_ = 0;  // смена документа
+    std::optional<Active> active_;
+    std::vector<Active> detached_;  // вышли из блока, а запись ещё идёт (или ждёт своей очереди)
+    struct Written {
+        int page = -1;
+        RectF original;
+        edit::ParagraphEditor editor;
+    };
+    std::vector<Written> afterglow_;  // записаны вне блока: копия рисуется, пока растр старый
+    quint64 nextId_ = 0;
+    QString locked_;
+    bool pressing_ = false;
+    bool committing_ = false;
+    bool commitAgain_ = false;  // во время записи набрали ещё — записать снова
+    bool layoutBusy_ = false;
+    bool layoutAgain_ = false;
+    bool renderWait_ = false;  // запись сделана, растр страницы ещё старый
+    int renderWaitPaints_ = 0;
+    QTimer commitTimer_;
+    QTimer blink_;
+    QTimer renderTimer_;
+    bool caretOn_ = true;
+    QElapsedTimer lastClick_;
+    QPointF lastClickPos_;
+    int clicks_ = 0;
+};
+
+}  // namespace ot::ui
