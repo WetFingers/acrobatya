@@ -186,15 +186,17 @@ std::vector<pdf_obj*> signedFields(fz_context* ctx, pdf_document* pdf) {
 
 // Страница, рамка и видимость виджета поля (сам виджет или первый потомок).
 void widgetPlacement(fz_context* ctx, pdf_document* pdf, pdf_obj* field, SignatureInfo& out) {
+    pdf_obj* widget = field;
     mu::call(ctx, [&] {
-        pdf_obj* widget = field;
         if (!pdf_name_eq(ctx, pdf_dict_get(ctx, field, PDF_NAME(Subtype)), PDF_NAME(Widget))) {
             pdf_obj* kids = pdf_dict_get(ctx, field, PDF_NAME(Kids));
             widget = pdf_array_len(ctx, kids) > 0 ? pdf_array_get(ctx, kids, 0) : nullptr;
         }
-        if (widget == nullptr) {
-            return;
-        }
+    });
+    if (widget == nullptr) {
+        return;
+    }
+    mu::call(ctx, [&] {
         pdf_obj* pageObj = pdf_dict_get(ctx, widget, PDF_NAME(P));
         int page = pageObj != nullptr ? pdf_lookup_page_number(ctx, pdf, pageObj) : -1;
         if (page < 0) {

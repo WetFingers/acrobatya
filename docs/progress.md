@@ -8,6 +8,17 @@
 Новые пункты — сверху, с номером сессии или рубежа. Ничего из этого не блокирует очередь: она работает на
 `Fake*`-реализациях и фикстурах, живая часть ждёт здесь (эталон 8.1 «Человек отдельно», 9.7).
 
+- **Сессия 4.4 · Вердикты валидатора против Acrobat Reader** — валидатор пока без интерфейса (панель «Подписи» — 4.6).
+  После `cmd /c "tools\vcenv.cmd && ctest --test-dir build/debug -R compat.sign --output-on-failure"` открыть в Acrobat
+  Reader `build\debug\compat\sign\b\*.pdf` и `t\*.pdf` и сравнить с `build\debug\dss\ours.json` (там же вердикты 124
+  файлов EU DSS): без доверия к корню PKI Acrobat показывает жёлтый треугольник («подписант не доверен» — у нас
+  ValidUntrusted), после «Доверять» `tests\fixtures\pki\root.cer` — зелёную галочку (Valid); у файлов с меткой —
+  «Подпись содержит встроенную метку времени» (у нас TimeSource::Timestamp). Особо сверить с Acrobat по корпусу DSS
+  (`C:\Tools\ottisk\corpus\dss\dss-pades\src\test\resources\validation`): `modified_after_signature.pdf` и
+  `pdf-signed-added-page.pdf` — «документ изменён» (у нас Invalid), `dss-1376\DSS1376-rev_n-1.pdf` — сертифицирован,
+  разрешённые изменения, `siwa.pdf` и `pdf-byterange-overlap.pdf` — подпись повреждена, `pkcs7-no-message-digest.pdf`
+  — цела с предупреждением SHA-1 (план ждал Invalid — см. журнал 4.4). Расхождения с Acrobat — строкой сюда.
+
 - **Сессия 4.3 · Подпись сертификатом из хранилища Windows** — нужен сертификат с неэкспортируемым ключом в
   `Cert:\CurrentUser\My` (смарт-карта или токен с мини-драйвером либо `New-SelfSignedCertificate -Subject
   "CN=АкроБатя проверка" -CertStoreLocation Cert:\CurrentUser\My -KeyExportPolicy NonExportable -KeyUsage
@@ -2130,3 +2141,85 @@
   (591 тест).
 - Проверки: `verify.py` зелёный; `compat.sign.{b,b.multi,t,dts,cng}` и `engine.sign.matrix` зелёные; сцен нет —
   экранов в сессии нет (диалог выбора сертификата — системный, только на экране; в offscreen выключен тестом).
+
+### 2026-10-24 · Сессия 4.4 · Валидатор: статусы Acrobat, анализ изменений, DSS-корпус
+- Сделано:
+  1. **Структура и целостность:** `core/sign/verifier` — `verifyDocument` по подписанным полям /AcroForm: /ByteRange из 4
+     чисел от 0 в пределах файла, «дыра» — ровно hex-строка /Contents (иначе BadByteRange), конец диапазона раньше конца
+     файла — изменения после подписи; CMS по шагам CMS_verify без CMS_CADES (`CMS_SignerInfo_verify_content` по хэшу
+     /ByteRange потоком, `CMS_SignerInfo_verify` над атрибутами в байтах файла, сертификат подписанта из CMS и /DSS), ESS
+     v1/v2 о подписанте, хэш OID подписи = digestAlgorithm; ETSI.CAdES.detached (и PBAD.PAdES), adbe.pkcs7.detached,
+     adbe.pkcs7.sha1 (eContent — SHA-1), ETSI.RFC3161; adbe.x509.rsa_sha1 — «не поддерживается»; MD5 — отказ, SHA-1 —
+     предупреждение; `Verdict`/`Issue`/`Finding`, `documentStatus` — полоса; `CmsInfo::signingCertificateV1`.
+     `unit.verifier_structure` (13). sign-25, sign-27.
+  2. **Доверие, время, отзыв:** `core/sign/trust_store` (якоря с флагами Acrobat, импорт .cer/.p7b/.p7c/.fdf, SHA-1/SHA-256,
+     anchors.json, корни Windows ROOT — опция, выкл.), `VerifyOptions`, цепочка на момент метки или /M, сертифицирующая
+     — якоря «сертификация», доверенный промежуточный — якорь; отзыв — /DSS и adbe-revocationInfoArchival, затем сеть
+     только для сертификатов без данных, «LTV включено». `unit.trust_store` (4), `unit.verifier_trust` (7). sign-30,
+     sign-32, sign-33.
+  3. **Метки времени и secure time:** метка подписи и метка документа, служба доверена на момент метки — время проверки
+     — время метки; «просроченная метка» по опции; /M позже метки — предупреждение; `PadesLevel` B/T/LT/LTA по структуре.
+     `unit.verifier_timestamp` (6). sign-19, sign-32.
+  4. **Изменения после подписи и DocMDP:** `core/sign/docmdp` (/Perms /DocMDP, /Reference, P по умолчанию 2, FieldMDP и
+     /Lock), `core/sign/changes` (подписанная ревизия — временный документ той же семьи; кандидаты — объекты секций после
+     подписанной; роли по достижимости из каталога, строжайшая; разбор каталога, страницы, /Annots, /AcroForm, поля;
+     `ChangeKind`/`ChangeLevel`/`Change` для интерфейса). `unit.changes` (9: сертификация P=1/2/3 на forms-all.pdf,
+     заполненное поле, записка, метка документа при P=1, FieldMDP /Lock, новая страница, вторая подпись, EU DSS). sign-25,
+     sign-16.
+  5. **Регрессия DSS и pyHanko:** `engine.sig.dss` — 124 файла тегов sig-b/t/lt/lta: **118 совпадений из 124 (95 %)** с
+     `tests/fixtures/sig/dss_expectations.json`; `compat.sig.pyhanko` — `tools/compare_pyhanko.py` (survey — pyHanko 0.38,
+     expect — таблица с ручными правками, compare — отчёт `build/<пресет>/dss/report.md`). sign-25.
+- Расхождения с pyHanko (разобраны, в таблице — «manual» с кодом причины, легенда — в `about`):
+  - pyHanko по умолчанию запрещает SHA-1 (CRYPTO_CONSTRAINTS_FAILURE) и требует nonRepudiation — у нас, как у Acrobat,
+    SHA-1 — предупреждение, ключ — digitalSignature или nonRepudiation: survey идёт с такой же политикой.
+  - `vri` (lt-short ×22, PAdES-LT, HU_POL-7, pades-tst-with-orphan-refs, adbe_crl_signed): pyHanko — «VRI modified or
+    deleted» → OTHER; у нас обновления /DSS разрешены всегда (ETSI EN 319 142-1, 5.4.2.3).
+  - `xref` (DSS-3577, pades-lta-copied-doctst, pades-tst-with-sig-type): pyHanko не принимает объекты, заменённые в
+    промежуточной ревизии; у нас сравниваются подписанная и текущая ревизии по объектам (известное ограничение: правка,
+    отменённая в следующей ревизии, не видна).
+  - `p2` (DSS1376-rev_n): pyHanko — правка только после утверждающей подписи; у нас при P=2 подпись поля разрешена.
+  - `revinfo`, `time`, `path` (doc-firmado-LT, pades-lt-extended-*, DSS-3298, BG_BOR-2, DE_SCI-4, HU_MIC-3, SK-6,
+    pdf-self-issued-ocsp…): pyHanko soft-fail считает негодные встроенные данные отзыва недоверием, проверяет цепочку
+    службы времени на «сейчас» и не строит путь через сертификаты других подписей; у нас доверие — цепочка на момент
+    подписи или метки через все сертификаты документа, отзыв «неизвестен» — предупреждение.
+  - `dts-type` (pades-tst-with-null-type/-sig-type, pades_with_orphan_ocsp_cert_refs, SK-6): метка с /SubFilter
+    /ETSI.RFC3161 при /Type /Sig или без /Type — у нас метка документа (pyHanko её не признаёт), отсюда LTA.
+  - `siwa`: атака — в «дыре» /ByteRange не только /Contents; pyHanko её не видит (сверяет хэш и подпись), у нас
+    BadByteRange. `pkcs7-sha1`: pyHanko пропускает поле с adbe.pkcs7.sha1. `asn1crypto` (dss-818 DE_CRY-2 «HASH_FAILURE»):
+    pyHanko «cryptographically unsound» ложно — asn1crypto перекодирует signed-атрибуты; OpenSSL и `cryptography` —
+    подпись цела. `dangling-ref` (pades-lt-extended-dss): KeyError pyHanko на висячей ссылке /DSS.
+  - Остались 6 файлов, где мы расходимся с ожиданием: pdf-removed-pages и pades_with_orphan_ocsp_cert_refs — у нас
+    BadKeyUsage (EKU без emailProtection/documentSigning/Adobe/MS — как Acrobat; pyHanko EKU не проверяет);
+    adbe_crl_signed — OpenSSL 3 не разбирает сертификат внутри токенов меток документа (asn1 wrong tag), метки
+    «повреждены»; PAdES-LT — у нас «certificate signature failure» в цепочке второй подписи, у pyHanko путь строится;
+    lt-short Signature1 и pades-tst-with-sig-type — расхождение доверия не разобрано. Идея на будущее (не в коде):
+    разбор токенов с «нестрогими» сертификатами своим DER-разбором.
+- Решения:
+  - `pkcs7-no-message-digest.pdf` (DSS): signed-атрибутов нет вовсе — подпись RFC 5652 5.4 прямо над SHA-1 данных; pyHanko
+    INTACT. Вердикт — цела + «устаревший алгоритм», не Invalid, как ждал план; Invalid для «атрибуты без message-digest»
+    проверен на своём файле (OID message-digest заменён — `NoMessageDigest`).
+  - «Неизвестно (нет данных об отзыве)»: политика «обязательно» — вердикт Unknown; «по возможности» (по умолчанию) —
+    действительна с предупреждением RevocationUnchecked (как Acrobat без «требовать проверку отзыва»); «никогда» — без
+    запросов. retroactive по умолчанию включён (данные отзыва годятся задним числом, как Acrobat).
+  - Secure time — только доверенная служба времени; недоверенная или испорченная метка — время /M «заявленное».
+    «Просроченная метка» (сертификат службы истёк к «сейчас») по умолчанию принимается (Acrobat — «Использовать
+    просроченные метки»).
+  - DSS/VRI и метки документа — не «изменения» (вердикт Valid, не ValidWithChanges); подписи, поля, комментарии в
+    пределах прав — ValidWithChanges; Other — недействительна и у утверждающей подписи (как pyHanko).
+  - Цепочка службы времени — без проверки назначения (у старых служб EKU timeStamping не критический); метка подписи
+    без доверия службы на вердикт не влияет.
+  - Подпись над signed-атрибутами сверяется ещё и с их байтами в файле: атрибут не в DER → SignatureMismatch.
+  - Сертификация в тестах до 4.5 — `detail::FieldJob` с /Reference DocMDP и /Perms в патче (`support/verify_support`).
+  - ctest-имя регрессии — `engine.sig.dss` (как в плане), сверка — `compat.sig.pyhanko` (+ `.generate`).
+- Подводные камни:
+  - pyHanko: `reader.root.get('/DSS')` — ссылка, не словарь (без `get_object()` сертификаты /DSS не видны), массивы /DSS
+    бывают косвенными; без этого «доверие» pyHanko было ложно хуже.
+  - `/Reference /Data` DocMDP-подписи указывает на каталог: обход ролей заходил во весь документ — ключ /Data не обходится.
+  - Числа в словарях ревизий — по значению (595 и 595.0): иначе «MediaBox изменён».
+  - Каталог может быть переписан другим объектом (/Root → новый номер) — разбор по ключам, не «каталог заменён».
+  - `PDF_NAME(Pg/Obj/Extensions/DSS/DocTimeStamp)` в MuPDF нет — сравнение строк `pdf_to_name`.
+  - Страж `fztry`: в теле `mu::call` — ни `return`, ни объектов с деструктором (`std::optional<Analyzer>` снаружи).
+  - Длинные heredoc в Bash по-прежнему рвутся на кавычках — правки скриптами-файлами во `%TEMP%\ot44`.
+- Замеры: новые 39 unit-тестов — ~2 с (подпись и проверка файла 30–80 мс); `engine.sig.dss` — 6–11 с на 124 файла;
+  survey pyHanko — ~55 с; инкремент `unit_tests` 6–20 с; `verify.py` — 62 с (630 тестов).
+- Проверки: `verify.py` зелёный; `engine.sig.dss` и `compat.sig.pyhanko` зелёные; сцен нет — интерфейса в сессии нет.

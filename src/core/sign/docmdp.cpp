@@ -83,9 +83,9 @@ DocMdp readDocMdp(fz_context* ctx, pdf_document* pdf) {
         out.permission = MdpPermission::FormFilling;  // /Perms /DocMDP без /Reference: P по умолчанию
     }
     // Поле сертифицирующей подписи — то, чьё /V — этот словарь.
+    std::vector<pdf_obj*> stack;
     mu::call(ctx, [&] {
         pdf_obj* fields = pdf_dict_getp(ctx, pdf_trailer(ctx, pdf), "Root/AcroForm/Fields");
-        std::vector<pdf_obj*> stack;
         for (int i = 0; i < pdf_array_len(ctx, fields); ++i) {
             stack.push_back(pdf_array_get(ctx, fields, i));
         }

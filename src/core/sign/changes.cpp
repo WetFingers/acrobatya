@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <string_view>
@@ -813,9 +814,10 @@ ChangeReport analyzeChanges(Document& doc, std::int64_t signedEnd, const ChangeR
     if (!old.ok || !old.document || old.document->pdf() == nullptr) {
         throw std::runtime_error("signed revision does not open: " + old.error.message);
     }
+    std::optional<Analyzer> analyzer;  // объекты с деструктором — вне тела mu::call
     mu::call(ctx, [&] {
-        Analyzer analyzer(ctx, old.document->pdf(), pdf, rules);
-        analyzer.run(report);
+        analyzer.emplace(ctx, old.document->pdf(), pdf, rules);
+        analyzer->run(report);
     });
     const ChangeLevel allowed = permittedLevel(rules.docMdp);
     for (Change& c : report.changes) {
