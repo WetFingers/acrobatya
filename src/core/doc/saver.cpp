@@ -83,6 +83,14 @@ void fillWriteOptions(pdf_write_options& opts, SaveMode mode, const SaveOptions&
             opts.do_use_objstms = 1;
             break;
     }
+    if (mode != SaveMode::Incremental) {
+        if (options.objectStreams) {
+            opts.do_use_objstms = *options.objectStreams ? 1 : 0;
+        }
+        if (options.compressImages) {
+            opts.do_compress_images = *options.compressImages ? 1 : 0;
+        }
+    }
     opts.do_linear = 0;  // никогда: линеаризация — qpdf поверх записи
     if (options.encryption) {
         const SaveEncryption& e = *options.encryption;
@@ -264,6 +272,15 @@ SaveReport Saver::save(Document& doc, const fs::path& target, const SaveOptions&
     fs::path temp = tempPathFor(absTarget);
     try {
         dropDanglingTrailerRefs(doc);
+        if (options.subsetFonts && r.mode != SaveMode::Incremental) {
+            // Шаг журнала: при неудачной записи документ остаётся с подмножествами (undo вернёт шрифты).
+            fz_context* ctx = doc.context().get();
+            pdf_document* pdf = doc.pdf();
+            Journal::Operation op(doc, "Subset fonts");
+            mu::call(ctx, [&] { pdf_subset_fonts(ctx, pdf, 0, nullptr); });
+            op.markHeavy();
+            op.commit();
+        }
         writePdf(doc, temp, r.mode, options);
     } catch (const std::exception& e) {
         removeQuietly(temp);

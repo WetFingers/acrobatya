@@ -34,6 +34,27 @@ DocumentRegistry::Opened DocumentRegistry::open(const QString& path, const QStri
     return out;
 }
 
+DocumentRegistry::Opened DocumentRegistry::recover(const QString& autosaveDir, const AutosaveEntry& entry,
+                                                   const QString& password) {
+    Opened out;
+    const QString path = QString::fromStdWString(entry.path.wstring());
+    if (const quint64 id = findByPath(path); id != 0) {
+        out.id = id;
+        out.existing = true;
+        out.summary = sessions_.at(id)->summary();
+        return out;
+    }
+    auto session = std::make_shared<DocumentSession>();
+    out.summary = session->recoverAsync(autosaveDir, entry, password).result();
+    if (!out.summary.ok) {
+        return out;
+    }
+    out.id = session->id();
+    sessions_.emplace(out.id, std::move(session));
+    emit documentOpened(out.id);
+    return out;
+}
+
 std::shared_ptr<DocumentSession> DocumentRegistry::session(quint64 id) const {
     const auto it = sessions_.find(id);
     return it == sessions_.end() ? nullptr : it->second;

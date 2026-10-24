@@ -50,6 +50,11 @@ public:
     bool isModified() const { return modified_; }
     // Не PDF: правка и «Сохранить» недоступны, «Сохранить как PDF» — новый файл.
     bool isViewOnly() const;
+    // Только чтение (2.5): PDF/A в режиме просмотра до «Включить редактирование» — правки и «Выбор объектов»
+    // не меняют документ. canEdit — не «только просмотр» и не «только чтение».
+    void setReadOnly(bool readOnly);
+    bool isReadOnly() const { return readOnly_; }
+    bool canEdit() const { return !isViewOnly() && !readOnly_; }
 
     // Полосы сообщений над документом: виды и порядок — MessageStack; addMessage — своя полоса (после видов).
     MessageStack& messageStack() const { return *stack_; }
@@ -78,6 +83,7 @@ public:
 
 signals:
     void modifiedChanged(bool modified);
+    void readOnlyChanged(bool readOnly);
     void saveAsPdfRequested();
 
 protected:
@@ -101,6 +107,7 @@ private:
     LastView initialView_;
     std::optional<links::LinkAction> initialAction_;
     bool modified_ = false;
+    bool readOnly_ = false;
 };
 
 }  // namespace ot::ui

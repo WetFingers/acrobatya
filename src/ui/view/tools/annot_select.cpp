@@ -140,8 +140,8 @@ void AnnotSelectTool::clearSelection() {
 
 void AnnotSelectTool::deleteSelection() {
     DocumentSession* session = view_.document();
-    if (session == nullptr || selected_.empty()) {
-        return;
+    if (session == nullptr || selected_.empty() || !controller_.editable()) {
+        return;  // только чтение — удалять нельзя
     }
     cancel();
     std::vector<AnnotRef> refs;
@@ -422,8 +422,8 @@ bool AnnotSelectTool::mouseRelease(QMouseEvent* event) {
 
 void AnnotSelectTool::finishDrag() {
     DocumentSession* session = view_.document();
-    if (!moved() || session == nullptr) {
-        drag_ = Drag::None;
+    if (!moved() || session == nullptr || !controller_.editable()) {
+        drag_ = Drag::None;  // только чтение — рамки остаются на месте
         publish();
         return;
     }

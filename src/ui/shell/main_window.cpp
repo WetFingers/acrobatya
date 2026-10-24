@@ -27,6 +27,7 @@
 #include <exception>
 
 #include "services/app_info.h"
+#include "services/autosave_runner.h"
 #include "services/background_tasks.h"
 #include "services/commands.h"
 #include "services/convert_ops.h"
@@ -38,7 +39,9 @@
 #include "services/shell_launcher.h"
 #include "services/thumbnails.h"
 #include "services/tile_cache.h"
+#include "ui/dialogs/password_dialog.h"
 #include "ui/dialogs/properties_dialog.h"
+#include "ui/dialogs/recover_dialog.h"
 #include "ui/dialogs/search_window.h"
 #include "ui/panes/find_bar.h"
 #include "ui/shell/command_palette.h"
@@ -52,6 +55,7 @@
 #include "ui/shell/preferences/preferences_dialog.h"
 #include "ui/shell/quick_bar.h"
 #include "ui/shell/read_mode.h"
+#include "ui/shell/save_flow.h"
 #include "ui/shell/status_bar.h"
 #include "ui/shell/tool_panel.h"
 #include "ui/theme/theme.h"
@@ -60,6 +64,7 @@
 #include "ui/view/tool_controller.h"
 #include "ui/widgets/message_bar.h"
 #include "ui/widgets/toast.h"
+#include "ui/widgets/tool_button.h"
 
 namespace ot::ui {
 
@@ -85,7 +90,8 @@ MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent),
       pool_(std::make_unique<RenderPool>()),
       cache_(std::make_unique<TileCache>()),
-      registry_(std::make_unique<DocumentRegistry>()) {
+      registry_(std::make_unique<DocumentRegistry>()),
+      autosave_(std::make_unique<AutosaveRunner>(AutosaveRunner::defaultDir())) {
     setObjectName(QStringLiteral("mainWindow"));
     setAcceptDrops(true);
     resize(1440, 900);
@@ -183,6 +189,17 @@ MainWindow::MainWindow(QWidget* parent)
     readBar_->installEventFilter(this);
     connect(readBar_, &ReadModeBar::exitRequested, this, [this] { setReadMode(false); });
 
+    saveFlow_ = new SaveFlow(*this);
+    connect(saveFlow_, &SaveFlow::saved, this, [this](DocumentView* view) {
+        const int index = tabs().indexOf(view->id());
+        if (index >= 0) {
+            tabs().setTabText(index, view->title());
+            tabs().setTabToolTip(index, QDir::toNativeSeparators(view->path()));
+        }
+        retranslateTitle();
+        updateActions();
+    });
+    applyAutosaveSettings();
     commands_ = new CommandRegistry(this);
     buildMenus();
     menuBar()->hide();
@@ -204,6 +221,7 @@ MainWindow::~MainWindow() {
     while (documentCount() > 0) {
         DocumentView* view = document(0);
         const quint64 id = view->id();
+        autosave_->unwatch(&view->session());
         releaseView(view);
         delete view;
         tabs().removeTab(0);
@@ -220,12 +238,41 @@ bool MainWindow::openFile(const QString& path, int page, const QString& password
         reportOpenError(path, tr("Файл не найден."));
         return false;
     }
-    const DocumentRegistry::Opened opened = registry_->open(info.absoluteFilePath(), password);
+    const QString absolute = info.absoluteFilePath();
+    const QString key = DocumentRegistry::pathKey(absolute);
+    QString pass = password;
+    if (pass.isEmpty()) {
+        pass = passwords_.value(key);  // «запомнить на время сеанса»
+    }
+    DocumentRegistry::Opened opened = registry_->open(absolute, pass);
+    if (opened.id == 0 && opened.summary.needsPassword && password.isEmpty()) {
+        // Диалог пароля: три попытки, каждая — открыть файл с этим паролем.
+        passwords_.remove(key);
+        PasswordDialog dialog(
+            info.fileName(),
+            [this, &opened, &absolute](const QString& candidate) {
+                opened = registry_->open(absolute, candidate);
+                return opened.id != 0;
+            },
+            this);
+        const bool accepted = passwordPrompt_ ? passwordPrompt_(dialog) : dialog.exec() == QDialog::Accepted;
+        if (!accepted || opened.id == 0) {
+            if (dialog.exhausted()) {
+                reportOpenError(path, tr("Неверный пароль: три попытки исчерпаны."));
+            } else {
+                error_ = tr("Открытие отменено.");
+            }
+            return false;
+        }
+        if (dialog.remember()) {
+            passwords_.insert(key, dialog.password());
+        }
+    }
     if (opened.id == 0) {
         const OpenSummary& s = opened.summary;
         QString reason;
         if (s.needsPassword) {
-            reason = tr("Файл защищён паролем. Ввод пароля появится в версии 0.2.");
+            reason = tr("Неверный пароль.");
         } else if (s.error.hint == QLatin1String("unsupported")) {
             reason = tr("Формат файла не поддерживается.");
         } else if (s.error.hint == QLatin1String("close-document")) {
@@ -244,12 +291,18 @@ bool MainWindow::openFile(const QString& path, int page, const QString& password
         }
         return true;
     }
+    addDocumentView(opened, page);
+    return true;
+}
+
+DocumentView* MainWindow::addDocumentView(const DocumentRegistry::Opened& opened, int page) {
     auto* view = new DocumentView(registry_->session(opened.id), pool_.get(), cache_.get(), documents_);
     documents_->addWidget(view);
     connect(view, &DocumentView::modifiedChanged, this, [this, view](bool modified) {
         tabs().setModified(tabs().indexOf(view->id()), modified);
         updateActions();
     });
+    connect(view, &DocumentView::readOnlyChanged, this, &MainWindow::updateActions);
     connect(view, &DocumentView::saveAsPdfRequested, this, [this, view] { saveAsPdf(view); });
     connect(&view->findBar(), &FindBar::advancedSearchRequested, this,
             [this](const QString& text) { showSearchWindow(text); });
@@ -273,12 +326,98 @@ bool MainWindow::openFile(const QString& path, int page, const QString& password
     if (!placed && opened.summary.initial.openAction) {
         view->setInitialAction(*opened.summary.initial.openAction);  // /OpenAction файла
     }
+    // Восстановленный файл (pdf_was_repaired): инкремент невозможен — запись будет полной (эталон 3.1, 4.4).
+    if (opened.summary.repaired) {
+        MessageBar* bar = view->messageStack().showMessage(
+            MessageKind::Repaired, tr("Файл был повреждён и восстановлен при открытии. Сохранение будет "
+                                      "полным: файл запишется заново."));
+        bar->setObjectName(QStringLiteral("repairedBar"));
+    }
+    // PDF/A (pro-45): только чтение, пока не «Включить редактирование» (Установки → Документы).
+    if (opened.summary.pdfa && opened.summary.isPdf && Settings().get(settings::kPdfaReadOnly)) {
+        view->setReadOnly(true);
+        MessageBar* bar = view->messageStack().showMessage(
+            MessageKind::PdfA,
+            tr("Этот файл заявляет соответствие стандарту PDF/A и открыт только для чтения, "
+               "чтобы не нарушить соответствие."));
+        bar->setObjectName(QStringLiteral("pdfaBar"));
+        bar->addAction(tr("Включить редактирование"), QStringLiteral("enableEditing"), true);
+        connect(bar, &MessageBar::actionTriggered, view, [view](const QString& id) {
+            if (id == QLatin1String("enableEditing")) {
+                view->setReadOnly(false);
+                view->messageStack().remove(MessageKind::PdfA);
+            }
+        });
+    }
+    if (opened.summary.isPdf) {
+        autosave_->watch(&view->session());
+    }
     RecentFiles::shared().touch(view->path(), opened.summary.pageCount);
     const int index = tabs().addDocument(opened.id, view->title(), view->path());
     showDocument(index);
     applyInitialView(view, opened.summary);
     emit documentOpened(view);
-    return true;
+    return view;
+}
+
+bool MainWindow::hasRememberedPassword(const QString& path) const {
+    return passwords_.contains(DocumentRegistry::pathKey(QFileInfo(path).absoluteFilePath()));
+}
+
+void MainWindow::applyAutosaveSettings() {
+    const Settings s;
+    autosave_->setIntervalMinutes(s.get(settings::kAutosaveMinutes));
+    if (s.get(settings::kAutosave)) {
+        autosave_->start();
+    } else {
+        autosave_->stop();
+    }
+}
+
+RecoverDialog* MainWindow::offerRecovery() {
+    if (!Settings().get(settings::kOfferRecovery)) {
+        return nullptr;
+    }
+    std::vector<AutosaveEntry> entries = autosave_->recoverable();
+    if (entries.empty()) {
+        return nullptr;
+    }
+    auto* dialog = new RecoverDialog(std::move(entries), this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    connect(dialog, &RecoverDialog::recoverRequested, this,
+            [this](const std::vector<AutosaveEntry>& chosen) { recoverDocuments(chosen); });
+    connect(dialog, &RecoverDialog::discardRequested, this, [this](const std::vector<AutosaveEntry>& all) {
+        for (const AutosaveEntry& e : all) {
+            autosave_->discard(QString::fromStdWString(e.path.wstring()));
+        }
+    });
+    recover_ = dialog;
+    dialog->open();
+    return dialog;
+}
+
+RecoverDialog* MainWindow::recoverDialog() const { return recover_.data(); }
+
+int MainWindow::recoverDocuments(const std::vector<AutosaveEntry>& entries) {
+    int count = 0;
+    for (const AutosaveEntry& e : entries) {
+        const QString path = QString::fromStdWString(e.path.wstring());
+        const DocumentRegistry::Opened opened =
+            registry_->recover(QString::fromStdWString(autosave_->store().dir().wstring()), e,
+                               passwords_.value(DocumentRegistry::pathKey(path)));
+        if (opened.id == 0) {
+            reportOpenError(path,
+                            tr("Не удалось восстановить изменения: файл изменился или запись повреждена."));
+            continue;
+        }
+        if (opened.existing) {
+            showDocument(tabs().indexOf(opened.id));
+            continue;
+        }
+        addDocumentView(opened, -1);
+        ++count;
+    }
+    return count;
 }
 
 int MainWindow::openFiles(const QStringList& paths, int page) {
@@ -300,6 +439,9 @@ bool MainWindow::closeDocument(int index) {
     const quint64 id = view->id();
     const bool wasHome = isHomeShown();
     RecentFiles::shared().saveView(view->path(), view->currentView());
+    // Сохранено или «Не сохранять» — запись автосохранения больше не нужна.
+    autosave_->discard(&view->session());
+    autosave_->unwatch(&view->session());
     releaseView(view);
     documents_->removeWidget(view);
     delete view;
@@ -542,6 +684,7 @@ void MainWindow::applyPreferences() {
         i18n::install(language);  // окна получат LanguageChange
     }
     setSingleKeyAccelerators(s.get(settings::kSingleKeyAccelerators));
+    applyAutosaveSettings();
     status_->reloadSettings();
     updateActions();
 }
@@ -554,7 +697,7 @@ PropertiesDialog* MainWindow::showProperties(int tab) {
     if (properties_ != nullptr) {
         properties_->close();
     }
-    auto* dialog = new PropertiesDialog(*view, view->isViewOnly(), this);
+    auto* dialog = new PropertiesDialog(*view, !view->canEdit(), this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     if (tab >= 0) {
         dialog->showTab(static_cast<PropertiesDialog::Tab>(tab));
@@ -704,11 +847,7 @@ bool MainWindow::confirmClose(DocumentView& view) {
                                              : CloseAnswer::Cancel;
     }
     if (answer == CloseAnswer::Save) {
-        if (!view.save()) {
-            Toast::notify(this, tr("Не удалось сохранить «%1».").arg(view.title()), Tone::Danger);
-            return false;
-        }
-        return true;
+        return saveFlow_->save(view);  // ошибку и подписи объясняет SaveFlow
     }
     return answer == CloseAnswer::Discard;
 }
@@ -729,6 +868,7 @@ void MainWindow::closeEvent(QCloseEvent* event) {
         session::save(state);
         for (int i = 0; i < documentCount(); ++i) {
             RecentFiles::shared().saveView(document(i)->path(), document(i)->currentView());
+            autosave_->discard(&document(i)->session());  // сохранено или «Не сохранять»
         }
         closing_ = true;
     }
@@ -806,9 +946,7 @@ void MainWindow::saveCurrent() {
         saveAsPdf(view);
         return;
     }
-    if (!view->save()) {
-        Toast::notify(this, tr("Не удалось сохранить «%1».").arg(view->title()), Tone::Danger);
-    }
+    saveFlow_->save(*view);
 }
 
 void MainWindow::saveCurrentAs() {
@@ -820,25 +958,7 @@ void MainWindow::saveCurrentAs() {
         saveAsPdf(view);
         return;
     }
-    const QString file =
-        QFileDialog::getSaveFileName(this, tr("Сохранить как"), view->path(), tr("Документы PDF (*.pdf)"));
-    if (file.isEmpty()) {
-        return;
-    }
-    bool ok = false;
-    try {
-        ok = view->session().saveAs(file).result().ok();
-    } catch (const std::exception&) {
-        ok = false;
-    }
-    if (!ok) {
-        Toast::notify(this, tr("Не удалось сохранить «%1».").arg(QFileInfo(file).fileName()), Tone::Danger);
-        return;
-    }
-    const int index = tabs().indexOf(view->id());
-    tabs().setTabText(index, view->title());
-    tabs().setTabToolTip(index, QDir::toNativeSeparators(view->path()));
-    retranslateTitle();
+    saveFlow_->saveAs(*view);
 }
 
 // Не-PDF → новый PDF рядом (страницы как есть), затем он открывается во вкладке (view-01).

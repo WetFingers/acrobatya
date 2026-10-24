@@ -55,6 +55,11 @@ struct SaveOptions {
     std::optional<SaveEncryption> encryption;
     bool allowBreakingSignatures = false;  // «Сохранить как копию» подписанного с полной записью
     bool linearize = false;                // «Быстрый просмотр в Интернете» (qpdf; подписанный — нельзя)
+    // «Сохранить как → Параметры» (2.5): уточнения полной записи (Full, FullOptimized; инкремент их не
+    // применяет); nullopt — как решил режим.
+    std::optional<bool> objectStreams;   // потоки объектов (do_use_objstms) — меньше файл
+    std::optional<bool> compressImages;  // сжать несжатые картинки (do_compress_images)
+    bool subsetFonts = false;  // встроенные шрифты — подмножествами (pdf_subset_fonts) перед записью
 };
 
 struct SaveReport {

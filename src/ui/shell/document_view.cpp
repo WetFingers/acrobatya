@@ -14,6 +14,7 @@
 #include "ui/shell/message_bar.h"
 #include "ui/theme/theme.h"
 #include "ui/view/page_view.h"
+#include "ui/view/tool_controller.h"
 #include "ui/widgets/message_bar.h"
 
 namespace ot::ui {
@@ -32,6 +33,7 @@ DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool*
     column->addWidget(view_, 1);
     view_->setDocument(session_.get(), pool, cache);
     setFocusProxy(view_);
+    view_->tools().setEditable(canEdit());
     find_ = new FindBar(*session_, *view_, this);
     find_->installEventFilter(this);
 
@@ -63,6 +65,15 @@ QString DocumentView::path() const { return session_->path(); }
 QString DocumentView::title() const { return QFileInfo(session_->path()).fileName(); }
 
 bool DocumentView::isViewOnly() const { return !session_->summary().isPdf; }
+
+void DocumentView::setReadOnly(bool readOnly) {
+    if (readOnly_ == readOnly) {
+        return;
+    }
+    readOnly_ = readOnly;
+    view_->tools().setEditable(canEdit());
+    emit readOnlyChanged(readOnly);
+}
 
 MessageBar* DocumentView::addMessage(Tone tone, const QString& text) { return stack_->add(tone, text); }
 

@@ -53,7 +53,7 @@ void MainWindow::registerCommands() {
     auto hasDoc = [this] { return currentDocument() != nullptr; };
     auto editable = [this] {
         DocumentView* d = currentDocument();
-        return d != nullptr && !d->isViewOnly();
+        return d != nullptr && d->canEdit();
     };
     auto onView = [this](std::function<void(PageView&)> fn) -> std::function<void()> {
         return [this, fn = std::move(fn)] {

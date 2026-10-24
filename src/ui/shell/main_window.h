@@ -12,9 +12,13 @@
 #include <QMainWindow>
 #include <QPointer>
 
+#include <QHash>
+
 #include <functional>
 #include <memory>
+#include <vector>
 
+#include "services/document_registry.h"
 #include "services/document_session.h"
 #include "services/session_store.h"
 #include "services/settings_keys.h"
@@ -24,6 +28,7 @@ class QSplitter;
 class QStackedWidget;
 
 namespace ot {
+class AutosaveRunner;
 class CommandRegistry;
 class DocumentRegistry;
 class DocumentSession;
@@ -39,9 +44,12 @@ class DocumentView;
 class GlobalBar;
 class FullScreenWindow;
 class NavPane;
+class PasswordDialog;
 class PreferencesDialog;
 class PropertiesDialog;
 class ReadModeBar;
+class RecoverDialog;
+class SaveFlow;
 class SearchWindow;
 class StatusBar;
 class ToolPanel;
@@ -107,6 +115,23 @@ public:
 
     // Ответ на «Сохранить изменения?» (тесты подставляют свой; по умолчанию — QMessageBox).
     void setCloseConfirm(CloseConfirm confirm) { confirm_ = std::move(confirm); }
+
+    // Сохранение (2.5, save_flow.h): Ctrl+S, Ctrl+Shift+S, «Сохранить» при закрытии.
+    SaveFlow& saveFlow() const { return *saveFlow_; }
+    // Автосохранение открытых PDF (services/autosave_runner.h; Установки → Документы): «Не сохранять» и
+    // закрытие удаляют запись документа.
+    AutosaveRunner& autosave() const { return *autosave_; }
+    // Пароль при открытии (2.5, password_dialog.h: три попытки, «запомнить на время сеанса» — только в памяти
+    // окна); тесты подставляют ответ, по умолчанию — exec(). true — диалог принят.
+    using PasswordPrompt = std::function<bool(PasswordDialog&)>;
+    void setPasswordPrompt(PasswordPrompt prompt) { passwordPrompt_ = std::move(prompt); }
+    bool hasRememberedPassword(const QString& path) const;
+    // При запуске (2.5): записи автосохранения → «Восстановить несохранённые изменения?» (open(), не
+    // блокирует); nullptr — записей нет или «Предлагать восстановление» выключено.
+    RecoverDialog* offerRecovery();
+    RecoverDialog* recoverDialog() const;
+    // Открыть документы с восстановленными правками (файл не сохранён, история отмены — из журнала).
+    int recoverDocuments(const std::vector<AutosaveEntry>& entries);
 
     // Сообщение «появится в версии 0.N» — тостом над окном (заглушки будущих этапов).
     void notifyLater(const QString& what, int stage);
@@ -186,12 +211,20 @@ private:
     void updateStatusVisibility();
     void applyInitialView(DocumentView* view, const OpenSummary& summary);
     void openAttachmentPdf(const QString& path, const QString& title);
+    // Вкладка для открытого реестром документа: вид, полосы «восстановлен» / PDF/A, автосохранение.
+    DocumentView* addDocumentView(const DocumentRegistry::Opened& opened, int page);
+    void applyAutosaveSettings();
     void showInExplorer();
 
     std::unique_ptr<RenderPool> pool_;
     std::unique_ptr<TileCache> cache_;
     std::unique_ptr<DocumentRegistry> registry_;
+    std::unique_ptr<AutosaveRunner> autosave_;
     CommandRegistry* commands_ = nullptr;
+    SaveFlow* saveFlow_ = nullptr;
+    PasswordPrompt passwordPrompt_;
+    QHash<QString, QString> passwords_;  // «запомнить на время сеанса»: ключ пути → пароль (только память)
+    QPointer<RecoverDialog> recover_;
 
     GlobalBar* globalBar_ = nullptr;
     QSplitter* body_ = nullptr;

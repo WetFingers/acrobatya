@@ -254,6 +254,39 @@ TEST(saver, save_as_moves_document_to_new_file_and_keeps_original) {
     expectQpdfClean(path);
 }
 
+// «Сохранить как → Параметры» (2.5): полная запись без потоков объектов — в файле нет /ObjStm, с ними — есть;
+// подмножества шрифтов — файл открывается, текст на месте; инкремент параметры полной записи не применяет.
+TEST(saver, save_as_options_object_streams_and_font_subsets) {
+    ot::test::TempDir dir;
+    const fs::path source = copyFixture(dir.path(), L"fixtures/demo/report.pdf", L"report.pdf");
+    auto doc = Document::openOrThrow(source);
+    SaveOptions plain;
+    plain.mode = SaveMode::Full;
+    plain.objectStreams = false;
+    plain.compressImages = false;
+    const fs::path a = dir.path() / L"без-потоков.pdf";
+    ASSERT_TRUE(Saver::save(*doc, a, plain).ok());
+    EXPECT_EQ(ot::paths::readFile(a).find("/ObjStm"), std::string::npos);
+    SaveOptions packed;
+    packed.mode = SaveMode::Full;
+    packed.objectStreams = true;
+    packed.subsetFonts = true;
+    const fs::path b = dir.path() / L"с-потоками.pdf";
+    const SaveReport r = Saver::save(*doc, b, packed);
+    ASSERT_TRUE(r.ok()) << r.message;
+    EXPECT_NE(ot::paths::readFile(b).find("/ObjStm"), std::string::npos);
+    EXPECT_EQ(doc->pageCount(), 12);
+    expectQpdfClean(b);
+    // Инкремент: параметры полной записи не применяются.
+    lightEdit(*doc);
+    SaveOptions incremental;
+    incremental.mode = SaveMode::Incremental;
+    incremental.objectStreams = false;
+    incremental.subsetFonts = true;
+    ASSERT_TRUE(Saver::save(*doc, incremental).ok());
+    EXPECT_EQ(ot::test::rootName(*doc, "PageMode"), "UseOutlines");
+}
+
 TEST(saver, locked_target_keeps_edits_in_temp_file_and_next_save_replaces) {
     ot::test::TempDir dir;
     const std::string original = ot::test::makePdf(ot::MuContext::global(), 2);

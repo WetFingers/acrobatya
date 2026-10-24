@@ -216,6 +216,10 @@ int main(int argc, char** argv) {
     } else if (MainWindow::restoreSessionEnabled()) {
         window.restoreSession(ot::session::load());
     }
+    if (opts.smokeSeconds <= 0) {
+        // Программа закрылась с несохранёнными правками — «Восстановить несохранённые изменения?» (2.5).
+        QTimer::singleShot(0, &window, [&window] { window.offerRecovery(); });
+    }
     if (opts.smokeSeconds > 0) {
         QTimer::singleShot(opts.smokeSeconds * 1000, &app, &QApplication::quit);
     }

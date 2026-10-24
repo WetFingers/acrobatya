@@ -183,6 +183,7 @@ void StatusBar::setDocument(DocumentView* view) {
     if (view_ != nullptr) {
         disconnect(&view_->view(), nullptr, this, nullptr);
         disconnect(&view_->session(), nullptr, this, nullptr);
+        disconnect(view_, &DocumentView::readOnlyChanged, this, nullptr);
     }
     view_ = view;
     docGroup_->setVisible(view_ != nullptr);
@@ -199,6 +200,7 @@ void StatusBar::setDocument(DocumentView* view) {
                 Qt::QueuedConnection);
         connect(&view_->session(), &DocumentSession::saved, this, &StatusBar::refreshAll,
                 Qt::QueuedConnection);
+        connect(view_, &DocumentView::readOnlyChanged, this, &StatusBar::refreshIndicators);
     }
     refreshAll();
 }
@@ -257,7 +259,7 @@ void StatusBar::refreshIndicators() {
     const OpenSummary s = view_ != nullptr ? view_->session().summary() : OpenSummary{};
     signed_->setVisible(view_ != nullptr && s.isSigned);
     pdfa_->setVisible(view_ != nullptr && s.pdfa);
-    readOnly_->setVisible(view_ != nullptr && view_->isViewOnly());
+    readOnly_->setVisible(view_ != nullptr && (view_->isViewOnly() || view_->isReadOnly()));
 }
 
 void StatusBar::refreshTasks() {

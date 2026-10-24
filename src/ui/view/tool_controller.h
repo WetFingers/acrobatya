@@ -51,6 +51,10 @@ public:
 
     bool pinned() const noexcept { return pinned_; }
     void setPinned(bool pinned);
+    // Документ можно править (2.5: PDF/A в режиме просмотра, не PDF — нет): «Выбор объектов» не двигает и не
+    // удаляет пометки.
+    bool editable() const noexcept { return editable_; }
+    void setEditable(bool on) noexcept { editable_ = on; }
     bool singleKeyShortcuts() const noexcept { return singleKeys_; }
     void setSingleKeyShortcuts(bool on) noexcept { singleKeys_ = on; }
 
@@ -101,6 +105,7 @@ private:
     QPointF linkPressPos_;
     bool pinned_ = false;
     bool singleKeys_ = false;
+    bool editable_ = true;
 };
 
 }  // namespace ot::ui
