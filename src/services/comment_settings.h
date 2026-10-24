@@ -33,6 +33,9 @@ struct ToolStyle {
     std::optional<annot::AnnotColor> textColor;
     std::optional<int> align;
     std::optional<annot::AnnotColor> fill;
+    // Линия, стрелка, ломаная — концы /LE (значения annot::LineEnding).
+    std::optional<int> lineStart;
+    std::optional<int> lineEnd;
 };
 ToolStyle toolStyle(const Settings& settings, const QString& tool);
 void setToolStyle(Settings& settings, const QString& tool, const ToolStyle& style);

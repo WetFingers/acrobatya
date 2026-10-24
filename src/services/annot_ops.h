@@ -26,6 +26,7 @@ inline constexpr const char* kPasteStep = "Paste annotations";
 inline constexpr const char* kReplaceTextStep = "Replace text";
 inline constexpr const char* kEditNoteStep = "Edit note text";
 inline constexpr const char* kEditTextBoxStep = "Edit text box";
+inline constexpr const char* kMoveVertexStep = "Move vertex";
 
 QFuture<std::vector<AnnotInfo>> list(DocumentSession& session, int page,
                                      TaskPriority priority = TaskPriority::Normal);

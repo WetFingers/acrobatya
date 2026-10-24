@@ -6,7 +6,10 @@
 // документе (на закрытии — «Не сохранять»); кадр — когда последний шаг сделан и тайлы перерисованы.
 // 5.2: annot-freetext — текстовые поля (Arial с рамкой и заливкой, Segoe UI, Times New Roman по центру) и
 // «Формат текста» панели; annot-callout — выноска с открытой стрелкой к строке; annot-text-format — открытый
-// редактор нового поля с набранным текстом и форматом панели (Times New Roman 16, синий, по центру).
+// редактор нового поля с набранным текстом и форматом панели (Times New Roman 16, синий, по центру);
+// annot-shapes — прямоугольник с заливкой, овал, линия, стрелка, многоугольник и ломаная с концами (панель —
+// «Прямоугольник»); annot-cloud — облако вокруг абзаца и облачный прямоугольник; annot-vertex-edit —
+// выбранный «Выбором объектов» многоугольник с маркерами вершин.
 #include <QApplication>
 #include <QCoreApplication>
 #include <QFuture>
@@ -326,6 +329,99 @@ void textFormatScene(MainWindow& w, DocumentView& doc, const TextPtr& /*text*/) 
     QTimer::singleShot(200, &w, [&w] { markDone(w); });
 }
 
+annot::AnnotProps sceneShape(CommentAction action, std::uint32_t color, float width) {
+    annot::AnnotProps p = sceneProps(action);
+    p.color = annot::AnnotColor::fromRgb(color);
+    p.borderWidth = width;
+    p.interiorColor = {};
+    p.opacity = 1;
+    p.lineStartStyle = annot::LineEnding::None;
+    p.lineEndStyle = annot::LineEnding::None;
+    return p;
+}
+
+void shapesScene(MainWindow& w, DocumentView& doc, const TextPtr& /*text*/) {
+    sceneCommentTool().start(CommentAction::Rectangle);
+    annot::AnnotProps rect = sceneShape(CommentAction::Rectangle, 0xE53935, 2);
+    rect.rect = {90, 360, 250, 450};
+    rect.interiorColor = annot::AnnotColor::fromRgb(0xFFF59D);
+    rect.opacity = 0.8f;
+    annot::create(doc.session(), 0, std::move(rect));
+    annot::AnnotProps oval = sceneShape(CommentAction::Oval, 0x1E88E5, 2);
+    oval.rect = {290, 360, 450, 450};
+    annot::create(doc.session(), 0, std::move(oval));
+    annot::AnnotProps line = sceneShape(CommentAction::Line, 0x43A047, 2);
+    line.lineStart = {90, 500};
+    line.lineEnd = {250, 500};
+    annot::create(doc.session(), 0, std::move(line));
+    annot::AnnotProps arrow = sceneShape(CommentAction::Arrow, 0xE53935, 2);
+    arrow.lineStart = {290, 540};
+    arrow.lineEnd = {450, 490};
+    arrow.lineEndStyle = annot::LineEnding::OpenArrow;
+    arrow.intent = "LineArrow";
+    annot::create(doc.session(), 0, std::move(arrow));
+    annot::AnnotProps poly = sceneShape(CommentAction::Polygon, 0x8E24AA, 1.5f);
+    poly.vertices = {{100, 600}, {190, 570}, {250, 640}, {170, 700}, {90, 670}};
+    poly.interiorColor = annot::AnnotColor::fromRgb(0xE1BEE7);
+    annot::create(doc.session(), 0, std::move(poly));
+    annot::AnnotProps polyline = sceneShape(CommentAction::PolyLine, 0x00897B, 2);
+    polyline.vertices = {{290, 690}, {340, 600}, {390, 670}, {450, 590}};
+    polyline.lineEndStyle = annot::LineEnding::ClosedArrow;
+    polyline.lineStartStyle = annot::LineEnding::Circle;
+    annot::create(doc.session(), 0, std::move(polyline)).then(&w, [&w](annot::AnnotRef) { markDone(w); });
+}
+
+void cloudScene(MainWindow& w, DocumentView& doc, const TextPtr& text) {
+    sceneCommentTool().start(CommentAction::Cloud);
+    RectF around{80, 170, 520, 230};
+    if (text->lines().size() > 3) {
+        const RectF a = text->lines()[2].bbox;
+        const RectF b = text->lines()[3].bbox;
+        around = {std::min(a.x0, b.x0) - 10, a.y0 - 8, std::max(a.x1, b.x1) + 10, b.y1 + 8};
+    }
+    annot::AnnotProps cloud = sceneShape(CommentAction::Cloud, 0xE53935, 1.5f);
+    cloud.vertices = {
+        {around.x0, around.y0}, {around.x1, around.y0}, {around.x1, around.y1}, {around.x0, around.y1}};
+    cloud.cloudy = true;
+    cloud.cloudIntensity = 1;
+    cloud.intent = "PolygonCloud";
+    annot::create(doc.session(), 0, std::move(cloud));
+    annot::AnnotProps box = sceneShape(CommentAction::Rectangle, 0x1E88E5, 1.5f);
+    box.rect = {120, 420, 380, 520};
+    box.cloudy = true;
+    box.cloudIntensity = 2;
+    box.interiorColor = annot::AnnotColor::fromRgb(0xE3F2FD);
+    annot::create(doc.session(), 0, std::move(box)).then(&w, [&w](annot::AnnotRef) { markDone(w); });
+}
+
+void vertexScene(MainWindow& w, DocumentView& doc, const TextPtr& /*text*/) {
+    annot::AnnotProps poly = sceneShape(CommentAction::Polygon, 0xE53935, 2);
+    poly.vertices = {{180, 400}, {330, 380}, {400, 480}, {290, 560}, {170, 520}};
+    poly.interiorColor = annot::AnnotColor::fromRgb(0xFFCDD2);
+    poly.opacity = 0.9f;
+    PageView* view = &doc.view();
+    annot::create(doc.session(), 0, std::move(poly)).then(&w, [&w, view, &doc](annot::AnnotRef ref) {
+        ToolRegistry::instance().deactivate();
+        view->tools().setTool(ViewToolId::AnnotSelect);
+        annot::list(doc.session(), 0).then(&w, [&w, view, ref](const std::vector<annot::AnnotInfo>& list) {
+            for (const annot::AnnotInfo& a : list) {
+                if (a.ref == ref) {
+                    view->tools().annotSelect().setSelection({a});
+                }
+            }
+            // Маркеры вершин читаются задачей — кадр, когда они пришли.
+            auto* poll = new QTimer(&w);
+            poll->start(50);
+            QObject::connect(poll, &QTimer::timeout, &w, [&w, view, poll] {
+                if (!view->tools().annotSelect().vertexPoints().empty()) {
+                    poll->deleteLater();
+                    markDone(w);
+                }
+            });
+        });
+    });
+}
+
 }  // namespace
 
 std::vector<Scene> commentScenes() {
@@ -408,6 +504,29 @@ std::vector<Scene> commentScenes() {
     format.make = commentScene(doc, textFormatScene);
     format.ready = commentReady;
     scenes.push_back(format);
+
+    Scene shapes;
+    shapes.name = QStringLiteral("annot-shapes");
+    shapes.make = commentScene(doc, shapesScene);
+    shapes.ready = commentReady;
+    scenes.push_back(shapes);
+
+    Scene shapesDark = shapes;
+    shapesDark.name = QStringLiteral("annot-shapes-dark");
+    shapesDark.theme = ThemeChoice::Dark;
+    scenes.push_back(shapesDark);
+
+    Scene cloud;
+    cloud.name = QStringLiteral("annot-cloud");
+    cloud.make = commentScene(doc, cloudScene);
+    cloud.ready = commentReady;
+    scenes.push_back(cloud);
+
+    Scene vertex;
+    vertex.name = QStringLiteral("annot-vertex-edit");
+    vertex.make = commentScene(doc, vertexScene);
+    vertex.ready = commentReady;
+    scenes.push_back(vertex);
     return scenes;
 }
 

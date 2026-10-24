@@ -82,6 +82,12 @@ ToolStyle toolStyle(const Settings& settings, const QString& tool) {
     if (o.contains(QLatin1String("fill"))) {
         style.fill = parseColor(o.value(QLatin1String("fill")).toString());
     }
+    if (o.contains(QLatin1String("lineStart"))) {
+        style.lineStart = std::clamp(o.value(QLatin1String("lineStart")).toInt(0), 0, 9);
+    }
+    if (o.contains(QLatin1String("lineEnd"))) {
+        style.lineEnd = std::clamp(o.value(QLatin1String("lineEnd")).toInt(0), 0, 9);
+    }
     return style;
 }
 
@@ -114,6 +120,12 @@ void setToolStyle(Settings& settings, const QString& tool, const ToolStyle& styl
     }
     if (style.fill) {
         o.insert(QLatin1String("fill"), colorName(*style.fill));
+    }
+    if (style.lineStart) {
+        o.insert(QLatin1String("lineStart"), *style.lineStart);
+    }
+    if (style.lineEnd) {
+        o.insert(QLatin1String("lineEnd"), *style.lineEnd);
     }
     all.insert(tool, o);
     settings.set(settings::kCommentToolStyles,
@@ -155,6 +167,14 @@ annot::AnnotProps newProps(const Settings& settings, annot::AnnotType type, cons
     }
     if (style.fill) {
         p.interiorColor = *style.fill;
+    }
+    if (style.lineStart) {
+        p.lineStartStyle = static_cast<annot::LineEnding>(*style.lineStart);
+    }
+    if (style.lineEnd) {
+        p.lineEndStyle = static_cast<annot::LineEnding>(*style.lineEnd);
+    } else if (tool == QLatin1String("arrow")) {
+        p.lineEndStyle = annot::LineEnding::OpenArrow;  // стрелка — с открытой стрелкой на конце
     }
     p.author = author(settings);
     return p;

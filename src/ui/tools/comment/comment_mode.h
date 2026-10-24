@@ -1,26 +1,26 @@
-// Режим «Добавить комментарии» вида (план 5.1; эталон 3.4 «Инструмент», 6.2 п. 3; comment-01, comment-02,
-// comment-03, comment-06): инструмент вида в слоте ViewToolId::Comment (ставит CommentTool), действие —
-// CommentAction:
+// Режим «Добавить комментарии» вида (план 5.1, 5.2; эталон 3.4 «Инструмент», 6.2 п. 3; comment-01…07):
+// инструмент вида в слоте ViewToolId::Comment (ставит CommentTool), действие — CommentAction:
 //   Записка (S, Ctrl+6) — щелчок ставит значок /Text и открывает окно записки (PopupWidget) для набора;
 //     щелчок по своей записке — открывает её окно (note_tool.cpp);
 //   Выделить (U) / Подчеркнуть / Зачеркнуть / Волнистая — протягивание по тексту, как «Выделение» (квады
 //     core/text/selection.h → /QuadPoints), без текста «Выделить» — область рамкой (markup_tool.cpp);
-//   Вставить текст — каретка /Caret у ближайшей границы символа и окно для вставляемого текста; Заменить
-//   текст
-//     — выделенное зачёркивается (/StrikeOut /IT /StrikeOutTextEdit), каретка в конце, обе — группа /IRT
-//     /RT /Group одним шагом истории (caret_tool.cpp);
+//   Вставить текст — каретка /Caret у ближайшей границы символа и окно для вставляемого текста;
+//     Заменить текст — выделенное зачёркивается (/StrikeOut /IT /StrikeOutTextEdit), каретка в конце,
+//     обе — группа /IRT /RT /Group одним шагом истории (caret_tool.cpp);
 //   Рисовать (D) — штрих мышью: оверлей — кривые Безье по точкам, в /InkList — точки после Дугласа–Пекера
 //     (ε = 0,5 пт) (ink_tool.cpp); Ластик — круг r = 6 px режет штрихи Ink под курсором (eraser_tool.cpp);
-//   Текстовое поле (J, 5.2) — рамка протягиванием (щелчок — поле шириной kTextBoxWidth) и набор прямо на
-//   странице
-//     (InlineTextEditor); щелчок по своему полю — его правка (freetext_tool.cpp); Текстовая выноска — нажатие
-//     — конец стрелки, отпускание — поле (щелчок — поле выше и правее), колено — слева от поля
-//     (callout_tool.cpp).
+//   Текстовое поле (J, 5.2) — рамка протягиванием (щелчок — поле шириной kTextBoxWidth), набор прямо на
+//     странице (InlineTextEditor); щелчок по своему полю — его правка (freetext_tool.cpp);
+//   Текстовая выноска — нажатие — конец стрелки, отпускание — поле (щелчок — поле выше и правее), колено —
+//     слева от поля (callout_tool.cpp);
+//   Фигуры (5.2) — линия, стрелка, прямоугольник (R), овал — протягиванием; многоугольник, облако, ломаная
+//     — щелчками по вершинам, конец — двойной щелчок, Enter или щелчок по первой вершине, Backspace —
+//     убрать вершину; Shift — линия под 45°, квадрат, круг (shape_tools.cpp).
 // Каждое действие — операция журнала (services/annot_ops.h); стиль — умолчания ядра + свой стиль инструмента
-// (services/comment_settings.h). Записка, вставка, замена, текстовое поле и выноска — однократные (после
-// действия — прежний инструмент, если не «закреплён», comment-42); разметка, карандаш и ластик остаются.
-// Правка комментариев запрещена (защищённый просмотр, только чтение, право /P) — setLocked: курсор «нельзя»,
-// действия нет.
+// (services/comment_settings.h). Записка, вставка, замена, текстовое поле, выноска и фигуры — однократные
+// (после действия — прежний инструмент, если не «закреплён», comment-42); разметка, карандаш и ластик
+// остаются. Правка комментариев запрещена (защищённый просмотр, только чтение, право /P) — setLocked: курсор
+// «нельзя», действия нет.
 #pragma once
 
 #include <QElapsedTimer>
@@ -55,7 +55,14 @@ enum class CommentAction {
     Ink,
     Eraser,
     TextBox,
-    Callout
+    Callout,
+    Line,
+    Arrow,
+    Rectangle,
+    Oval,
+    Polygon,
+    Cloud,
+    PolyLine
 };
 
 class CommentMode : public QObject, public ViewTool {
@@ -81,6 +88,8 @@ public:
     bool mousePress(QMouseEvent* event) override;
     bool mouseMove(QMouseEvent* event) override;
     bool mouseRelease(QMouseEvent* event) override;
+    bool mouseDoubleClick(QMouseEvent* event) override;
+    bool keyPress(QKeyEvent* event) override;
     void paintOverlay(QPainter& painter) override;
     QCursor cursor(QPointF point, Qt::KeyboardModifiers modifiers) const override;
     bool cancel() override;
@@ -95,6 +104,13 @@ public:
     static annot::AnnotType typeOf(CommentAction action);
     // Разметка текста: Highlight, Underline, StrikeOut, Squiggly.
     static bool isMarkup(CommentAction action) noexcept;
+    // Фигуры: протягиванием (линия, стрелка, прямоугольник, овал) и по вершинам (многоугольник, облако,
+    // ломаная).
+    static bool isDragShape(CommentAction action) noexcept;
+    static bool isPolyShape(CommentAction action) noexcept;
+    // Вершины многоугольника, облака или ломаной, поставленные до конца (пункты страницы polyPage()).
+    const std::vector<QPointF>& polyVertices() const noexcept { return poly_; }
+    int polyPage() const noexcept { return polyPage_; }
 
     // Правка комментариев запрещена: причина по-русски; пусто — можно.
     void setLocked(const QString& reason);
@@ -157,6 +173,12 @@ private:
     void textBoxRelease();
     // callout_tool.cpp
     void calloutRelease();
+    // shape_tools.cpp
+    QPointF shapeEnd() const;
+    void shapeRelease();
+    void polyPress(const Locator& at, bool shift);
+    void polyFinish();
+    void paintShape(QPainter& painter);
     void paintTextPreview(QPainter& painter);
     bool clicked() const;
 
@@ -173,6 +195,9 @@ private:
     int attempts_ = 0;
     std::vector<QPointF> stroke_;  // карандаш и ластик: путь мыши, пункты страницы page_
     QPointF hover_;                // курсор (вьюпорт) — круг ластика
+    bool shift_ = false;           // Shift при протягивании фигуры
+    std::vector<QPointF> poly_;    // вершины фигуры по щелчкам (пункты страницы polyPage_)
+    int polyPage_ = -1;
 };
 
 }  // namespace ot::ui

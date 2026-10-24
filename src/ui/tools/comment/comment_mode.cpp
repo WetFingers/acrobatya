@@ -52,6 +52,20 @@ QString CommentMode::actionTitle(CommentAction action) {
             return QCoreApplication::translate("ot::ui::CommentMode", "Текстовое поле");
         case CommentAction::Callout:
             return QCoreApplication::translate("ot::ui::CommentMode", "Текстовая выноска");
+        case CommentAction::Line:
+            return QCoreApplication::translate("ot::ui::CommentMode", "Линия");
+        case CommentAction::Arrow:
+            return QCoreApplication::translate("ot::ui::CommentMode", "Стрелка");
+        case CommentAction::Rectangle:
+            return QCoreApplication::translate("ot::ui::CommentMode", "Прямоугольник");
+        case CommentAction::Oval:
+            return QCoreApplication::translate("ot::ui::CommentMode", "Овал");
+        case CommentAction::Polygon:
+            return QCoreApplication::translate("ot::ui::CommentMode", "Многоугольник");
+        case CommentAction::Cloud:
+            return QCoreApplication::translate("ot::ui::CommentMode", "Облако");
+        case CommentAction::PolyLine:
+            return QCoreApplication::translate("ot::ui::CommentMode", "Ломаная");
     }
     return {};
 }
@@ -80,6 +94,20 @@ QString CommentMode::actionKey(CommentAction action) {
             return QStringLiteral("textBox");
         case CommentAction::Callout:
             return QStringLiteral("callout");
+        case CommentAction::Line:
+            return QStringLiteral("line");
+        case CommentAction::Arrow:
+            return QStringLiteral("arrow");
+        case CommentAction::Rectangle:
+            return QStringLiteral("rectangle");
+        case CommentAction::Oval:
+            return QStringLiteral("oval");
+        case CommentAction::Polygon:
+            return QStringLiteral("polygon");
+        case CommentAction::Cloud:
+            return QStringLiteral("cloud");
+        case CommentAction::PolyLine:
+            return QStringLiteral("polyline");
     }
     return {};
 }
@@ -105,6 +133,18 @@ annot::AnnotType CommentMode::typeOf(CommentAction action) {
         case CommentAction::TextBox:
         case CommentAction::Callout:
             return annot::AnnotType::FreeText;
+        case CommentAction::Line:
+        case CommentAction::Arrow:
+            return annot::AnnotType::Line;
+        case CommentAction::Rectangle:
+            return annot::AnnotType::Square;
+        case CommentAction::Oval:
+            return annot::AnnotType::Circle;
+        case CommentAction::Polygon:
+        case CommentAction::Cloud:
+            return annot::AnnotType::Polygon;
+        case CommentAction::PolyLine:
+            return annot::AnnotType::PolyLine;
     }
     return annot::AnnotType::Unknown;
 }
@@ -114,10 +154,20 @@ bool CommentMode::isMarkup(CommentAction action) noexcept {
            action == CommentAction::StrikeOut || action == CommentAction::Squiggly;
 }
 
+bool CommentMode::isDragShape(CommentAction action) noexcept {
+    return action == CommentAction::Line || action == CommentAction::Arrow ||
+           action == CommentAction::Rectangle || action == CommentAction::Oval;
+}
+
+bool CommentMode::isPolyShape(CommentAction action) noexcept {
+    return action == CommentAction::Polygon || action == CommentAction::Cloud ||
+           action == CommentAction::PolyLine;
+}
+
 bool CommentMode::oneShot() const noexcept {
     return action_ == CommentAction::Note || action_ == CommentAction::InsertText ||
            action_ == CommentAction::ReplaceText || action_ == CommentAction::TextBox ||
-           action_ == CommentAction::Callout;
+           action_ == CommentAction::Callout || isDragShape(action_) || isPolyShape(action_);
 }
 
 void CommentMode::setAction(CommentAction action) {
@@ -183,6 +233,10 @@ bool CommentMode::mousePress(QMouseEvent* event) {
         return true;
     }
     pressViewport_ = event->position();
+    if (isPolyShape(action_)) {
+        polyPress(at, (event->modifiers() & Qt::ShiftModifier) != 0);
+        return true;
+    }
     switch (action_) {
         case CommentAction::Note:
             notePress(at);
@@ -193,7 +247,8 @@ bool CommentMode::mousePress(QMouseEvent* event) {
         default:
             break;
     }
-    // Разметка, замена, карандаш и ластик — протягивание.
+    // Разметка, замена, карандаш, ластик, поле, выноска и фигуры — протягивание.
+    shift_ = (event->modifiers() & Qt::ShiftModifier) != 0;
     pressing_ = true;
     page_ = at.page;
     start_ = at.point;
@@ -208,6 +263,12 @@ bool CommentMode::mousePress(QMouseEvent* event) {
 }
 
 bool CommentMode::mouseMove(QMouseEvent* event) {
+    if (!poly_.empty()) {
+        hover_ = event->position();
+        shift_ = (event->modifiers() & Qt::ShiftModifier) != 0;
+        view_.viewport()->update();  // резинка к следующей вершине
+        return true;
+    }
     if (!pressing_) {
         if (action_ == CommentAction::Eraser) {
             hover_ = event->position();
@@ -219,6 +280,7 @@ bool CommentMode::mouseMove(QMouseEvent* event) {
     const QSizeF size = view_.pageSizePoints(page_);
     end_ = QPointF(std::clamp(p.x(), 0.0, size.width()), std::clamp(p.y(), 0.0, size.height()));
     hover_ = event->position();
+    shift_ = (event->modifiers() & Qt::ShiftModifier) != 0;
     if (action_ == CommentAction::Ink || action_ == CommentAction::Eraser) {
         stroke_.push_back(end_);
     } else if (action_ != CommentAction::TextBox && action_ != CommentAction::Callout) {
@@ -242,6 +304,8 @@ bool CommentMode::mouseRelease(QMouseEvent* event) {
         textBoxRelease();
     } else if (action_ == CommentAction::Callout) {
         calloutRelease();
+    } else if (isDragShape(action_)) {
+        shapeRelease();
     } else {
         attempts_ = 0;
         finishDrag(request_);
@@ -279,8 +343,10 @@ bool CommentMode::clicked() const {
 }
 
 bool CommentMode::cancel() {
-    const bool had = pressing_;
+    const bool had = pressing_ || !poly_.empty();
     pressing_ = false;
+    poly_.clear();
+    polyPage_ = -1;
     preview_ = {};
     stroke_.clear();
     ++request_;
@@ -309,6 +375,10 @@ void CommentMode::paintOverlay(QPainter& painter) {
         paintEraser(painter);
         return;
     }
+    if (isPolyShape(action_)) {
+        paintShape(painter);
+        return;
+    }
     if (!pressing_ || page_ < 0) {
         return;
     }
@@ -318,6 +388,10 @@ void CommentMode::paintOverlay(QPainter& painter) {
     }
     if (action_ == CommentAction::TextBox || action_ == CommentAction::Callout) {
         paintTextPreview(painter);
+        return;
+    }
+    if (isDragShape(action_)) {
+        paintShape(painter);
         return;
     }
     const QTransform toView = view_.pageTransform(page_);
@@ -356,6 +430,13 @@ QCursor CommentMode::cursor(QPointF point, Qt::KeyboardModifiers /*modifiers*/) 
         case CommentAction::Eraser:
         case CommentAction::TextBox:
         case CommentAction::Callout:
+        case CommentAction::Line:
+        case CommentAction::Arrow:
+        case CommentAction::Rectangle:
+        case CommentAction::Oval:
+        case CommentAction::Polygon:
+        case CommentAction::Cloud:
+        case CommentAction::PolyLine:
             return QCursor(Qt::CrossCursor);
         default:
             return QCursor(Qt::IBeamCursor);

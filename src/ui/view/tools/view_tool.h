@@ -401,6 +401,12 @@ public:
     // Рамки выбранных на экране (с предпросмотром перетаскивания) и ручка под точкой вьюпорта.
     std::vector<QRectF> frames() const;
     std::optional<Handle> handleAt(QPointF viewportPoint) const;
+    // Вершины и концы одной выбранной (5.2, comment-05, comment-07): линия — два конца, многоугольник и
+    // ломаная — вершины (вместо ручек рамки), выноска FreeText — конец стрелки и колено; маркеры — кружки,
+    // перетаскивание (Shift — под 45° к соседней точке) — правка геометрии шагом «Move vertex». Пункты
+    // страницы выбранной; пусто — маркеров нет (или ещё не прочитаны).
+    const std::vector<QPointF>& vertexPoints() const noexcept { return vertexPoints_; }
+    std::optional<int> vertexAt(QPointF viewportPoint) const;
     // Аннотации страницы (для рамки выбора): загружены — указатель, нет — запрос и nullptr.
     const std::vector<AnnotInfo>* annotList(int page);
     bool hasAnnotList(int page) const { return lists_.contains(page); }
@@ -409,7 +415,7 @@ public:
     void pageChanged(int page);
 
 private:
-    enum class Drag { None, Pending, Move, Resize, Marquee };
+    enum class Drag { None, Pending, Move, Resize, Marquee, Vertex };
     struct Press {
         QPointF viewport;
         QPoint global;
@@ -432,6 +438,9 @@ private:
     void publish();
     void selectionChanged();
     void selectPasted(int page, std::vector<AnnotRef> refs);
+    void loadVertices(bool retry = false);
+    QPointF draggedVertex() const;
+    void finishVertex();
 
     std::vector<AnnotInfo> selected_;
     Drag drag_ = Drag::None;
@@ -447,6 +456,15 @@ private:
     QSet<int> refresh_;           // страницы, где рамки выбранных ждут нового списка
     std::map<int, RectF> bands_;  // рамка выбора по страницам (пункты), ждёт списков
     std::uint32_t hiddenTypes_ = 0;
+    // Маркеры вершин (5.2).
+    std::vector<QPointF> vertexPoints_;
+    std::vector<PointF> callout_;  // выноска FreeText целиком (3 точки)
+    annot::AnnotType vertexType_ = annot::AnnotType::Unknown;
+    AnnotRef vertexRef_;
+    int vertex_ = -1;
+    quint64 vertexRequest_ = 0;
+    int vertexTries_ = 0;
+    bool vertexShift_ = false;
 };
 
 }  // namespace ot::ui

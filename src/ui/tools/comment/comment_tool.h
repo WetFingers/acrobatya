@@ -2,10 +2,12 @@
 // comment-01, comment-02, comment-03, comment-42; 5.2 — comment-04, comment-05, comment-09): включение —
 // панель слева 320 с действиями группы (Записка, Текстовое поле, Текстовая выноска, Выделить, Подчеркнуть,
 // Зачеркнуть, Волнистая, Вставить текст, Заменить текст, Рисовать, Ластик); выбор действия — режим
-// CommentMode в слоте ViewToolId::Comment вида вкладки. Клавиши — S и Ctrl+6 (записка), J (текстовое поле), U
-// (выделить текст), D. «Формат текста» (шрифт, кегль, цвет, выравнивание) правит открытый редактор поля,
-// выбранные поля FreeText или — без них — стиль следующего поля. Добавлять комментарии нельзя (защищённый
-// просмотр, только чтение, не PDF, право /P) — кнопки серые, причина — строкой панели и подсказкой.
+// CommentMode в слоте ViewToolId::Comment вида вкладки; «Фигуры» — линия, стрелка, прямоугольник, овал,
+// многоугольник, облако, ломаная (comment-07). Клавиши — S и Ctrl+6 (записка), J (текстовое поле), U
+// (выделить текст), D, R (прямоугольник). «Формат текста» (шрифт, кегль, цвет, выравнивание) правит открытый
+// редактор поля, выбранные поля FreeText или — без них — стиль следующего поля. Добавлять комментарии нельзя
+// (защищённый просмотр, только чтение, не PDF, право /P) — кнопки серые, причина — строкой панели и
+// подсказкой.
 #pragma once
 
 #include <QLabel>
@@ -25,6 +27,7 @@
 #include "ui/widgets/segmented_bar.h"
 #include "ui/widgets/tool_button.h"
 
+class QFormLayout;
 class QVBoxLayout;
 
 namespace ot::ui {
@@ -72,6 +75,10 @@ public:
     NumberField* fontSizeField() const { return fontSize_; }
     ColorSwatch* textColorSwatch() const { return textColor_; }
     SegmentedBar* alignBar() const { return align_; }
+    // Фигуры (5.2, comment-07): заливка /IC, концы линии /LE.
+    ColorSwatch* fillSwatch() const { return fill_; }
+    QComboBox* lineStartBox() const { return lineStart_; }
+    QComboBox* lineEndBox() const { return lineEnd_; }
 
 signals:
     void lockChanged(const QString& reason);
@@ -108,6 +115,10 @@ private:
     QPointer<NumberField> fontSize_;
     QPointer<ColorSwatch> textColor_;
     QPointer<SegmentedBar> align_;
+    QPointer<QFormLayout> styleForm_;
+    QPointer<ColorSwatch> fill_;
+    QPointer<QComboBox> lineStart_;
+    QPointer<QComboBox> lineEnd_;
     std::vector<annot::AnnotRef> formatTargets_;  // выбранные поля FreeText
     bool loadingStyle_ = false;
     std::vector<QMetaObject::Connection> connections_;

@@ -86,6 +86,7 @@ ACTIONS: dict[str, str] = {
     "tool.highlight": "выделить текст",
     "tool.draw": "рисование",
     "tool.textbox": "текстовое поле",
+    "tool.rectangle": "прямоугольник",
     "comment.note": "Комментарии: записка",
     "comment.toggleAll": "Комментарии: показать-скрыть все",
 }

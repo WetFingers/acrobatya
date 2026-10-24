@@ -13,9 +13,11 @@
 #include <QJsonObject>
 #include <QMenu>
 #include <QMimeData>
+#include <QTimer>
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 
 #include "services/annot_ops.h"
 #include "services/document_session.h"
@@ -33,6 +35,21 @@ constexpr double kHandleSlopPx = 3.0;    // ручка ловится шире �
 constexpr double kMinSizePx = 4.0;       // рамку не сжать меньше (px экрана)
 
 QRectF annotQRect(const RectF& r) { return QRectF(QPointF(r.x0, r.y0), QPointF(r.x1, r.y1)); }
+
+// Ближайшее из восьми направлений (через 45°) от from к to (Shift у вершины).
+QPointF snapTo45(QPointF from, QPointF to) {
+    const QPointF d = to - from;
+    constexpr double kStep = std::numbers::pi / 4;
+    const double step = std::round(std::atan2(d.y(), d.x()) / kStep) * kStep;
+    const double length = d.x() * std::cos(step) + d.y() * std::sin(step);
+    return from + QPointF(length * std::cos(step), length * std::sin(step));
+}
+
+// Тип с маркерами вершин (вместо или вместе с ручками рамки).
+bool hasVertices(annot::AnnotType type) {
+    return type == annot::AnnotType::Line || type == annot::AnnotType::Polygon ||
+           type == annot::AnnotType::PolyLine || type == annot::AnnotType::FreeText;
+}
 
 RectF annotRectF(const QRectF& r) {
     const QRectF n = r.normalized();
@@ -124,6 +141,9 @@ void AnnotSelectTool::setSelection(std::vector<AnnotInfo> annots) {
     selected_.clear();
     for (AnnotInfo& info : annots) {
         if (info.ref.valid() && !isSelected(info.ref)) {
+            // Свежие сведения: ждущий ответ списка страницы (запрошен до правки, что создала аннотацию) не
+            // должен снять её с выбора.
+            refresh_.remove(info.ref.page);
             selected_.push_back(std::move(info));
         }
     }
@@ -163,7 +183,147 @@ void AnnotSelectTool::deleteSelection() {
     clearSelection();
 }
 
-void AnnotSelectTool::selectionChanged() { controller_.emitAnnotSelectionChanged(); }
+void AnnotSelectTool::selectionChanged() {
+    loadVertices();
+    controller_.emitAnnotSelectionChanged();
+}
+
+// Вершины одной выбранной — задачей документа (свойства); ответ на прежний выбор отбрасывается.
+void AnnotSelectTool::loadVertices(bool retry) {
+    if (!retry) {
+        vertexTries_ = 0;
+    }
+    const quint64 request = ++vertexRequest_;
+    vertexPoints_.clear();
+    callout_.clear();
+    vertexType_ = annot::AnnotType::Unknown;
+    vertexRef_ = {};
+    DocumentSession* session = view_.document();
+    if (selected_.size() != 1 || session == nullptr || !hasVertices(selected_.front().type) ||
+        !movable(selected_.front())) {
+        return;
+    }
+    const AnnotRef ref = selected_.front().ref;
+    annot::props(*session, ref)
+        .then(&controller_, [this, request, ref](QFuture<std::optional<annot::AnnotProps>> f) {
+            std::optional<annot::AnnotProps> p;
+            try {
+                p = f.result();
+            } catch (const std::exception&) {  // NOLINT(bugprone-empty-catch): нет свойств — нет маркеров
+            }
+            if (request != vertexRequest_) {
+                return;
+            }
+            if (!p) {
+                // Задача прервана правкой страницы (ответ пуст при том же выборе) — ещё раз, не больше трёх.
+                if (++vertexTries_ <= 3) {
+                    QTimer::singleShot(50, &controller_, [this, request] {
+                        if (request == vertexRequest_) {
+                            loadVertices(true);
+                        }
+                    });
+                }
+                return;
+            }
+            std::vector<QPointF> points;
+            switch (p->type) {
+                case annot::AnnotType::Line:
+                    points = {QPointF(p->lineStart.x, p->lineStart.y), QPointF(p->lineEnd.x, p->lineEnd.y)};
+                    break;
+                case annot::AnnotType::Polygon:
+                case annot::AnnotType::PolyLine:
+                    for (const PointF& v : p->vertices) {
+                        points.emplace_back(v.x, v.y);
+                    }
+                    break;
+                case annot::AnnotType::FreeText:
+                    if (p->callout.size() >= 2) {
+                        callout_ = p->callout;
+                        points = {QPointF(p->callout[0].x, p->callout[0].y),
+                                  QPointF(p->callout[1].x, p->callout[1].y)};
+                    }
+                    break;
+                default:
+                    break;
+            }
+            vertexPoints_ = std::move(points);
+            vertexType_ = p->type;
+            vertexRef_ = ref;
+            view_.viewport()->update();
+        });
+}
+
+std::optional<int> AnnotSelectTool::vertexAt(QPointF viewportPoint) const {
+    if (vertexPoints_.empty() || selected_.size() != 1 || !(selected_.front().ref == vertexRef_)) {
+        return std::nullopt;
+    }
+    const QTransform toView = view_.pageTransform(vertexRef_.page);
+    const double reach = Theme::sizes().handle / 2.0 + kHandleSlopPx;
+    std::optional<int> best;
+    double bestDistance = reach;
+    for (std::size_t i = 0; i < vertexPoints_.size(); ++i) {
+        const double d = QLineF(toView.map(vertexPoints_[i]), viewportPoint).length();
+        if (d <= bestDistance) {
+            bestDistance = d;
+            best = static_cast<int>(i);
+        }
+    }
+    return best;
+}
+
+// Вершина под мышью при перетаскивании (пункты страницы); Shift — под 45° к соседней точке.
+QPointF AnnotSelectTool::draggedVertex() const {
+    QPointF p = view_.viewportToPage(vertexRef_.page, current_);
+    if (vertexShift_ && vertexPoints_.size() >= 2) {
+        const auto n = static_cast<int>(vertexPoints_.size());
+        const int neighbour = vertex_ > 0 ? vertex_ - 1 : 1 % n;
+        p = snapTo45(vertexPoints_[static_cast<std::size_t>(neighbour)], p);
+    }
+    return p;
+}
+
+void AnnotSelectTool::finishVertex() {
+    drag_ = Drag::None;
+    DocumentSession* session = view_.document();
+    if (!moved() || session == nullptr || !controller_.editable() || vertex_ < 0 ||
+        vertex_ >= static_cast<int>(vertexPoints_.size())) {
+        view_.viewport()->update();
+        return;
+    }
+    const QPointF target = draggedVertex();
+    vertexPoints_[static_cast<std::size_t>(vertex_)] = target;
+    const PointF p{static_cast<float>(target.x()), static_cast<float>(target.y())};
+    annot::AnnotPatch patch;
+    switch (vertexType_) {
+        case annot::AnnotType::Line:
+            patch.lineStart =
+                PointF{static_cast<float>(vertexPoints_[0].x()), static_cast<float>(vertexPoints_[0].y())};
+            patch.lineEnd =
+                PointF{static_cast<float>(vertexPoints_[1].x()), static_cast<float>(vertexPoints_[1].y())};
+            break;
+        case annot::AnnotType::Polygon:
+        case annot::AnnotType::PolyLine: {
+            std::vector<PointF> vertices;
+            for (const QPointF& v : vertexPoints_) {
+                vertices.push_back({static_cast<float>(v.x()), static_cast<float>(v.y())});
+            }
+            patch.vertices = std::move(vertices);
+            break;
+        }
+        case annot::AnnotType::FreeText:
+            if (static_cast<std::size_t>(vertex_) < callout_.size()) {
+                callout_[static_cast<std::size_t>(vertex_)] = p;
+                patch.callout = callout_;
+            }
+            break;
+        default:
+            break;
+    }
+    if (!patch.empty()) {
+        annot::update(*session, vertexRef_, std::move(patch), QString::fromLatin1(annot::kMoveVertexStep));
+    }
+    view_.viewport()->update();
+}
 
 void AnnotSelectTool::publish() {
     RectOverlay& overlay = view_.annotationOverlay();
@@ -200,6 +360,9 @@ std::vector<QRectF> AnnotSelectTool::frames() const {
 std::optional<AnnotSelectTool::Handle> AnnotSelectTool::handleAt(QPointF point) const {
     if (selected_.size() != 1 || !movable(selected_.front())) {
         return std::nullopt;
+    }
+    if (!vertexPoints_.empty() && vertexType_ != annot::AnnotType::FreeText) {
+        return std::nullopt;  // линия и многоугольник правятся вершинами
     }
     const auto frame = frameOf(selected_.front());
     if (!frame) {
@@ -302,6 +465,12 @@ bool AnnotSelectTool::mousePress(QMouseEvent* event) {
     pressing_ = true;
     const bool shift = (event->modifiers() & Qt::ShiftModifier) != 0;
     if (button == Qt::LeftButton) {
+        if (const auto vertex = vertexAt(pos)) {
+            drag_ = Drag::Vertex;
+            vertex_ = *vertex;
+            vertexShift_ = shift;
+            return true;
+        }
         if (const auto handle = handleAt(pos)) {
             drag_ = Drag::Resize;
             handle_ = *handle;
@@ -405,7 +574,10 @@ bool AnnotSelectTool::mouseMove(QMouseEvent* event) {
         return true;
     }
     current_ = event->position();
-    if (drag_ == Drag::Move || drag_ == Drag::Resize) {
+    if (drag_ == Drag::Vertex) {
+        vertexShift_ = (event->modifiers() & Qt::ShiftModifier) != 0;
+        view_.viewport()->update();
+    } else if (drag_ == Drag::Move || drag_ == Drag::Resize) {
         publish();
     } else if (drag_ == Drag::Marquee) {
         const QRectF band = QRectF(press_.viewport, current_).normalized();
@@ -435,6 +607,10 @@ bool AnnotSelectTool::mouseRelease(QMouseEvent* event) {
             break;
         case Drag::Marquee:
             finishMarquee();
+            break;
+        case Drag::Vertex:
+            vertexShift_ = (event->modifiers() & Qt::ShiftModifier) != 0;
+            finishVertex();
             break;
         default:
             break;  // Pending — доделает ответ хит-теста
@@ -828,6 +1004,9 @@ void AnnotSelectTool::pageChanged(int page) {
     if (affected) {
         refresh_.insert(page);
     }
+    if (vertexRef_.valid() && vertexRef_.page == page && drag_ != Drag::Vertex) {
+        loadVertices();  // правка или undo сдвинули вершины
+    }
     if (affected || bands_.count(page) > 0) {
         annotList(page);
     }
@@ -854,17 +1033,53 @@ void AnnotSelectTool::paintOverlay(QPainter& painter) {
     }
     QPen pen(colors.accent.color(), sizes.pageBorder);
     pen.setCosmetic(true);
-    painter.setRenderHint(QPainter::Antialiasing, false);
     painter.setPen(pen);
     painter.setBrush(colors.surface.color());
     const double s = sizes.handle;
-    for (int h = 0; h < kHandleCount; ++h) {
-        const QPointF c = annotHandlePoint(*frame, h);
-        painter.drawRect(QRectF(c - QPointF(s / 2, s / 2), QSizeF(s, s)));
+    const bool vertices = !vertexPoints_.empty() && selected_.front().ref == vertexRef_;
+    if (!vertices || vertexType_ == annot::AnnotType::FreeText) {
+        painter.setRenderHint(QPainter::Antialiasing, false);
+        for (int h = 0; h < kHandleCount; ++h) {
+            const QPointF c = annotHandlePoint(*frame, h);
+            painter.drawRect(QRectF(c - QPointF(s / 2, s / 2), QSizeF(s, s)));
+        }
+    }
+    if (!vertices) {
+        return;
+    }
+    const QTransform toView = view_.pageTransform(vertexRef_.page);
+    std::vector<QPointF> points = vertexPoints_;
+    const bool dragging =
+        drag_ == Drag::Vertex && moved() && vertex_ >= 0 && vertex_ < static_cast<int>(points.size());
+    if (dragging) {
+        points[static_cast<std::size_t>(vertex_)] = draggedVertex();
+    }
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    if (dragging) {
+        QPen dash(colors.accent.color(), sizes.pageBorder, Qt::DashLine);
+        dash.setCosmetic(true);
+        painter.setPen(dash);
+        painter.setBrush(Qt::NoBrush);
+        QPolygonF line;
+        for (const QPointF& p : points) {
+            line << toView.map(p);
+        }
+        if (vertexType_ == annot::AnnotType::Polygon) {
+            line << line.front();
+        }
+        painter.drawPolyline(line);
+        painter.setPen(pen);
+        painter.setBrush(colors.surface.color());
+    }
+    for (const QPointF& p : points) {
+        painter.drawEllipse(toView.map(p), s / 2, s / 2);
     }
 }
 
 QCursor AnnotSelectTool::cursor(QPointF point, Qt::KeyboardModifiers /*modifiers*/) const {
+    if (drag_ == Drag::Vertex || (drag_ == Drag::None && vertexAt(point))) {
+        return QCursor(Qt::CrossCursor);
+    }
     if (drag_ == Drag::Move) {
         return QCursor(Qt::SizeAllCursor);
     }

@@ -57,6 +57,43 @@ constexpr ActionRow kEditRows[] = {
     {CommentAction::ReplaceText, "commentReplaceText", "replace"},
 };
 
+constexpr ActionRow kShapeRows[] = {
+    {CommentAction::Line, "commentLine", "slash"},
+    {CommentAction::Arrow, "commentArrow", "move-up-right"},
+    {CommentAction::Rectangle, "commentRectangle", "square"},
+    {CommentAction::Oval, "commentOval", "circle"},
+    {CommentAction::Polygon, "commentPolygon", "pentagon"},
+    {CommentAction::Cloud, "commentCloud", "cloud"},
+    {CommentAction::PolyLine, "commentPolyLine", "waypoints"},
+};
+
+// Концы линии по порядку списка (значения annot::LineEnding).
+struct EndingRow {
+    annot::LineEnding ending;
+    const char* title;
+};
+constexpr EndingRow kEndingRows[] = {
+    {annot::LineEnding::None, QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Нет")},
+    {annot::LineEnding::OpenArrow, QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Открытая стрелка")},
+    {annot::LineEnding::ClosedArrow, QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Закрытая стрелка")},
+    {annot::LineEnding::Square, QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Квадрат")},
+    {annot::LineEnding::Circle, QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Круг")},
+    {annot::LineEnding::Diamond, QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Ромб")},
+    {annot::LineEnding::Butt, QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Черта")},
+    {annot::LineEnding::Slash, QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Косая черта")},
+    {annot::LineEnding::ROpenArrow, QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Обратная открытая стрелка")},
+    {annot::LineEnding::RClosedArrow, QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Обратная закрытая стрелка")},
+};
+
+bool closedShape(CommentAction a) {
+    return a == CommentAction::Rectangle || a == CommentAction::Oval || a == CommentAction::Polygon ||
+           a == CommentAction::Cloud;
+}
+
+bool openLine(CommentAction a) {
+    return a == CommentAction::Line || a == CommentAction::Arrow || a == CommentAction::PolyLine;
+}
+
 constexpr ActionRow kDrawRows[] = {
     {CommentAction::Ink, "commentInk", "pencil"},
     {CommentAction::Eraser, "commentEraser", "eraser"},
@@ -172,7 +209,15 @@ void CommentTool::loadStyle() {
     width_->setMinimum(text ? 0.0 : 0.5);
     color_->setColor(p.color.empty() ? QColor() : QColor::fromRgb(static_cast<QRgb>(p.color.toRgb())));
     width_->setValue(p.borderWidth);
-    width_->setEnabled(action == CommentAction::Ink || text);
+    const bool shape = CommentMode::isDragShape(action) || CommentMode::isPolyShape(action);
+    width_->setEnabled(action == CommentAction::Ink || text || shape);
+    styleForm_->setRowVisible(fill_, closedShape(action));
+    styleForm_->setRowVisible(lineStart_, openLine(action));
+    styleForm_->setRowVisible(lineEnd_, openLine(action));
+    fill_->setColor(p.interiorColor.empty() ? QColor()
+                                            : QColor::fromRgb(static_cast<QRgb>(p.interiorColor.toRgb())));
+    lineStart_->setCurrentIndex(std::max(0, lineStart_->findData(static_cast<int>(p.lineStartStyle))));
+    lineEnd_->setCurrentIndex(std::max(0, lineEnd_->findData(static_cast<int>(p.lineEndStyle))));
     opacity_->setValue(std::round(p.opacity * 100));
     const int icon = icon_->findData(QString::fromStdString(p.icon));
     icon_->setCurrentIndex(icon >= 0 ? icon : 0);
@@ -208,8 +253,20 @@ void CommentTool::saveStyle() {
             annot::AnnotColor::fromRgb(static_cast<std::uint32_t>(color_->color().rgb() & 0xffffff));
     }
     style.opacity = static_cast<float>(opacity_->value() / 100.0);
-    if (action == CommentAction::Ink || textAction(action)) {
+    const bool shape = CommentMode::isDragShape(action) || CommentMode::isPolyShape(action);
+    if (action == CommentAction::Ink || textAction(action) || shape) {
         style.width = static_cast<float>(width_->value());
+    }
+    if (closedShape(action)) {
+        style.fill.reset();
+        if (fill_->color().isValid()) {
+            style.fill =
+                annot::AnnotColor::fromRgb(static_cast<std::uint32_t>(fill_->color().rgb() & 0xffffff));
+        }
+    }
+    if (openLine(action)) {
+        style.lineStart = lineStart_->currentData().toInt();
+        style.lineEnd = lineEnd_->currentData().toInt();
     }
     if (action == CommentAction::Note) {
         style.icon = icon_->currentData().toString().toStdString();
@@ -360,6 +417,10 @@ void CommentTool::buildPanel() {
     for (const ActionRow& row : kDrawRows) {
         addAction(row);
     }
+    addCaption(column, tr("Фигуры"));
+    for (const ActionRow& row : kShapeRows) {
+        addAction(row);
+    }
     buildStyle(column);
     column->addStretch(1);
     scroll->setWidget(body);
@@ -368,6 +429,7 @@ void CommentTool::buildPanel() {
 void CommentTool::buildStyle(QVBoxLayout* column) {
     addCaption(column, tr("Стиль"));
     auto* form = new QFormLayout();
+    styleForm_ = form;
     form->setContentsMargins(0, 0, 0, 0);
     form->setSpacing(Theme::sizes().grid);
     color_ = new ColorSwatch(QColor(), panel_);
@@ -383,6 +445,21 @@ void CommentTool::buildStyle(QVBoxLayout* column) {
     width_->setUnit(tr("пт"));
     widthLabel_ = new QLabel(tr("Толщина:"), panel_);
     form->addRow(widthLabel_, width_);
+    fill_ = new ColorSwatch(QColor(), panel_);
+    fill_->setObjectName(QStringLiteral("commentFill"));
+    fill_->setAccessibleName(tr("Заливка"));
+    fill_->setNoneAllowed(true);
+    form->addRow(tr("Заливка:"), fill_);
+    lineStart_ = new QComboBox(panel_);
+    lineStart_->setObjectName(QStringLiteral("commentLineStart"));
+    lineEnd_ = new QComboBox(panel_);
+    lineEnd_->setObjectName(QStringLiteral("commentLineEnd"));
+    for (const EndingRow& e : kEndingRows) {
+        lineStart_->addItem(tr(e.title), static_cast<int>(e.ending));
+        lineEnd_->addItem(tr(e.title), static_cast<int>(e.ending));
+    }
+    form->addRow(tr("Начало линии:"), lineStart_);
+    form->addRow(tr("Конец линии:"), lineEnd_);
     opacity_ = new NumberField(panel_);
     opacity_->setObjectName(QStringLiteral("commentOpacity"));
     opacity_->setRange(5, 100);
@@ -417,6 +494,9 @@ void CommentTool::buildStyle(QVBoxLayout* column) {
     connect(color_, &ColorSwatch::colorChanged, this, [this] { saveStyle(); });
     connect(width_, &NumberField::valueChanged, this, [this] { saveStyle(); });
     connect(opacity_, &NumberField::valueChanged, this, [this] { saveStyle(); });
+    connect(fill_, &ColorSwatch::colorChanged, this, [this] { saveStyle(); });
+    connect(lineStart_, &QComboBox::currentIndexChanged, this, [this] { saveStyle(); });
+    connect(lineEnd_, &QComboBox::currentIndexChanged, this, [this] { saveStyle(); });
     connect(icon_, &QComboBox::currentIndexChanged, this, [this] { saveStyle(); });
     pin_->setChecked(Settings().get(settings::kCommentKeepTool));
     loadStyle();
@@ -594,6 +674,15 @@ std::vector<ot::Command> CommentTool::commands() const {
                    .shortcuts = {QKeySequence(Qt::Key_J)},
                    .icon = QStringLiteral("type"),
                    .run = runner(CommentAction::TextBox),
+                   .when = QLatin1String(CommandRegistry::kViewContext),
+                   .enabled = enabled,
+                   .menu = QStringLiteral("tools"),
+                   .singleKey = true});
+    out.push_back({.id = QStringLiteral("tool.rectangle"),
+                   .title = tr("&Прямоугольник"),
+                   .shortcuts = {QKeySequence(Qt::Key_R)},
+                   .icon = QStringLiteral("square"),
+                   .run = runner(CommentAction::Rectangle),
                    .when = QLatin1String(CommandRegistry::kViewContext),
                    .enabled = enabled,
                    .menu = QStringLiteral("tools"),
