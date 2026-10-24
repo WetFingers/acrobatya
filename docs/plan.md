@@ -300,7 +300,7 @@
 
 Сначала тесты: глиф «ё» в подмножестве Arial без него → решение «новый CID Arial» и файл найден через `FakeSystemFonts`; base14 Helvetica → Arial; отсутствующее семейство → запасной из настроек с флагом; ширины новых пробегов совпадают с `fz_advance_glyph` ±0,01; после `pdf_subset_fonts` документ открывается, `qpdf --check` = 0, глифы рендерятся (снимок содержит символ — сравнение с эталоном строки)
 
-- [ ] **Инспекция встроенных шрифтов:** `src/core/edit/font_info.{h,cpp}` (тип, подмножество, cmap, наличие глифа, метрики, Flags/ItalicAngle/StemV), тест на 10 фикстурах. Тесты: `tests/unit/font_info_test.cpp`.
+- [x] **Инспекция встроенных шрифтов:** `src/core/edit/font_info.{h,cpp}` (тип, подмножество, cmap, наличие глифа, метрики, Flags/ItalicAngle/StemV), тест на 10 фикстурах. Тесты: `tests/unit/font_info_test.cpp`.
 - [ ] **Системные шрифты:** `src/core/edit/system_fonts.h` (интерфейс), `src/services/system_fonts_dwrite.{h,cpp}` (DirectWrite: семейство, вес, стиль, путь к файлу), `FakeSystemFonts`, таблица метрических замен base14. Закрывает edit-49 (поиск). Тесты: `tests/unit/system_fonts_test.cpp`, `tests/ui/dwrite_test.cpp` (живой DirectWrite находит Arial).
 - [ ] **Встраивание и подмножества:** `src/core/edit/font_embed.{h,cpp}` (`pdf_add_cid_font`, `pdf_add_simple_font`, кеш «семейство → объект шрифта на страницу», `pdf_subset_fonts` при сохранении с откатом). Закрывает edit-01, edit-02 (шрифты). Тесты: `tests/unit/font_embed_test.cpp` + `compat.fonts`.
 - [ ] **FontResolver и синтетика:** `src/core/edit/font_resolver.{h,cpp}` (четыре правила, предупреждения), синтетический bold/italic, настройка запасного шрифта. Закрывает edit-03 (начертания), edit-49. Тесты: `tests/unit/font_resolver_test.cpp`.
