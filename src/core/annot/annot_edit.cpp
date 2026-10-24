@@ -411,6 +411,23 @@ void applyNew(fz_context* ctx, pdf_document* pdf, pdf_annot* a, const AnnotProps
         pdf_drop_obj(ctx, fs);
     }
     pdf_update_annot(ctx, a);
+    // Значок (NoZoom) MuPDF рисует в размере /BBox внешнего вида, а pdfium и Acrobat вписывают его в /Rect
+    // (12.5.5): /Rect значка — размером /BBox с тем же центром, и все читалки рисуют одинаково.
+    if (p.type == AnnotType::Text || p.type == AnnotType::FileAttachment) {
+        pdf_obj* normal = pdf_dict_getp(ctx, obj, "AP/N");
+        if (pdf_is_stream(ctx, normal)) {
+            const fz_rect bbox = pdf_dict_get_rect(ctx, normal, PDF_NAME(BBox));
+            const fz_rect rect = pdf_dict_get_rect(ctx, obj, PDF_NAME(Rect));
+            const float w = bbox.x1 - bbox.x0;
+            const float h = bbox.y1 - bbox.y0;
+            if (w > 0 && h > 0) {
+                const float cx = (rect.x0 + rect.x1) / 2;
+                const float cy = (rect.y0 + rect.y1) / 2;
+                pdf_dict_put_rect(ctx, obj, PDF_NAME(Rect),
+                                  fz_make_rect(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2));
+            }
+        }
+    }
 }
 
 bool geometryEmpty(const AnnotProps& p) {

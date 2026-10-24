@@ -86,6 +86,7 @@ ACTIONS: dict[str, str] = {
     "tool.highlight": "выделить текст",
     "tool.draw": "рисование",
     "comment.note": "Комментарии: записка",
+    "comment.toggleAll": "Комментарии: показать-скрыть все",
 }
 
 # Одна физическая клавиша — разные имена QKeySequence.

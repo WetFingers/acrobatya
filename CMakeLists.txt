@@ -251,6 +251,20 @@ if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   set_tests_properties(compat.edit PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_edit
     SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endif()
+# Совместимость комментариев (план 5.1, п. 5): annots_compat.DISABLED_write пишет <сборка>/compat/annots — матрицу 28
+# подтипов и 15 создаваемых типов, записанные инкрементом, наш рендер 144 dpi и рамки; tools/compat_annots.py рендерит
+# их pypdfium2 и сверяет imgcmp --cross в рамке каждой (непустые ≥ 50 px, SSIM ≥ 0,8, IoU ≥ 0,7); qpdf --check
+# инкремента — unit.annots. Нет pypdfium2 — 77, пропуск.
+if(TARGET unit_tests AND TARGET imgcmp AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_test(NAME compat.annots.generate
+    COMMAND unit_tests --gtest_also_run_disabled_tests --gtest_filter=annots_compat.* --gtest_brief=1)
+  set_tests_properties(compat.annots.generate PROPERTIES LABELS "compat;slow" FIXTURES_SETUP compat_annots
+    ENVIRONMENT "OTTISK_COMPAT_OUT=${CMAKE_BINARY_DIR}/compat" TIMEOUT 120)
+  add_test(NAME compat.annots COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/compat_annots.py"
+    --imgcmp "$<TARGET_FILE:imgcmp>" "${CMAKE_BINARY_DIR}/compat/annots")
+  set_tests_properties(compat.annots PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_annots
+    SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+endif()
 # Совместимость правки картинок (план 3.4, п. 3): image_compat.DISABLED_write пишет <сборка>/compat/images/*.pdf
 # (перемещение, масштаб, поворот, отражение, обрезка, замена, добавление, удаление — полная запись);
 # tools/compat_check.py — qpdf --check, pdfcpu strict, mutool clean, pypdfium2 рендер.

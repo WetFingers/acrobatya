@@ -1,0 +1,25 @@
+{
+  "comment": "Комментарии через --script (план 5.1, п. 5; часть «формы» добавит 6.2; им пользуется рубеж Р3): пустая страница A4, создаваемые типы комментариев через annot.create (14 типов эталона 3.4 и вложение), инкрементальная копия ${OUT_DIR}/annots.pdf, отмена всех шагов и копия ${OUT_DIR}/undone.pdf без комментариев. Координаты — пункты от левого верхнего угла страницы.",
+  "steps": [
+    {"cmd": "doc.open", "args": {"path": "../data/mini/blank-a4.pdf"}},
+    {"cmd": "annot.create", "args": {"type": "Text", "page": 1, "rect": [60, 60, 80, 80], "contents": "Записка: проверить цифры", "author": "Р3"}, "name": "записка"},
+    {"cmd": "annot.create", "args": {"type": "FreeText", "page": 1, "rect": [240, 60, 420, 100], "contents": "Text box"}, "name": "текстовое поле"},
+    {"cmd": "annot.create", "args": {"type": "Line", "page": 1, "points": [[60, 200], [200, 140]], "width": 2}, "name": "линия"},
+    {"cmd": "annot.create", "args": {"type": "Square", "page": 1, "rect": [240, 140, 360, 200], "color": "#3f51b5"}, "name": "прямоугольник"},
+    {"cmd": "annot.create", "args": {"type": "Circle", "page": 1, "rect": [400, 140, 520, 200]}, "name": "овал"},
+    {"cmd": "annot.create", "args": {"type": "Polygon", "page": 1, "rect": [60, 240, 200, 320]}, "name": "многоугольник"},
+    {"cmd": "annot.create", "args": {"type": "PolyLine", "page": 1, "rect": [240, 240, 360, 320]}, "name": "ломаная"},
+    {"cmd": "annot.create", "args": {"type": "Highlight", "page": 1, "rect": [60, 360, 260, 376], "contents": "выделено"}, "name": "выделение"},
+    {"cmd": "annot.create", "args": {"type": "Underline", "page": 1, "rect": [60, 390, 260, 406]}, "name": "подчёркивание"},
+    {"cmd": "annot.create", "args": {"type": "Squiggly", "page": 1, "rect": [60, 420, 260, 436]}, "name": "волнистая"},
+    {"cmd": "annot.create", "args": {"type": "StrikeOut", "page": 1, "rect": [60, 450, 260, 466]}, "name": "зачёркивание"},
+    {"cmd": "annot.create", "args": {"type": "Stamp", "page": 1, "rect": [320, 360, 500, 420], "icon": "Approved"}, "name": "штамп"},
+    {"cmd": "annot.create", "args": {"type": "Caret", "page": 1, "rect": [320, 450, 332, 462], "contents": "вставка"}, "name": "каретка"},
+    {"cmd": "annot.create", "args": {"type": "Ink", "page": 1, "points": [[60, 520], [100, 560], [140, 520], [180, 560]], "width": 2}, "name": "штрих"},
+    {"cmd": "annot.create", "args": {"type": "FileAttachment", "page": 1, "rect": [320, 520, 340, 540], "contents": "вложение"}, "name": "вложение"},
+    {"cmd": "doc.saveCopy", "args": {"path": "${OUT_DIR}/annots.pdf", "mode": "incremental"}},
+    {"cmd": "doc.undo", "args": {"n": 15}},
+    {"cmd": "doc.saveCopy", "args": {"path": "${OUT_DIR}/undone.pdf", "mode": "incremental"}},
+    {"cmd": "doc.close"}
+  ]
+}

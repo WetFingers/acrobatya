@@ -10,15 +10,18 @@
 #include <algorithm>
 #include <exception>
 
+#include "core/annot/annots.h"
 #include "services/settings.h"
 #include "ui/panes/find_bar.h"
 #include "ui/shell/message_bar.h"
 #include "ui/shell/signature_status.h"
 #include "ui/theme/theme.h"
 #include "ui/tools/comment/annot_menu.h"
+#include "ui/tools/comment/popup_widget.h"
 #include "ui/tools/comment/quick_actions_bar.h"
 #include "ui/view/boxes_overlay.h"
 #include "ui/view/page_view.h"
+#include "ui/view/tile_painter.h"
 #include "ui/view/tool_controller.h"
 #include "ui/widgets/message_bar.h"
 
@@ -115,6 +118,35 @@ void DocumentView::setReadOnly(bool readOnly) {
     view_->tools().setEditable(canAnnotate());
     updateReplaceBlocked();
     emit readOnlyChanged(readOnly);
+}
+
+std::uint32_t DocumentView::commentTypesMask() {
+    std::uint32_t mask = 0;
+    for (int i = 0; i < annot::kAnnotTypeCount; ++i) {
+        if (annot::isComment(static_cast<annot::AnnotType>(i))) {
+            mask |= 1u << i;
+        }
+    }
+    return mask;
+}
+
+void DocumentView::setAnnotsHidden(std::uint32_t mask) {
+    if (mask == annotsHidden_) {
+        return;
+    }
+    annotsHidden_ = mask;
+    view_->tilePainter().setAnnotsHidden(mask);
+    view_->tools().annotSelect().setHiddenTypes(mask);
+    if (mask != 0) {
+        PopupLayer::of(*view_).closeAll();
+    }
+    emit annotsHiddenChanged(mask);
+}
+
+void DocumentView::setCommentsHidden(bool hidden) { setAnnotsHidden(hidden ? commentTypesMask() : 0); }
+
+bool DocumentView::commentsHidden() const {
+    return (annotsHidden_ & commentTypesMask()) == commentTypesMask();
 }
 
 void DocumentView::setViewStyle(const ViewStyle& style) {

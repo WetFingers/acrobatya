@@ -148,8 +148,9 @@ PageHandle TaskContext::page(int index) const {
     return PageHandle(ctx, loaded, index);
 }
 
-std::shared_ptr<const DisplayList> TaskContext::displayList(int index, bool annotations) const {
-    return session_.displayCache_->get(document(), index, annotations, cookie_);
+std::shared_ptr<const DisplayList> TaskContext::displayList(int index, bool annotations,
+                                                            std::uint32_t annotsHidden) const {
+    return session_.displayCache_->get(document(), index, annotations, cookie_, annotsHidden);
 }
 
 std::shared_ptr<const TextPage> TaskContext::textPage(int index, const TextOptions& options) const {
@@ -924,9 +925,11 @@ QSizeF DocumentSession::pageSizePoints(int index) const {
 }
 
 QFuture<std::shared_ptr<const DisplayList>> DocumentSession::displayList(int page, bool annotations,
-                                                                         TaskPriority priority) {
-    return post([page, annotations](TaskContext& tc) { return tc.displayList(page, annotations); }, priority,
-                QStringLiteral("display-list"));
+                                                                         TaskPriority priority,
+                                                                         std::uint32_t annotsHidden) {
+    return post([page, annotations,
+                 annotsHidden](TaskContext& tc) { return tc.displayList(page, annotations, annotsHidden); },
+                priority, QStringLiteral("display-list"));
 }
 
 QFuture<std::shared_ptr<const TextPage>> DocumentSession::textPage(int page, const TextOptions& options,

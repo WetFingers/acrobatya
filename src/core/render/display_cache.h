@@ -8,9 +8,11 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <list>
 #include <map>
 #include <memory>
+#include <tuple>
 #include <utility>
 
 #include "core/util/geometry.h"
@@ -29,7 +31,7 @@ public:
     // Принимает ссылку list (из fz_new_display_list…) и owner — клон контекста документа (только для отдачи
     // списка и для contentBounds в чужом потоке). bounds — рамка страницы (fz_bound_page).
     DisplayList(std::unique_ptr<MuContext> owner, fz_display_list* list, const RectF& bounds, int page,
-                bool annotations, bool usesOverprint = false) noexcept;
+                bool annotations, bool usesOverprint = false, std::uint32_t annotsHidden = 0) noexcept;
     ~DisplayList();
     DisplayList(const DisplayList&) = delete;
     DisplayList& operator=(const DisplayList&) = delete;
@@ -38,6 +40,8 @@ public:
     const RectF& bounds() const noexcept { return bounds_; }
     int page() const noexcept { return page_; }
     bool annotations() const noexcept { return annotations_; }
+    // Скрытые подтипы аннотаций (бит i — AnnotType i, 5.1 «Показать/скрыть комментарии»): их нет в списке.
+    std::uint32_t annotsHidden() const noexcept { return annotsHidden_; }
     // Страница рисует с overprint (fz_page_uses_overprint: /OP, /op в ExtGState ресурсов) — симуляции
     // наложения (RenderStyle::overprint) есть что показать; иначе она не включается (дешевле).
     bool usesOverprint() const noexcept { return usesOverprint_; }
@@ -49,8 +53,10 @@ public:
 
     // Построить список страницы в контексте документа (поток документа). cookie: abort = 1 прерывает
     // интерпретацию (MuError, ErrorKind::Aborted) — недостроенный список не возвращается.
+    // annotsHidden ≠ 0 — содержимое, затем аннотации (pdf_run_annot) без скрытых подтипов, затем поля.
     static std::shared_ptr<const DisplayList> build(const Document& doc, int page, bool annotations = true,
-                                                    fz_cookie* cookie = nullptr);
+                                                    fz_cookie* cookie = nullptr,
+                                                    std::uint32_t annotsHidden = 0);
 
 private:
     std::unique_ptr<MuContext> owner_;
@@ -60,6 +66,7 @@ private:
     int page_;
     bool annotations_;
     bool usesOverprint_;
+    std::uint32_t annotsHidden_;
 };
 
 class DisplayCache {
@@ -72,9 +79,10 @@ public:
     // Список страницы: из кеша (становится самым свежим) или построенный (вытесняет самый старый).
     // Прерванное построение не кешируется (MuError Aborted).
     std::shared_ptr<const DisplayList> get(const Document& doc, int page, bool annotations = true,
-                                           fz_cookie* cookie = nullptr);
+                                           fz_cookie* cookie = nullptr, std::uint32_t annotsHidden = 0);
     // Без построения и без смены порядка; nullptr — нет в кеше.
-    std::shared_ptr<const DisplayList> find(int page, bool annotations = true) const;
+    std::shared_ptr<const DisplayList> find(int page, bool annotations = true,
+                                            std::uint32_t annotsHidden = 0) const;
 
     // Правка страницы: сбросить оба варианта (с пометками и без).
     void invalidate(int page);
@@ -88,7 +96,7 @@ public:
     std::size_t misses() const noexcept { return misses_; }
 
 private:
-    using Key = std::pair<int, bool>;  // {страница, с пометками}
+    using Key = std::tuple<int, bool, std::uint32_t>;  // {страница, с пометками, скрытые подтипы}
     using Entry = std::pair<Key, std::shared_ptr<const DisplayList>>;
 
     void trim();

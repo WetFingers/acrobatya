@@ -399,6 +399,23 @@ std::vector<ot::Command> CommentTool::commands() const {
                    .run = runner(CommentAction::Note),
                    .enabled = enabled,
                    .menu = QStringLiteral("tools")});
+    // Показ/скрытие всех комментариев вкладки (comment-19; визуальный фильтр, не /F Hidden).
+    out.push_back(
+        {.id = QStringLiteral("comment.toggleAll"),
+         .title = tr("&Скрыть все комментарии"),
+         .shortcuts = {QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_8)},
+         .icon = QStringLiteral("eye-off"),
+         .run =
+             [registry] {
+                 if (DocumentView* v = registry->view()) {
+                     v->setCommentsHidden(!v->commentsHidden());
+                 }
+             },
+         .enabled = [registry] { return registry->view() != nullptr; },
+         .menu = QStringLiteral("view"),
+         .checkable = true,
+         .checked =
+             [registry] { return registry->view() != nullptr && registry->view()->commentsHidden(); }});
     out.push_back({.id = QStringLiteral("tool.draw"),
                    .title = tr("&Рисовать"),
                    .shortcuts = {QKeySequence(Qt::Key_D)},

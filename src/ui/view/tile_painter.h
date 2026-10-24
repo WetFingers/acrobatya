@@ -82,6 +82,9 @@ public:
     // Как рисовать (2.5b: замена цветов, overprint, сглаживание — RenderStyle::key() в поле style ключа):
     // другой стиль — все растры заново, прежние не подменяют; бумага — paperColor(style).
     void setStyle(const RenderStyle& style);
+    // Показ/скрытие комментариев (5.1; ключ тайлов annotsHidden): скрытые подтипы — бит AnnotType.
+    void setAnnotsHidden(std::uint32_t mask);
+    std::uint32_t annotsHidden() const noexcept { return annotsHidden_; }
     const RenderStyle& style() const noexcept { return style_; }
     // Смена экрана (dpr): растры документа и задачи — сброс.
     void resetDevice();
@@ -138,7 +141,8 @@ private:
     quint64 docId_ = 0;
     quint64 layers_ = 0;  // DocumentSession::layersHash() — поле layersHash ключей
     RenderStyle style_;
-    quint64 styleKey_ = 0;  // style_.key() — поле style ключей
+    quint64 styleKey_ = 0;            // style_.key() — поле style ключей
+    std::uint32_t annotsHidden_ = 0;  // скрытые подтипы аннотаций — поле annotsHidden ключей
     RenderPool* pool_ = nullptr;
     TileCache* cache_ = nullptr;
     std::unique_ptr<RenderPool> ownPool_;

@@ -66,7 +66,8 @@ public:
     // Загрузить страницу на время задачи; ошибка — MuError.
     PageHandle page(int index) const;
     // Display list страницы из кеша документа (строится с cookie задачи — отмена прерывает построение).
-    std::shared_ptr<const DisplayList> displayList(int index, bool annotations = true) const;
+    std::shared_ptr<const DisplayList> displayList(int index, bool annotations = true,
+                                                   std::uint32_t annotsHidden = 0) const;
     // Текстовый слой страницы из кеша документа (LRU 16; строится с cookie задачи).
     std::shared_ptr<const TextPage> textPage(int index, const TextOptions& options = {}) const;
     // Правка затронула страницу: её display list и текстовый слой сбрасываются (и страница записывается в шаг

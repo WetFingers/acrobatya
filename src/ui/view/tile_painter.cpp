@@ -137,8 +137,8 @@ bool TilePainter::drawTiles(QPainter& p, int page, const PageState& s, const Geo
                                      static_cast<int>(std::ceil(visible.y1 / factor))};
     bool complete = true;
     for (const TileRect& tile : tilesIntersecting(device, area)) {
-        const TileKey key =
-            makeTileKey(docId_, page, zoom, g.dpr, g.rotation, tile, revision, layers_, styleKey_);
+        const TileKey key = makeTileKey(docId_, page, zoom, g.dpr, g.rotation, tile, revision, layers_,
+                                        styleKey_, annotsHidden_);
         const std::optional<QImage> image = cache_->find(key);
         if (!image) {
             complete = false;
@@ -184,11 +184,11 @@ void TilePainter::paintPage(QPainter& p, int page, const QRectF& rect) {
     p.setClipRect(rect);
     p.setRenderHint(QPainter::SmoothPixmapTransform, true);
     // Превью — растянуть на страницу (текущей правки или прежней).
-    std::optional<QImage> preview = cache_->findPreview(
-        makePreviewKey(docId_, page, g->zoom, g->dpr, g->rotation, s.revision, layers_, styleKey_));
+    std::optional<QImage> preview = cache_->findPreview(makePreviewKey(
+        docId_, page, g->zoom, g->dpr, g->rotation, s.revision, layers_, styleKey_, annotsHidden_));
     if (!preview && s.fallbackRevision) {
         preview = cache_->findPreview(makePreviewKey(docId_, page, g->zoom, g->dpr, g->rotation,
-                                                     *s.fallbackRevision, layers_, styleKey_));
+                                                     *s.fallbackRevision, layers_, styleKey_, annotsHidden_));
     }
     if (preview) {
         p.drawImage(rect, *preview, QRectF(QPointF(0, 0), QSizeF(preview->size())));
@@ -197,7 +197,7 @@ void TilePainter::paintPage(QPainter& p, int page, const QRectF& rect) {
     bool missing = false;
     for (const TileRect& tile : tilesIntersecting(g->device, visible)) {
         if (!cache_->contains(makeTileKey(docId_, page, g->zoom, g->dpr, g->rotation, tile, s.revision,
-                                          layers_, styleKey_))) {
+                                          layers_, styleKey_, annotsHidden_))) {
             missing = true;
             break;
         }
@@ -267,8 +267,8 @@ void TilePainter::schedule() {
         const QPointF origin(std::round(rect.left() * g->dpr), std::round(rect.top() * g->dpr));
 
         // Превью страницы целиком.
-        const TileKey pk =
-            makePreviewKey(docId_, page, g->zoom, g->dpr, g->rotation, s.revision, layers_, styleKey_);
+        const TileKey pk = makePreviewKey(docId_, page, g->zoom, g->dpr, g->rotation, s.revision, layers_,
+                                          styleKey_, annotsHidden_);
         wanted.insert(pk);
         if (!inflight_.contains(pk) && !cache_->findPreview(pk)) {
             const float pz = previewZoom(g->zoom);
@@ -284,8 +284,8 @@ void TilePainter::schedule() {
         }
         const Matrix matrix = pageMatrix(s.bounds, g->zoom, g->dpr, g->rotation);
         for (const TileRect& tile : tilesIntersecting(g->device, tileDeviceArea(area, origin, g->dpr))) {
-            const TileKey key =
-                makeTileKey(docId_, page, g->zoom, g->dpr, g->rotation, tile, s.revision, layers_, styleKey_);
+            const TileKey key = makeTileKey(docId_, page, g->zoom, g->dpr, g->rotation, tile, s.revision,
+                                            layers_, styleKey_, annotsHidden_);
             wanted.insert(key);
             if (cache_->contains(key)) {
                 continue;
@@ -381,7 +381,7 @@ void TilePainter::requestList(int page, bool visible) {
     s.requested = true;
     const quint64 generation = s.generation;
     QFuture<std::shared_ptr<const DisplayList>> future =
-        session_->displayList(page, true, visible ? TaskPriority::High : TaskPriority::Normal);
+        session_->displayList(page, true, visible ? TaskPriority::High : TaskPriority::Normal, annotsHidden_);
     future.then(this, [this, page, generation](QFuture<std::shared_ptr<const DisplayList>> done) {
         try {
             listArrived(page, generation, done.result());
@@ -466,6 +466,22 @@ void TilePainter::setStyle(const RenderStyle& style) {
     for (auto it = pages_.begin(); it != pages_.end(); ++it) {
         it->fallbackRevision.reset();
         it->completeZoom.reset();
+    }
+    view_.viewport()->update();
+}
+
+void TilePainter::setAnnotsHidden(std::uint32_t mask) {
+    if (mask == annotsHidden_) {
+        return;
+    }
+    annotsHidden_ = mask;
+    // Другой состав пометок — другие списки и растры (ключи уже другие); прежние не подменяют.
+    for (auto it = pages_.begin(); it != pages_.end(); ++it) {
+        it->fallbackRevision.reset();
+        it->completeZoom.reset();
+        it->list.reset();
+        it->requested = false;
+        ++it->generation;
     }
     view_.viewport()->update();
 }

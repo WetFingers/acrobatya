@@ -68,6 +68,15 @@ public:
     // Стиль рендера окна (2.5b; view_style.h): замена цветов, сглаживание, overprint — для PDF/X по его
     // OutputIntents.
     void setViewStyle(const ViewStyle& style);
+    // Показ/скрытие комментариев (5.1; эталон 3.4 «Показать/скрыть все», Ctrl+Shift+8; основа фильтров 5.4):
+    // визуальный фильтр вкладки по подтипам (бит — AnnotType), не /F Hidden — файл не меняется. Скрытые не
+    // рисуются (ключ тайлов annotsHidden), не выбираются, их окна записок закрыты.
+    void setAnnotsHidden(std::uint32_t mask);
+    std::uint32_t annotsHidden() const { return annotsHidden_; }
+    void setCommentsHidden(bool hidden);
+    bool commentsHidden() const;
+    // Подтипы-комментарии (annot::isComment) маской.
+    static std::uint32_t commentTypesMask();
     bool isPdfX() const { return pdfx_; }
     // Права /P документа (OpenSummary::permissions; после сохранения — заново).
     const Permissions& permissions() const { return permissions_; }
@@ -112,6 +121,7 @@ public:
     QString errorString() const { return error_; }
 
 signals:
+    void annotsHiddenChanged(std::uint32_t mask);
     void modifiedChanged(bool modified);
     void readOnlyChanged(bool readOnly);
     void protectedViewChanged(bool on);
@@ -137,7 +147,8 @@ private:
     PageView* view_ = nullptr;
     MessageStack* stack_ = nullptr;
     FindBar* find_ = nullptr;
-    QuickActionsBar* quickActions_ = nullptr;  // 5.1: действия над выделенным текстом (вьюпорт вида)
+    QuickActionsBar* quickActions_ = nullptr;
+    std::uint32_t annotsHidden_ = 0;  // 5.1: действия над выделенным текстом (вьюпорт вида)
     QPointer<QWidget> floating_;
     QString error_;
     int initialPage_ = -1;

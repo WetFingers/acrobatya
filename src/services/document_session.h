@@ -170,8 +170,10 @@ public:
 
     // Display list страницы из кеша документа (LRU 40 страниц, правка страницы его сбрасывает) — для
     // RenderPool: единственное, что уходит из потока документа.
+    // annotsHidden — скрытые подтипы аннотаций (визуальный фильтр 5.1, бит — AnnotType).
     QFuture<std::shared_ptr<const DisplayList>> displayList(int page, bool annotations = true,
-                                                            TaskPriority priority = TaskPriority::High);
+                                                            TaskPriority priority = TaskPriority::High,
+                                                            std::uint32_t annotsHidden = 0);
 
     // Текстовый слой страницы из кеша документа (TextCache, LRU 16; правка страницы его сбрасывает) — для
     // поиска, выделения и экспорта. TextPage неизменяем: значения читаются в любом потоке

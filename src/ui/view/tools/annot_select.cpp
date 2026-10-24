@@ -333,10 +333,12 @@ bool AnnotSelectTool::mousePress(QMouseEvent* event) {
     return true;
 }
 
-void AnnotSelectTool::hitArrived(const std::optional<AnnotInfo>& hit, quint64 request) {
+void AnnotSelectTool::hitArrived(const std::optional<AnnotInfo>& found, quint64 request) {
     if (request != request_ || drag_ != Drag::Pending) {
         return;  // нажатие брошено (Esc, смена документа) — ответ устарел
     }
+    // Скрытые показом/скрытием комментариев — как пустое место.
+    const std::optional<AnnotInfo> hit = found && hiddenType(found->type) ? std::nullopt : found;
     const bool shift = (press_.modifiers & Qt::ShiftModifier) != 0;
     if (press_.button == Qt::RightButton) {
         drag_ = Drag::None;
@@ -498,8 +500,8 @@ bool AnnotSelectTool::applyBands() {
         }
         const QRectF band = annotQRect(it->second);
         for (const AnnotInfo& info : *list) {
-            if (annotSelectable(info) && annotQRect(info.rect).normalized().intersects(band) &&
-                !isSelected(info.ref)) {
+            if (annotSelectable(info) && !hiddenType(info.type) &&
+                annotQRect(info.rect).normalized().intersects(band) && !isSelected(info.ref)) {
                 selected_.push_back(info);
                 changed = true;
             }
@@ -667,6 +669,23 @@ void AnnotSelectTool::selectPasted(int page, std::vector<AnnotRef> refs) {
             }
             setSelection(std::move(chosen));
         });
+}
+
+bool AnnotSelectTool::hiddenType(annot::AnnotType type) const noexcept {
+    const int i = static_cast<int>(type);
+    return i >= 0 && i < 32 && (hiddenTypes_ & (1u << i)) != 0;
+}
+
+void AnnotSelectTool::setHiddenTypes(std::uint32_t mask) {
+    hiddenTypes_ = mask;
+    const auto before = selected_.size();
+    selected_.erase(std::remove_if(selected_.begin(), selected_.end(),
+                                   [this](const AnnotInfo& info) { return hiddenType(info.type); }),
+                    selected_.end());
+    if (selected_.size() != before) {
+        publish();
+        selectionChanged();
+    }
 }
 
 void AnnotSelectTool::setSelectionLocked(bool locked) {
