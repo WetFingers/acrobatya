@@ -1,8 +1,5 @@
 #include "core/sign/identity.h"
 
-#include <windows.h>
-#include <wincrypt.h>
-
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/pkcs12.h>
@@ -13,12 +10,10 @@
 
 #include <algorithm>
 #include <ctime>
-#include <system_error>
 
+#include "core/sign/cng_store.h"
 #include "core/sign/x509_info.h"
 #include "core/util/paths.h"
-
-#pragma comment(lib, "crypt32.lib")
 
 namespace ot::sign {
 
@@ -254,8 +249,6 @@ IdentityError fromPkcs12(const Pkcs12Error& e) {
     }
 }
 
-std::string windowsError(DWORD code) { return std::system_category().message(static_cast<int>(code)); }
-
 }  // namespace
 
 // ---------------------------------------------------------------- самоподписанное и PKCS#12
@@ -337,54 +330,30 @@ Bytes toDerCertificate(X509* cert) { return ossl::toDer(cert, i2d_X509, "i2d_X50
 WindowsImport importToWindows(std::span<const std::uint8_t> pfx, std::string_view passwordUtf8,
                               bool persist) {
     WindowsImport result;
-    CRYPT_DATA_BLOB blob{static_cast<DWORD>(pfx.size()), const_cast<BYTE*>(pfx.data())};
-    const std::wstring password = paths::widen(passwordUtf8);
-    const DWORD flags = CRYPT_USER_KEYSET | PKCS12_ALWAYS_CNG_KSP | (persist ? 0 : PKCS12_NO_PERSIST_KEY);
-    HCERTSTORE store = PFXImportCertStore(&blob, password.c_str(), flags);
-    if (store == nullptr) {
-        result.error = "PFXImportCertStore: " + windowsError(GetLastError());
-        return result;
-    }
-    PCCERT_CONTEXT found = nullptr;
-    for (PCCERT_CONTEXT ctx = CertEnumCertificatesInStore(store, nullptr); ctx != nullptr;
-         ctx = CertEnumCertificatesInStore(store, ctx)) {
-        HCRYPTPROV_OR_NCRYPT_KEY_HANDLE handle = 0;
-        DWORD spec = 0;
-        BOOL mustFree = FALSE;
-        if (CryptAcquireCertificatePrivateKey(
-                ctx,
-                CRYPT_ACQUIRE_CACHE_FLAG | CRYPT_ACQUIRE_SILENT_FLAG | CRYPT_ACQUIRE_PREFER_NCRYPT_KEY_FLAG,
-                nullptr, &handle, &spec, &mustFree) != FALSE) {
-            found = CertDuplicateCertificateContext(ctx);
-            result.hasKey = true;
-            CertFreeCertificateContext(ctx);
-            break;
+    try {
+        const cng::CertStore imported = cng::CertStore::importPfx(
+            pfx, passwordUtf8, persist ? cng::KeyStorage::User : cng::KeyStorage::Memory);
+        cng::CertContext found;
+        for (const cng::CertEntry& e : imported.list()) {
+            if (e.hasPrivateKey) {
+                found = e.context;
+                result.thumbprint = e.thumbprint;
+                break;
+            }
         }
-    }
-    if (found != nullptr) {
-        BYTE hash[20];
-        DWORD len = sizeof hash;
-        if (CertGetCertificateContextProperty(found, CERT_SHA1_HASH_PROP_ID, hash, &len) != FALSE) {
-            result.thumbprint = ossl::toHex(std::span<const std::uint8_t>(hash, len));
+        if (!found) {
+            result.error = "no certificate with a private key in the PKCS#12";
+            return result;
+        }
+        result.hasKey = true;
+        if (persist) {
+            cng::CertStore my = cng::CertStore::openPersonal(true);
+            (void)my.add(found);
         }
         result.ok = true;
-        if (persist) {
-            HCERTSTORE my =
-                CertOpenStore(CERT_STORE_PROV_SYSTEM_W, 0, 0, CERT_SYSTEM_STORE_CURRENT_USER, L"MY");
-            if (my == nullptr || CertAddCertificateContextToStore(my, found, CERT_STORE_ADD_REPLACE_EXISTING,
-                                                                  nullptr) == FALSE) {
-                result.ok = false;
-                result.error = "adding to the personal store: " + windowsError(GetLastError());
-            }
-            if (my != nullptr) {
-                CertCloseStore(my, 0);
-            }
-        }
-        CertFreeCertificateContext(found);
-    } else {
-        result.error = "no certificate with a private key in the PKCS#12";
+    } catch (const cng::StoreError& e) {
+        result.error = e.what();
     }
-    CertCloseStore(store, 0);
     return result;
 }
 

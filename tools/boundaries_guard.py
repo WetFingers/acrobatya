@@ -7,6 +7,9 @@
   * src/services/** — без QtWidgets (<QtWidgets/…>, <QWidget>, <QApplication>, виджеты и диалоги)
                       и без заголовков ui/;
   * src/ui/**       — без MuPDF (<mupdf/…>, "mupdf/…") — только через типы-значения core;
+  * заголовки src/core/** — без Windows SDK (<windows.h>, <wincrypt.h>, <ncrypt.h>, <bcrypt.h>, <cryptuiapi.h>):
+    вызовы Windows — только в .cpp (план 4.3: cng_store.cpp, cng_signer.cpp изолированы, дескрипторы в
+    заголовках — void* и std::uintptr_t);
   * оболочка Windows (ShellExecute*, QDesktopServices::openUrl) — только в src/services/shell_launcher.cpp
     (план 2.4, эталон 7.3: иначе offscreen-прогоны откроют на машине человека Edge, Word, Параметры);
   * сеть программы (QNetworkAccessManager, OSSL_HTTP_*, OCSP_sendreq_*, WinHTTP, WinINet, URLDownloadToFile) —
@@ -53,6 +56,9 @@ SHELL_OWNER = "src/services/shell_launcher.cpp"
 NET_RE = re.compile(r"\bQNetworkAccessManager\b|\bOSSL_HTTP_\w+|\bOCSP_sendreq_\w+|\bWinHttp\w+|"
                     r"\bInternet(?:Open|Connect|ReadFile)\w*|\bURLDownloadTo\w+")
 NET_OWNER = "src/services/http_fetcher.cpp"
+# Windows SDK, которого не должно быть в заголовках core.
+WIN_SDK_HEADERS = {"windows", "wincrypt", "ncrypt", "bcrypt", "cryptuiapi", "winbase", "wintrust"}
+HEADER_EXT = {".h", ".hpp", ".hxx", ".inl"}
 
 # ---- лексер C++: комментарии, строки, символы (копия из i18n_guard.py — правьте все четыре) ----
 _IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -219,6 +225,10 @@ def main(argv: list[str]) -> int:
         for m in INCLUDE_RE.finditer(code):
             for msg in violations(layer, m.group(1), m.group(2)):
                 errors.append(f"{rel}:{lines.line(m.start(2))}: {msg}")
+            base = m.group(2).strip().replace("\\", "/").split("/")[-1].lower().removesuffix(".h")
+            if layer == "core" and path.suffix.lower() in HEADER_EXT and base in WIN_SDK_HEADERS:
+                errors.append(f"{rel}:{lines.line(m.start(2))}: заголовок core включает <{m.group(2).strip()}> — "
+                              f"Windows SDK только в .cpp")
         if rel != SHELL_OWNER:
             bare = mask(text, lex(text), {"comment", "string", "char"})
             for m in SHELL_RE.finditer(bare):
