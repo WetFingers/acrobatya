@@ -324,6 +324,20 @@ std::vector<Scene> signScenes() {
         s.ready = sceneDocumentReady;
         scenes.push_back(s);
     }
+
+    // Главные экраны этапа 4 — и в тёмной теме (эталон 6.10; план 4.6, п. 4).
+    const std::vector<Scene> light = scenes;
+    for (const char* name : {"sign-dialog", "sig-bar-problems", "pane-signatures", "certificate-viewer",
+                             "preferences-trusted"}) {
+        for (const Scene& s : light) {
+            if (s.name == QLatin1String(name)) {
+                Scene dark = s;
+                dark.name = s.name + QStringLiteral("-dark");
+                dark.theme = ThemeChoice::Dark;
+                scenes.push_back(dark);
+            }
+        }
+    }
     return scenes;
 }
 

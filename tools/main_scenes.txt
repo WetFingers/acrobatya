@@ -56,3 +56,9 @@ edit-format-panel
 edit-image-selected
 find-replace
 scan-bar
+
+# 4.6 — подписи: диалог подписания, панель «Подписи», полоса, Установки → Подписи
+sign-dialog
+sign-dialog-dark
+pane-signatures
+sig-bar-problems

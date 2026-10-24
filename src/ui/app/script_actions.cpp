@@ -19,6 +19,7 @@
 #include "services/script_runner.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
+#include "ui/tools/certificate/sign_script.h"
 #include "ui/tools/edit/edit_script.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tile_painter.h"
@@ -333,6 +334,8 @@ void registerBaseActions(ScriptRunner& runner, MainWindow& w) {
 
     // ---- действия инструментов (сессии-владельцы)
     registerEditScriptActions(runner, w);  // 3.4: edit.insertText, edit.replaceAll
+    registerSignScriptActions(runner,
+                              w);  // 4.6: sign.sign, sign.certify, sign.timestamp, sign.verifyAll, sign.trust
 }
 
 int runScript(const QString& file, const QString& outDir) {

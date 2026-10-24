@@ -1,0 +1,20 @@
+{
+  "comment": "Подписи через --script (план 4.6, п. 4; эталон 2 — сценарии 4 и 5; рубеж Р2). Сценарий 4: корень тестовой PKI — в доверенные, unsigned.pdf подписан B-T удостоверением signer-rsa.pfx в ${OUT_DIR}/scenario4.pdf — все подписи действительны. Сценарий 5: чужой signed-bb.pdf (самоподписанный подписант) — «проблемы с подписью». Сертификация P=2 и метка времени документа поверх неё — документ остаётся сертифицированным. Служба времени — по умолчанию (в ui.script_sign её подменяет служба PKI в процессе; без подмены нужна сеть).",
+  "steps": [
+    {"cmd": "sign.trust", "args": {"cert": "../fixtures/pki/root.cer", "certified": true}, "name": "доверять корню PKI"},
+    {"cmd": "doc.open", "args": {"path": "../fixtures/sig/unsigned.pdf"}},
+    {"cmd": "sign.sign", "args": {"pfx": "../fixtures/pki/signer-rsa.pfx", "password": "acrobatya", "level": "T", "reason": "Я утверждаю этот документ", "page": 1, "rect": [72, 72, 300, 150], "target": "${OUT_DIR}/scenario4.pdf"}, "name": "сценарий 4: подпись B-T"},
+    {"cmd": "sign.verifyAll", "args": {"expect": "valid"}, "name": "сценарий 4: все подписи действительны"},
+    {"cmd": "shot", "args": {"name": "scenario4"}},
+    {"cmd": "doc.close"},
+    {"cmd": "doc.open", "args": {"path": "../fixtures/sig/signed-bb.pdf"}},
+    {"cmd": "sign.verifyAll", "args": {"expect": "problems"}, "name": "сценарий 5: подписант не доверен"},
+    {"cmd": "doc.close"},
+    {"cmd": "doc.open", "args": {"path": "../fixtures/sig/unsigned.pdf"}},
+    {"cmd": "sign.certify", "args": {"pfx": "../fixtures/pki/signer-rsa.pfx", "password": "acrobatya", "perms": 2, "level": "B", "target": "${OUT_DIR}/certified.pdf"}, "name": "сертифицировать P=2"},
+    {"cmd": "sign.verifyAll", "args": {"expect": "certified"}, "name": "сертифицирован"},
+    {"cmd": "sign.timestamp", "args": {}, "name": "метка времени документа"},
+    {"cmd": "sign.verifyAll", "args": {"expect": "certified"}, "name": "метка не нарушает сертификацию"},
+    {"cmd": "doc.close"}
+  ]
+}
