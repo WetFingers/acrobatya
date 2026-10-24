@@ -50,6 +50,11 @@
 
 namespace ot {
 
+namespace sign {
+struct SignRequest;
+struct SignResult;
+}  // namespace sign
+
 class Document;
 class DisplayCache;
 class DisplayList;
@@ -223,6 +228,12 @@ public:
     // правками и историей (сигнала saved нет).
     QFuture<SaveReport> saveCopy(const QString& path, const SaveOptions& options = {});
 
+    // Подписать (core/sign/signer.h, эталон 3.8): несохранённые правки сначала записываются, подпись —
+    // инкрементом в target (пусто — файл документа; другой путь — документ переходит на него, как «Сохранить
+    // как»). Записанный файл переоткрыт (история пуста, сигнал saved, pageChanged страницы подписи); ошибка —
+    // sign::SignError в QFuture, документ возвращён к файлу на диске.
+    QFuture<sign::SignResult> sign(sign::SignRequest request, const QString& target = {});
+
     // С ожиданием: исключение задачи бросается здесь. Из потока документа (внутри задачи) выполняется сразу.
     template <class F>
     auto postSync(F&& fn, TaskPriority priority = TaskPriority::Urgent)
@@ -296,7 +307,8 @@ private:
     QFuture<bool> history(bool back);
     QFuture<SaveReport> saveTo(const QString& path, const SaveOptions& options);
     // После Saver::save: документ переоткрыт — сводка, списки и история заново (в потоке документа).
-    void afterSave(const SaveReport& report);
+    // reloaded — документ переоткрыт, хотя запись не удалась (подпись: откат к файлу) — сводка заново.
+    void afterSave(const SaveReport& report, bool reloaded = false);
     // Rewriter документа (создаётся при первой правке текста; сбрасывается вместе с документом).
     edit::Rewriter& rewriter(Document& doc);
     // После задачи: раскладка (структурная правка) и состояние истории — в summary_/undoState_ с сигналами.

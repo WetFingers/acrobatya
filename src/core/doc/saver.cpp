@@ -350,6 +350,17 @@ SaveReport Saver::save(Document& doc, const fs::path& target, const SaveOptions&
     return r;
 }
 
+void Saver::revert(Document& doc) {
+    if (doc.filePath().empty()) {
+        throw std::logic_error("revert: the document has no file");
+    }
+    const fs::path file = doc.filePath();
+    const fs::path documentPath = doc.path();
+    const fs::path backing = doc.backingFile();
+    const std::string password = doc.password();
+    doc.reopen(file, password, documentPath, backing);
+}
+
 SaveReport Saver::saveCopy(Document& doc, const fs::path& target, const SaveOptions& options) {
     SaveReport r = decide(doc, options);
     if (!r.ok()) {

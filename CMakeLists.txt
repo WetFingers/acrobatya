@@ -253,6 +253,23 @@ if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   set_tests_properties(compat.images PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_images
     SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endif()
+# Совместимость подписей (план 4.2): sign_compat.DISABLED_* пишет <сборка>/compat/sign/<набор>/*.pdf; tools/compat_check.py
+# — pyHanko с корнем тестовой PKI (--expect-sig), qpdf --check, pdfcpu strict, mutool clean, pypdfium2.
+# b — одна подпись B-B (RSA, ECDSA, adbe.pkcs7.detached, невидимая, в готовом поле, с блокировкой): INTACT, TRUSTED,
+# UNTOUCHED; b-multi — две подписи подряд (первая уже дополнена).
+if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(_compat_sign "${CMAKE_BINARY_DIR}/compat/sign")
+  add_test(NAME compat.sign.generate
+    COMMAND unit_tests --gtest_also_run_disabled_tests --gtest_filter=sign_compat.* --gtest_brief=1)
+  set_tests_properties(compat.sign.generate PROPERTIES LABELS "compat;slow" FIXTURES_SETUP compat_sign
+    ENVIRONMENT "OTTISK_COMPAT_OUT=${CMAKE_BINARY_DIR}/compat" TIMEOUT 300)
+  set(_compat_sign_check "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/compat_check.py" --quiet
+    --trust "${CMAKE_SOURCE_DIR}/tests/fixtures/pki/root.pem")
+  add_test(NAME compat.sign.b COMMAND ${_compat_sign_check} --expect-sig INTACT,TRUSTED,UNTOUCHED "${_compat_sign}/b")
+  add_test(NAME compat.sign.b.multi COMMAND ${_compat_sign_check} --expect-sig INTACT,TRUSTED "${_compat_sign}/b-multi")
+  set_tests_properties(compat.sign.b compat.sign.b.multi PROPERTIES LABELS "compat;slow"
+    FIXTURES_REQUIRED compat_sign SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+endif()
 # Публичные службы времени (план 4.1, п. 4): tsa_compat.DISABLED_public_servers — DigiCert, Sectigo, GlobalSign
 # живьём через QtHttpFetcher; сети в тестах очереди нет — только с OTTISK_LIVE_NET=1, иначе пропуск (GTEST_SKIP).
 if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")

@@ -21,6 +21,7 @@
 #include "core/render/display_cache.h"
 #include "core/render/fit.h"
 #include "core/render/renderer.h"
+#include "core/sign/signer.h"
 #include "core/text/stext.h"
 #include "core/util/paths.h"
 #include "services/system_fonts_dwrite.h"
@@ -562,7 +563,28 @@ QFuture<SaveReport> DocumentSession::saveTo(const QString& path, const SaveOptio
         TaskPriority::Normal, QStringLiteral("save"));
 }
 
-void DocumentSession::afterSave(const SaveReport& report) {
+QFuture<sign::SignResult> DocumentSession::sign(sign::SignRequest request, const QString& target) {
+    return post(
+        [this, request = std::move(request), target](TaskContext& tc) {
+            const std::filesystem::path to =
+                target.isEmpty() ? std::filesystem::path() : std::filesystem::path(target.toStdWString());
+            sign::SignResult result;
+            try {
+                result = sign::signDocument(tc.document(), request, to);
+            } catch (...) {
+                SaveReport failed;
+                failed.error = SaveError::WriteFailed;
+                afterSave(failed, true);
+                throw;
+            }
+            afterSave(result.save);
+            tc.touchPage(result.page);
+            return result;
+        },
+        TaskPriority::Normal, QStringLiteral("sign"));
+}
+
+void DocumentSession::afterSave(const SaveReport& report, bool reloaded) {
     textEditing_.reset();
     displayCache_->clear();
     textCache_->clear();
@@ -580,7 +602,7 @@ void DocumentSession::afterSave(const SaveReport& report) {
         emit closed();
         return;
     }
-    const bool reopened = report.ok() || report.error == SaveError::ReplaceFailed;
+    const bool reopened = reloaded || report.ok() || report.error == SaveError::ReplaceFailed;
     if (reopened) {
         OpenSummary s;
         try {

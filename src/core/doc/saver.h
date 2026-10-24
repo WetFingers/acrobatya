@@ -94,6 +94,11 @@ public:
     static SaveReport saveCopy(Document& doc, const std::filesystem::path& target,
                                const SaveOptions& options = {});
 
+    // Вернуть документ к его файлу на диске: несохранённые правки и история отбрасываются (неудачная подпись
+    // — sign::signDocument). Документ без файла — std::logic_error; файл не открылся — исключение, документ
+    // закрыт.
+    static void revert(Document& doc);
+
     static const char* modeName(SaveMode mode) noexcept;
     static const char* errorName(SaveError error) noexcept;
 };
