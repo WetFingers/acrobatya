@@ -3,6 +3,7 @@
 #include <QComboBox>
 #include <QCoreApplication>
 #include <QFormLayout>
+#include <QScrollArea>
 #include <QSignalBlocker>
 #include <QVBoxLayout>
 
@@ -12,6 +13,8 @@
 #include <memory>
 
 #include "core/annot/defaults.h"
+#include "core/annot/freetext.h"
+#include "services/annot_ops.h"
 #include "services/comment_settings.h"
 #include "services/document_session.h"
 #include "services/settings.h"
@@ -19,9 +22,11 @@
 #include "ui/shell/document_view.h"
 #include "ui/theme/icons.h"
 #include "ui/theme/theme.h"
+#include "ui/tools/comment/inline_text_editor.h"
 #include "ui/tools/tool_registry.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
+#include "ui/view/tools/view_tool.h"
 #include "ui/widgets/color_swatch.h"
 #include "ui/widgets/number_field.h"
 #include "ui/widgets/toast.h"
@@ -39,6 +44,8 @@ struct ActionRow {
 
 constexpr ActionRow kTextRows[] = {
     {CommentAction::Note, "commentNote", "sticky-note"},
+    {CommentAction::TextBox, "commentTextBox", "type"},
+    {CommentAction::Callout, "commentCallout", "message-square-quote"},
     {CommentAction::Highlight, "commentHighlight", "highlighter"},
     {CommentAction::Underline, "commentUnderline", "underline"},
     {CommentAction::StrikeOut, "commentStrikeOut", "strikethrough"},
@@ -109,6 +116,8 @@ void CommentTool::activate(DocumentView& view) {
         syncButtons();
         loadStyle();
     }));
+    connections_.push_back(connect(&view.view().tools(), &ToolController::annotSelectionChanged, this,
+                                   [this] { loadFormatFromSelection(); }));
     settingsChanged();
     updateLock();
 }
@@ -155,13 +164,33 @@ void CommentTool::loadStyle() {
     const annot::AnnotProps p =
         comments::newProps(Settings(), CommentMode::typeOf(action), CommentMode::actionKey(action));
     loadingStyle_ = true;
+    const bool text = textAction(action);
+    // Текстовое поле и выноска: «Цвет» — заливка (/C, можно без цвета), «Толщина» — рамка (0 — без рамки).
+    color_->setNoneAllowed(text);
+    colorLabel_->setText(text ? tr("Заливка:") : tr("Цвет:"));
+    widthLabel_->setText(text ? tr("Рамка:") : tr("Толщина:"));
+    width_->setMinimum(text ? 0.0 : 0.5);
     color_->setColor(p.color.empty() ? QColor() : QColor::fromRgb(static_cast<QRgb>(p.color.toRgb())));
     width_->setValue(p.borderWidth);
-    width_->setEnabled(action == CommentAction::Ink);
+    width_->setEnabled(action == CommentAction::Ink || text);
     opacity_->setValue(std::round(p.opacity * 100));
     const int icon = icon_->findData(QString::fromStdString(p.icon));
     icon_->setCurrentIndex(icon >= 0 ? icon : 0);
     icon_->setEnabled(action == CommentAction::Note);
+    if (formatTargets_.empty()) {
+        const int font = font_->findData(QString::fromStdString(annot::textFontFamily(p.fontName)));
+        font_->setCurrentIndex(font >= 0 ? font : 0);
+        fontSize_->setValue(p.fontSize > 0 ? p.fontSize : 12);
+        textColor_->setColor(p.textColor.empty() ? QColor()
+                                                 : QColor::fromRgb(static_cast<QRgb>(p.textColor.toRgb())));
+        align_->setCurrentIndex(std::clamp(p.align, 0, 2));
+    }
+    const bool format = text || !formatTargets_.empty() ||
+                        (view_ != nullptr && InlineTextEditor::active(view_->view()) != nullptr);
+    for (QWidget* w : {static_cast<QWidget*>(font_.data()), static_cast<QWidget*>(fontSize_.data()),
+                       static_cast<QWidget*>(textColor_.data()), static_cast<QWidget*>(align_.data())}) {
+        w->setEnabled(format);
+    }
     loadingStyle_ = false;
 }
 
@@ -170,19 +199,30 @@ void CommentTool::saveStyle() {
         return;
     }
     const CommentAction action = mode() != nullptr ? mode()->action() : CommentAction::Note;
-    comments::ToolStyle style;
+    Settings settings;
+    // Поверх прежнего стиля инструмента: поля панели, которых у действия нет, его не стирают.
+    comments::ToolStyle style = comments::toolStyle(settings, CommentMode::actionKey(action));
+    style.color.reset();
     if (color_->color().isValid()) {
         style.color =
             annot::AnnotColor::fromRgb(static_cast<std::uint32_t>(color_->color().rgb() & 0xffffff));
     }
     style.opacity = static_cast<float>(opacity_->value() / 100.0);
-    if (action == CommentAction::Ink) {
+    if (action == CommentAction::Ink || textAction(action)) {
         style.width = static_cast<float>(width_->value());
     }
     if (action == CommentAction::Note) {
         style.icon = icon_->currentData().toString().toStdString();
     }
-    Settings settings;
+    if (textAction(action) && formatTargets_.empty()) {
+        style.font = font_->currentData().toString().toStdString();
+        style.fontSize = static_cast<float>(fontSize_->value());
+        if (textColor_->color().isValid()) {
+            style.textColor =
+                annot::AnnotColor::fromRgb(static_cast<std::uint32_t>(textColor_->color().rgb() & 0xffffff));
+        }
+        style.align = align_->currentIndex();
+    }
     comments::setToolStyle(settings, CommentMode::actionKey(action), style);
 }
 
@@ -279,9 +319,18 @@ QWidget* CommentTool::panel() {
 
 void CommentTool::buildPanel() {
     const Metrics& m = Theme::sizes();
-    panel_ = new QWidget();
-    panel_->setObjectName(QStringLiteral("commentToolPanel"));
-    auto* column = new QVBoxLayout(panel_);
+    // Действий и полей стиля больше, чем высота окна, — панель прокручивается.
+    auto* scroll = new QScrollArea();
+    scroll->setObjectName(QStringLiteral("commentToolPanel"));
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setWidgetResizable(true);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->viewport()->setAutoFillBackground(false);
+    panel_ = scroll;
+    auto* body = new QWidget(scroll);
+    body->setObjectName(QStringLiteral("commentToolPanelBody"));
+    body->setAutoFillBackground(false);
+    auto* column = new QVBoxLayout(body);
     column->setContentsMargins(m.grid * 3, m.grid * 3, m.grid * 3, m.grid * 3);
     column->setSpacing(m.grid);
 
@@ -313,6 +362,7 @@ void CommentTool::buildPanel() {
     }
     buildStyle(column);
     column->addStretch(1);
+    scroll->setWidget(body);
 }
 
 void CommentTool::buildStyle(QVBoxLayout* column) {
@@ -323,14 +373,16 @@ void CommentTool::buildStyle(QVBoxLayout* column) {
     color_ = new ColorSwatch(QColor(), panel_);
     color_->setObjectName(QStringLiteral("commentColor"));
     color_->setAccessibleName(tr("Цвет"));
-    form->addRow(tr("Цвет:"), color_);
+    colorLabel_ = new QLabel(tr("Цвет:"), panel_);
+    form->addRow(colorLabel_, color_);
     width_ = new NumberField(panel_);
     width_->setObjectName(QStringLiteral("commentWidth"));
     width_->setRange(0.5, 12);
     width_->setSingleStep(0.5);
     width_->setDecimals(1);
     width_->setUnit(tr("пт"));
-    form->addRow(tr("Толщина:"), width_);
+    widthLabel_ = new QLabel(tr("Толщина:"), panel_);
+    form->addRow(widthLabel_, width_);
     opacity_ = new NumberField(panel_);
     opacity_->setObjectName(QStringLiteral("commentOpacity"));
     opacity_->setRange(5, 100);
@@ -352,10 +404,12 @@ void CommentTool::buildStyle(QVBoxLayout* column) {
     }
     form->addRow(tr("Значок записки:"), icon_);
     column->addLayout(form);
+    buildFormat(column);
     pin_ = addRow(column, QStringLiteral("pin"), tr("Оставлять инструмент выбранным"));
     pin_->setObjectName(QStringLiteral("commentPin"));
     pin_->setCheckable(true);
-    pin_->setToolTip(tr("После записки, вставки или замены текста инструмент не сменяется на «Выделение»"));
+    pin_->setToolTip(tr(
+        "После записки, текстового поля, вставки или замены текста инструмент не сменяется на «Выделение»"));
     connect(pin_, &ToolButton::toggled, this, [this](bool on) {
         Settings().set(settings::kCommentKeepTool, on);
         setPinned(on);
@@ -366,6 +420,125 @@ void CommentTool::buildStyle(QVBoxLayout* column) {
     connect(icon_, &QComboBox::currentIndexChanged, this, [this] { saveStyle(); });
     pin_->setChecked(Settings().get(settings::kCommentKeepTool));
     loadStyle();
+}
+
+bool CommentTool::textAction(CommentAction action) noexcept {
+    return action == CommentAction::TextBox || action == CommentAction::Callout;
+}
+
+// «Формат текста» (comment-09): шрифт — четыре семейства с встраиваемым TrueType (core/annot/freetext.h),
+// кегль, цвет текста, выравнивание.
+void CommentTool::buildFormat(QVBoxLayout* column) {
+    addCaption(column, tr("Формат текста"));
+    auto* form = new QFormLayout();
+    form->setContentsMargins(0, 0, 0, 0);
+    form->setSpacing(Theme::sizes().grid);
+    font_ = new QComboBox(panel_);
+    font_->setObjectName(QStringLiteral("commentFont"));
+    for (const annot::TextFont& f : annot::kTextFonts) {
+        font_->addItem(QString::fromUtf8(f.family), QString::fromUtf8(f.family));
+    }
+    form->addRow(tr("Шрифт:"), font_);
+    fontSize_ = new NumberField(panel_);
+    fontSize_->setObjectName(QStringLiteral("commentFontSize"));
+    fontSize_->setRange(4, 144);
+    fontSize_->setSingleStep(1);
+    fontSize_->setDecimals(0);
+    fontSize_->setUnit(tr("пт"));
+    form->addRow(tr("Кегль:"), fontSize_);
+    textColor_ = new ColorSwatch(QColor(), panel_);
+    textColor_->setObjectName(QStringLiteral("commentTextColor"));
+    textColor_->setAccessibleName(tr("Цвет текста"));
+    form->addRow(tr("Цвет текста:"), textColor_);
+    align_ = new SegmentedBar(panel_);
+    align_->setObjectName(QStringLiteral("commentAlign"));
+    align_->addSegment(QString(), QStringLiteral("align-left"), tr("По левому краю"));
+    align_->addSegment(QString(), QStringLiteral("align-center"), tr("По центру"));
+    align_->addSegment(QString(), QStringLiteral("align-right"), tr("По правому краю"));
+    align_->setCurrentIndex(0);
+    form->addRow(tr("Выравнивание:"), align_);
+    column->addLayout(form);
+    connect(font_, &QComboBox::currentIndexChanged, this, [this] { formatChanged(); });
+    connect(fontSize_, &NumberField::valueChanged, this, [this] { formatChanged(); });
+    connect(textColor_, &ColorSwatch::colorChanged, this, [this] { formatChanged(); });
+    connect(align_, &SegmentedBar::currentChanged, this, [this] { formatChanged(); });
+}
+
+// Формат — открытому редактору поля, выбранным полям FreeText (шаг «Set annotation properties» на каждое) или
+// стилю следующего поля.
+void CommentTool::formatChanged() {
+    if (loadingStyle_ || panel_ == nullptr) {
+        return;
+    }
+    const QString family = font_->currentData().toString();
+    const double size = fontSize_->value();
+    const QColor color = textColor_->color();
+    const int align = align_->currentIndex();
+    if (view_ != nullptr) {
+        if (InlineTextEditor* editor = InlineTextEditor::active(view_->view())) {
+            editor->setFormat(family, size, color, align);
+            return;
+        }
+        if (!formatTargets_.empty()) {
+            annot::AnnotPatch patch;
+            patch.fontName = family.toStdString();
+            patch.fontSize = static_cast<float>(size);
+            if (color.isValid()) {
+                patch.textColor =
+                    annot::AnnotColor::fromRgb(static_cast<std::uint32_t>(color.rgb() & 0xffffff));
+            }
+            patch.align = align;
+            for (const annot::AnnotRef& ref : formatTargets_) {
+                annot::update(view_->session(), ref, patch);
+            }
+            return;
+        }
+    }
+    saveStyle();
+}
+
+// Выбранные поля FreeText — цели «Формата текста»: поля панели — из первого; нет — стиль действия.
+void CommentTool::loadFormatFromSelection() {
+    if (view_ == nullptr || panel_ == nullptr) {
+        return;
+    }
+    formatTargets_.clear();
+    for (const annot::AnnotInfo& a : view_->view().tools().annotSelect().selection()) {
+        if (a.type == annot::AnnotType::FreeText && !a.locked()) {
+            formatTargets_.push_back(a.ref);
+        }
+    }
+    if (formatTargets_.empty()) {
+        loadStyle();
+        return;
+    }
+    const QPointer<CommentTool> self(this);
+    annot::props(view_->session(), formatTargets_.front())
+        .then(this, [self](QFuture<std::optional<annot::AnnotProps>> f) {
+            std::optional<annot::AnnotProps> p;
+            try {
+                p = f.result();
+            } catch (const std::exception&) {  // NOLINT(bugprone-empty-catch): поля нет — формат прежний
+            }
+            if (self == nullptr || !p || self->panel_ == nullptr) {
+                return;
+            }
+            self->loadingStyle_ = true;
+            const int font =
+                self->font_->findData(QString::fromStdString(annot::textFontFamily(p->fontName)));
+            self->font_->setCurrentIndex(font >= 0 ? font : 0);
+            self->fontSize_->setValue(p->fontSize > 0 ? p->fontSize : 12);
+            self->textColor_->setColor(
+                p->textColor.empty() ? QColor() : QColor::fromRgb(static_cast<QRgb>(p->textColor.toRgb())));
+            self->align_->setCurrentIndex(std::clamp(p->align, 0, 2));
+            for (QWidget* w :
+                 {static_cast<QWidget*>(self->font_.data()), static_cast<QWidget*>(self->fontSize_.data()),
+                  static_cast<QWidget*>(self->textColor_.data()),
+                  static_cast<QWidget*>(self->align_.data())}) {
+                w->setEnabled(true);
+            }
+            self->loadingStyle_ = false;
+        });
 }
 
 // ---------------------------------------------------------------- команды
@@ -416,6 +589,15 @@ std::vector<ot::Command> CommentTool::commands() const {
          .checkable = true,
          .checked =
              [registry] { return registry->view() != nullptr && registry->view()->commentsHidden(); }});
+    out.push_back({.id = QStringLiteral("tool.textbox"),
+                   .title = tr("&Текстовое поле"),
+                   .shortcuts = {QKeySequence(Qt::Key_J)},
+                   .icon = QStringLiteral("type"),
+                   .run = runner(CommentAction::TextBox),
+                   .when = QLatin1String(CommandRegistry::kViewContext),
+                   .enabled = enabled,
+                   .menu = QStringLiteral("tools"),
+                   .singleKey = true});
     out.push_back({.id = QStringLiteral("tool.draw"),
                    .title = tr("&Рисовать"),
                    .shortcuts = {QKeySequence(Qt::Key_D)},

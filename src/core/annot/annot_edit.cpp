@@ -6,10 +6,12 @@
 #include <cmath>
 #include <cstring>
 #include <map>
+#include <optional>
 
 #include "core/annot/annot_internal.h"
 #include "core/annot/annots.h"
 #include "core/annot/defaults.h"
+#include "core/annot/freetext.h"
 #include "core/doc/document.h"
 #include "core/doc/journal.h"
 #include "core/mu/call.h"
@@ -36,7 +38,8 @@ struct PropsRaw {
     const char* icon = nullptr;
     const char* intent = nullptr;
     const char* rt = nullptr;
-    const char* font = nullptr;
+    char font[64] = {};
+    int hasFont = 0;
     int colorN = 0;
     float color[4] = {};
     int icN = 0;
@@ -90,6 +93,10 @@ void readScalars(fz_context* ctx, pdf_obj* obj, pdf_annot* a, fz_matrix ctm, Pro
     }
     r->isAnnot = 1;
     r->rect = pdf_annot_has_rect(ctx, a) ? pdf_annot_rect(ctx, a) : pdf_bound_annot(ctx, a);
+    const bool freeText = pdf_annot_type(ctx, a) == PDF_ANNOT_FREE_TEXT;
+    if (freeText) {
+        r->rect = fz_transform_rect(detail::freeTextDesign(ctx, obj), ctm);  // /RD по ISO 32000
+    }
     if (pdf_annot_has_rich_contents(ctx, a)) {
         r->rc = pdf_annot_rich_contents(ctx, a);
     }
@@ -123,7 +130,9 @@ void readScalars(fz_context* ctx, pdf_obj* obj, pdf_annot* a, fz_matrix ctm, Pro
         r->hasLine = 1;
         pdf_annot_line(ctx, a, &r->la, &r->lb);
     }
-    if (pdf_annot_has_line_ending_styles(ctx, a)) {
+    if (freeText) {
+        r->les = static_cast<int>(pdf_annot_callout_style(ctx, a));  // /LE выноски — имя
+    } else if (pdf_annot_has_line_ending_styles(ctx, a)) {
         enum pdf_line_ending s = PDF_ANNOT_LE_NONE;
         enum pdf_line_ending e = PDF_ANNOT_LE_NONE;
         pdf_annot_line_ending_styles(ctx, a, &s, &e);
@@ -131,7 +140,9 @@ void readScalars(fz_context* ctx, pdf_obj* obj, pdf_annot* a, fz_matrix ctm, Pro
         r->lee = static_cast<int>(e);
     }
     if (pdf_annot_has_default_appearance(ctx, a)) {
-        pdf_annot_default_appearance(ctx, a, &r->font, &r->fontSize, &r->daN, r->da);
+        // Без отображения имён (pdf_annot_default_appearance сводит незнакомые к Helv/TiRo/Cour).
+        pdf_annot_default_appearance_unmapped(ctx, a, r->font, sizeof(r->font), &r->fontSize, &r->daN, r->da);
+        r->hasFont = 1;
     }
     if (pdf_annot_has_quadding(ctx, a)) {
         r->quadding = pdf_annot_quadding(ctx, a);
@@ -200,8 +211,8 @@ std::optional<AnnotProps> readFrom(PageAnnots& pa, int objnum) {
     p.lineEnd = {r.lb.x, r.lb.y};
     p.lineStartStyle = static_cast<LineEnding>(std::clamp(r.les, 0, 9));
     p.lineEndStyle = static_cast<LineEnding>(std::clamp(r.lee, 0, 9));
-    if (r.font != nullptr) {
-        p.fontName = r.font;
+    if (r.hasFont != 0) {
+        p.fontName = p.type == AnnotType::FreeText ? textFontFamily(r.font) : std::string(r.font);
         p.fontSize = r.fontSize;
         p.textColor = colorOf(r.daN, r.da);
     }
@@ -259,6 +270,7 @@ struct Prepared {
     std::vector<fz_point> inkPoints;
     std::vector<fz_point> vertices;
     std::vector<fz_point> callout;
+    std::optional<fz_rect> rect;  // поле FreeText в пунктах PDF
 };
 
 void prepareQuads(Prepared& prep, const std::vector<QuadF>& quads) {
@@ -311,6 +323,38 @@ void setDash(fz_context* ctx, pdf_annot* a, const std::vector<float>& dash, Bord
     pdf_set_annot_border_style(ctx, a, static_cast<enum pdf_border_style>(s));
 }
 
+// /CL из точек в пунктах PDF (2 или 3; pdf_set_annot_callout_line MuPDF применяет к точкам страницы прямую
+// матрицу страницы — на повёрнутых страницах неверно). Внутри mu::call.
+void putCallout(fz_context* ctx, pdf_obj* obj, const std::vector<fz_point>& points) {
+    const int n = std::min(3, static_cast<int>(points.size()));
+    pdf_obj* cl = pdf_dict_put_array(ctx, obj, PDF_NAME(CL), n * 2);
+    for (int i = 0; i < n; ++i) {
+        pdf_array_push_real(ctx, cl, points[static_cast<std::size_t>(i)].x);
+        pdf_array_push_real(ctx, cl, points[static_cast<std::size_t>(i)].y);
+    }
+}
+
+// /BS /W без правки /Rect и /RD (pdf_set_annot_border_width раздвигает их на половину разницы толщин — у
+// FreeText поле задаёт /RD по ISO 32000, freetext.cpp). Внутри mu::call.
+void setBorderWidthRaw(fz_context* ctx, pdf_obj* obj, float width) {
+    pdf_obj* bs = pdf_dict_get(ctx, obj, PDF_NAME(BS));
+    if (!pdf_is_dict(ctx, bs)) {
+        bs = pdf_dict_put_dict(ctx, obj, PDF_NAME(BS), 2);
+    }
+    pdf_dict_put_real(ctx, bs, PDF_NAME(W), width);
+    pdf_dict_del(ctx, obj, PDF_NAME(Border));
+}
+
+// Точки страницы → пункты PDF (обратная матрица страницы).
+std::vector<fz_point> toPdfSpace(const std::vector<PointF>& points, fz_matrix ctm) {
+    std::vector<fz_point> out;
+    const fz_matrix inv = fz_invert_matrix(ctm);
+    for (const PointF p : points) {
+        out.push_back(fz_transform_point(fz_make_point(p.x, p.y), inv));
+    }
+    return out;
+}
+
 bool hasGeometryRect(AnnotType type) noexcept {
     return isTextMarkup(type) || type == AnnotType::Ink || type == AnnotType::Line ||
            type == AnnotType::Polygon || type == AnnotType::PolyLine;
@@ -338,7 +382,12 @@ void applyNew(fz_context* ctx, pdf_document* pdf, pdf_annot* a, const AnnotProps
         pdf_set_annot_line(ctx, a, fz_make_point(p.lineStart.x, p.lineStart.y),
                            fz_make_point(p.lineEnd.x, p.lineEnd.y));
     }
-    if (pdf_annot_has_line_ending_styles(ctx, a)) {
+    const bool freeText = p.type == AnnotType::FreeText;
+    if (freeText) {
+        if (!prep.callout.empty()) {
+            pdf_set_annot_callout_style(ctx, a, static_cast<enum pdf_line_ending>(p.lineStartStyle));
+        }
+    } else if (pdf_annot_has_line_ending_styles(ctx, a)) {
         pdf_set_annot_line_ending_styles(ctx, a, static_cast<enum pdf_line_ending>(p.lineStartStyle),
                                          static_cast<enum pdf_line_ending>(p.lineEndStyle));
     }
@@ -348,7 +397,11 @@ void applyNew(fz_context* ctx, pdf_document* pdf, pdf_annot* a, const AnnotProps
     }
     pdf_set_annot_opacity(ctx, a, p.opacity);
     if (pdf_annot_has_border(ctx, a)) {
-        pdf_set_annot_border_width(ctx, a, p.borderWidth);
+        if (freeText) {
+            setBorderWidthRaw(ctx, obj, p.borderWidth);
+        } else {
+            pdf_set_annot_border_width(ctx, a, p.borderWidth);
+        }
         setDash(ctx, a, p.dash, p.borderStyle);
     }
     if (pdf_annot_has_border_effect(ctx, a)) {
@@ -362,19 +415,17 @@ void applyNew(fz_context* ctx, pdf_document* pdf, pdf_annot* a, const AnnotProps
     }
     if (pdf_annot_has_default_appearance(ctx, a)) {
         const AnnotColor& tc = p.textColor.empty() ? AnnotColor::gray(0) : p.textColor;
-        pdf_set_annot_default_appearance(ctx, a, p.fontName.empty() ? "Helv" : p.fontName.c_str(),
-                                         p.fontSize > 0 ? p.fontSize : 12.0f, tc.n, tc.c.data());
+        // FreeText — имя нашего шрифта (freetext.h); прочие — как задано.
+        const char* font = freeText ? textFont(textFontFamily(p.fontName)).resource
+                                    : (p.fontName.empty() ? "Helv" : p.fontName.c_str());
+        pdf_set_annot_default_appearance(ctx, a, font, p.fontSize > 0 ? p.fontSize : 12.0f, tc.n,
+                                         tc.c.data());
     }
     if (pdf_annot_has_quadding(ctx, a)) {
         pdf_set_annot_quadding(ctx, a, std::clamp(p.align, 0, 2));
     }
-    if (pdf_annot_has_callout(ctx, a) && !prep.callout.empty()) {
-        fz_point cl[3] = {};
-        const int n = std::min(3, static_cast<int>(prep.callout.size()));
-        for (int i = 0; i < n; ++i) {
-            cl[i] = prep.callout[static_cast<std::size_t>(i)];
-        }
-        pdf_set_annot_callout_line(ctx, a, cl, n);
+    if (pdf_annot_has_callout(ctx, a) && prep.callout.size() >= 2) {
+        putCallout(ctx, obj, prep.callout);
     }
     pdf_set_annot_contents(ctx, a, p.contents.c_str());
     if (!p.richContents.empty() && pdf_annot_has_rich_contents(ctx, a)) {
@@ -409,6 +460,9 @@ void applyNew(fz_context* ctx, pdf_document* pdf, pdf_annot* a, const AnnotProps
         pdf_end_operation(ctx, pdf);
         pdf_set_annot_filespec(ctx, a, fs);
         pdf_drop_obj(ctx, fs);
+    }
+    if (freeText) {
+        return;  // вид — writeFreeText после (свой шрифт)
     }
     pdf_update_annot(ctx, a);
     // Значок (NoZoom) MuPDF рисует в размере /BBox внешнего вида, а pdfium и Acrobat вписывают его в /Rect
@@ -483,7 +537,7 @@ AnnotRef createIn(Document& doc, PageAnnots& pa, const AnnotProps& props, int ir
     if (props.type == AnnotType::Polygon || props.type == AnnotType::PolyLine) {
         preparePoints(prep.vertices, props.vertices);
     }
-    preparePoints(prep.callout, props.callout);
+    prep.callout = toPdfSpace(props.callout, pa.ctm());
     AnnotProps p = props;
     if (p.subject.empty()) {
         p.subject = defaultSubject(p.type);
@@ -511,14 +565,17 @@ AnnotRef createIn(Document& doc, PageAnnots& pa, const AnnotProps& props, int ir
         objnum = pdf_to_num(ctx, pdf_annot_obj(ctx, annot));
         applyNew(ctx, pdf, annot, p, prep, popup, irt, rt, created, modified, nm.c_str(), file.get());
     });
-    (void)doc;
     pa.refresh();
+    if (p.type == AnnotType::FreeText) {
+        detail::writeFreeText(doc, pa, objnum);
+    }
     return {pa.index(), objnum, nm};
 }
 
 void applyPatch(fz_context* ctx, pdf_annot* a, const AnnotPatch& patch, const Prepared& prep,
                 std::int64_t modified) {
     pdf_obj* obj = pdf_annot_obj(ctx, a);
+    const bool freeText = pdf_annot_type(ctx, a) == PDF_ANNOT_FREE_TEXT;
     if (patch.contents) {
         pdf_set_annot_contents(ctx, a, patch.contents->c_str());
     }
@@ -542,7 +599,11 @@ void applyPatch(fz_context* ctx, pdf_annot* a, const AnnotPatch& patch, const Pr
     }
     if (pdf_annot_has_border(ctx, a)) {
         if (patch.borderWidth) {
-            pdf_set_annot_border_width(ctx, a, *patch.borderWidth);
+            if (freeText) {
+                setBorderWidthRaw(ctx, obj, *patch.borderWidth);
+            } else {
+                pdf_set_annot_border_width(ctx, a, *patch.borderWidth);
+            }
         }
         if (patch.dash) {
             setDash(ctx, a, *patch.dash, patch.borderStyle.value_or(BorderStyle::Solid));
@@ -554,8 +615,38 @@ void applyPatch(fz_context* ctx, pdf_annot* a, const AnnotPatch& patch, const Pr
         pdf_set_annot_border_effect(ctx, a,
                                     *patch.cloudy ? PDF_BORDER_EFFECT_CLOUDY : PDF_BORDER_EFFECT_NONE);
         if (*patch.cloudy) {
-            pdf_set_annot_border_effect_intensity(ctx, a, 1.0f);
+            pdf_set_annot_border_effect_intensity(ctx, a, patch.cloudIntensity.value_or(1.0f));
         }
+    } else if (patch.cloudIntensity && pdf_annot_has_border_effect(ctx, a) &&
+               pdf_annot_border_effect(ctx, a) == PDF_BORDER_EFFECT_CLOUDY) {
+        pdf_set_annot_border_effect_intensity(ctx, a, *patch.cloudIntensity);
+    }
+    if (patch.lineStart && patch.lineEnd && pdf_annot_has_line(ctx, a)) {
+        pdf_set_annot_line(ctx, a, fz_make_point(patch.lineStart->x, patch.lineStart->y),
+                           fz_make_point(patch.lineEnd->x, patch.lineEnd->y));
+    }
+    if (freeText) {
+        if (prep.rect) {
+            pdf_dict_put_rect(ctx, obj, PDF_NAME(Rect), *prep.rect);  // /RD — заново (writeFreeText)
+            pdf_dict_del(ctx, obj, PDF_NAME(RD));
+        }
+        if (patch.lineStartStyle) {
+            pdf_set_annot_callout_style(ctx, a, static_cast<enum pdf_line_ending>(*patch.lineStartStyle));
+        }
+        if (patch.callout) {
+            if (prep.callout.size() >= 2) {
+                putCallout(ctx, obj, prep.callout);
+            } else {
+                pdf_dict_del(ctx, obj, PDF_NAME(CL));
+            }
+        }
+    } else if ((patch.lineStartStyle || patch.lineEndStyle) && pdf_annot_has_line_ending_styles(ctx, a)) {
+        enum pdf_line_ending s = PDF_ANNOT_LE_NONE;
+        enum pdf_line_ending e = PDF_ANNOT_LE_NONE;
+        pdf_annot_line_ending_styles(ctx, a, &s, &e);
+        pdf_set_annot_line_ending_styles(
+            ctx, a, patch.lineStartStyle ? static_cast<enum pdf_line_ending>(*patch.lineStartStyle) : s,
+            patch.lineEndStyle ? static_cast<enum pdf_line_ending>(*patch.lineEndStyle) : e);
     }
     if (patch.flags) {
         pdf_set_annot_flags(ctx, a, *patch.flags);
@@ -577,12 +668,12 @@ void applyPatch(fz_context* ctx, pdf_annot* a, const AnnotPatch& patch, const Pr
     if (patch.vertices && pdf_annot_has_vertices(ctx, a) && !prep.vertices.empty()) {
         pdf_set_annot_vertices(ctx, a, static_cast<int>(prep.vertices.size()), prep.vertices.data());
     }
-    if ((patch.fontSize || patch.textColor) && pdf_annot_has_default_appearance(ctx, a)) {
-        const char* font = nullptr;
+    if ((patch.fontSize || patch.textColor || patch.fontName) && pdf_annot_has_default_appearance(ctx, a)) {
+        char font[64] = {};
         float size = 12;
         int n = 0;
         float color[4] = {};
-        pdf_annot_default_appearance(ctx, a, &font, &size, &n, color);
+        pdf_annot_default_appearance_unmapped(ctx, a, font, sizeof font, &size, &n, color);
         if (patch.fontSize) {
             size = *patch.fontSize;
         }
@@ -592,13 +683,22 @@ void applyPatch(fz_context* ctx, pdf_annot* a, const AnnotPatch& patch, const Pr
                 color[i] = patch.textColor->c[static_cast<std::size_t>(i)];
             }
         }
-        pdf_set_annot_default_appearance(ctx, a, font != nullptr ? font : "Helv", size, n, color);
+        std::string name = font[0] != '\0' ? font : "Helv";
+        if (patch.fontName) {
+            name = *patch.fontName;
+        }
+        if (freeText) {
+            name = textFont(textFontFamily(name)).resource;
+        }
+        pdf_set_annot_default_appearance(ctx, a, name.c_str(), size, n, color);
     }
     if (patch.align && pdf_annot_has_quadding(ctx, a)) {
         pdf_set_annot_quadding(ctx, a, std::clamp(*patch.align, 0, 2));
     }
     pdf_set_annot_modification_date(ctx, a, modified);
-    pdf_update_annot(ctx, a);
+    if (!freeText) {
+        pdf_update_annot(ctx, a);  // FreeText — writeFreeText после (свой шрифт)
+    }
 }
 
 }  // namespace annot_edit_detail
@@ -710,12 +810,26 @@ void update(Document& doc, const AnnotRef& ref, const AnnotPatch& patch, const s
     if (patch.vertices) {
         annot_edit_detail::preparePoints(prep.vertices, *patch.vertices);
     }
+    if (patch.callout) {
+        prep.callout = annot_edit_detail::toPdfSpace(*patch.callout, pa.ctm());
+    }
+    if (patch.rect && !patch.rect->empty()) {
+        const RectF& r = *patch.rect;
+        prep.rect = fz_transform_rect(fz_make_rect(r.x0, r.y0, r.x1, r.y1), fz_invert_matrix(pa.ctm()));
+    }
     fz_context* ctx = pa.ctx();
     pdf_annot* a = pa.find(ref.objnum);
     const std::int64_t modified = detail::now();
     Journal::Operation op(doc, operation);
     if (a != nullptr) {
-        mu::call(ctx, [&] { annot_edit_detail::applyPatch(ctx, a, patch, prep, modified); });
+        bool freeText = false;
+        mu::call(ctx, [&] {
+            annot_edit_detail::applyPatch(ctx, a, patch, prep, modified);
+            freeText = pdf_annot_type(ctx, a) == PDF_ANNOT_FREE_TEXT;
+        });
+        if (freeText) {
+            detail::writeFreeText(doc, pa, ref.objnum);
+        }
     } else {
         // Link, Popup: только словарь (флаги и текст).
         mu::call(ctx, [&] {
@@ -756,7 +870,7 @@ void setFlags(Document& doc, const std::vector<AnnotRef>& refs, int set, int cle
             pdf_annot* a = pa.find(num);
             mu::call(ctx, [&] {
                 const int flags = (pdf_dict_get_int(ctx, obj, PDF_NAME(F)) | set) & ~clear;
-                if (a != nullptr) {
+                if (a != nullptr && pdf_annot_type(ctx, a) != PDF_ANNOT_FREE_TEXT) {
                     pdf_set_annot_flags(ctx, a, flags);
                     pdf_update_annot(ctx, a);
                 } else {

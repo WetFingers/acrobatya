@@ -598,13 +598,10 @@ void setRect(Document& doc, const AnnotRef& ref, const RectF& rect) {
         s = fz_concat(s, fz_translate(rect.x0, rect.y0));
         const fz_matrix m = detail::rawMatrix(ctm, s);
         const bool resynth = annot != nullptr && detail::resynthesizeOnResize(type);
-        mu::call(ctx, [&] {
-            detail::transformGeometry(ctx, obj, m);
-            if (resynth) {
-                pdf_dirty_annot(ctx, annot);
-                pdf_update_annot(ctx, annot);
-            }
-        });
+        mu::call(ctx, [&] { detail::transformGeometry(ctx, obj, m); });
+        if (resynth) {
+            detail::updateAppearance(doc, pa, ref.objnum, true);  // FreeText — свой вид (freetext.cpp)
+        }
     }
     op.invalidate(ref.page);
     op.commit();

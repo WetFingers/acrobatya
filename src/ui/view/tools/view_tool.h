@@ -359,6 +359,8 @@ public:
     bool mousePress(QMouseEvent* event) override;
     bool mouseMove(QMouseEvent* event) override;
     bool mouseRelease(QMouseEvent* event) override;
+    // Двойной щелчок по выбранной — сигнал ToolController::annotDoubleClicked (правка поля, окно записки).
+    bool mouseDoubleClick(QMouseEvent* event) override;
     bool keyPress(QKeyEvent* event) override;
     void paintOverlay(QPainter& painter) override;
     QCursor cursor(QPointF point, Qt::KeyboardModifiers modifiers) const override;

@@ -15,6 +15,7 @@
 #include "services/document_session.h"
 #include "services/settings.h"
 #include "ui/theme/theme.h"
+#include "ui/tools/comment/inline_text_editor.h"
 #include "ui/tools/comment/popup_widget.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
@@ -47,6 +48,10 @@ QString CommentMode::actionTitle(CommentAction action) {
             return QCoreApplication::translate("ot::ui::CommentMode", "Рисовать");
         case CommentAction::Eraser:
             return QCoreApplication::translate("ot::ui::CommentMode", "Ластик");
+        case CommentAction::TextBox:
+            return QCoreApplication::translate("ot::ui::CommentMode", "Текстовое поле");
+        case CommentAction::Callout:
+            return QCoreApplication::translate("ot::ui::CommentMode", "Текстовая выноска");
     }
     return {};
 }
@@ -71,6 +76,10 @@ QString CommentMode::actionKey(CommentAction action) {
             return QStringLiteral("ink");
         case CommentAction::Eraser:
             return QStringLiteral("eraser");
+        case CommentAction::TextBox:
+            return QStringLiteral("textBox");
+        case CommentAction::Callout:
+            return QStringLiteral("callout");
     }
     return {};
 }
@@ -93,6 +102,9 @@ annot::AnnotType CommentMode::typeOf(CommentAction action) {
         case CommentAction::Ink:
         case CommentAction::Eraser:
             return annot::AnnotType::Ink;
+        case CommentAction::TextBox:
+        case CommentAction::Callout:
+            return annot::AnnotType::FreeText;
     }
     return annot::AnnotType::Unknown;
 }
@@ -104,7 +116,8 @@ bool CommentMode::isMarkup(CommentAction action) noexcept {
 
 bool CommentMode::oneShot() const noexcept {
     return action_ == CommentAction::Note || action_ == CommentAction::InsertText ||
-           action_ == CommentAction::ReplaceText;
+           action_ == CommentAction::ReplaceText || action_ == CommentAction::TextBox ||
+           action_ == CommentAction::Callout;
 }
 
 void CommentMode::setAction(CommentAction action) {
@@ -208,7 +221,7 @@ bool CommentMode::mouseMove(QMouseEvent* event) {
     hover_ = event->position();
     if (action_ == CommentAction::Ink || action_ == CommentAction::Eraser) {
         stroke_.push_back(end_);
-    } else {
+    } else if (action_ != CommentAction::TextBox && action_ != CommentAction::Callout) {
         markupMove();
     }
     view_.viewport()->update();
@@ -225,6 +238,10 @@ bool CommentMode::mouseRelease(QMouseEvent* event) {
         inkRelease();
     } else if (action_ == CommentAction::Eraser) {
         eraserRelease();
+    } else if (action_ == CommentAction::TextBox) {
+        textBoxRelease();
+    } else if (action_ == CommentAction::Callout) {
+        calloutRelease();
     } else {
         attempts_ = 0;
         finishDrag(request_);
@@ -256,6 +273,11 @@ void CommentMode::finishDrag(quint64 request) {
     view_.viewport()->update();
 }
 
+bool CommentMode::clicked() const {
+    const QTransform toView = view_.pageTransform(page_);
+    return QLineF(toView.map(start_), toView.map(end_)).length() < kDragThresholdPx;
+}
+
 bool CommentMode::cancel() {
     const bool had = pressing_;
     pressing_ = false;
@@ -270,6 +292,9 @@ bool CommentMode::cancel() {
 
 void CommentMode::documentChanged() {
     cancel();
+    if (InlineTextEditor* editor = InlineTextEditor::active(view_)) {
+        editor->commit();  // набранное в поле не теряется
+    }
     PopupLayer::of(view_).closeAll();
 }
 
@@ -289,6 +314,10 @@ void CommentMode::paintOverlay(QPainter& painter) {
     }
     if (action_ == CommentAction::Ink) {
         paintInk(painter);
+        return;
+    }
+    if (action_ == CommentAction::TextBox || action_ == CommentAction::Callout) {
+        paintTextPreview(painter);
         return;
     }
     const QTransform toView = view_.pageTransform(page_);
@@ -325,6 +354,8 @@ QCursor CommentMode::cursor(QPointF point, Qt::KeyboardModifiers /*modifiers*/) 
         case CommentAction::Note:
         case CommentAction::Ink:
         case CommentAction::Eraser:
+        case CommentAction::TextBox:
+        case CommentAction::Callout:
             return QCursor(Qt::CrossCursor);
         default:
             return QCursor(Qt::IBeamCursor);

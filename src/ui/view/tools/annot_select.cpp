@@ -276,6 +276,16 @@ RectF AnnotSelectTool::draggedRect(const AnnotInfo& info) const {
 
 // ---------------------------------------------------------------- мышь и клавиши
 
+bool AnnotSelectTool::mouseDoubleClick(QMouseEvent* event) {
+    if (event->button() == Qt::LeftButton && selected_.size() == 1 && selectedAt(event->position())) {
+        pressing_ = false;
+        drag_ = Drag::None;
+        controller_.emitAnnotDoubleClicked(selected_.front());
+        return true;
+    }
+    return mousePress(event);
+}
+
 bool AnnotSelectTool::mousePress(QMouseEvent* event) {
     const Qt::MouseButton button = event->button();
     if (button != Qt::LeftButton && button != Qt::RightButton) {

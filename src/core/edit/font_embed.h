@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <map>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -95,6 +96,9 @@ public:
     // Шрифт грани face вида kind в ресурсах страницы page (0 — первая). Ошибка MuPDF — MuError; грань нельзя
     // встроить или файл не читается — std::runtime_error.
     EmbeddedFont add(int page, const SystemFace& face, EmbedKind kind);
+    // Только словарь шрифта (номер объекта) — без ресурса страницы: шрифт /DA текстового поля комментария
+    // (core/annot/freetext.h). Ошибки — как у add.
+    int fontObject(const SystemFace& face, EmbedKind kind);
     // Код символа для строки этим шрифтом (Cid — GID двумя байтами, SimpleWinAnsi — байт cp1252); пусто —
     // глифа нет (или символа нет в WinAnsi).
     std::string encode(const EmbeddedFont& font, char32_t u);
@@ -115,6 +119,7 @@ private:
         bool done = false;  // урезан
     };
     bool alive(const Entry& e) const;
+    std::size_t entryFor(const SystemFace& face, EmbedKind kind);
 
     Document& doc_;
     FontLibrary& lib_;
@@ -125,5 +130,9 @@ private:
 // Подмножества шрифтов fontObjnums (встроенных FontEmbedder) по глифам всех страниц документа — см. начало
 // файла.
 SubsetReport subsetFonts(Document& doc, const std::vector<int>& fontObjnums);
+// Один шрифт objnum (встроенный FontEmbedder) — до глифов gids (0 — всегда), независимо от страниц:
+// программа, /W и /ToUnicode — только они, имя — с префиксом подмножества. Операция «Subset fonts» (внутри
+// внешней — её часть). Не вышло — false, шрифт полный (spdlog).
+bool subsetFont(Document& doc, int objnum, const std::set<int>& gids);
 
 }  // namespace ot::edit

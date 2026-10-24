@@ -1,5 +1,6 @@
 // Выбор цвета (комментарии, Fill & Sign, колонтитулы): квадрат текущего цвета и палитра — 12 цветов пометок
-// (kAnnotationColors) и «Другой цвет…» (QColorDialog). colorChanged — только по выбору человека.
+// (kAnnotationColors) и «Другой цвет…» (QColorDialog); с setNoneAllowed — ещё «Без цвета» (недействительный
+// QColor: заливка и рамка комментария, 5.2). colorChanged — только по выбору человека.
 #pragma once
 
 #include <QColor>
@@ -17,7 +18,9 @@ public:
     explicit ColorSwatch(const QColor& color = {}, QWidget* parent = nullptr);
 
     QColor color() const { return color_; }
-    void setColor(const QColor& color);  // без сигнала
+    void setColor(const QColor& color);  // без сигнала; недействительный — «без цвета»
+    void setNoneAllowed(bool allowed);
+    bool noneAllowed() const { return none_ != nullptr && none_->isVisible(); }
     QMenu* paletteMenu() const { return menu_; }
     const std::vector<QToolButton*>& presetButtons() const { return presets_; }
 
@@ -32,6 +35,7 @@ private:
 
     QColor color_;
     QMenu* menu_ = nullptr;
+    QAction* none_ = nullptr;
     std::vector<QToolButton*> presets_;
 };
 

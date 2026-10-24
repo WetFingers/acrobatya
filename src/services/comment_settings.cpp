@@ -66,6 +66,22 @@ ToolStyle toolStyle(const Settings& settings, const QString& tool) {
     if (o.contains(QLatin1String("icon"))) {
         style.icon = o.value(QLatin1String("icon")).toString().toStdString();
     }
+    if (o.contains(QLatin1String("font"))) {
+        style.font = o.value(QLatin1String("font")).toString().toStdString();
+    }
+    if (o.contains(QLatin1String("fontSize"))) {
+        style.fontSize =
+            static_cast<float>(std::clamp(o.value(QLatin1String("fontSize")).toDouble(12.0), 4.0, 144.0));
+    }
+    if (o.contains(QLatin1String("textColor"))) {
+        style.textColor = parseColor(o.value(QLatin1String("textColor")).toString());
+    }
+    if (o.contains(QLatin1String("align"))) {
+        style.align = std::clamp(o.value(QLatin1String("align")).toInt(0), 0, 2);
+    }
+    if (o.contains(QLatin1String("fill"))) {
+        style.fill = parseColor(o.value(QLatin1String("fill")).toString());
+    }
     return style;
 }
 
@@ -83,6 +99,21 @@ void setToolStyle(Settings& settings, const QString& tool, const ToolStyle& styl
     }
     if (style.icon) {
         o.insert(QLatin1String("icon"), QString::fromStdString(*style.icon));
+    }
+    if (style.font) {
+        o.insert(QLatin1String("font"), QString::fromStdString(*style.font));
+    }
+    if (style.fontSize) {
+        o.insert(QLatin1String("fontSize"), static_cast<double>(*style.fontSize));
+    }
+    if (style.textColor) {
+        o.insert(QLatin1String("textColor"), colorName(*style.textColor));
+    }
+    if (style.align) {
+        o.insert(QLatin1String("align"), *style.align);
+    }
+    if (style.fill) {
+        o.insert(QLatin1String("fill"), colorName(*style.fill));
     }
     all.insert(tool, o);
     settings.set(settings::kCommentToolStyles,
@@ -104,9 +135,26 @@ annot::AnnotProps newProps(const Settings& settings, annot::AnnotType type, cons
     }
     if (style.width) {
         p.borderWidth = *style.width;
+    } else if (tool == QLatin1String("callout")) {
+        p.borderWidth = 1;  // выноска — в рамке (Acrobat), текстовое поле — без
     }
     if (style.icon && !style.icon->empty()) {
         p.icon = *style.icon;
+    }
+    if (style.font && !style.font->empty()) {
+        p.fontName = *style.font;
+    }
+    if (style.fontSize) {
+        p.fontSize = *style.fontSize;
+    }
+    if (style.textColor) {
+        p.textColor = *style.textColor;
+    }
+    if (style.align) {
+        p.align = *style.align;
+    }
+    if (style.fill) {
+        p.interiorColor = *style.fill;
     }
     p.author = author(settings);
     return p;

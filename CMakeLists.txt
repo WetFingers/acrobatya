@@ -265,6 +265,20 @@ if(TARGET unit_tests AND TARGET imgcmp AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   set_tests_properties(compat.annots PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_annots
     SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endif()
+# Совместимость текстовых полей (план 5.2, п. 1; критерий этапа 5): freetext_compat.DISABLED_write пишет
+# <сборка>/compat/freetext — поля четырёх семейств с кириллицей, выноски, страницу /Rotate 90 (инкрементом) и
+# expected.json; tools/compat_freetext.py — pikepdf (шрифт /DA в /DR: Type0 Identity-H, /FontFile2, /ToUnicode с
+# кириллицей), pypdfium2 (растр в /Rect, текст после сплющивания) и compat_check.py; нет pikepdf/pypdfium2 — 77.
+if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_test(NAME compat.freetext.generate
+    COMMAND unit_tests --gtest_also_run_disabled_tests --gtest_filter=freetext_compat.* --gtest_brief=1)
+  set_tests_properties(compat.freetext.generate PROPERTIES LABELS "compat;slow" FIXTURES_SETUP compat_freetext
+    ENVIRONMENT "OTTISK_COMPAT_OUT=${CMAKE_BINARY_DIR}/compat" TIMEOUT 120)
+  add_test(NAME compat.freetext COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/compat_freetext.py"
+    "${CMAKE_BINARY_DIR}/compat/freetext")
+  set_tests_properties(compat.freetext PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_freetext
+    SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+endif()
 # Совместимость правки картинок (план 3.4, п. 3): image_compat.DISABLED_write пишет <сборка>/compat/images/*.pdf
 # (перемещение, масштаб, поворот, отражение, обрезка, замена, добавление, удаление — полная запись);
 # tools/compat_check.py — qpdf --check, pdfcpu strict, mutool clean, pypdfium2 рендер.

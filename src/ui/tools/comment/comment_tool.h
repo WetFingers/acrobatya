@@ -1,9 +1,11 @@
 // Инструмент «Добавить комментарии» из «Все инструменты» (план 5.1; эталон 3.4 «Инструмент», 6.2 п. 3;
-// comment-01, comment-02, comment-03, comment-42): включение — панель слева 320 с действиями группы
-// (Записка, Выделить, Подчеркнуть, Зачеркнуть, Волнистая, Вставить текст, Заменить текст); выбор действия —
-// режим CommentMode в слоте ViewToolId::Comment вида вкладки. Клавиши — S и Ctrl+6 (записка), U (выделить
-// текст). Добавлять комментарии нельзя (защищённый просмотр, только чтение, не PDF, право /P) — кнопки
-// серые, причина — строкой панели и подсказкой.
+// comment-01, comment-02, comment-03, comment-42; 5.2 — comment-04, comment-05, comment-09): включение —
+// панель слева 320 с действиями группы (Записка, Текстовое поле, Текстовая выноска, Выделить, Подчеркнуть,
+// Зачеркнуть, Волнистая, Вставить текст, Заменить текст, Рисовать, Ластик); выбор действия — режим
+// CommentMode в слоте ViewToolId::Comment вида вкладки. Клавиши — S и Ctrl+6 (записка), J (текстовое поле), U
+// (выделить текст), D. «Формат текста» (шрифт, кегль, цвет, выравнивание) правит открытый редактор поля,
+// выбранные поля FreeText или — без них — стиль следующего поля. Добавлять комментарии нельзя (защищённый
+// просмотр, только чтение, не PDF, право /P) — кнопки серые, причина — строкой панели и подсказкой.
 #pragma once
 
 #include <QLabel>
@@ -20,6 +22,7 @@
 #include "ui/tools/tool.h"
 #include "ui/widgets/color_swatch.h"
 #include "ui/widgets/number_field.h"
+#include "ui/widgets/segmented_bar.h"
 #include "ui/widgets/tool_button.h"
 
 class QVBoxLayout;
@@ -64,6 +67,11 @@ public:
     NumberField* styleOpacity() const { return opacity_; }
     QComboBox* noteIcon() const { return icon_; }
     ToolButton* pinButton() const { return pin_; }
+    // «Формат текста» (5.2, comment-09).
+    QComboBox* fontBox() const { return font_; }
+    NumberField* fontSizeField() const { return fontSize_; }
+    ColorSwatch* textColorSwatch() const { return textColor_; }
+    SegmentedBar* alignBar() const { return align_; }
 
 signals:
     void lockChanged(const QString& reason);
@@ -78,6 +86,10 @@ private:
     void loadStyle();
     void saveStyle();
     void setPinned(bool pinned);
+    void buildFormat(QVBoxLayout* column);
+    void formatChanged();
+    void loadFormatFromSelection();
+    static bool textAction(CommentAction action) noexcept;
 
     ToolRegistry& registry_;
     QPointer<DocumentView> view_;
@@ -90,6 +102,13 @@ private:
     QPointer<NumberField> opacity_;
     QPointer<QComboBox> icon_;
     QPointer<ToolButton> pin_;
+    QPointer<QLabel> colorLabel_;
+    QPointer<QLabel> widthLabel_;
+    QPointer<QComboBox> font_;
+    QPointer<NumberField> fontSize_;
+    QPointer<ColorSwatch> textColor_;
+    QPointer<SegmentedBar> align_;
+    std::vector<annot::AnnotRef> formatTargets_;  // выбранные поля FreeText
     bool loadingStyle_ = false;
     std::vector<QMetaObject::Connection> connections_;
 };

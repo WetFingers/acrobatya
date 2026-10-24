@@ -243,6 +243,17 @@ struct AnnotPatch {
     std::optional<float> fontSize;
     std::optional<AnnotColor> textColor;
     std::optional<int> align;
+    // 5.2: шрифт FreeText (семейство или имя /DA), линия выноски /CL, концы линии и выноски /LE, точки /L,
+    // интенсивность облака /BE /I.
+    std::optional<std::string> fontName;
+    std::optional<std::vector<PointF>> callout;
+    std::optional<LineEnding> lineStartStyle;
+    std::optional<LineEnding> lineEndStyle;
+    std::optional<PointF> lineStart;
+    std::optional<PointF> lineEnd;
+    std::optional<float> cloudIntensity;
+    // Поле FreeText (координаты страницы; /Rect и /RD — заново по полю и выноске). Прочие типы — setRect.
+    std::optional<RectF> rect;
 
     bool empty() const noexcept;
 };

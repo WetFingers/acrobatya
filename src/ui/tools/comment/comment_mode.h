@@ -10,11 +10,17 @@
 //     — выделенное зачёркивается (/StrikeOut /IT /StrikeOutTextEdit), каретка в конце, обе — группа /IRT
 //     /RT /Group одним шагом истории (caret_tool.cpp);
 //   Рисовать (D) — штрих мышью: оверлей — кривые Безье по точкам, в /InkList — точки после Дугласа–Пекера
-//     (ε = 0,5 пт) (ink_tool.cpp); Ластик — круг r = 6 px режет штрихи Ink под курсором (eraser_tool.cpp).
+//     (ε = 0,5 пт) (ink_tool.cpp); Ластик — круг r = 6 px режет штрихи Ink под курсором (eraser_tool.cpp);
+//   Текстовое поле (J, 5.2) — рамка протягиванием (щелчок — поле шириной kTextBoxWidth) и набор прямо на
+//   странице
+//     (InlineTextEditor); щелчок по своему полю — его правка (freetext_tool.cpp); Текстовая выноска — нажатие
+//     — конец стрелки, отпускание — поле (щелчок — поле выше и правее), колено — слева от поля
+//     (callout_tool.cpp).
 // Каждое действие — операция журнала (services/annot_ops.h); стиль — умолчания ядра + свой стиль инструмента
-// (services/comment_settings.h). Записка, вставка и замена — однократные (после действия — прежний
-// инструмент, если не «закреплён», comment-42); разметка, карандаш и ластик остаются. Правка комментариев
-// запрещена (защищённый просмотр, только чтение, право /P) — setLocked: курсор «нельзя», действия нет.
+// (services/comment_settings.h). Записка, вставка, замена, текстовое поле и выноска — однократные (после
+// действия — прежний инструмент, если не «закреплён», comment-42); разметка, карандаш и ластик остаются.
+// Правка комментариев запрещена (защищённый просмотр, только чтение, право /P) — setLocked: курсор «нельзя»,
+// действия нет.
 #pragma once
 
 #include <QElapsedTimer>
@@ -47,7 +53,9 @@ enum class CommentAction {
     InsertText,
     ReplaceText,
     Ink,
-    Eraser
+    Eraser,
+    TextBox,
+    Callout
 };
 
 class CommentMode : public QObject, public ViewTool {
@@ -56,7 +64,11 @@ public:
     static constexpr float kNoteIconSize = 20;  // значок записки, пт (как у Acrobat)
     static constexpr int kTextWaitStepMs = 50;  // ожидание текстового слоя после протягивания
     static constexpr int kTextWaitTries = 60;
-    static constexpr double kEraserRadiusPx = 6;  // круг ластика на экране
+    static constexpr double kEraserRadiusPx = 6;   // круг ластика на экране
+    static constexpr float kTextBoxWidth = 180;    // поле по щелчку, пт
+    static constexpr float kCalloutOffset = 60;    // поле выноски по щелчку — выше и правее конца стрелки, пт
+    static constexpr float kCalloutKnee = 24;      // колено выноски — левее поля, пт
+    static constexpr double kDragThresholdPx = 4;  // меньше — щелчок
 
     CommentMode(PageView& view, ToolController& controller);
     ~CommentMode() override;
@@ -93,6 +105,10 @@ public:
     // Разметка выделенного текста (быстрые действия, comment-10): по аннотации на страницу выделения; note —
     // открыть окно записки у первой. Ответ — refs созданных.
     void markupSelection(CommentAction action, const std::map<int, TextSelection>& selection, bool note);
+
+    // Правка своего текстового поля на странице (InlineTextEditor; щелчок «Текстовым полем», двойной щелчок
+    // «Выбором объектов»).
+    void editTextBox(const annot::AnnotRef& ref);
 
     // Идёт протягивание (разметка, замена).
     bool dragging() const noexcept { return pressing_; }
@@ -135,6 +151,14 @@ private:
     // eraser_tool.cpp
     void eraserRelease();
     void paintEraser(QPainter& painter);
+    // freetext_tool.cpp
+    void startTextEditor(int page, annot::AnnotProps props);
+    void textBoxHit(const std::optional<annot::AnnotInfo>& hit, Locator at, quint64 request);
+    void textBoxRelease();
+    // callout_tool.cpp
+    void calloutRelease();
+    void paintTextPreview(QPainter& painter);
+    bool clicked() const;
 
     CommentAction action_ = CommentAction::Note;
     QString lock_;

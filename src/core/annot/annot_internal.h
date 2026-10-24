@@ -71,4 +71,14 @@ bool resynthesizeOnResize(AnnotType type) noexcept;
 // Секунды Unix «сейчас».
 std::int64_t now();
 
+// Поле FreeText в пунктах PDF: /Rect минус /RD по ISO 32000 (левый, верхний, правый, нижний; у MuPDF второй —
+// нижний). Внутри mu::call.
+fz_rect freeTextDesign(fz_context* ctx, pdf_obj* annot);
+// Внешний вид FreeText своим шрифтом /DA (freetext.h): внутри операции вызывающего, вне mu::call; pa —
+// страница аннотации (после refresh). Шрифт не встроился (нет файла, запрет встраивания) — синтез MuPDF.
+void writeFreeText(Document& doc, PageAnnots& pa, int objnum);
+// Вид заново: FreeText — writeFreeText (без dirty — вид прежний), прочие — pdf_update_annot (dirty — сначала
+// pdf_dirty_annot: синтез обязателен). Вне mu::call.
+void updateAppearance(Document& doc, PageAnnots& pa, int objnum, bool dirty);
+
 }  // namespace ot::annot::detail

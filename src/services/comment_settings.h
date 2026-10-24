@@ -26,6 +26,13 @@ struct ToolStyle {
     std::optional<float> opacity;
     std::optional<float> width;
     std::optional<std::string> icon;
+    // 5.2: текстовое поле и выноска — шрифт (семейство), кегль, цвет текста, выравнивание; фигуры — заливка
+    // /IC.
+    std::optional<std::string> font;
+    std::optional<float> fontSize;
+    std::optional<annot::AnnotColor> textColor;
+    std::optional<int> align;
+    std::optional<annot::AnnotColor> fill;
 };
 ToolStyle toolStyle(const Settings& settings, const QString& tool);
 void setToolStyle(Settings& settings, const QString& tool, const ToolStyle& style);

@@ -235,11 +235,8 @@ std::vector<AnnotRef> paste(Document& doc, int page, const AnnotClip& clip, Poin
                     pdf_set_annot_popup(ctx, a, rect);
                     pdf_set_annot_is_open(ctx, a, open);
                 }
-                if (resynth) {
-                    pdf_dirty_annot(ctx, a);
-                }
-                pdf_update_annot(ctx, a);
             });
+            detail::updateAppearance(doc, pa, p.objnum, resynth);
         }
         refs.push_back({page, p.objnum, p.nm});
     }

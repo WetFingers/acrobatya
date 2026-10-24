@@ -354,7 +354,11 @@ bool FontEmbedder::alive(const Entry& e) const {
     return base != nullptr && e.baseFont == base;
 }
 
-EmbeddedFont FontEmbedder::add(int page, const SystemFace& face, EmbedKind kind) {
+int FontEmbedder::fontObject(const SystemFace& face, EmbedKind kind) {
+    return entries_[entryFor(face, kind)].objnum;
+}
+
+std::size_t FontEmbedder::entryFor(const SystemFace& face, EmbedKind kind) {
     fz_font* font = lib_.font(face);
     if (font == nullptr) {
         throw std::runtime_error("font file is not readable: " + paths::toUtf8(face.file));
@@ -415,7 +419,13 @@ EmbeddedFont FontEmbedder::add(int page, const SystemFace& face, EmbedKind kind)
         e.objnum = objnum;
         entries_.push_back(std::move(e));
     }
+    return index;
+}
 
+EmbeddedFont FontEmbedder::add(int page, const SystemFace& face, EmbedKind kind) {
+    const std::size_t index = entryFor(face, kind);
+    fz_context* ctx = doc_.context().get();
+    pdf_document* pdf = doc_.pdf();
     const Entry& entry = entries_[index];
     EmbeddedFont out;
     out.objnum = entry.objnum;
@@ -526,6 +536,137 @@ SubsetReport FontEmbedder::subset() {
 // --- subsetFonts
 // ---------------------------------------------------------------------------------------------
 
+namespace font_embed_detail {
+
+// Урезать шрифт num до глифов usedGids (0 добавляется) внутри операции вызывающего: программа, /W и
+// /ToUnicode — только они, имя — с префиксом подмножества. Не TrueType или ошибка MuPDF — false (шрифт
+// полный, причина в r.errors); прерывание и нехватка памяти — дальше.
+bool subsetOne(Document& doc, int num, const std::set<int>& usedGids, SubsetReport& r) {
+    fz_context* ctx = doc.context().get();
+    pdf_document* pdf = doc.pdf();
+    std::vector<int> gids(usedGids.begin(), usedGids.end());
+    if (gids.empty() || gids.front() != 0) {
+        gids.insert(gids.begin(), 0);
+    }
+    mu::PdfObjHandle ref(ctx);
+    mu::BufferHandle original(ctx);
+    mu::BufferHandle subset(ctx);
+    pdf_obj* font = nullptr;
+    pdf_obj* descendant = nullptr;
+    pdf_obj* desc = nullptr;
+    pdf_obj* file = nullptr;
+    bool cid = false;
+    try {
+        mu::call(ctx, [&] {
+            ref.reset(pdf_new_indirect(ctx, pdf, num, 0));
+            font = pdf_resolve_indirect(ctx, ref);
+            cid = pdf_name_eq(ctx, pdf_dict_get(ctx, font, PDF_NAME(Subtype)), PDF_NAME(Type0)) != 0;
+            descendant =
+                cid ? pdf_array_get(ctx, pdf_dict_get(ctx, font, PDF_NAME(DescendantFonts)), 0) : nullptr;
+            desc = pdf_dict_get(ctx, cid ? descendant : font, PDF_NAME(FontDescriptor));
+            file = pdf_dict_get(ctx, desc, PDF_NAME(FontFile2));
+            if (file == nullptr) {
+                file = pdf_dict_get(ctx, desc, PDF_NAME(FontFile3));
+            }
+            if (!pdf_is_stream(ctx, file)) {
+                fz_throw(ctx, FZ_ERROR_FORMAT, "font %d has no TrueType/OpenType program", num);
+            }
+            original.reset(pdf_load_stream(ctx, file));
+            subset.reset(fz_subset_ttf_for_gids(ctx, original, gids.data(), static_cast<int>(gids.size()), 0,
+                                                cid ? 1 : 0));
+        });
+    } catch (const MuError& e) {
+        if (fed::aborts(e)) {
+            throw;
+        }
+        ++r.failed;
+        r.errors.push_back("font " + std::to_string(num) + ": " + e.what());
+        spdlog::warn("fonts: subsetting font {} failed, kept full: {}", num, e.what());
+        return false;
+    }
+    // Что записать — до правки: имя, /W и /ToUnicode использованных глифов (C++ — вне mu::call).
+    const char* oldName = nullptr;
+    pdf_obj* oldW = nullptr;
+    pdf_obj* tu = nullptr;
+    pdf_cmap* cmap = nullptr;
+    mu::call(ctx, [&] {
+        oldName = pdf_dict_get_name(ctx, font, PDF_NAME(BaseFont));
+        if (cid) {
+            oldW = pdf_dict_get(ctx, descendant, PDF_NAME(W));
+            tu = pdf_dict_get(ctx, font, PDF_NAME(ToUnicode));
+            if (pdf_is_stream(ctx, tu)) {
+                cmap = pdf_load_embedded_cmap(ctx, pdf, tu);
+            }
+        }
+    });
+    const std::string name = fed::subsetTag(ctx, subset) + "+" + (oldName != nullptr ? oldName : "Anonymous");
+    std::unordered_map<int, int> widths;
+    mu::BufferHandle toUnicode(ctx);
+    if (cid) {
+        widths = fed::readW(ctx, oldW);
+        if (cmap != nullptr) {
+            std::map<int, char32_t> map;
+            for (int g : usedGids) {
+                int out[PDF_MRANGE_CAP];
+                if (pdf_lookup_cmap_full(cmap, static_cast<unsigned>(g), out) == 1 && out[0] > 0) {
+                    map.emplace(g, static_cast<char32_t>(out[0]));
+                }
+            }
+            pdf_drop_cmap(ctx, cmap);
+            const std::string text = fed::toUnicodeCmap(map);
+            mu::call(ctx, [&] { toUnicode.reset(fed::newBuffer(ctx, text)); });
+        }
+    }
+    const std::size_t before = fz_buffer_storage(ctx, original, nullptr);
+    const std::size_t after = fz_buffer_storage(ctx, subset, nullptr);
+    const char* newName = name.c_str();
+    // Программа — сжатой (инкрементальная запись потоки не сжимает, полная — сжимает, но не шрифты).
+    mu::BufferHandle deflated(ctx);
+    mu::call(ctx, [&] {
+        std::size_t packed = 0;
+        unsigned char* data = fz_new_deflated_data_from_buffer(ctx, &packed, subset, FZ_DEFLATE_DEFAULT);
+        deflated.reset(fz_new_buffer_from_data(ctx, data, packed));
+    });
+    mu::call(ctx, [&] {
+        pdf_update_stream(ctx, pdf, file, deflated, 1);
+        pdf_dict_put(ctx, file, PDF_NAME(Filter), PDF_NAME(FlateDecode));
+        pdf_dict_del(ctx, file, PDF_NAME(DecodeParms));
+        pdf_dict_put_int(ctx, file, PDF_NAME(Length1), static_cast<std::int64_t>(after));
+        pdf_dict_put_name(ctx, font, PDF_NAME(BaseFont), newName);
+        if (descendant != nullptr) {
+            pdf_dict_put_name(ctx, descendant, PDF_NAME(BaseFont), newName);
+        }
+        pdf_dict_put_name(ctx, desc, PDF_NAME(FontName), newName);
+        if (cid) {
+            pdf_obj* w = pdf_dict_put_array(ctx, descendant, PDF_NAME(W), 8);
+            pdf_obj* run = nullptr;
+            int prev = -2;
+            for (int g : usedGids) {
+                const auto it = widths.find(g);
+                if (it == widths.end()) {
+                    continue;
+                }
+                if (run == nullptr || g != prev + 1) {
+                    pdf_array_push_int(ctx, w, g);
+                    run = pdf_array_push_array(ctx, w, 4);
+                }
+                pdf_array_push_int(ctx, run, it->second);
+                prev = g;
+            }
+            if (toUnicode) {
+                pdf_update_stream(ctx, pdf, tu, toUnicode, 0);
+            }
+        }
+        pdf_purge_object_from_store(ctx, pdf, num);
+    });
+    r.bytesBefore += before;
+    r.bytesAfter += after;
+    ++r.subset;
+    return true;
+}
+
+}  // namespace font_embed_detail
+
 SubsetReport subsetFonts(Document& doc, const std::vector<int>& fontObjnums) {
     SubsetReport r;
     fz_context* ctx = doc.context().get();
@@ -591,117 +732,7 @@ SubsetReport subsetFonts(Document& doc, const std::vector<int>& fontObjnums) {
                 ++r.unused;
                 continue;
             }
-            std::vector<int> gids(use.gids.begin(), use.gids.end());
-            if (gids.front() != 0) {
-                gids.insert(gids.begin(), 0);
-            }
-            mu::PdfObjHandle ref(ctx);
-            mu::BufferHandle original(ctx);
-            mu::BufferHandle subset(ctx);
-            pdf_obj* font = nullptr;
-            pdf_obj* descendant = nullptr;
-            pdf_obj* desc = nullptr;
-            pdf_obj* file = nullptr;
-            bool cid = false;
-            try {
-                mu::call(ctx, [&] {
-                    ref.reset(pdf_new_indirect(ctx, pdf, num, 0));
-                    font = pdf_resolve_indirect(ctx, ref);
-                    cid = pdf_name_eq(ctx, pdf_dict_get(ctx, font, PDF_NAME(Subtype)), PDF_NAME(Type0)) != 0;
-                    descendant =
-                        cid ? pdf_array_get(ctx, pdf_dict_get(ctx, font, PDF_NAME(DescendantFonts)), 0)
-                            : nullptr;
-                    desc = pdf_dict_get(ctx, cid ? descendant : font, PDF_NAME(FontDescriptor));
-                    file = pdf_dict_get(ctx, desc, PDF_NAME(FontFile2));
-                    if (file == nullptr) {
-                        file = pdf_dict_get(ctx, desc, PDF_NAME(FontFile3));
-                    }
-                    if (!pdf_is_stream(ctx, file)) {
-                        fz_throw(ctx, FZ_ERROR_FORMAT, "font %d has no TrueType/OpenType program", num);
-                    }
-                    original.reset(pdf_load_stream(ctx, file));
-                    subset.reset(fz_subset_ttf_for_gids(ctx, original, gids.data(),
-                                                        static_cast<int>(gids.size()), 0, cid ? 1 : 0));
-                });
-            } catch (const MuError& e) {
-                if (fed::aborts(e)) {
-                    throw;
-                }
-                ++r.failed;
-                r.errors.push_back("font " + std::to_string(num) + ": " + e.what());
-                spdlog::warn("fonts: subsetting font {} failed, kept full: {}", num, e.what());
-                continue;
-            }
-            // Что записать — до правки: имя, /W и /ToUnicode использованных глифов (C++ — вне mu::call).
-            const char* oldName = nullptr;
-            pdf_obj* oldW = nullptr;
-            pdf_obj* tu = nullptr;
-            pdf_cmap* cmap = nullptr;
-            mu::call(ctx, [&] {
-                oldName = pdf_dict_get_name(ctx, font, PDF_NAME(BaseFont));
-                if (cid) {
-                    oldW = pdf_dict_get(ctx, descendant, PDF_NAME(W));
-                    tu = pdf_dict_get(ctx, font, PDF_NAME(ToUnicode));
-                    if (pdf_is_stream(ctx, tu)) {
-                        cmap = pdf_load_embedded_cmap(ctx, pdf, tu);
-                    }
-                }
-            });
-            const std::string name =
-                fed::subsetTag(ctx, subset) + "+" + (oldName != nullptr ? oldName : "Anonymous");
-            std::unordered_map<int, int> widths;
-            mu::BufferHandle toUnicode(ctx);
-            if (cid) {
-                widths = fed::readW(ctx, oldW);
-                if (cmap != nullptr) {
-                    std::map<int, char32_t> map;
-                    for (int g : use.gids) {
-                        int out[PDF_MRANGE_CAP];
-                        if (pdf_lookup_cmap_full(cmap, static_cast<unsigned>(g), out) == 1 && out[0] > 0) {
-                            map.emplace(g, static_cast<char32_t>(out[0]));
-                        }
-                    }
-                    pdf_drop_cmap(ctx, cmap);
-                    const std::string text = fed::toUnicodeCmap(map);
-                    mu::call(ctx, [&] { toUnicode.reset(fed::newBuffer(ctx, text)); });
-                }
-            }
-            const std::size_t before = fz_buffer_storage(ctx, original, nullptr);
-            const std::size_t after = fz_buffer_storage(ctx, subset, nullptr);
-            const char* newName = name.c_str();
-            mu::call(ctx, [&] {
-                pdf_update_stream(ctx, pdf, file, subset, 0);
-                pdf_dict_put_int(ctx, file, PDF_NAME(Length1), static_cast<std::int64_t>(after));
-                pdf_dict_put_name(ctx, font, PDF_NAME(BaseFont), newName);
-                if (descendant != nullptr) {
-                    pdf_dict_put_name(ctx, descendant, PDF_NAME(BaseFont), newName);
-                }
-                pdf_dict_put_name(ctx, desc, PDF_NAME(FontName), newName);
-                if (cid) {
-                    pdf_obj* w = pdf_dict_put_array(ctx, descendant, PDF_NAME(W), 8);
-                    pdf_obj* run = nullptr;
-                    int prev = -2;
-                    for (int g : use.gids) {
-                        const auto it = widths.find(g);
-                        if (it == widths.end()) {
-                            continue;
-                        }
-                        if (run == nullptr || g != prev + 1) {
-                            pdf_array_push_int(ctx, w, g);
-                            run = pdf_array_push_array(ctx, w, 4);
-                        }
-                        pdf_array_push_int(ctx, run, it->second);
-                        prev = g;
-                    }
-                    if (toUnicode) {
-                        pdf_update_stream(ctx, pdf, tu, toUnicode, 0);
-                    }
-                }
-                pdf_purge_object_from_store(ctx, pdf, num);
-            });
-            r.bytesBefore += before;
-            r.bytesAfter += after;
-            ++r.subset;
+            fed::subsetOne(doc, num, use.gids, r);
         }
         op.markHeavy();
         op.commit();
@@ -718,6 +749,18 @@ SubsetReport subsetFonts(Document& doc, const std::vector<int>& fontObjnums) {
         r.bytesAfter = r.bytesBefore;
     }
     return r;
+}
+
+bool subsetFont(Document& doc, int objnum, const std::set<int>& gids) {
+    if (doc.pdf() == nullptr || objnum <= 0) {
+        return false;
+    }
+    SubsetReport r;
+    Journal::Operation op(doc, "Subset fonts");
+    const bool done = fed::subsetOne(doc, objnum, gids, r);
+    op.markHeavy();
+    op.commit();
+    return done;
 }
 
 }  // namespace ot::edit

@@ -4,6 +4,9 @@
 // вставка текста и «Заменить текст» (зачёркнутое слово и каретка) с окном нового текста; annot-quick-actions
 // — выделенный «Выделением» текст и панель быстрых действий над ним. Комментарии создаются в открытом
 // документе (на закрытии — «Не сохранять»); кадр — когда последний шаг сделан и тайлы перерисованы.
+// 5.2: annot-freetext — текстовые поля (Arial с рамкой и заливкой, Segoe UI, Times New Roman по центру) и
+// «Формат текста» панели; annot-callout — выноска с открытой стрелкой к строке; annot-text-format — открытый
+// редактор нового поля с набранным текстом и форматом панели (Times New Roman 16, синий, по центру).
 #include <QApplication>
 #include <QCoreApplication>
 #include <QFuture>
@@ -25,6 +28,7 @@
 #include "ui/shots/scenes.h"
 #include "ui/tools/comment/comment_mode.h"
 #include "ui/tools/comment/comment_tool.h"
+#include "ui/tools/comment/inline_text_editor.h"
 #include "ui/tools/comment/popup_widget.h"
 #include "ui/tools/comment/quick_actions_bar.h"
 #include "ui/tools/tool_registry.h"
@@ -256,6 +260,72 @@ void selectedScene(MainWindow& w, DocumentView& doc, const TextPtr& /*text*/) {
     });
 }
 
+annot::AnnotProps sceneTextBox(const char* text, RectF rect, const char* font, float size) {
+    annot::AnnotProps p = sceneProps(CommentAction::TextBox);
+    p.contents = sceneText(text);
+    p.rect = rect;
+    p.fontName = font;
+    p.fontSize = size;
+    p.align = 0;  // стиль инструмента из прошлых сцен не в счёт
+    p.borderWidth = 0;
+    p.color = {};
+    p.textColor = annot::AnnotColor::gray(0);
+    return p;
+}
+
+void freeTextScene(MainWindow& w, DocumentView& doc, const TextPtr& /*text*/) {
+    sceneCommentTool().start(CommentAction::TextBox);
+    annot::AnnotProps a =
+        sceneTextBox(QT_TRANSLATE_NOOP("ot::ui::CommentScenes", "Согласовано с юристом, правок нет."),
+                     {320, 380, 540, 420}, "Arial", 13);
+    a.borderWidth = 1;
+    a.color = annot::AnnotColor::fromRgb(0xFFF8C4);
+    a.textColor = annot::AnnotColor::fromRgb(0xC62828);
+    annot::create(doc.session(), 0, std::move(a));
+    annot::AnnotProps b = sceneTextBox(
+        QT_TRANSLATE_NOOP("ot::ui::CommentScenes", "Пометка на полях: проверить цифры во втором квартале"),
+        {320, 440, 540, 490}, "Segoe UI", 12);
+    annot::create(doc.session(), 0, std::move(b));
+    annot::AnnotProps c = sceneTextBox(QT_TRANSLATE_NOOP("ot::ui::CommentScenes", "Итоговая редакция"),
+                                       {320, 510, 540, 540}, "Times New Roman", 16);
+    c.align = 1;
+    c.textColor = annot::AnnotColor::fromRgb(0x1565C0);
+    annot::create(doc.session(), 0, std::move(c)).then(&w, [&w](annot::AnnotRef) { markDone(w); });
+}
+
+void calloutScene(MainWindow& w, DocumentView& doc, const TextPtr& text) {
+    sceneCommentTool().start(CommentAction::Callout);
+    PointF tip{200, 300};
+    if (text->lines().size() > 2) {
+        const RectF line = text->lines()[2].bbox;
+        tip = {line.x0 + (line.x1 - line.x0) * 0.4f, line.y1};
+    }
+    annot::AnnotProps p = sceneTextBox(QT_TRANSLATE_NOOP("ot::ui::CommentScenes", "Уточнить срок поставки"),
+                                       {tip.x + 120, tip.y + 160, tip.x + 300, tip.y + 190}, "Arial", 13);
+    p.intent = "FreeTextCallout";
+    p.borderWidth = 1;
+    p.textColor = annot::AnnotColor::fromRgb(0xC62828);
+    const float mid = tip.y + 175;
+    p.callout = {tip, {tip.x + 96, mid}, {tip.x + 120, mid}};
+    p.lineStartStyle = annot::LineEnding::OpenArrow;
+    annot::create(doc.session(), 0, std::move(p)).then(&w, [&w](annot::AnnotRef) { markDone(w); });
+}
+
+void textFormatScene(MainWindow& w, DocumentView& doc, const TextPtr& /*text*/) {
+    CommentTool& tool = sceneCommentTool();
+    tool.start(CommentAction::TextBox);
+    tool.fontBox()->setCurrentIndex(tool.fontBox()->findData(QStringLiteral("Times New Roman")));
+    tool.fontSizeField()->setValue(16);
+    tool.alignBar()->setCurrentIndex(1);
+    annot::AnnotProps p = CommentTool::modeOf(doc.view()).newProps(CommentAction::TextBox);
+    p.rect = {300, 420, 520, 470};
+    p.textColor = annot::AnnotColor::fromRgb(0x1565C0);
+    InlineTextEditor* editor = InlineTextEditor::startNew(doc.view(), 0, std::move(p));
+    editor->setPlainText(
+        QCoreApplication::translate("ot::ui::CommentScenes", "Новый текст поля прямо на странице"));
+    QTimer::singleShot(200, &w, [&w] { markDone(w); });
+}
+
 }  // namespace
 
 std::vector<Scene> commentScenes() {
@@ -315,6 +385,29 @@ std::vector<Scene> commentScenes() {
     selected.make = commentScene(doc, selectedScene);
     selected.ready = commentReady;
     scenes.push_back(selected);
+
+    Scene freeText;
+    freeText.name = QStringLiteral("annot-freetext");
+    freeText.make = commentScene(doc, freeTextScene);
+    freeText.ready = commentReady;
+    scenes.push_back(freeText);
+
+    Scene freeTextDark = freeText;
+    freeTextDark.name = QStringLiteral("annot-freetext-dark");
+    freeTextDark.theme = ThemeChoice::Dark;
+    scenes.push_back(freeTextDark);
+
+    Scene callout;
+    callout.name = QStringLiteral("annot-callout");
+    callout.make = commentScene(doc, calloutScene);
+    callout.ready = commentReady;
+    scenes.push_back(callout);
+
+    Scene format;
+    format.name = QStringLiteral("annot-text-format");
+    format.make = commentScene(doc, textFormatScene);
+    format.ready = commentReady;
+    scenes.push_back(format);
     return scenes;
 }
 

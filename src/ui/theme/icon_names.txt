@@ -133,3 +133,15 @@ text-cursor
 spline
 pen-tool
 shapes
+
+# 5.2 — текстовое поле и выноска, фигуры, свойства, штампы и вложения
+message-square-quote
+slash
+move-up-right
+square
+circle
+pentagon
+cloud
+waypoints
+clipboard-paste
+settings-2

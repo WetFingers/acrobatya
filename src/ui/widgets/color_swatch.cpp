@@ -41,6 +41,14 @@ ColorSwatch::ColorSwatch(const QColor& color, QWidget* parent)
     menu_->addAction(gridAction);
     menu_->addSeparator();
     menu_->addAction(tr("Другой цвет…"), this, &ColorSwatch::chooseOther);
+    none_ = menu_->addAction(tr("Без цвета"), this, [this] {
+        if (color_.isValid()) {
+            setColor(QColor());
+            emit colorChanged(color_);
+        }
+    });
+    none_->setObjectName(QStringLiteral("colorNone"));
+    none_->setVisible(false);
     setMenu(menu_);
     applyMetrics();
     connect(&Theme::instance(), &Theme::themeChanged, this, &ColorSwatch::applyMetrics);
@@ -50,6 +58,8 @@ void ColorSwatch::setColor(const QColor& color) {
     color_ = color;
     applyMetrics();
 }
+
+void ColorSwatch::setNoneAllowed(bool allowed) { none_->setVisible(allowed); }
 
 void ColorSwatch::choose(const QColor& color) {
     if (!color.isValid() || color == color_) {
@@ -69,8 +79,11 @@ QPixmap ColorSwatch::swatchPixmap(const QColor& color, int side) const {
     QPainter painter(&pm);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setPen(QPen(Theme::colors().border.color(), 1));
-    painter.setBrush(color);
+    painter.setBrush(color.isValid() ? QBrush(color) : QBrush(Qt::NoBrush));
     painter.drawRoundedRect(QRectF(0.5, 0.5, side - 1, side - 1), 2, 2);
+    if (!color.isValid()) {
+        painter.drawLine(QPointF(side - 2.0, 2.0), QPointF(2.0, side - 2.0));  // «без цвета»
+    }
     return pm;
 }
 

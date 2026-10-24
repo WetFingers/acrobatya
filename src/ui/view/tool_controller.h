@@ -93,6 +93,7 @@ public:
     void emitSelectionChanged() { emit selectionChanged(); }
     void emitAnnotSelectionChanged() { emit annotSelectionChanged(); }
     void emitAnnotContextMenu(QMenu* menu) { emit annotContextMenu(menu); }
+    void emitAnnotDoubleClicked(const ot::annot::AnnotInfo& info) { emit annotDoubleClicked(info); }
 
 signals:
     void toolChanged(ot::ui::ViewToolId id);
@@ -104,6 +105,9 @@ signals:
     // Правая кнопка по выбранным аннотациям: подписчики (инструменты 5.1, 6.3) добавляют пункты в menu
     // (прямым соединением, до показа); пустое меню не показывается.
     void annotContextMenu(QMenu* menu);
+    // Двойной щелчок «Выбором объектов» по выбранной аннотации (5.2): поле FreeText — правка текста, записка
+    // — окно.
+    void annotDoubleClicked(const ot::annot::AnnotInfo& info);
 
 private:
     void switchTo(ViewToolId id, bool remember);

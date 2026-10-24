@@ -10,6 +10,7 @@
 #include "services/document_session.h"
 #include "services/settings.h"
 #include "ui/tools/comment/comment_mode.h"
+#include "ui/tools/comment/comment_tool.h"
 #include "ui/tools/comment/popup_widget.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
@@ -107,6 +108,18 @@ void fill(PageView& view, QMenu* menu) {
 void installCommentMenu(PageView& view) {
     QObject::connect(&view.tools(), &ToolController::annotContextMenu, &view,
                      [v = &view](QMenu* menu) { fill(*v, menu); });
+    // Двойной щелчок по выбранному: поле FreeText — правка на странице, записка и прочие — окно записки.
+    QObject::connect(&view.tools(), &ToolController::annotDoubleClicked, &view,
+                     [v = &view](const annot::AnnotInfo& info) {
+                         if (!v->tools().editable() || info.locked()) {
+                             return;
+                         }
+                         if (info.type == annot::AnnotType::FreeText) {
+                             CommentTool::modeOf(*v).editTextBox(info.ref);
+                         } else if (annot::isComment(info.type)) {
+                             PopupLayer::of(*v).open(info.ref, true);
+                         }
+                     });
 }
 
 }  // namespace ot::ui
