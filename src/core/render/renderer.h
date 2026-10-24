@@ -25,7 +25,13 @@ class DisplayList;
 enum class PixelFormat {
     Bgra32Premultiplied,  // 4 байта B, G, R, A — память QImage::Format_ARGB32_Premultiplied
     Rgb24,                // 3 байта R, G, B без альфы — эталоны рендера, PNG
+    Gray8,                // 1 байт серого без альфы — печать «Серый» (QImage::Format_Grayscale8)
 };
+
+// Байт на пиксель формата.
+constexpr int bytesPerPixel(PixelFormat format) noexcept {
+    return format == PixelFormat::Bgra32Premultiplied ? 4 : format == PixelFormat::Rgb24 ? 3 : 1;
+}
 
 struct RenderRequest {
     int page = 0;
@@ -43,7 +49,7 @@ public:
     IRect deviceBounds(int page, const Matrix& matrix) const;
 
     // Нарисовать область req.scissor (пустая — deviceBounds) в buffer: ширина × высота области,
-    // stride байт на строку (≥ ширина × 4 для BGRA, × 3 для RGB). Фон белый, непрозрачный.
+    // stride байт на строку (≥ ширина × bytesPerPixel(format)). Фон белый, непрозрачный.
     // cookie (может быть nullptr): abort = 1 из другого потока прерывает рендер (MuError,
     // ErrorKind::Aborted). Ошибки MuPDF — MuError.
     void render(const RenderRequest& req, std::uint8_t* buffer, int stride,

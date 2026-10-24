@@ -107,6 +107,20 @@ openpyxl, python-pptx, odfpy), `mutool` из `C:\src\mupdf\platform\win32\x64\Re
 | `boxes.pdf` | 2 страницы A4 (сессия 2.5b): `/BleedBox`, `/TrimBox`, `/ArtBox`; на стр. 2 — ещё `/CropBox` меньше `/MediaBox` и `/Rotate 90` | `ui.page_display_prefs`, сцена `view-boxes-overlay` |
 | `boxes.json` | рамки страниц `boxes.pdf` (пункты PDF, y вверх) | |
 
+### `tests/fixtures/pages/` — `make_pages.py` (сессия 2.6)
+
+| Файл | Что внутри | Кто пользуется |
+|---|---|---|
+| `mixed-sizes.pdf` | 4 страницы: A4 книжная, A5 книжная, A4 альбомная, плакат A1 (594 × 841 мм); рамка 10 pt от края, надпись размера по центру, цветной квадрат 60 × 60 pt в левом верхнем углу (виден поворот на листе), «Страница N из 4» | `unit.print_job`, `ui.print_dialog`, сцены `print-*` |
+| `print-layers.pdf` | 1 страница A4 со слоями: «Только экран» (`/Usage /Print /PrintState /OFF`, синий квадрат слева вверху — на печати нет) и «Общий» (красный квадрат справа внизу) | `unit.band_renderer.hidden_layers_not_printed` |
+| `pages.json` | размеры страниц и рамки нарисованного (пункты, y вниз) | |
+
+### `tests/fixtures/print/` — вручную
+
+| Файл | Что внутри | Кто пользуется |
+|---|---|---|
+| `nup4_a4.json` | n-up 4 (2 × 2) на A4 книжной с полями 18 pt для 10 страниц A4: три листа, страницы и рамки на листе — **посчитаны вручную** формулой эталона 3.3 | `unit.imposition.nup4_a4_json` |
+
 ### `tests/fixtures/annots/` — `make_annots.py` (+ `tools/gen/annots.js`)
 
 `annots-all.pdf` — байт в байт копия `matrix-28.pdf` под именем из плана (сессии 5.1, 5.2).

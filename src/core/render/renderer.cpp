@@ -75,15 +75,17 @@ private:
     fz_separations* seps_ = nullptr;
 };
 
-// «Инвертировать всё»: каналы цвета → альфа − канал (премультиплицированный BGRA) или 255 − канал (RGB).
+// «Инвертировать всё»: каналы цвета → альфа − канал (премультиплицированный BGRA) или 255 − канал (RGB,
+// серый).
 void invertPixels(std::uint8_t* buffer, int width, int height, int stride, PixelFormat format) noexcept {
     const bool alpha = format == PixelFormat::Bgra32Premultiplied;
-    const int n = alpha ? 4 : 3;
+    const int n = bytesPerPixel(format);
+    const int colors = alpha ? 3 : n;
     for (int y = 0; y < height; ++y) {
         std::uint8_t* p = buffer + static_cast<std::ptrdiff_t>(y) * stride;
         for (int x = 0; x < width; ++x, p += n) {
             const std::uint8_t a = alpha ? p[3] : 255;
-            for (int c = 0; c < 3; ++c) {
+            for (int c = 0; c < colors; ++c) {
                 p[c] = static_cast<std::uint8_t>(a - std::min(p[c], a));
             }
         }
@@ -95,8 +97,7 @@ void invertPixels(std::uint8_t* buffer, int width, int height, int stride, Pixel
 void renderDisplayList(fz_context* ctx, const DisplayList& list, const Matrix& matrix, const IRect& area,
                        std::uint8_t* buffer, int stride, PixelFormat format, fz_cookie* cookie,
                        const RenderStyle& style) {
-    const int bytesPerPixel = format == PixelFormat::Bgra32Premultiplied ? 4 : 3;
-    if (area.empty() || buffer == nullptr || stride < area.width() * bytesPerPixel) {
+    if (area.empty() || buffer == nullptr || stride < area.width() * bytesPerPixel(format)) {
         throw std::invalid_argument("renderDisplayList: empty area, null buffer or short stride");
     }
     const StyleScope styleScope(ctx, style);
@@ -112,8 +113,9 @@ void renderDisplayList(fz_context* ctx, const DisplayList& list, const Matrix& m
         if (style.overprint && list.usesOverprint()) {
             seps.reset(fz_new_separations(ctx, 0));
         }
-        fz_colorspace* cs =
-            format == PixelFormat::Bgra32Premultiplied ? fz_device_bgr(ctx) : fz_device_rgb(ctx);
+        fz_colorspace* cs = format == PixelFormat::Bgra32Premultiplied ? fz_device_bgr(ctx)
+                            : format == PixelFormat::Rgb24             ? fz_device_rgb(ctx)
+                                                                       : fz_device_gray(ctx);
         pix.reset(fz_new_pixmap_with_data(ctx, cs, area.width(), area.height(), seps.get(),
                                           format == PixelFormat::Bgra32Premultiplied ? 1 : 0, stride,
                                           buffer));
@@ -172,8 +174,7 @@ IRect Renderer::deviceBounds(int page, const Matrix& matrix) const {
 void Renderer::render(const RenderRequest& req, std::uint8_t* buffer, int stride, PixelFormat format,
                       fz_cookie* cookie) const {
     const IRect area = req.scissor.empty() ? deviceBounds(req.page, req.matrix) : req.scissor;
-    const int bytesPerPixel = format == PixelFormat::Bgra32Premultiplied ? 4 : 3;
-    if (area.empty() || buffer == nullptr || stride < area.width() * bytesPerPixel) {
+    if (area.empty() || buffer == nullptr || stride < area.width() * bytesPerPixel(format)) {
         throw std::invalid_argument("Renderer::render: empty area, null buffer or short stride");
     }
     // Список строится с тем же cookie: отмена прерывает и интерпретацию страницы.
