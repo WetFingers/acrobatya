@@ -11,7 +11,10 @@
 #include <string>
 
 #include "core/sign/ossl.h"
+#include "core/sign/pkcs12.h"
+#include "core/sign/trust_store.h"
 #include "core/sign/verifier.h"
+#include "core/util/http_fetcher.h"
 
 namespace ot::test {
 
@@ -32,5 +35,18 @@ void patchContents(const std::filesystem::path& file, int sigIndex,
                    const std::function<void(ot::sign::Bytes&)>& edit);
 // Заменить в файле первое вхождение from на to той же длины (нет — std::runtime_error).
 void patchBytes(const std::filesystem::path& file, const std::string& from, const std::string& to);
+
+// Службы тестовой PKI за FakeHttpFetcher (http://pki.acrobatya.test/…): OCSP — ответы фикстур по серийному
+// номеру (signer-rsa, signer-ec — good, revoked — revoked, прочие — unknown), CRL и сертификаты ЦС — файлы.
+std::shared_ptr<ot::net::FakeHttpFetcher> pkiResponder();
+// FakeHttpFetcher, у которого любой запрос — «нет сети».
+std::shared_ptr<ot::net::FakeHttpFetcher> offlineFetcher();
+// Удостоверение отозванного сертификата PKI (revoked.pem, отозван 2026-06-01, keyCompromise) с цепочкой.
+std::shared_ptr<const ot::sign::SigningKey> revokedIdentity();
+// Якоря — самоподписанные сертификаты, встроенные в файл (CMS подписей и меток, /DSS): корпус DSS без своих
+// корней (режим сверки с pyHanko).
+ot::sign::TrustStore embeddedRoots(const ot::sign::DocumentVerification& v);
+// Секунды Unix для даты UTC.
+std::int64_t utc(int year, int month, int day);
 
 }  // namespace ot::test

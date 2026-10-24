@@ -7,7 +7,10 @@
 #include <regex>
 #include <stdexcept>
 
+#include <openssl/ocsp.h>
+
 #include "core/util/paths.h"
+#include "support/pki.h"
 #include "support/sign_support.h"
 #include "support/test_pdf.h"
 
@@ -155,6 +158,100 @@ void patchBytes(const fs::path& file, const std::string& from, const std::string
     }
     bytes.replace(at, from.size(), to);
     ot::paths::writeFile(file, bytes);
+}
+
+namespace {
+
+Bytes pkiBytes(const char* name) {
+    const std::string s = readPki(name);
+    return Bytes(s.begin(), s.end());
+}
+
+ot::net::Response ok(Bytes body, const char* type, const std::string& url) {
+    ot::net::Response resp;
+    resp.status = ot::net::Status::Ok;
+    resp.httpCode = 200;
+    resp.contentType = type;
+    resp.body = std::move(body);
+    resp.finalUrl = url;
+    return resp;
+}
+
+}  // namespace
+
+std::shared_ptr<ot::net::FakeHttpFetcher> pkiResponder() {
+    auto fake = std::make_shared<ot::net::FakeHttpFetcher>();
+    fake->setHandler([](const ot::net::Request& r) {
+        if (r.url == "http://pki.acrobatya.test/ocsp") {
+            const unsigned char* p = r.body.data();
+            ot::sign::Ossl<OCSP_REQUEST> req(d2i_OCSP_REQUEST(nullptr, &p, static_cast<long>(r.body.size())));
+            long serial = 0;
+            if (req && OCSP_request_onereq_count(req.get()) == 1) {
+                ASN1_INTEGER* s = nullptr;
+                OCSP_id_get0_info(nullptr, nullptr, nullptr, &s,
+                                  OCSP_onereq_get0_id(OCSP_request_onereq_get0(req.get(), 0)));
+                serial = ASN1_INTEGER_get(s);
+            }
+            const char* file = serial == 0x2000   ? "ocsp-good.der"
+                               : serial == 0x2001 ? "ocsp-ec-good.der"
+                               : serial == 0x2002 ? "ocsp-revoked.der"
+                                                  : "ocsp-unknown.der";
+            return ok(pkiBytes(file), "application/ocsp-response", r.url);
+        }
+        static const std::pair<const char*, const char*> kFiles[] = {
+            {"http://pki.acrobatya.test/root.crl", "root.crl"},
+            {"http://pki.acrobatya.test/inter.crl", "inter-revoked.crl"},
+            {"http://pki.acrobatya.test/root.cer", "root.cer"},
+            {"http://pki.acrobatya.test/inter.cer", "inter.cer"}};
+        for (const auto& [url, file] : kFiles) {
+            if (r.url == url) {
+                return ok(pkiBytes(file), "application/octet-stream", r.url);
+            }
+        }
+        ot::net::Response none;
+        none.status = ot::net::Status::HttpError;
+        none.httpCode = 404;
+        return none;
+    });
+    return fake;
+}
+
+std::shared_ptr<ot::net::FakeHttpFetcher> offlineFetcher() {
+    auto fake = std::make_shared<ot::net::FakeHttpFetcher>();
+    fake->setHandler([](const ot::net::Request&) {
+        ot::net::Response resp;
+        resp.status = ot::net::Status::NetworkError;
+        resp.error = "offline (test)";
+        return resp;
+    });
+    return fake;
+}
+
+std::shared_ptr<const ot::sign::SigningKey> revokedIdentity() {
+    auto k = std::make_shared<ot::sign::SigningKey>();
+    k->cert = pkiCert("revoked.pem");
+    k->key = pkiKey("revoked.key");
+    k->chain.reset(sk_X509_new_null());
+    sk_X509_push(k->chain.get(), pkiCert("inter.pem").release());
+    return k;
+}
+
+ot::sign::TrustStore embeddedRoots(const ot::sign::DocumentVerification& v) {
+    ot::sign::TrustStore store;
+    for (const ot::sign::CertSummary& c : v.embeddedCertificates) {
+        if (c.subject == c.issuer) {
+            store.add(c.der, ot::sign::kTrustSignatures | ot::sign::kTrustCertification);
+        }
+    }
+    return store;
+}
+
+std::int64_t utc(int year, int month, int day) {
+    std::tm tm{};
+    tm.tm_year = year - 1900;
+    tm.tm_mon = month - 1;
+    tm.tm_mday = day;
+    return static_cast<std::int64_t>(_mkgmtime(&tm));
 }
 
 }  // namespace ot::test

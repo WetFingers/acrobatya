@@ -16,6 +16,7 @@
 #include "core/mu/call.h"
 #include "core/mu/context.h"
 #include "core/mu/handles.h"
+#include "core/sign/chain.h"
 #include "core/sign/cms.h"
 #include "core/sign/der.h"
 #include "core/sign/tsa.h"
@@ -257,6 +258,87 @@ std::vector<Ossl<X509>> dssCertificates(fz_context* ctx, pdf_document* pdf) {
     return out;
 }
 
+// Данные отзыва /DSS: /OCSPs и /CRLs (потоки DER).
+RevocationData dssRevocation(fz_context* ctx, pdf_document* pdf) {
+    RevocationData out;
+    for (const char* key : {"Root/DSS/OCSPs", "Root/DSS/CRLs"}) {
+        pdf_obj* arr = nullptr;
+        int n = 0;
+        mu::call(ctx, [&] {
+            arr = pdf_dict_getp(ctx, pdf_trailer(ctx, pdf), key);
+            n = pdf_array_len(ctx, arr);
+        });
+        const bool ocsp = std::string_view(key).ends_with("OCSPs");
+        for (int i = 0; i < n; ++i) {
+            mu::BufferHandle buf(ctx);
+            try {
+                mu::call(ctx, [&] {
+                    pdf_obj* s = pdf_array_get(ctx, arr, i);
+                    if (pdf_is_stream(ctx, s)) {
+                        buf.reset(pdf_load_stream(ctx, s));
+                    }
+                });
+            } catch (const std::exception& e) {
+                spdlog::debug("verifier: {} {}: {}", key, i, e.what());
+                continue;
+            }
+            if (!buf) {
+                continue;
+            }
+            unsigned char* data = nullptr;
+            const std::size_t len = fz_buffer_storage(ctx, buf, &data);
+            (ocsp ? out.ocspResponses : out.crls).emplace_back(data, data + len);
+        }
+    }
+    return out;
+}
+
+// adbe-revocationInfoArchival (signed-атрибут Adobe): SEQUENCE { [0] SEQUENCE OF CRL, [1] SEQUENCE OF
+// OCSPResponse, [2] … }.
+RevocationData archivalRevocation(const Bytes& value) {
+    RevocationData out;
+    try {
+        der::Reader top(value);
+        der::Reader seq(top.expect(der::kSequence, "RevocationInfoArchival").value);
+        while (!seq.atEnd()) {
+            const der::Node n = seq.next();
+            if (n.tag != der::context(0) && n.tag != der::context(1)) {
+                continue;
+            }
+            der::Reader inner(n.value);
+            der::Reader list(inner.expect(der::kSequence, "RevocationInfoArchival list").value);
+            while (!list.atEnd()) {
+                const der::Node e = list.next();
+                (n.tag == der::context(0) ? out.crls : out.ocspResponses)
+                    .emplace_back(e.encoded.begin(), e.encoded.end());
+            }
+        }
+    } catch (const der::DerError& e) {
+        spdlog::debug("verifier: adbe-revocationInfoArchival: {}", e.what());
+    }
+    return out;
+}
+
+std::optional<std::time_t> isoToTime(const std::string& iso) {
+    std::tm tm{};
+    if (iso.size() < 19 || std::sscanf(iso.c_str(), "%4d-%2d-%2dT%2d:%2d:%2d", &tm.tm_year, &tm.tm_mon,
+                                       &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) != 6) {
+        return std::nullopt;
+    }
+    tm.tm_year -= 1900;
+    tm.tm_mon -= 1;
+    const std::time_t t = _mkgmtime(&tm);
+    return t == static_cast<std::time_t>(-1) ? std::nullopt : std::optional<std::time_t>(t);
+}
+
+std::string timeToIsoUtc(std::time_t t) {
+    std::tm utc{};
+    gmtime_s(&utc, &t);
+    char buf[32];
+    std::strftime(buf, sizeof buf, "%Y-%m-%dT%H:%M:%SZ", &utc);
+    return buf;
+}
+
 bool isHex(std::uint8_t c) { return std::isxdigit(c) != 0; }
 bool isSpace(std::uint8_t c) {
     return c == ' ' || c == '\r' || c == '\n' || c == '\t' || c == '\f' || c == 0;
@@ -284,6 +366,10 @@ public:
     bool structure(pdf_obj* v);
     // (2) целостность по /SubFilter.
     void integrity();
+    // (3) доверие и время, (4) отзыв — у целой подписи с сертификатом подписанта.
+    void trust(const VerifyOptions& options, const RevocationData& dss);
+    // Сертификаты CMS и метки — для DocumentVerification::embeddedCertificates.
+    const std::vector<CertSummary>& seenCertificates() const { return seen_; }
 
 private:
     void add(Issue issue, std::string detail) { sig_.findings.push_back({issue, std::move(detail)}); }
@@ -296,6 +382,10 @@ private:
     SignatureInfo& sig_;
     STACK_OF(X509) * extra_;
     Bytes contents_;  // DER без дополнения
+    Ossl<X509> signer_;
+    Ossl<STACK_OF(X509)> cmsCerts_;
+    RevocationData archival_;  // adbe-revocationInfoArchival подписи
+    std::vector<CertSummary> seen_;
 };
 
 bool SignatureCheck::structure(pdf_obj* v) {
@@ -446,6 +536,7 @@ void SignatureCheck::checkDocTimestamp() {
         sig_.digestAlgorithm = cms.digestAlgorithm;
         sig_.signatureAlgorithm = cms.signatureAlgorithm;
         sig_.certificates = cms.certificates;
+        seen_ = cms.certificates;
         sig_.signedAttributes = !cms.signedAttributes.empty();
         sig_.ess = cms.signingCertificateV2.has_value() || cms.hasSigningCertificateV1;
         if (cms.signerCertIndex >= 0) {
@@ -488,6 +579,15 @@ void SignatureCheck::checkCms(bool sha1Content) {
     sig_.digestAlgorithm = info.digestAlgorithm;
     sig_.signatureAlgorithm = info.signatureAlgorithm;
     sig_.certificates = info.certificates;
+    seen_ = info.certificates;
+    if (!info.timestampToken.empty()) {
+        try {
+            const CmsInfo token = parseCms(info.timestampToken);
+            seen_.insert(seen_.end(), token.certificates.begin(), token.certificates.end());
+        } catch (const std::exception& e) {
+            spdlog::debug("verifier: {}: time-stamp token: {}", sig_.field, e.what());
+        }
+    }
     sig_.signedAttributes = !info.signedAttributes.empty() || !info.signedAttributesDer.empty();
     sig_.ess = info.signingCertificateV2.has_value() || info.hasSigningCertificateV1;
     if (info.signerCount > 1) {
@@ -546,6 +646,13 @@ void SignatureCheck::checkCms(bool sha1Content) {
         return;
     }
     sig_.signer = summarize(signer);
+    X509_up_ref(signer);
+    signer_.reset(signer);
+    cmsCerts_.reset(CMS_get1_certs(cms.get()));
+    ERR_clear_error();
+    if (const CmsAttribute* a = info.signedAttribute(oid::kAdobeRevocation)) {
+        archival_ = archivalRevocation(a->value);
+    }
 
     bool ok = true;
     // ESS signing-certificate(-v2) — о сертификате подписанта.
@@ -645,6 +752,116 @@ void SignatureCheck::checkCms(bool sha1Content) {
     sig_.intact = ok;
 }
 
+void SignatureCheck::trust(const VerifyOptions& options, const RevocationData& dss) {
+    const std::time_t now = options.now.value_or(std::time(nullptr));
+    std::time_t at = now;
+    sig_.timeSource = TimeSource::Now;
+    if (const auto claimed = isoToTime(sig_.claimedTime)) {
+        at = *claimed;
+        sig_.timeSource = TimeSource::Claimed;
+    }
+    sig_.validationTime = timeToIsoUtc(at);
+    if (!sig_.intact || !signer_ || sig_.kind == SignatureKind::DocTimestamp) {
+        return;
+    }
+
+    // (3) Цепочка до якорей нужного назначения на момент проверки.
+    const unsigned purpose =
+        sig_.kind == SignatureKind::Certification ? kTrustCertification : kTrustSignatures;
+    Ossl<X509_STORE> anchors;
+    if (options.trust != nullptr) {
+        anchors = options.trust->x509Store(purpose);
+    }
+    ChainBuilder builder(anchors.get(), at, true);
+    for (int i = 0; cmsCerts_ && i < sk_X509_num(cmsCerts_.get()); ++i) {
+        builder.addUntrusted(sk_X509_value(cmsCerts_.get(), i));
+    }
+    for (int i = 0; extra_ != nullptr && i < sk_X509_num(extra_); ++i) {
+        builder.addUntrusted(sk_X509_value(extra_, i));
+    }
+    builder.setPurpose(ChainPurpose::DocumentSigning);
+    if (anchors) {
+        builder.setFetcher(options.fetcher);  // AIA — только когда есть до чего строить
+    }
+    const ChainResult chain = builder.build(signer_.get());
+    sig_.chain = chain.chain;
+    sig_.chainError = chain.error;
+    switch (chain.status) {
+        case ChainStatus::Valid:
+            sig_.trusted = true;
+            break;
+        case ChainStatus::Untrusted:
+            add(Issue::Untrusted, chain.error.empty() ? "no path to a trust anchor" : chain.error);
+            break;
+        case ChainStatus::Expired:
+            add(Issue::CertExpired, chain.error + " at " + sig_.validationTime);
+            break;
+        case ChainStatus::NotYetValid:
+            add(Issue::CertNotYetValid, chain.error + " at " + sig_.validationTime);
+            break;
+        case ChainStatus::InvalidPurpose:
+            add(Issue::BadKeyUsage, chain.error);
+            break;
+        case ChainStatus::Revoked:
+            add(Issue::Revoked, chain.error);
+            break;
+        default:
+            add(Issue::ChainBroken, chain.error);
+            break;
+    }
+    if (!sig_.trusted) {
+        return;
+    }
+
+    // (4) Отзыв: данные файла, затем сеть.
+    if (options.revocation == RevocationPolicy::Never) {
+        add(Issue::RevocationUnchecked, "revocation checking is turned off");
+        return;
+    }
+    sig_.revocationChecked = true;
+    RevocationData known = dss;
+    known.ocspResponses.insert(known.ocspResponses.end(), archival_.ocspResponses.begin(),
+                               archival_.ocspResponses.end());
+    known.crls.insert(known.crls.end(), archival_.crls.begin(), archival_.crls.end());
+    RevocationChecker offline(known, nullptr);
+    offline.setTime(at);
+    offline.setRetroactive(options.retroactiveRevocation);
+    std::vector<RevocationResult> results = offline.checkChain(chain);
+    RevocationStatus worst = worstStatus(results);
+    bool fromFile = true;
+    if (worst == RevocationStatus::Unknown && options.fetcher != nullptr) {
+        // Сеть — только для сертификатов, о которых в файле данных нет.
+        RevocationChecker online(std::move(known), options.fetcher);
+        online.setTime(at);
+        online.setRetroactive(options.retroactiveRevocation);
+        for (std::size_t i = 0; i < results.size(); ++i) {
+            if (results[i].status == RevocationStatus::Unknown) {
+                const int k = static_cast<int>(i);
+                results[i] = online.check(sk_X509_value(chain.certs.get(), k),
+                                          sk_X509_value(chain.certs.get(), k + 1));
+            }
+        }
+        worst = worstStatus(results);
+        fromFile = false;
+    }
+    sig_.revocation = worst;
+    sig_.revocationDetails = std::move(results);
+    sig_.ltv = worst == RevocationStatus::Good && fromFile;
+    std::string detail;
+    for (const RevocationResult& r : sig_.revocationDetails) {
+        if (r.status != RevocationStatus::Good) {
+            detail += (detail.empty() ? "" : "; ") + r.detail;
+        }
+    }
+    if (worst == RevocationStatus::Revoked) {
+        add(Issue::Revoked, detail);
+    } else if (worst == RevocationStatus::Unknown) {
+        add(options.revocation == RevocationPolicy::Required ? Issue::RevocationUnknown
+                                                             : Issue::RevocationUnchecked,
+            "no revocation data: " + detail);
+    }
+}
+
 }  // namespace
 
 const char* signatureKindName(SignatureKind kind) {
@@ -655,6 +872,18 @@ const char* signatureKindName(SignatureKind kind) {
             return "Certification";
         case SignatureKind::DocTimestamp:
             return "DocTimestamp";
+    }
+    return "?";
+}
+
+const char* timeSourceName(TimeSource source) {
+    switch (source) {
+        case TimeSource::Now:
+            return "Now";
+        case TimeSource::Claimed:
+            return "Claimed";
+        case TimeSource::Timestamp:
+            return "Timestamp";
     }
     return "?";
 }
@@ -705,6 +934,22 @@ const char* issueName(Issue issue) {
             return "WeakAlgorithm";
         case Issue::ModifiedAfterSigning:
             return "ModifiedAfterSigning";
+        case Issue::Untrusted:
+            return "Untrusted";
+        case Issue::CertExpired:
+            return "CertExpired";
+        case Issue::CertNotYetValid:
+            return "CertNotYetValid";
+        case Issue::BadKeyUsage:
+            return "BadKeyUsage";
+        case Issue::ChainBroken:
+            return "ChainBroken";
+        case Issue::Revoked:
+            return "Revoked";
+        case Issue::RevocationUnknown:
+            return "RevocationUnknown";
+        case Issue::RevocationUnchecked:
+            return "RevocationUnchecked";
     }
     return "?";
 }
@@ -720,13 +965,22 @@ std::optional<Verdict> issueSeverity(Issue issue) {
         case Issue::SignatureMismatch:
         case Issue::EssMismatch:
         case Issue::ForbiddenAlgorithm:
+        case Issue::Revoked:
             return Verdict::Invalid;
         case Issue::UnsupportedSubFilter:
         case Issue::UnsupportedAlgorithm:
         case Issue::NoSignerCertificate:
         case Issue::ModifiedAfterSigning:
+        case Issue::RevocationUnknown:
             return Verdict::Unknown;
+        case Issue::Untrusted:
+        case Issue::CertExpired:
+        case Issue::CertNotYetValid:
+        case Issue::BadKeyUsage:
+        case Issue::ChainBroken:
+            return Verdict::ValidUntrusted;
         case Issue::WeakAlgorithm:
+        case Issue::RevocationUnchecked:
             return std::nullopt;
     }
     return Verdict::Unknown;
@@ -806,7 +1060,7 @@ DocumentStatus documentStatus(const std::vector<SignatureInfo>& signatures) {
     return certified ? DocumentStatus::Certified : DocumentStatus::Valid;
 }
 
-DocumentVerification verifyDocument(Document& doc, const VerifyOptions& /*options*/) {
+DocumentVerification verifyDocument(Document& doc, const VerifyOptions& options) {
     DocumentVerification out;
     pdf_document* pdf = doc.pdf();
     if (pdf == nullptr) {
@@ -827,8 +1081,19 @@ DocumentVerification verifyDocument(Document& doc, const VerifyOptions& /*option
         X509_up_ref(x.get());
         sk_X509_push(extra.get(), x.get());
     }
+    const RevocationData dssRevocationData = dssRevocation(ctx, pdf);
     pdf_obj* docMdp = nullptr;
     mu::call(ctx, [&] { docMdp = pdf_dict_getp(ctx, pdf_trailer(ctx, pdf), "Root/Perms/DocMDP"); });
+    const auto remember = [&](const CertSummary& c) {
+        const bool known = std::any_of(out.embeddedCertificates.begin(), out.embeddedCertificates.end(),
+                                       [&](const CertSummary& e) { return e.sha256 == c.sha256; });
+        if (!known) {
+            out.embeddedCertificates.push_back(c);
+        }
+    };
+    for (const Ossl<X509>& x : dss) {
+        remember(summarize(x.get()));
+    }
 
     for (std::size_t i = 0; i < fields.size(); ++i) {
         pdf_obj* field = fields[i];
@@ -897,6 +1162,7 @@ DocumentVerification verifyDocument(Document& doc, const VerifyOptions& /*option
             if (check.structure(v)) {
                 check.integrity();
             }
+            check.trust(options, dssRevocationData);
         } catch (const std::exception& e) {
             sig.findings.push_back({Issue::CmsDamaged, std::string("verification failed: ") + e.what()});
             sig.intact = false;
@@ -905,11 +1171,14 @@ DocumentVerification verifyDocument(Document& doc, const VerifyOptions& /*option
         if (!sig.intact && verdict == Verdict::Valid) {
             verdict = Verdict::Unknown;
         }
-        // Доверие — п. 2: без якорей подписант не доверен.
-        if (verdict == Verdict::Valid) {
+        // Цела, но не доверена (метка документа — доверие службы времени в п. 3).
+        if (verdict == Verdict::Valid && !sig.trusted) {
             verdict = Verdict::ValidUntrusted;
         }
         sig.verdict = verdict;
+        for (const CertSummary& c : check.seenCertificates()) {
+            remember(c);
+        }
         spdlog::debug("verifier: {}: {} ({} findings)", sig.field, verdictName(sig.verdict),
                       sig.findings.size());
         out.signatures.push_back(std::move(sig));

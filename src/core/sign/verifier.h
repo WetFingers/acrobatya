@@ -14,6 +14,18 @@
 //     прочие — «не поддерживается»; MD5/MD2 — отказ, SHA-1 — предупреждение; CMS без ESS, RSA-PSS, ECDSA —
 //     читаются; «обёрнутая» CMS (eContent при detached) — данные подписи обязаны совпасть с /ByteRange.
 //
+// (3) доверие — ChainBuilder до якорей TrustStore (подписи, у сертифицирующей — «сертифицированные
+// документы»;
+//     доверенный промежуточный — якорь), промежуточные — из CMS и /DSS, назначение — подпись документов;
+//     время проверки — метка подписи, если она есть и проверена (п. 3), иначе /M «заявленное» (иначе —
+//     сейчас); просроченный к этому моменту сертификат — не доверен;
+// (4) отзыв (только у доверенной цепочки) — сначала встроенные данные (/DSS /OCSPs /CRLs,
+//     adbe-revocationInfoArchival), их хватило на всю цепочку — «LTV включено»; иначе сеть по политике
+//     (VerifyOptions::revocation: обязательно / по возможности / никогда); отозван до момента проверки —
+//     «недействительна», после — нет; нет данных — «Неизвестно (нет данных об отзыве)»: при «обязательно» —
+//     вердикт Unknown, при «по возможности» — предупреждение; retroactive — данные отзыва годятся задним
+//     числом (как Acrobat; pyHanko --retroactive-revinfo).
+//
 // Вердикт — как у Acrobat (Verdict); причины — Finding с кодом Issue и английской подробностью (журнал,
 // «Подробнее»); сводка документа — полоса сообщений (DocumentStatus). Объекты OpenSSL наружу не выходят.
 // Байты подписи читаются из потока документа (файл или память). Поток — поток документа.
@@ -27,8 +39,11 @@
 #include <vector>
 
 #include "core/sign/ossl.h"
+#include "core/sign/revocation.h"
+#include "core/sign/trust_store.h"
 #include "core/sign/x509_info.h"
 #include "core/util/geometry.h"
+#include "core/util/http_fetcher.h"
 
 namespace ot {
 class Document;
@@ -72,9 +87,33 @@ enum class Issue {
     WeakAlgorithm,         // SHA-1 — предупреждение «устаревший алгоритм»
     // изменения после подписи
     ModifiedAfterSigning,  // после подписи дописаны секции (не разобраны)
+    // доверие и отзыв
+    Untrusted,            // нет пути до якоря
+    CertExpired,          // сертификат цепочки истёк к моменту проверки
+    CertNotYetValid,      // ещё не действовал к моменту проверки
+    BadKeyUsage,          // сертификат не для подписи документов (KU/EKU)
+    ChainBroken,          // подпись сертификата цепочки, ограничения ЦС
+    Revoked,              // отозван до момента проверки
+    RevocationUnknown,    // нет данных об отзыве при политике «обязательно»
+    RevocationUnchecked,  // отзыв не проверен (нет данных при «по возможности», политика «никогда»)
 };
 const char* issueName(Issue issue);
 std::optional<Verdict> issueSeverity(Issue issue);
+
+// Откуда момент проверки.
+enum class TimeSource {
+    Now,        // ни метки, ни /M
+    Claimed,    // /M — время с часов подписавшего
+    Timestamp,  // метка времени подписи (служба времени)
+};
+const char* timeSourceName(TimeSource source);
+
+// Политика проверки отзыва (Установки → Подписи → Проверка).
+enum class RevocationPolicy {
+    Required,    // «обязательно»: нет данных — подпись «Неизвестно»
+    BestEffort,  // «по возможности» (по умолчанию): нет данных — предупреждение
+    Never,       // «никогда»: не проверять
+};
 
 struct Finding {
     Issue issue;
@@ -117,6 +156,19 @@ struct SignatureInfo {
     bool signedAttributes = false;
     bool ess = false;  // есть ESS signing-certificate(-v2)
 
+    // Доверие и время.
+    bool trusted = false;
+    std::vector<CertSummary> chain;  // построенная цепочка: подписант → якорь (и при ошибке — что построено)
+    std::string chainError;          // английский текст OpenSSL
+    std::string validationTime;      // момент проверки (ISO, UTC)
+    TimeSource timeSource = TimeSource::Now;
+
+    // Отзыв.
+    RevocationStatus revocation = RevocationStatus::Unknown;  // худший по цепочке
+    bool revocationChecked = false;                           // проверка выполнялась
+    std::vector<RevocationResult> revocationDetails;          // по сертификатам цепочки, кроме якоря
+    bool ltv = false;  // «LTV включено»: цепочка доверена, отзыв всей цепочки — по данным файла
+
     // Итог.
     bool structureOk = false;  // (1)
     bool intact = false;       // (1) и (2): данные не изменены, подпись сходится
@@ -136,6 +188,8 @@ struct DocumentVerification {
     DocumentStatus status = DocumentStatus::NotSigned;
     int versions = 0;  // ревизий файла
     std::int64_t fileSize = 0;
+    // Все сертификаты файла без повторов: CMS подписей и меток, /DSS /Certs («Доверять» в свойствах).
+    std::vector<CertSummary> embeddedCertificates;
 };
 
 // Сводка по вердиктам подписей: Invalid — хоть одна недействительна; Problems — хоть одна Unknown или
@@ -144,7 +198,13 @@ DocumentStatus documentStatus(const std::vector<SignatureInfo>& signatures);
 // Худший вердикт по находкам (без находок — Valid).
 Verdict verdictFromFindings(const std::vector<Finding>& findings);
 
-struct VerifyOptions {};
+struct VerifyOptions {
+    const TrustStore* trust = nullptr;    // якоря; nullptr — нет (все подписанты не доверены)
+    net::HttpFetcher* fetcher = nullptr;  // OCSP, CRL, AIA; nullptr — без сети
+    RevocationPolicy revocation = RevocationPolicy::BestEffort;
+    bool retroactiveRevocation = true;  // данные отзыва годятся задним числом (Acrobat)
+    std::optional<std::time_t> now;     // «сейчас» (тесты); nullopt — часы
+};
 
 // Проверить все подписанные поля документа. Не PDF — пустой результат (NotSigned).
 DocumentVerification verifyDocument(Document& doc, const VerifyOptions& options = {});
