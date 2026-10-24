@@ -13,6 +13,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include "core/sign/identity.h"
 #include "core/text/index.h"
 #include "services/app_info.h"
 
@@ -62,6 +63,9 @@ const std::vector<std::function<void(sqlite3*)>>& migrations() {
                  "CREATE TABLE IF NOT EXISTS link_hosts(host TEXT PRIMARY KEY, rule INTEGER NOT NULL, "
                  "decided_at INTEGER NOT NULL DEFAULT 0)");
         },
+        // 5: удостоверения подписи (4.2, core/sign/identity.h: identities — .pfx в ids\ и сертификаты
+        // хранилища Windows, по умолчанию, тайм-аут пароля, пароль DPAPI)
+        [](sqlite3* db) { sign::IdentityStore::createSchema(db); },
     };
     return steps;
 }

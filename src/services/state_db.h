@@ -6,7 +6,8 @@
 //
 // Миграции: 1 — индекс поиска по папкам (core/text/index.h: fts_files, fts_pages), 2 — вкладки прошлого
 // сеанса (session_store.h: session_tabs), 3 — недавние, избранное и последние виды (recent.h: recent),
-// 4 — доверенные файлы и сайты ссылок (protected_view.h: trusted_files, link_policy.h: link_hosts).
+// 4 — доверенные файлы и сайты ссылок (protected_view.h: trusted_files, link_policy.h: link_hosts), 5 —
+// удостоверения подписи (core/sign/identity.h: identities).
 // Запросы — SqlStatement (services/sql.h). Следующие сессии добавляют шаги в конец списка (state_db.cpp) и
 // поднимают kSchemaVersion: прочитанные комментарии, подозрения OCR…
 //
@@ -24,7 +25,7 @@ namespace ot {
 
 class StateDb {
 public:
-    static constexpr int kSchemaVersion = 4;
+    static constexpr int kSchemaVersion = 5;
 
     // <каталог данных>/state.sqlite.
     static QString defaultPath();
