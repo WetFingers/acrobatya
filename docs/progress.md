@@ -8,6 +8,15 @@
 Новые пункты — сверху, с номером сессии или рубежа. Ничего из этого не блокирует очередь: она работает на
 `Fake*`-реализациях и фикстурах, живая часть ждёт здесь (эталон 8.1 «Человек отдельно», 9.7).
 
+- **Сессия 5.1 · Комментарии вживую** — (1) На экране: «Добавить комментарии» — записка щелчком (окно открывается,
+  набор пишется), «Выделить» и «Подчеркнуть» протягиванием по тексту, «Заменить текст», карандаш и ластик мышью;
+  «Сохранить» и открыть файл в Acrobat Reader и Edge: записка с тем же значком и текстом в окне, разметка на тех же
+  строках, «Заменить текст» показан в Reader как замена (зачёркивание с кареткой, текст в окне), штрих — та же
+  кривая. (2) Ctrl+C на записке в одном окне программы и Ctrl+V в другом запущенном экземпляре (буфер Windows между
+  процессами). (3) FreeText с кириллицей, созданный через `--script annot.create` (шрифт MuPDF «HelvCYR» без
+  встраивания), в Reader — видна ли кириллица; встроенный TrueType для FreeText — сессия 5.2. (4) Окно записки и
+  подсказка при наведении на экране 125–150 %: размер окна и линия-связка.
+
 - **Рубеж Р2 · M2 «Редактор текста и подписи»** (автоматическая часть — `tools/verify_r2.py`, всё «ok», отчёт
   `.queue/r2/report.md`) — (1) Подписать свой файл с меткой времени DigiCert (на экране, «Использовать сертификат →
   Поставить цифровую подпись», B-T, нужна сеть) и открыть в Acrobat Reader и Edge: зелёная галочка; после «Добавить
@@ -2572,3 +2581,80 @@
   620 с, 62 018 запусков, корпус 157, падений 0, OOM 0, таймаутов 5 — все мутанты с JBIG2 (`.queue/r2/slow/`).
 - Проверки: всё выше зелёное (bench — с A/B-доводом); итоговые `verify.py` (682 теста) и `verify_r2.py` зелёные;
   сцены — 393 снимка, сцены этапов 3–4 просмотрены поштучно и листами.
+
+### 2026-10-24 · Сессия 5.1 · Ядро аннотаций, записка, разметка, карандаш и панель инструмента
+- Сделано:
+  1. **Ядро аннотаций** (`core/annot/`): `annots.h` расширен с минимума 2.2 до 28 подтипов — `AnnotInfo` с автором,
+     текстом, /C, /M, /IRT, /RT, /Popup и наличием /AP (список за один проход по спискам MuPDF — 5 000 на странице
+     без квадрата), `AnnotProps`/`AnnotPatch`, `readProps`, `create`/`createGroup` (15 типов: 14 эталона и вложение;
+     /NM — UUID v4, /CreationDate и /M, /Subj по-английски как у Acrobat, окно записки справа от значка, синтез /AP
+     в той же операции), `update`, `setFlags` (/Hidden, /NoView, /Print, /Locked), пунктир через
+     `pdf_clear_annot_border_dash` + `pdf_add_annot_border_dash_item`, облако, `translate`, `setRect` (тот же размер
+     — сдвиг всей геометрии, /AP прежний; другой — масштаб и синтез для линий, фигур, Ink, FreeText и разметки),
+     хит-тест по типу (квады, расстояние до штриха и линии, многоугольник), `eraseInk`, `copy`/`paste` (свой PDF в
+     памяти через `pdf_graft` + JSON, вставка в исходные координаты, новый /NM), JSON свойств; `defaults.h` (Identity,
+     `GetUserNameW`, умолчания инструментов), `ink_math.h`; службы `annot_ops` и `comment_settings`, ключи
+     `commenting/…`; `--script annot.create`. `unit.annots` (20), `engine.annots_matrix` (матрица 28 подтипов и
+     корпус `annots`: 272 файла, 55 инкрементальных записей). comment-08, comment-24, comment-43, comment-03.
+  2. **Записка, разметка, правки текста, быстрые действия**: `CommentTool` вместо заглушки (панель с действиями,
+     команды `tool.note` S, `comment.note` Ctrl+6, `tool.highlight` U), `CommentMode` в новом слоте
+     `ViewToolId::Comment` — записка (щелчок по своей записке открывает окно), разметка протягиванием по тексту
+     (квады `selectStream`, «Выделить» без текста — область), «Вставить текст» (Caret у ближайшей границы символа) и
+     «Заменить текст» (StrikeOut /IT /StrikeOutTextEdit + Caret, /IRT /RT /Group, один шаг); `PopupWidget`/
+     `PopupLayer` — своё окно записки (заголовок цветом комментария, набор шагом «Edit note text», линии-связки,
+     подсказка при наведении); `QuickActionsBar` над выделенным текстом (comment-10); меню «Отменить: записка»
+     (`ui/shell/undo_titles`). `ui.markup_tools` (8); сцены `annot-note-open` (+ dark), `annot-markup`,
+     `annot-caret`, `annot-quick-actions`. comment-01, comment-02, comment-03, comment-10.
+  3. **Карандаш, ластик, выбор и буфер**: карандаш (оверлей — квадратичные Безье, в /InkList — Дуглас–Пекер ε = 0,5 пт;
+     `tool.draw` D), ластик (круг 6 px, `eraseInk` по Ink страницы); «Выбор объектов» — Ctrl+C/X/V (`kClipboardMime`,
+     между страницами, документами и процессами), команды `edit.cut`/`edit.paste`, разметка и «Заблокировано» не
+     тянутся и не удаляются, меню «Копировать / Вырезать / Удалить / Заблокировать» + «Открыть окно записки» и
+     «Сделать свойствами по умолчанию» (`installCommentMenu`; «Ответить», «Статус», «Свойства…» — серые до 5.2/5.4).
+     `ui.ink_select` (6); сцены `annot-ink`, `annot-selected`. comment-06, comment-43.
+  4. **Панель и «Установки → Комментирование»**: стиль действия в панели (цвет, толщина карандаша, непрозрачность,
+     значок записки → `commenting/toolStyles`), «Оставлять инструмент выбранным» (`ToolController::setPinned`,
+     `commenting/keepToolSelected`); страница `CommentingPage` — шрифт и кегль окна записки, наведение, линии-связки,
+     окно при создании, «имя входа», инструмент выбранным, Identity. `ui.comment_tool_panel` (3); сцены
+     `tool-panel-comments`, `preferences-commenting`. comment-08, comment-24, comment-42.
+  5. **Показ/скрытие и compat**: маска скрытых подтипов `annotsHidden` — `DisplayList::build` (содержимое, аннотации
+     `pdf_run_annot` без скрытых, поля), ключ `DisplayCache`, поле `TileKey`, `TilePainter::setAnnotsHidden`;
+     `DocumentView::setAnnotsHidden/setCommentsHidden` (основа фильтров 5.4), `comment.toggleAll` Ctrl+Shift+8;
+     скрытые не выбираются, окна записок закрываются. `compat.annots` — `annots_compat.DISABLED_write` +
+     `tools/compat_annots.py` (pypdfium2 против нашего рендера 144 dpi, `imgcmp --cross` в рамке каждой: 30 рамок, 0
+     расхождений); `tests/scripts/annots_forms.json`. `ui.annots_visibility` (2), `ui.script_annots` (2). comment-19.
+- Решения:
+  - `AnnotRef` получил `nm`, но сравнивается по {страница, номер объекта} — ссылки из 2.2 (`{page, objnum}`) и ответы
+    задач остаются равными; /NM нужен буферу и будущему XFDF.
+  - Создание идёт через `pdf_create_annot` и наши сеттеры, затем `pdf_update_annot` **в той же операции**: иначе /AP
+    синтезируется при рендере «неявной операцией» MuPDF и рушит историю. Перемещение — правкой массивов словаря
+    (/Rect, /QuadPoints, /InkList, /Vertices, /L, /CL, рамка /Popup) без пересоздания /AP: чужой вид остаётся; при
+    смене размера линии, фигуры, Ink, FreeText и разметка синтезируются заново, значки и штампы вписываются.
+  - Буфер — свой одностраничный PDF (`pdf_graft` словаря без /P, /Popup, /IRT, /Parent: вид, шрифты, картинки и
+    вложения переносятся целиком) + JSON (матрица исходной страницы, рамка окна). Вставка — в исходные координаты
+    (comment-43), на ту же страницу того же документа — со сдвигом 12 пт; ответы не переносятся.
+  - /Subj — английские имена Acrobat («Sticky Note», «Cross-Out», «Pencil»…): ядро без кириллицы, а Reader их
+    понимает в любой локали; русские подписи — только в интерфейсе.
+  - Значки записки и вложения (NoZoom): MuPDF рисует /AP в размере /BBox (16 пт), pdfium и Acrobat вписывают в /Rect
+    (20 пт) — у созданных нами /Rect = /BBox с тем же центром; в матрице этапа 0 (чужие значки с /Rect больше /BBox)
+    `compat.annots` такие рамки пропускает с причиной.
+  - Показ/скрытие — визуальный фильтр вкладки (маска подтипов в display list и ключе тайлов), файл и история не
+    меняются; фильтры панели 5.4 используют ту же маску.
+  - «Заменить текст»: главная — Caret (/Subj «Replace Text», текст замены в окне), StrikeOut — /IRT на неё, /RT /Group,
+    /IT /StrikeOutTextEdit (как Acrobat); «Вставить текст» — Caret с /Subj «Inserted Text».
+  - Контекстное меню «Выбора объектов» показывается `popup()` без своего цикла событий (раньше `exec()` пустого меню
+    не вызывался; теперь меню не пустое, а тесты и `--script` не должны стоять на модальном цикле).
+- Подводные камни:
+  - MuPDF 1.28.5 `pdf_add_embedded_file` (pdf-link.c) открывает операцию «Embed file» и при успехе её не закрывает —
+    после вызова нужен `pdf_end_operation`, иначе наша операция остаётся открытой («Can't undo/redo during an
+    operation»).
+  - Геттеры MuPDF отвергают неподходящий подтип исключением (`check_allowed_subtypes`) — перед каждым — `pdf_annot_has_*`.
+  - `pdf_annot_rect` у разметки и Ink недоступен — рамка из `pdf_bound_annot`.
+  - Строгий pdfcpu (`compat_check.py`) не принимает шрифт «HelvCYR» (Type1 без /FontDescriptor), который MuPDF кладёт
+    во внешний вид FreeText с кириллицей, и шрифт поля матрицы этапа 0 (нет /FirstChar) — встроенный TrueType для
+    FreeText — сессия 5.2 (критерий этапа); в `compat.annots` строгая проверка файлов не входит.
+  - Bash-инструмент: `python3 - <<'PY' … || …` ждал ввода 30 минут (python3 из PATH — заглушка Store) — правки
+    скриптами только `"$OTTISK_PYTHON" -X utf8 -I <файл>`; `cmd //c "tools\vcenv.cmd && ctest …"` в Bash иногда
+    отвечает «The system cannot find the path specified» — ctest и длинные списки clang-format — через PowerShell.
+- Замеры: инкремент ядра — 4–10 с, ui_tests — 10–60 с; `engine.annots_matrix` — 9 с (272 файла); verify.py — ~2 мин.
+- Проверки: verify.py зелёный; сцены: annot-note-open, annot-note-open-dark, annot-markup, annot-caret,
+  annot-quick-actions, annot-ink, annot-selected, tool-panel-comments, preferences-commenting (просмотрены).

@@ -3,8 +3,32 @@
 Где что лежит и как добавляется типовая вещь. Сессия читает этот файл **первым**, до поиска по коду.
 Дерево и состав — эталон `docs/design.md` 5.1–5.3; здесь — короткий путеводитель и рецепты.
 
-> **Состояние: сессия 4.6 — интерфейс подписей: инструмент, диалоги, панель «Подписи», Установки → Подписи; версия
-> 0.4.0** (этап 4 закрыт; запись журнала восстановил оператор — сессия остановилась по лимиту ходов).
+> **Состояние: сессия 5.1 — ядро аннотаций, записка, разметка, карандаш, буфер и панель «Добавить комментарии»**.
+> `core/annot/` — `annots.h` (28 подтипов: `AnnotRef{page, objnum, nm}` — сравнение без nm; `AnnotInfo` + автор, текст,
+> /C, /M, /IRT, /RT, /Popup, `hasAppearance`; `AnnotProps` — все свойства и геометрия в координатах страницы;
+> `AnnotPatch`; `listAnnots` за один проход, `readProps`, `annotAt` по типу (квады, штрих, линия, многоугольник),
+> `create`/`createGroup` (pdf_create_annot + сеттеры + pdf_update_annot в одной операции; /NM — UUID, даты, /Subj,
+> окно записки), `update`, `setFlags`, `translate`, `setRect` (тот же размер — сдвиг всей геометрии без нового /AP,
+> другой — масштаб и синтез), `eraseInk`, `copy`/`paste` (`AnnotClip`: свой PDF через pdf_graft + JSON),
+> `toJson`/`propsFromJson`, `createStepName`, `isComment`/`isTextMarkup`/`canCreate`), `annot_internal.h`
+> (`detail::PageAnnots`, `transformGeometry`, `rawMatrix`), `defaults.h` (`Identity`, `loginName`, `authorName`,
+> `defaultSubject`, `toolDefaults`, `kNoteIcons`), `ink_math.h` (Дуглас–Пекер, ластик, расстояния); службы —
+> `annot_ops.h` (задачи и шаги «Add note»… «Erase ink», «Paste annotations», «Edit note text»), `comment_settings.h`
+> (`comments::identity/author/toolStyle/setToolStyle/newProps`, ключи `commenting/…`); рендер — маска `annotsHidden`
+> (`DisplayList::build`, ключ `DisplayCache`, поле `TileKey::annotsHidden`, `DocumentSession::displayList(…, mask)`,
+> `TilePainter::setAnnotsHidden`); ui — `ViewToolId::Comment` (`kViewToolCount` 10), `ui/tools/comment/` (`CommentTool`:
+> панель — действия, стиль, «закрепить»; команды `tool.note` S, `comment.note` Ctrl+6, `tool.highlight` U,
+> `tool.draw` D, `comment.toggleAll` Ctrl+Shift+8; `CommentMode` — записка, разметка, вставка/замена, карандаш,
+> ластик; `PopupWidget`/`PopupLayer` — окна записок поверх вида; `QuickActionsBar` — действия над выделенным
+> текстом (создаёт `DocumentView`); `installCommentMenu` — пункты меню «Выбора объектов»; `comment_script` —
+> `annot.create`), «Выбор объектов» — буфер `kClipboardMime`, `movable`, `setSelectionLocked`, `fillContextMenu`,
+> `setHiddenTypes`, меню без своего цикла (`popup`); команды `edit.cut`, `edit.paste`; `DocumentView::setAnnotsHidden/
+> setCommentsHidden/commentTypesMask`, `quickActions()`; `ui/shell/undo_titles` — «Отменить: записка»;
+> `preferences/commenting_page`; сцены `annot-*`, `tool-panel-comments`, `preferences-commenting`; ctest
+> `unit.annots`, `engine.annots_matrix`, `ui.markup_tools`, `ui.ink_select`, `ui.comment_tool_panel`,
+> `ui.annots_visibility`, `ui.script_annots`, `compat.annots` (`tools/compat_annots.py`); `tests/scripts/annots_forms.json`.
+> Из 4.6 — интерфейс подписей: инструмент, диалоги, панель «Подписи», Установки → Подписи; версия
+> 0.4.0 (этап 4 закрыт; запись журнала восстановил оператор — сессия остановилась по лимиту ходов).
 > `ui/tools/certificate/` — `CertificateTool` (панель и меню «Подпись»: `sign.digital`, `sign.certify`,
 > `sign.certifyInvisible`, `sign.timestamp`, `sign.validateAll`, `sign.identities`; `blockReason`,
 > `startSign`/`startCertify`/`startTimestamp`, `placeSignature`, `verifyAll`, `offerLtv`), `SignPlacementTool`
@@ -300,7 +324,7 @@ ETSI.CAdES.detached/PBAD.PAdES, adbe.pkcs7.detached, adbe.pkcs7.sha1, ETSI.RFC31
 дерево имён, страницы, комментарии, поля, закладки, цепочки /Next), `eutl.h` (логика EUTL без XML), `aatl.h` (разбор
 SecuritySettings.xml по факту), в `docmdp.h` — запись DocMDP и правила, в `signer.h` — уровни и сертификация, в
 `trust_store.h` — импорт/экспорт и корни Windows по назначениям; 4.6 — `sig_fields.h` (`SignatureField{name, page, rect, visible, isSigned, readOnly, docTimestamp}`, `signatureFields(doc)` — все /FT /Sig в порядке /AcroForm /Fields, `emptyFieldAt(fields, page, point)`, `ClearBlock` + `clearBlock(doc, field)` — только последняя и не заблокированная, `clearSignature` — своя очистка в операции «Clear signature» (`pdf_clear_signature` MuPDF 1.28 оставляет операцию журнала открытой): `pdf_signature_appearance_unsigned`, /V снят у поля и виджета, Locked снят, у сертифицирующей — /Perms /DocMDP), в `x509_info.h` — `certDetails(der)` → `CertDetails` (назначение ключа, EKU, политики, OCSP/CRL, расширения текстом OpenSSL, SHA-1/SHA-256, `selfSigned`), в `verifier.h` — `VerificationTime` (SigningTime/SecureTime/Current) и `VerifyOptions::time` | 4.1–4.6 |
-| `annot/` | `annots.h` (2.2, минимум: `AnnotRef{page, objnum}`, `AnnotType` — 28 подтипов в порядке `pdf_annot_type`, `AnnotInfo{ref, type, subtype, rect, flags}`; `listAnnots` — весь `/Annots`, с Link/Popup/Widget, которых нет в списке `pdf_annot` MuPDF; рамки — координаты страницы MuPDF (`pdf_bound_annot`, NoZoom/NoRotate, `/Rotate`); `findAnnot`, `annotAt` — верхняя, без Popup и скрытых; `setRect` — `/Rect` без пересоздания `/AP`; `remove` — `pdf_delete_annot` (с его Popup) или из `/Annots`; правки — `Journal::Operation`; 28 типов, сеттеры и JSON — 5.1), дальше `appearance.h`, `popups.h`, `fdf.h`, `xfdf.h`, `stamps.h`, `measure.h`, `summary.h`, `fillsign.h` | 2.2, 5.1–5.5 |
+| `annot/` | 5.1 — `annots.h` (28 подтипов, свойства, создание, правка, хит-тест по типу, буфер, JSON — см. «Новая аннотация»), `annot_internal.h`, `defaults.h`, `ink_math.h`; 2.2 — `annots.h` (минимум: `AnnotRef{page, objnum}`, `AnnotType` — 28 подтипов в порядке `pdf_annot_type`, `AnnotInfo{ref, type, subtype, rect, flags}`; `listAnnots` — весь `/Annots`, с Link/Popup/Widget, которых нет в списке `pdf_annot` MuPDF; рамки — координаты страницы MuPDF (`pdf_bound_annot`, NoZoom/NoRotate, `/Rotate`); `findAnnot`, `annotAt` — верхняя, без Popup и скрытых; `setRect` — `/Rect` без пересоздания `/AP`; `remove` — `pdf_delete_annot` (с его Popup) или из `/Annots`; правки — `Journal::Operation`; 28 типов, сеттеры и JSON — 5.1), дальше `appearance.h`, `popups.h`, `fdf.h`, `xfdf.h`, `stamps.h`, `measure.h`, `summary.h`, `fillsign.h` | 2.2, 5.1–5.5 |
 | `forms/` | `fields.h`, `field_factory.h`, `js_bridge.h`, `data_io.h`, `submit.h`, `detect.h`, `tab_order.h` | 6.1–6.4 |
 | `pages/` | 2.4 — `labels.h` (чтение `/PageLabels`: `pageLabels`, `pageLabel`, `parsePageInput` — «iv», «3» (логический, иначе физический), «(3)»); 2.5b — `boxes.h` (`pageBoxes(doc, page)` — Media/Crop/Bleed/Trim/Art в координатах `fz_bound_page_box`, `has*` — задана с наследованием); 7.1 — `organizer.h`, `graft.h`, `split.h`, запись в `labels.h` и `boxes.h`, `insert.h` | 2.4, 2.5b, 7.1 |
 | `create/` | `to_pdf.h` (2.3: `renderToPdf`/`writeAsPdf` — документ «только просмотр» (XPS, EPUB, картинки, TXT) → PDF через `fz_document_writer` «pdf», страницы как есть, отмена между страницами), `text_export.h` (`exportText(doc, TextExportOptions{format, encoding, bom, firstPage, lastPage}, cancelled)`: TXT UTF-8/UTF-16/CP1251 с CRLF и «\f» между страницами, HTML/XHTML/XML через `fz_print_stext_page_as_*`, RTF), `rtf_writer.h` (`RtfWriter`, `rtfText`, `rtfFontFamily`) — 1.4; дальше `dispatcher.h`, `image_to_pdf.h`, `pdf_to_images.h`, `tiff_writer.h`, `combine.h`, `html_to_pdf.h`, `presets.h` | 1.4, 7.2 |
@@ -547,6 +571,15 @@ PowerShell-стражи очереди `tools/test_reset_parse.ps1` и `tools/te
 4. Инструмент — в `src/ui/tools/comment/` (рецепт выше), свойства — диалог «Свойства комментария»,
    панель «Комментарии» — `src/ui/panes/`.
 5. `OT_FEATURE("comment-NN")` в тестах; строка `CHANGELOG.md`.
+6. С 5.1: создать — `annot::create(session, page, props)` (свойства — `comments::newProps(Settings(), тип, ключ
+   инструмента)`: умолчания `toolDefaults` + стиль `commenting/toolStyles` + автор Identity), группа —
+   `createGroup` (/IRT, /RT /Group), правка — `update(…, AnnotPatch)`; внутри ядра — `detail::PageAnnots` на вызов,
+   строки и массивы готовить снаружи `mu::call`, после сеттеров — `pdf_update_annot` в той же операции (иначе MuPDF
+   синтезирует вид при рендере «неявной операцией»). Геометрия — координаты страницы (геттеры/сеттеры MuPDF сами
+   применяют матрицу страницы). Грабли MuPDF 1.28.5: `pdf_add_embedded_file` не закрывает свою операцию
+   («Embed file») — `pdf_end_operation` следом; значок NoZoom MuPDF рисует размером /BBox, pdfium — /Rect: у новых
+   /Rect = /BBox. Инструмент вида — действие `CommentAction` в `CommentMode` (слот `ViewToolId::Comment`, файл
+   действия — `ui/tools/comment/<действие>_tool.cpp`).
 
 ### Новый диалог
 

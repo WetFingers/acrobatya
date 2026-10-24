@@ -89,13 +89,13 @@ private slots:
         QCOMPARE(d->categoryList()->item(2)->text(), QStringLiteral("Документы"));
         QCOMPARE(d->categoryList()->item(6)->text(), QStringLiteral("Подписи"));
         QCOMPARE(d->currentCategory(), QStringLiteral("general"));
-        // Живые — без этапа (с 2.6 и «Печать», с 3.4 — «Редактирование содержимого», с 4.6 — «Подписи»),
-        // остальные — заглушки
-        // «появится в версии 0.N».
+        // Живые — без этапа (с 2.6 и «Печать», с 3.4 — «Редактирование содержимого», с 4.6 — «Подписи», с 5.1
+        // — «Комментирование»), остальные — заглушки «появится в версии 0.N».
         for (const QString& id : d->categoryIds()) {
             const bool live = id == QLatin1String("general") || id == QLatin1String("pageDisplay") ||
                               id == QLatin1String("documents") || id == QLatin1String("print") ||
-                              id == QLatin1String("editing") || id == QLatin1String("signatures");
+                              id == QLatin1String("editing") || id == QLatin1String("signatures") ||
+                              id == QLatin1String("commenting");
             QCOMPARE(d->page(id)->stage() == 0, live);
         }
         QVERIFY(d->showCategory(QStringLiteral("trust")));

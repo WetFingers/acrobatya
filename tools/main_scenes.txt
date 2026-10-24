@@ -62,3 +62,8 @@ sign-dialog
 sign-dialog-dark
 pane-signatures
 sig-bar-problems
+# 5.1 — комментарии: записка с окном, разметка, панель инструмента «Добавить комментарии»
+annot-note-open
+annot-note-open-dark
+annot-markup
+tool-panel-comments
