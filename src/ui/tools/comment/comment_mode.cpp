@@ -43,6 +43,10 @@ QString CommentMode::actionTitle(CommentAction action) {
             return QCoreApplication::translate("ot::ui::CommentMode", "Вставить текст");
         case CommentAction::ReplaceText:
             return QCoreApplication::translate("ot::ui::CommentMode", "Заменить текст");
+        case CommentAction::Ink:
+            return QCoreApplication::translate("ot::ui::CommentMode", "Рисовать");
+        case CommentAction::Eraser:
+            return QCoreApplication::translate("ot::ui::CommentMode", "Ластик");
     }
     return {};
 }
@@ -63,6 +67,10 @@ QString CommentMode::actionKey(CommentAction action) {
             return QStringLiteral("insertText");
         case CommentAction::ReplaceText:
             return QStringLiteral("replaceText");
+        case CommentAction::Ink:
+            return QStringLiteral("ink");
+        case CommentAction::Eraser:
+            return QStringLiteral("eraser");
     }
     return {};
 }
@@ -82,6 +90,9 @@ annot::AnnotType CommentMode::typeOf(CommentAction action) {
             return annot::AnnotType::Squiggly;
         case CommentAction::InsertText:
             return annot::AnnotType::Caret;
+        case CommentAction::Ink:
+        case CommentAction::Eraser:
+            return annot::AnnotType::Ink;
     }
     return annot::AnnotType::Unknown;
 }
@@ -169,25 +180,37 @@ bool CommentMode::mousePress(QMouseEvent* event) {
         default:
             break;
     }
-    // Разметка и замена — протягивание.
+    // Разметка, замена, карандаш и ластик — протягивание.
     pressing_ = true;
     page_ = at.page;
     start_ = at.point;
     end_ = at.point;
     preview_ = {};
     area_ = false;
-    textPage(page_);
+    stroke_ = {at.point};
+    if (isMarkup(action_) || action_ == CommentAction::ReplaceText) {
+        textPage(page_);
+    }
     return true;
 }
 
 bool CommentMode::mouseMove(QMouseEvent* event) {
     if (!pressing_) {
+        if (action_ == CommentAction::Eraser) {
+            hover_ = event->position();
+            view_.viewport()->update();  // круг ластика за курсором
+        }
         return false;
     }
     const QPointF p = view_.viewportToPage(page_, event->position());
     const QSizeF size = view_.pageSizePoints(page_);
     end_ = QPointF(std::clamp(p.x(), 0.0, size.width()), std::clamp(p.y(), 0.0, size.height()));
-    markupMove();
+    hover_ = event->position();
+    if (action_ == CommentAction::Ink || action_ == CommentAction::Eraser) {
+        stroke_.push_back(end_);
+    } else {
+        markupMove();
+    }
     view_.viewport()->update();
     return true;
 }
@@ -198,8 +221,17 @@ bool CommentMode::mouseRelease(QMouseEvent* event) {
     }
     mouseMove(event);
     pressing_ = false;
-    attempts_ = 0;
-    finishDrag(request_);
+    if (action_ == CommentAction::Ink) {
+        inkRelease();
+    } else if (action_ == CommentAction::Eraser) {
+        eraserRelease();
+    } else {
+        attempts_ = 0;
+        finishDrag(request_);
+        return true;
+    }
+    stroke_.clear();
+    view_.viewport()->update();
     return true;
 }
 
@@ -228,6 +260,7 @@ bool CommentMode::cancel() {
     const bool had = pressing_;
     pressing_ = false;
     preview_ = {};
+    stroke_.clear();
     ++request_;
     if (had) {
         view_.viewport()->update();
@@ -247,7 +280,15 @@ void CommentMode::pageChanged(int page) {
 }
 
 void CommentMode::paintOverlay(QPainter& painter) {
+    if (action_ == CommentAction::Eraser) {
+        paintEraser(painter);
+        return;
+    }
     if (!pressing_ || page_ < 0) {
+        return;
+    }
+    if (action_ == CommentAction::Ink) {
+        paintInk(painter);
         return;
     }
     const QTransform toView = view_.pageTransform(page_);
@@ -282,6 +323,8 @@ QCursor CommentMode::cursor(QPointF point, Qt::KeyboardModifiers /*modifiers*/) 
     }
     switch (action_) {
         case CommentAction::Note:
+        case CommentAction::Ink:
+        case CommentAction::Eraser:
             return QCursor(Qt::CrossCursor);
         default:
             return QCursor(Qt::IBeamCursor);

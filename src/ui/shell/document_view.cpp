@@ -15,6 +15,7 @@
 #include "ui/shell/message_bar.h"
 #include "ui/shell/signature_status.h"
 #include "ui/theme/theme.h"
+#include "ui/tools/comment/annot_menu.h"
 #include "ui/tools/comment/quick_actions_bar.h"
 #include "ui/view/boxes_overlay.h"
 #include "ui/view/page_view.h"
@@ -57,6 +58,7 @@ DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool*
     view_->tools().setCopyAllowed(permissions_.copy);
     find_ = new FindBar(*session_, *view_, this);
     quickActions_ = new QuickActionsBar(*view_);
+    installCommentMenu(*view_);
     find_->installEventFilter(this);
     updateReplaceBlocked();
 

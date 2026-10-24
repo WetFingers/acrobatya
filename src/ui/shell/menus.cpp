@@ -178,12 +178,46 @@ void MainWindow::registerCommands() {
     r.add({.id = QStringLiteral("edit.copy"),
            .title = tr("&Копировать"),
            .shortcuts = {key(Qt::CTRL | Qt::Key_C)},
-           .run = onView([](PageView& v) { v.tools().select().copySelection(); }),
+           .run = onView([](PageView& v) {
+               // «Выбор объектов» с выбранными аннотациями — их копия (5.1, comment-43), иначе — текст.
+               if (v.tools().tool() == ViewToolId::AnnotSelect &&
+                   !v.tools().annotSelect().selection().empty()) {
+                   v.tools().annotSelect().copySelection();
+               } else {
+                   v.tools().select().copySelection();
+               }
+           }),
            .when = view,
            .enabled = hasDoc,
            .blocked = copyDenied,
            .menu = QStringLiteral("edit"),
            .separatorBefore = true});
+    // Вырезать и вставить — комментарии «Выбора объектов» (5.1): копия между страницами и документами.
+    r.add({.id = QStringLiteral("edit.cut"),
+           .title = tr("&Вырезать"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_X)},
+           .run = onView([](PageView& v) { v.tools().annotSelect().cutSelection(); }),
+           .when = view,
+           .enabled =
+               [this, editable] {
+                   DocumentView* d = currentDocument();
+                   return editable() && d != nullptr && d->canAnnotate() &&
+                          d->view().tools().tool() == ViewToolId::AnnotSelect &&
+                          !d->view().tools().annotSelect().selection().empty();
+               },
+           .menu = QStringLiteral("edit")});
+    r.add({.id = QStringLiteral("edit.paste"),
+           .title = tr("Вст&авить"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_V)},
+           .run = onView([](PageView& v) { v.tools().annotSelect().paste(); }),
+           .when = view,
+           .enabled =
+               [this, editable] {
+                   DocumentView* d = currentDocument();
+                   return editable() && d != nullptr && d->canAnnotate() &&
+                          d->view().tools().annotSelect().canPaste();
+               },
+           .menu = QStringLiteral("edit")});
     r.add({.id = QStringLiteral("edit.selectAll"),
            .title = tr("Выделить &всё"),
            .shortcuts = {key(Qt::CTRL | Qt::Key_A)},

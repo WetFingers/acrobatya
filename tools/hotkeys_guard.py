@@ -84,6 +84,7 @@ ACTIONS: dict[str, str] = {
     "tool.editText": "редактировать текст",
     "tool.note": "записка",
     "tool.highlight": "выделить текст",
+    "tool.draw": "рисование",
     "comment.note": "Комментарии: записка",
 }
 

@@ -6,8 +6,13 @@
 // Перемещение и масштаб — предпросмотр рамкой, по отпусканию — setRects одной операцией журнала; правка
 // страницы (и undo) приходит pageChanged — рамки выбранных читаются заново, исчезнувшие снимаются.
 #include <QApplication>
+#include <QClipboard>
+#include <QCoreApplication>
 #include <QFuture>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMenu>
+#include <QMimeData>
 
 #include <algorithm>
 #include <cmath>
@@ -147,7 +152,12 @@ void AnnotSelectTool::deleteSelection() {
     std::vector<AnnotRef> refs;
     refs.reserve(selected_.size());
     for (const AnnotInfo& info : selected_) {
-        refs.push_back(info.ref);
+        if (!info.locked()) {
+            refs.push_back(info.ref);  // «Заблокировано» не удаляется
+        }
+    }
+    if (refs.empty()) {
+        return;
     }
     annot::remove(*session, std::move(refs));  // ошибка — taskFailed сессии
     clearSelection();
@@ -188,7 +198,7 @@ std::vector<QRectF> AnnotSelectTool::frames() const {
 }
 
 std::optional<AnnotSelectTool::Handle> AnnotSelectTool::handleAt(QPointF point) const {
-    if (selected_.size() != 1) {
+    if (selected_.size() != 1 || !movable(selected_.front())) {
         return std::nullopt;
     }
     const auto frame = frameOf(selected_.front());
@@ -222,7 +232,7 @@ bool AnnotSelectTool::moved() const {
 }
 
 RectF AnnotSelectTool::draggedRect(const AnnotInfo& info) const {
-    if ((drag_ != Drag::Move && drag_ != Drag::Resize) || !moved()) {
+    if ((drag_ != Drag::Move && drag_ != Drag::Resize) || !moved() || !movable(info)) {
         return info.rect;
     }
     const QTransform toView = view_.pageTransform(info.ref.page);
@@ -429,13 +439,24 @@ void AnnotSelectTool::finishDrag() {
     }
     std::vector<annot::RectEdit> edits;
     edits.reserve(selected_.size());
-    for (const AnnotInfo& info : selected_) {
-        edits.push_back({info.ref, draggedRect(info)});
+    for (AnnotInfo& info : selected_) {
+        if (movable(info)) {
+            const RectF rect = draggedRect(info);
+            edits.push_back({info.ref, rect});
+        }
     }
     drag_ = Drag::None;
+    if (edits.empty()) {
+        publish();  // разметка и заблокированные не двигаются
+        return;
+    }
     // До ответа сессии рамки — новые; pageChanged принесёт настоящие (у NoZoom-иконок рамка — /BBox вида).
-    for (std::size_t i = 0; i < edits.size(); ++i) {
-        selected_[i].rect = edits[i].rect;
+    for (const annot::RectEdit& e : edits) {
+        for (AnnotInfo& info : selected_) {
+            if (info.ref == e.ref) {
+                info.rect = e.rect;
+            }
+        }
     }
     annot::setRects(*session, std::move(edits));  // ошибка — taskFailed сессии
     publish();
@@ -494,15 +515,28 @@ bool AnnotSelectTool::keyPress(QKeyEvent* event) {
         deleteSelection();
         return true;
     }
+    if (event->matches(QKeySequence::Copy) && !selected_.empty()) {
+        copySelection();
+        return true;
+    }
+    if (event->matches(QKeySequence::Cut) && !selected_.empty()) {
+        cutSelection();
+        return true;
+    }
+    if (event->matches(QKeySequence::Paste) && canPaste()) {
+        paste();
+        return true;
+    }
     return false;
 }
 
 void AnnotSelectTool::showContextMenu(QPoint global) {
-    QMenu menu(view_.viewport());
-    controller_.emitAnnotContextMenu(&menu);  // пункты добавляют инструменты (5.1, 6.3)
-    if (!menu.isEmpty()) {
-        menu.exec(global);
-    }
+    // Без своего цикла событий (popup, не exec): меню живёт само и удаляется при закрытии.
+    auto* menu = new QMenu(view_.viewport());
+    menu->setAttribute(Qt::WA_DeleteOnClose);
+    menu->setObjectName(QStringLiteral("annotContextMenu"));
+    fillContextMenu(*menu);
+    menu->popup(global);
 }
 
 bool AnnotSelectTool::cancel() {
@@ -525,6 +559,163 @@ bool AnnotSelectTool::escape(bool cancelled) {
         return true;
     }
     return false;
+}
+
+// ---------------------------------------------------------------- буфер обмена, блокировка, меню (5.1)
+
+bool AnnotSelectTool::movable(const AnnotInfo& info) noexcept {
+    return !annot::isTextMarkup(info.type) && !info.locked();
+}
+
+void AnnotSelectTool::copySelection() {
+    DocumentSession* session = view_.document();
+    if (session == nullptr || selected_.empty()) {
+        return;
+    }
+    std::vector<AnnotRef> refs;
+    for (const AnnotInfo& info : selected_) {
+        refs.push_back(info.ref);
+    }
+    const int page = selected_.front().ref.page;
+    const QString source = QString::number(reinterpret_cast<quintptr>(session), 16);
+    annot::copy(*session, std::move(refs)).then(&controller_, [source, page](QFuture<annot::AnnotClip> done) {
+        annot::AnnotClip clip;
+        try {
+            clip = done.result();
+        } catch (const std::exception&) {  // NOLINT(bugprone-empty-catch): не скопировалось — буфер прежний
+            return;
+        }
+        if (clip.empty()) {
+            return;
+        }
+        const QJsonObject o{
+            {QStringLiteral("json"), QString::fromStdString(clip.json)},
+            {QStringLiteral("pdf"),
+             QString::fromLatin1(
+                 QByteArray(clip.pdf.data(), static_cast<qsizetype>(clip.pdf.size())).toBase64())},
+            {QStringLiteral("count"), clip.count},
+            {QStringLiteral("source"), source},
+            {QStringLiteral("page"), page}};
+        auto* mime = new QMimeData;
+        mime->setData(QLatin1String(kClipboardMime), QJsonDocument(o).toJson(QJsonDocument::Compact));
+        QGuiApplication::clipboard()->setMimeData(mime);
+    });
+}
+
+void AnnotSelectTool::cutSelection() {
+    if (!controller_.editable() || selected_.empty()) {
+        return;
+    }
+    copySelection();
+    deleteSelection();  // задача удаления идёт после задачи копии — сессия выполняет по очереди
+}
+
+bool AnnotSelectTool::canPaste() const {
+    const QMimeData* mime = QGuiApplication::clipboard()->mimeData();
+    return mime != nullptr && mime->hasFormat(QLatin1String(kClipboardMime)) && view_.document() != nullptr &&
+           controller_.editable();
+}
+
+void AnnotSelectTool::paste() {
+    DocumentSession* session = view_.document();
+    if (!canPaste() || session == nullptr) {
+        return;
+    }
+    const QJsonObject o =
+        QJsonDocument::fromJson(QGuiApplication::clipboard()->mimeData()->data(QLatin1String(kClipboardMime)))
+            .object();
+    annot::AnnotClip clip;
+    clip.json = o.value(QStringLiteral("json")).toString().toStdString();
+    clip.pdf = QByteArray::fromBase64(o.value(QStringLiteral("pdf")).toString().toLatin1()).toStdString();
+    clip.count = o.value(QStringLiteral("count")).toInt();
+    const int page = std::clamp(view_.currentPage(), 0, std::max(0, view_.pageCount() - 1));
+    const bool samePlace = o.value(QStringLiteral("source")).toString() ==
+                               QString::number(reinterpret_cast<quintptr>(session), 16) &&
+                           o.value(QStringLiteral("page")).toInt() == page;
+    const PointF offset = samePlace ? PointF{kPasteOffset, kPasteOffset} : PointF{};
+    annot::paste(*session, page, std::move(clip), offset)
+        .then(&controller_, [this, page](QFuture<std::vector<AnnotRef>> done) {
+            try {
+                selectPasted(page, done.result());
+            } catch (const std::exception&) {  // NOLINT(bugprone-empty-catch): ошибка — taskFailed сессии
+            }
+        });
+}
+
+void AnnotSelectTool::selectPasted(int page, std::vector<AnnotRef> refs) {
+    DocumentSession* session = view_.document();
+    if (session == nullptr || refs.empty()) {
+        return;
+    }
+    const quint64 epoch = epoch_;
+    annot::list(*session, page, TaskPriority::High)
+        .then(&controller_, [this, epoch, refs = std::move(refs)](QFuture<std::vector<AnnotInfo>> done) {
+            if (epoch != epoch_) {
+                return;
+            }
+            std::vector<AnnotInfo> chosen;
+            try {
+                for (const AnnotInfo& info : done.result()) {
+                    if (std::find(refs.begin(), refs.end(), info.ref) != refs.end()) {
+                        chosen.push_back(info);
+                    }
+                }
+            } catch (const std::exception&) {  // NOLINT(bugprone-empty-catch): нет списка — без выбора
+            }
+            if (controller_.tool() != ViewToolId::AnnotSelect) {
+                controller_.setTool(ViewToolId::AnnotSelect);
+            }
+            setSelection(std::move(chosen));
+        });
+}
+
+void AnnotSelectTool::setSelectionLocked(bool locked) {
+    DocumentSession* session = view_.document();
+    if (session == nullptr || selected_.empty() || !controller_.editable()) {
+        return;
+    }
+    std::vector<AnnotRef> refs;
+    for (AnnotInfo& info : selected_) {
+        refs.push_back(info.ref);
+        info.flags = locked ? (info.flags | annot::kAnnotLocked) : (info.flags & ~annot::kAnnotLocked);
+    }
+    annot::setFlags(*session, std::move(refs), locked ? annot::kAnnotLocked : 0,
+                    locked ? 0 : annot::kAnnotLocked);
+}
+
+void AnnotSelectTool::fillContextMenu(QMenu& menu) {
+    const bool editable = controller_.editable();
+    const bool anyLocked =
+        std::any_of(selected_.begin(), selected_.end(), [](const AnnotInfo& i) { return i.locked(); });
+    const bool allLocked = !selected_.empty() && std::all_of(selected_.begin(), selected_.end(),
+                                                             [](const AnnotInfo& i) { return i.locked(); });
+    auto tr = [](const char* text) { return QCoreApplication::translate("ot::ui::AnnotSelectTool", text); };
+    QAction* copy = menu.addAction(tr("Копировать"), [this] { copySelection(); });
+    copy->setObjectName(QStringLiteral("annotCopy"));
+    copy->setShortcut(QKeySequence::Copy);
+    QAction* cut = menu.addAction(tr("Вырезать"), [this] { cutSelection(); });
+    cut->setObjectName(QStringLiteral("annotCut"));
+    cut->setShortcut(QKeySequence::Cut);
+    cut->setEnabled(editable && !anyLocked);
+    QAction* del = menu.addAction(tr("Удалить"), [this] { deleteSelection(); });
+    del->setObjectName(QStringLiteral("annotDelete"));
+    del->setShortcut(QKeySequence::Delete);
+    del->setEnabled(editable && !anyLocked);
+    menu.addSeparator();
+    QAction* lock =
+        menu.addAction(tr("Заблокировать"), [this, allLocked] { setSelectionLocked(!allLocked); });
+    lock->setObjectName(QStringLiteral("annotLock"));
+    lock->setCheckable(true);
+    lock->setChecked(allLocked);
+    lock->setEnabled(editable);
+    controller_.emitAnnotContextMenu(&menu);  // пункты инструментов (5.1 — комментарии, 6.3 — поля)
+}
+
+bool AnnotSelectTool::wantsShortcut(const QKeyEvent* event) const {
+    if ((event->matches(QKeySequence::Copy) || event->matches(QKeySequence::Cut)) && !selected_.empty()) {
+        return true;
+    }
+    return event->matches(QKeySequence::Paste) && canPaste();
 }
 
 // ---------------------------------------------------------------- списки страниц

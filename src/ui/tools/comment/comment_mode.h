@@ -38,7 +38,17 @@ class TextPage;
 
 namespace ot::ui {
 
-enum class CommentAction { Note, Highlight, Underline, StrikeOut, Squiggly, InsertText, ReplaceText };
+enum class CommentAction {
+    Note,
+    Highlight,
+    Underline,
+    StrikeOut,
+    Squiggly,
+    InsertText,
+    ReplaceText,
+    Ink,
+    Eraser
+};
 
 class CommentMode : public QObject, public ViewTool {
     Q_OBJECT
@@ -46,6 +56,7 @@ public:
     static constexpr float kNoteIconSize = 20;  // значок записки, пт (как у Acrobat)
     static constexpr int kTextWaitStepMs = 50;  // ожидание текстового слоя после протягивания
     static constexpr int kTextWaitTries = 60;
+    static constexpr double kEraserRadiusPx = 6;  // круг ластика на экране
 
     CommentMode(PageView& view, ToolController& controller);
     ~CommentMode() override;
@@ -118,6 +129,12 @@ private:
     void insertCaret(const Locator& at);
     void replaceRelease();
     RectF caretRectAt(const TextPage& text, int boundary) const;
+    // ink_tool.cpp
+    void inkRelease();
+    void paintInk(QPainter& painter);
+    // eraser_tool.cpp
+    void eraserRelease();
+    void paintEraser(QPainter& painter);
 
     CommentAction action_ = CommentAction::Note;
     QString lock_;
@@ -130,6 +147,8 @@ private:
     bool area_ = false;  // «Выделить» без текста — область
     quint64 request_ = 0;
     int attempts_ = 0;
+    std::vector<QPointF> stroke_;  // карандаш и ластик: путь мыши, пункты страницы page_
+    QPointF hover_;                // курсор (вьюпорт) — круг ластика
 };
 
 }  // namespace ot::ui

@@ -1,9 +1,12 @@
 // ui.annot_select — «Выбор объектов» (план 2.2b; эталон 3.4 «Выделение и правка на странице»; основа
 // comment-08): щелчок выбирает аннотацию annots-all.pdf (хит-тест annotAt задачей документа), перетаскивание
 // двигает её /Rect (undo возвращает, рамка выбора идёт следом), ручка масштабирует; рамкой выбираются две
-// аннотации, Del удаляет обе одним шагом; Shift+щелчок добавляет и убирает; правая кнопка выбирает и зовёт
-// пустое контекстное меню (не показывается); Esc снимает выбор, потом возвращает «Выделение».
+// аннотации, Del удаляет обе одним шагом; Shift+щелчок добавляет и убирает; правая кнопка выбирает и
+// показывает контекстное меню (5.1: Копировать, Вырезать, Удалить, Заблокировать); Esc снимает выбор, потом
+// возвращает «Выделение».
+#include <QAction>
 #include <QApplication>
+#include <QMenu>
 #include <QSignalSpy>
 #include <QtTest/QtTest>
 
@@ -226,7 +229,11 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(menus.count(), 1, 10000);
         QCOMPARE(selectedCount(tool), 1);
         QCOMPARE(tool.selection().front().ref, stamp.ref);
-        QVERIFY(QApplication::activePopupWidget() == nullptr);  // пустое меню не показано
+        // 5.1: меню — Копировать, Вырезать, Удалить, Заблокировать и пункты инструментов; без своего цикла.
+        auto* menu = v.viewport()->findChild<QMenu*>(QStringLiteral("annotContextMenu"));
+        QVERIFY(menu != nullptr);
+        QVERIFY(menu->findChild<QAction*>(QStringLiteral("annotLock")) != nullptr);
+        menu->close();
     }
 
     void escapeClearsThenLeavesTool() {

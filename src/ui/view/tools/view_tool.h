@@ -16,6 +16,7 @@
 #include <QImage>
 #include <QInputMethodEvent>
 #include <QKeyEvent>
+#include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPointF>
@@ -364,6 +365,25 @@ public:
     bool cancel() override;
     bool escape(bool cancelled) override;
 
+    // Буфер обмена (5.1, comment-43): копия выбранных — свой PDF и JSON ядра (annot::copy) в формате
+    // kClipboardMime; вставка — на текущую страницу в исходные координаты (на ту же страницу того же
+    // документа — со сдвигом kPasteOffset), вставленные становятся выбранными.
+    static constexpr const char* kClipboardMime = "application/x-acrobatya-annotations";
+    static constexpr float kPasteOffset = 12;  // пт
+    void copySelection();
+    void cutSelection();
+    bool canPaste() const;
+    void paste();
+    // Тянуть и масштабировать можно не всё: разметка текста привязана к символам, «Заблокировано» (/F Locked)
+    // не двигается и не удаляется.
+    static bool movable(const AnnotInfo& info) noexcept;
+    // Заблокировать / разблокировать выбранные (/F Locked) одним шагом.
+    void setSelectionLocked(bool locked);
+    // Контекстное меню выбранных: Копировать, Вырезать, Удалить, Заблокировать — затем пункты инструментов
+    // (сигнал ToolController::annotContextMenu). Правая кнопка показывает его, тест — заполняет.
+    void fillContextMenu(QMenu& menu);
+    bool wantsShortcut(const QKeyEvent* event) const override;
+
     // Выбранные (в порядке выбора) и их рамки в пунктах страницы.
     const std::vector<AnnotInfo>& selection() const noexcept { return selected_; }
     bool isSelected(const AnnotRef& ref) const;
@@ -406,6 +426,7 @@ private:
     void showContextMenu(QPoint global);
     void publish();
     void selectionChanged();
+    void selectPasted(int page, std::vector<AnnotRef> refs);
 
     std::vector<AnnotInfo> selected_;
     Drag drag_ = Drag::None;

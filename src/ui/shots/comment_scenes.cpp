@@ -10,6 +10,7 @@
 #include <QMouseEvent>
 #include <QTimer>
 
+#include <cmath>
 #include <memory>
 #include <vector>
 
@@ -209,6 +210,52 @@ void quickActionsScene(MainWindow& w, DocumentView& doc, const TextPtr& text) {
     });
 }
 
+// Волна от (x0, y) шириной width с размахом amp.
+annot::Stroke wave(float x0, float y, float width, float amp) {
+    annot::Stroke s;
+    for (int i = 0; i <= 24; ++i) {
+        const float t = static_cast<float>(i) / 24.0f;
+        s.push_back({x0 + width * t, y + amp * std::sin(t * 6.2832f * 2)});
+    }
+    return s;
+}
+
+void inkScene(MainWindow& w, DocumentView& doc, const TextPtr& /*text*/) {
+    sceneCommentTool().start(CommentAction::Ink);
+    annot::AnnotProps a = sceneProps(CommentAction::Ink);
+    a.ink = {wave(140, 420, 220, 14), wave(140, 450, 220, 8)};
+    a.borderWidth = 2;
+    annot::create(doc.session(), 0, std::move(a));
+    annot::AnnotProps b = sceneProps(CommentAction::Ink);
+    b.color = annot::AnnotColor::fromRgb(0xF44336);
+    b.borderWidth = 3;
+    b.ink = {{{400, 400}, {430, 380}, {470, 395}, {480, 440}, {450, 470}, {410, 460}, {400, 420}}};
+    annot::create(doc.session(), 0, std::move(b)).then(&w, [&w](annot::AnnotRef) { markDone(w); });
+}
+
+void selectedScene(MainWindow& w, DocumentView& doc, const TextPtr& /*text*/) {
+    annot::AnnotProps note = sceneProps(CommentAction::Note);
+    note.rect = {450, 360, 470, 380};
+    note.contents = sceneText(QT_TRANSLATE_NOOP("ot::ui::CommentScenes", "Перенести подпись ниже"));
+    annot::create(doc.session(), 0, std::move(note));
+    annot::AnnotProps ink = sceneProps(CommentAction::Ink);
+    ink.ink = {wave(140, 420, 220, 14)};
+    ink.borderWidth = 2;
+    PageView* view = &doc.view();
+    annot::create(doc.session(), 0, std::move(ink)).then(&w, [&w, view, &doc](annot::AnnotRef ref) {
+        ToolRegistry::instance().deactivate();
+        view->tools().setTool(ViewToolId::AnnotSelect);
+        annot::list(doc.session(), 0).then(&w, [&w, view, ref](const std::vector<annot::AnnotInfo>& list) {
+            for (const annot::AnnotInfo& a : list) {
+                if (a.ref == ref) {
+                    view->tools().annotSelect().setSelection({a});
+                }
+            }
+            markDone(w);
+        });
+    });
+}
+
 }  // namespace
 
 std::vector<Scene> commentScenes() {
@@ -247,6 +294,18 @@ std::vector<Scene> commentScenes() {
         return commentReady(w) && d != nullptr && d->quickActions().isVisible();
     };
     scenes.push_back(quick);
+
+    Scene ink;
+    ink.name = QStringLiteral("annot-ink");
+    ink.make = commentScene(doc, inkScene);
+    ink.ready = commentReady;
+    scenes.push_back(ink);
+
+    Scene selected;
+    selected.name = QStringLiteral("annot-selected");
+    selected.make = commentScene(doc, selectedScene);
+    selected.ready = commentReady;
+    scenes.push_back(selected);
     return scenes;
 }
 

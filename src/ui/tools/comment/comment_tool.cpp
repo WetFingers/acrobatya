@@ -38,6 +38,11 @@ constexpr ActionRow kEditRows[] = {
     {CommentAction::ReplaceText, "commentReplaceText", "replace"},
 };
 
+constexpr ActionRow kDrawRows[] = {
+    {CommentAction::Ink, "commentInk", "pencil"},
+    {CommentAction::Eraser, "commentEraser", "eraser"},
+};
+
 }  // namespace
 
 CommentTool::CommentTool(ToolRegistry& registry) : registry_(registry) {}
@@ -234,6 +239,10 @@ void CommentTool::buildPanel() {
     for (const ActionRow& row : kEditRows) {
         addAction(row);
     }
+    addCaption(column, tr("Рисование"));
+    for (const ActionRow& row : kDrawRows) {
+        addAction(row);
+    }
     column->addStretch(1);
 }
 
@@ -268,6 +277,15 @@ std::vector<ot::Command> CommentTool::commands() const {
                    .run = runner(CommentAction::Note),
                    .enabled = enabled,
                    .menu = QStringLiteral("tools")});
+    out.push_back({.id = QStringLiteral("tool.draw"),
+                   .title = tr("&Рисовать"),
+                   .shortcuts = {QKeySequence(Qt::Key_D)},
+                   .icon = QStringLiteral("pencil"),
+                   .run = runner(CommentAction::Ink),
+                   .when = QLatin1String(CommandRegistry::kViewContext),
+                   .enabled = enabled,
+                   .menu = QStringLiteral("tools"),
+                   .singleKey = true});
     out.push_back({.id = QStringLiteral("tool.highlight"),
                    .title = tr("&Выделить текст"),
                    .shortcuts = {QKeySequence(Qt::Key_U)},
