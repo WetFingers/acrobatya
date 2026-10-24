@@ -10,6 +10,7 @@
 #include "core/mu/context.h"
 #include "core/mu/handles.h"
 #include "core/sign/cms.h"
+#include "core/sign/cng_store.h"
 #include "core/util/paths.h"
 #include "support/pki.h"
 #include "support/test_pdf.h"
@@ -29,6 +30,39 @@ std::shared_ptr<const SigningKey> pkiIdentity(const char* pfx) {
     const std::string bytes = ot::test::readPki(pfx);
     return std::make_shared<SigningKey>(
         ot::sign::loadPkcs12(std::vector<std::uint8_t>(bytes.begin(), bytes.end()), "acrobatya"));
+}
+
+ot::sign::WindowsCert windowsIdentity(const char* pfx) {
+    const std::string bytes = ot::test::readPki(pfx);
+    auto store = std::make_shared<ot::sign::cng::CertStore>(ot::sign::cng::CertStore::importPfx(
+        Bytes(bytes.begin(), bytes.end()), "acrobatya", ot::sign::cng::KeyStorage::Memory));
+    const auto signing = store->list(ot::sign::cng::CertFilter{});
+    if (signing.size() != 1) {
+        throw std::runtime_error("PKCS#12 must hold exactly one signing certificate with a key");
+    }
+    ot::sign::WindowsCert cert;
+    cert.thumbprint = signing.front().thumbprint;
+    cert.silent = true;
+    cert.store = std::move(store);
+    return cert;
+}
+
+LocalTsa localTsa() {
+    LocalTsa t;
+    t.fetcher = std::make_shared<ot::net::FakeHttpFetcher>();
+    t.fetcher->setHandler([](const ot::net::Request& r) {
+        ot::net::Response resp;
+        resp.status = ot::net::Status::Ok;
+        resp.httpCode = 200;
+        resp.contentType = "application/timestamp-reply";
+        resp.body = ot::test::localTsaReply(r.body);
+        resp.finalUrl = r.url;
+        return resp;
+    });
+    ot::sign::TsaConfig config;
+    config.url = "http://tsa.acrobatya.test/tsr";
+    t.client = std::make_shared<ot::sign::TsaClient>(*t.fetcher, config);
+    return t;
 }
 
 fs::path copyFile(const fs::path& from, const fs::path& to) {

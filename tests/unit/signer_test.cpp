@@ -310,7 +310,7 @@ TEST(signer, errors_leave_document_untouched) {
     const std::string before = ot::paths::readFile(path);
     auto doc = Document::openOrThrow(path);
     SignRequest r = request();
-    r.identity.reset();
+    r.identity = std::shared_ptr<const SigningKey>();
     try {
         (void)ot::sign::signDocument(*doc, r);
         ADD_FAILURE() << "без удостоверения подписи нет";

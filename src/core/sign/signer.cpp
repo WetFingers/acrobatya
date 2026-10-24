@@ -13,6 +13,8 @@
 #include "core/mu/call.h"
 #include "core/mu/context.h"
 #include "core/mu/handles.h"
+#include "core/sign/cng_signer.h"
+#include "core/sign/cng_store.h"
 #include "core/sign/sign_field.h"
 #include "core/sign/x509_info.h"
 #include "core/util/paths.h"
@@ -137,6 +139,24 @@ Bytes PdfSigner::sign(std::span<const std::uint8_t> digest) {
 
 // ---------------------------------------------------------------- AcroBatyaSigner
 
+namespace {
+
+// Отказ CNG → SignError: интерфейс различает «нет сертификата», «нет ключа», «отменён PIN» и прочее.
+SignError fromCng(const CngError& e) {
+    switch (e.status()) {
+        case CngError::NotFound:
+            return SignError(SignStatus::NoIdentity, e.what());
+        case CngError::NoPrivateKey:
+            return SignError(SignStatus::NoPrivateKey, e.what());
+        case CngError::Cancelled:
+            return SignError(SignStatus::Cancelled, e.what());
+        default:
+            return SignError(SignStatus::KeyFailed, e.what());
+    }
+}
+
+}  // namespace
+
 AcroBatyaSigner::AcroBatyaSigner(std::shared_ptr<const SigningKey> identity, DigestAlgorithm digest,
                                  std::shared_ptr<TsaClient> tsa,
                                  std::function<bool(const TsaError&)> withoutTimestamp)
@@ -145,17 +165,38 @@ AcroBatyaSigner::AcroBatyaSigner(std::shared_ptr<const SigningKey> identity, Dig
       tsa_(std::move(tsa)),
       withoutTimestamp_(std::move(withoutTimestamp)) {}
 
+AcroBatyaSigner::AcroBatyaSigner(std::shared_ptr<const CngIdentity> identity, DigestAlgorithm digest,
+                                 std::shared_ptr<TsaClient> tsa,
+                                 std::function<bool(const TsaError&)> withoutTimestamp)
+    : PdfSigner(digest),
+      windows_(std::move(identity)),
+      tsa_(std::move(tsa)),
+      withoutTimestamp_(std::move(withoutTimestamp)) {}
+
+AcroBatyaSigner::~AcroBatyaSigner() = default;
+
+Bytes AcroBatyaSigner::cms(std::span<const std::uint8_t> digest) {
+    if (windows_) {
+        // Хранилище Windows: PKCS7-путь с подписью NCryptSignHash (PIN — окно Windows).
+        return cngCmsFromDigest(*windows_, digest, this->digest());
+    }
+    if (!identity_) {
+        throw SignError(SignStatus::NoIdentity, "no signing identity");
+    }
+    CmsBuilder builder(*identity_, this->digest());
+    return builder.buildFromDigest(digest);
+}
+
 Bytes AcroBatyaSigner::contents(std::span<const std::uint8_t> digest) {
     timestamped_ = false;
     timestampError_.clear();
     try {
-        CmsBuilder builder(*identity_, this->digest());
-        Bytes der = builder.buildFromDigest(digest);
+        Bytes der = cms(digest);
         if (!tsa_) {
             return der;
         }
         // B-T: imprint — хэш значения подписи (RFC 3161 прил. A) алгоритмом службы.
-        const Bytes value = builder.signatureValue();
+        const Bytes value = cmsSignatureValue(der);
         const EVP_MD* md = evpDigest(tsa_->config().digest);
         Bytes imprint(static_cast<std::size_t>(EVP_MAX_MD_SIZE));
         unsigned int imprintLen = 0;
@@ -173,18 +214,42 @@ Bytes AcroBatyaSigner::contents(std::span<const std::uint8_t> digest) {
             }
             throw SignError(SignStatus::TimestampFailed, e.what(), SaveError::None, e.status());
         }
-        der = builder.addUnsignedTimestamp(token);
+        der = cmsAddUnsignedTimestamp(der, token);
         timestamped_ = true;
         timestampInfo_ = tsa_->lastInfo();
         return der;
     } catch (const OsslError& e) {
         throw SignError(SignStatus::CmsFailed, e.what());
+    } catch (const CngError& e) {
+        throw fromCng(e);
     }
 }
 
 std::string AcroBatyaSigner::signingName() const {
-    return identity_ && identity_->cert ? commonName(X509_get_subject_name(identity_->cert.get()))
-                                        : std::string();
+    X509* cert = windows_ ? windows_->cert.get() : (identity_ ? identity_->cert.get() : nullptr);
+    return cert != nullptr ? commonName(X509_get_subject_name(cert)) : std::string();
+}
+
+std::shared_ptr<const CngIdentity> openWindowsIdentity(const WindowsCert& cert) {
+    if (cng::normalizeThumbprint(cert.thumbprint).empty()) {
+        throw SignError(SignStatus::NoIdentity, "not a certificate thumbprint: " + cert.thumbprint);
+    }
+    CngOptions options;
+    options.window = cert.window;
+    options.silent = cert.silent;
+    try {
+        if (cert.store) {
+            return std::make_shared<CngIdentity>(CngIdentity::open(*cert.store, cert.thumbprint, options));
+        }
+        const cng::CertStore personal = cng::CertStore::openPersonal();
+        return std::make_shared<CngIdentity>(CngIdentity::open(personal, cert.thumbprint, options));
+    } catch (const CngError& e) {
+        throw fromCng(e);
+    } catch (const cng::StoreError& e) {
+        throw SignError(SignStatus::NoIdentity, e.what());
+    } catch (const OsslError& e) {
+        throw SignError(SignStatus::NoIdentity, e.what());
+    }
 }
 
 // ---------------------------------------------------------------- signDocument
@@ -219,22 +284,39 @@ SignResult signDocument(Document& doc, const SignRequest& request, const fs::pat
     if (doc.pdf() == nullptr) {
         throw SignError(SignStatus::NotPdf, "only PDF documents are signed");
     }
-    if (!request.identity || !request.identity->key || !request.identity->cert) {
+    const WindowsCert* windows = std::get_if<WindowsCert>(&request.identity);
+    std::shared_ptr<const SigningKey> key;
+    if (windows == nullptr) {
+        key = std::get<std::shared_ptr<const SigningKey>>(request.identity);
+        if (!key || !key->key || !key->cert) {
+            throw SignError(SignStatus::NoIdentity, "no signing identity");
+        }
+    } else if (windows->thumbprint.empty()) {
         throw SignError(SignStatus::NoIdentity, "no signing identity");
     }
     if (!doc.allowed(Perm::FillForms)) {
         throw SignError(SignStatus::NotAllowed, "document permissions do not allow signing");
     }
     checkAppearanceFiles(request);
-    auto signer = std::make_shared<AcroBatyaSigner>(request.identity, request.digest, request.timestamp,
-                                                    request.withoutTimestamp);
+    // Сертификат и ключ хранилища — до записи: нет сертификата или ключа — файл не трогается.
+    std::shared_ptr<AcroBatyaSigner> signer;
+    X509* cert = nullptr;
+    if (windows != nullptr) {
+        std::shared_ptr<const CngIdentity> id = openWindowsIdentity(*windows);
+        cert = id->cert.get();
+        signer = std::make_shared<AcroBatyaSigner>(std::move(id), request.digest, request.timestamp,
+                                                   request.withoutTimestamp);
+    } else {
+        cert = key->cert.get();
+        signer = std::make_shared<AcroBatyaSigner>(key, request.digest, request.timestamp,
+                                                   request.withoutTimestamp);
+    }
     const std::int64_t t =
         request.signingTime != 0 ? request.signingTime : static_cast<std::int64_t>(std::time(nullptr));
-    const std::string name =
-        request.name.empty() ? commonName(X509_get_subject_name(request.identity->cert.get())) : request.name;
+    const std::string name = request.name.empty() ? commonName(X509_get_subject_name(cert)) : request.name;
     AppearanceData data;
     data.name = name;
-    data.dn = nameToString(X509_get_subject_name(request.identity->cert.get()));
+    data.dn = nameToString(X509_get_subject_name(cert));
     data.reason = request.reason;
     data.location = request.location;
     data.time = t;
@@ -302,8 +384,9 @@ SignResult signDocument(Document& doc, const SignRequest& request, const fs::pat
     result.timestamp = signer->timestampInfo();
     result.timestampError = signer->timestampError();
     result.save = outcome.save;
-    spdlog::info("sign: {} signed field \"{}\" ({}, {}, {} bytes)", paths::toUtf8(doc.path()), result.field,
-                 subFilterName(request.subFilter), result.timestamped ? "B-T" : "B-B", result.contentsSize);
+    spdlog::info("sign: {} signed field \"{}\" ({}, {}, {}, {} bytes)", paths::toUtf8(doc.path()),
+                 result.field, subFilterName(request.subFilter), result.timestamped ? "B-T" : "B-B",
+                 windows != nullptr ? "Windows store" : "PKCS#12", result.contentsSize);
     return result;
 }
 

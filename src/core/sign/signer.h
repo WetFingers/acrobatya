@@ -18,6 +18,13 @@
 // /ExtensionLevel 2>> только для CAdES (и /Version /1.7, если файл старше). Порядок ключей /ByteRange →
 // /Contents → /Filter не меняется: по нему MuPDF находит диапазоны в записанном файле.
 //
+// Удостоверение (план 4.3, п. 3; sign-08 сквозной, sign-12 — из хранилища): .pfx (SigningKey — CMS-путь
+// CmsBuilder) или сертификат хранилища Windows WindowsCert{thumbprint} — ключ не экспортируется, подпись CNG
+// (cng_signer.h: CngIdentity, cngCmsFromDigest — PKCS7-путь с внешней подписью, тот же DER-формат);
+// сертификат и ключ открываются до записи (нет сертификата, нет ключа — SignError без правок файла), PIN
+// спрашивает Windows в create_digest посреди записи (окно-владелец — WindowsCert::window; отмена — SignError
+// Cancelled и Saver::revert). B-T — одинаково для обеих ветвей: метка по значению подписи готового DER.
+//
 // signDocument: несохранённые правки, новый или восстановленный файл — сначала обычная запись по правилам
 // Saver в target (документ переходит на него); затем подпись одной операцией журнала и Saver::Incremental в
 // target через fz_output на _wfopen (подпись считается по файлу — fz_stream_from_output). Сбой записи или
@@ -34,6 +41,7 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <variant>
 
 #include "core/doc/saver.h"
 #include "core/sign/appearance.h"
@@ -50,6 +58,11 @@ class Document;
 
 namespace ot::sign {
 
+namespace cng {
+class CertStore;
+}
+struct CngIdentity;
+
 enum class SubFilter {
     CadesDetached,  // ETSI.CAdES.detached — PAdES (по умолчанию, вопрос 12.3)
     Pkcs7Detached,  // adbe.pkcs7.detached — «совместимость» со старыми проверяющими
@@ -64,12 +77,24 @@ struct SignaturePlacement {
     RectF rect;  // рамка нового поля в координатах страницы MuPDF; пустая — невидимая подпись /Rect [0 0 0 0]
 };
 
+// Сертификат хранилища Windows (sign-08): ключ — CNG, на карте или токене — через их KSP.
+struct WindowsCert {
+    std::string thumbprint;     // SHA-1 HEX (как в certmgr; пробелы и регистр не мешают)
+    std::uintptr_t window = 0;  // HWND владельца окна PIN (0 — без владельца)
+    bool silent = false;        // без окон Windows: нужен PIN — SignError KeyFailed (тесты, проверка)
+    // Хранилище сертификата; nullptr — «Личное» текущего пользователя (тесты — PFX-импорт в памяти).
+    std::shared_ptr<const cng::CertStore> store;
+};
+
+// Удостоверение подписи: .pfx (ключ в памяти, обязателен вместе с сертификатом) или хранилище Windows.
+using SigningIdentity = std::variant<std::shared_ptr<const SigningKey>, WindowsCert>;
+
 struct SignRequest {
-    std::shared_ptr<const SigningKey> identity;  // ключ, сертификат и цепочка (обязательно)
-    std::string reason;                          // /Reason (UTF-8; пусто — ключа нет)
-    std::string location;                        // /Location
-    std::string contact;                         // /ContactInfo
-    std::string name;                            // /Name и имя во внешнем виде; пусто — CN сертификата
+    SigningIdentity identity;  // обязательно
+    std::string reason;        // /Reason (UTF-8; пусто — ключа нет)
+    std::string location;      // /Location
+    std::string contact;       // /ContactInfo
+    std::string name;          // /Name и имя во внешнем виде; пусто — CN сертификата
     SubFilter subFilter = SubFilter::CadesDetached;
     SignaturePlacement placement;
     // Внешний вид видимой подписи (п. 3, appearance.h); данные — имя, DN сертификата, причина, место, /M.
@@ -90,7 +115,10 @@ struct SignRequest {
 enum class SignStatus {
     NotPdf,
     NotAllowed,         // права документа не разрешают заполнять формы и подписывать
-    NoIdentity,         // нет удостоверения
+    NoIdentity,         // нет удостоверения (или сертификата с таким отпечатком в хранилище)
+    NoPrivateKey,       // у сертификата хранилища нет закрытого ключа
+    Cancelled,          // человек отменил ввод PIN
+    KeyFailed,          // ключ хранилища или карты не подписал (старый CSP, нужен PIN без окна, отказ карты)
     NotSignatureField,  // поле с таким именем есть, но не /Sig
     FieldSigned,        // поле уже подписано
     FieldReadOnly,      // поле только для чтения (заблокировано прежней подписью)
@@ -164,13 +192,18 @@ private:
     std::size_t contentsSize_ = 0;
 };
 
-// CMS CAdES-B по удостоверению; с tsa — B-T.
+// CMS CAdES-B по удостоверению — .pfx (CMS-путь) или хранилище Windows (CNG, PKCS7-путь); с tsa — B-T.
 class AcroBatyaSigner : public PdfSigner {
 public:
     AcroBatyaSigner(std::shared_ptr<const SigningKey> identity,
                     DigestAlgorithm digest = DigestAlgorithm::Sha256,
                     std::shared_ptr<TsaClient> tsa = nullptr,
                     std::function<bool(const TsaError&)> withoutTimestamp = {});
+    AcroBatyaSigner(std::shared_ptr<const CngIdentity> identity,
+                    DigestAlgorithm digest = DigestAlgorithm::Sha256,
+                    std::shared_ptr<TsaClient> tsa = nullptr,
+                    std::function<bool(const TsaError&)> withoutTimestamp = {});
+    ~AcroBatyaSigner() override;
 
     bool timestamped() const noexcept { return timestamped_; }
     const TimestampInfo& timestampInfo() const noexcept { return timestampInfo_; }
@@ -181,7 +214,10 @@ protected:
     std::string signingName() const override;
 
 private:
+    Bytes cms(std::span<const std::uint8_t> digest);
+
     std::shared_ptr<const SigningKey> identity_;
+    std::shared_ptr<const CngIdentity> windows_;
     std::shared_ptr<TsaClient> tsa_;
     std::function<bool(const TsaError&)> withoutTimestamp_;
     bool timestamped_ = false;
@@ -191,6 +227,10 @@ private:
 
 // Подписать документ и записать в target (пусто — файл документа). Ошибка — SignError.
 SignResult signDocument(Document& doc, const SignRequest& request, const std::filesystem::path& target = {});
+
+// Открыть удостоверение хранилища Windows (сертификат, цепочка, ключ); ошибки CNG — SignError NoIdentity,
+// NoPrivateKey, Cancelled, KeyFailed.
+std::shared_ptr<const CngIdentity> openWindowsIdentity(const WindowsCert& cert);
 
 // Свободное имя нового поля подписи: «Signature1», «Signature2»…
 std::string nextSignatureFieldName(Document& doc);

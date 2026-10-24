@@ -12,11 +12,25 @@
 
 #include "core/sign/ossl.h"
 #include "core/sign/pkcs12.h"
+#include "core/sign/signer.h"
+#include "core/sign/tsa.h"
+#include "core/util/http_fetcher.h"
 
 namespace ot::test {
 
 // Удостоверение PKI (пароль «acrobatya»): signer-rsa.pfx, signer-ec.pfx.
 std::shared_ptr<const ot::sign::SigningKey> pkiIdentity(const char* pfx = "signer-rsa.pfx");
+// То же удостоверение как сертификат «хранилища Windows» (план 4.3): PFXImportCertStore в памяти процесса
+// (PKCS12_NO_PERSIST_KEY | PKCS12_ALWAYS_CNG_KSP), без окон — хранилища человека не трогаются.
+ot::sign::WindowsCert windowsIdentity(const char* pfx = "signer-rsa.pfx");
+
+// Служба времени PKI в процессе (FakeHttpFetcher + localTsaReply); TsaClient держит fetcher ссылкой — живут
+// вместе.
+struct LocalTsa {
+    std::shared_ptr<ot::net::FakeHttpFetcher> fetcher;
+    std::shared_ptr<ot::sign::TsaClient> client;
+};
+LocalTsa localTsa();
 std::filesystem::path copyFile(const std::filesystem::path& from, const std::filesystem::path& to);
 // tests/fixtures/sig/unsigned.pdf → dir/name.
 std::filesystem::path unsignedCopy(const std::filesystem::path& dir, const std::wstring& name);
