@@ -1,6 +1,7 @@
 #include "support/pki.h"
 
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QString>
 #include <QStringList>
 
@@ -45,6 +46,10 @@ ProcessResult runProcess(const std::filesystem::path& exe,
     p.setArguments(list);
     p.setProcessChannelMode(QProcess::MergedChannels);
     p.setStandardInputFile(QProcess::nullDevice());
+    // openssl.exe на Windows берёт аргументы (и пути с кириллицей) как UTF-8 только с OPENSSL_WIN32_UTF8.
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert(QStringLiteral("OPENSSL_WIN32_UTF8"), QStringLiteral("1"));
+    p.setProcessEnvironment(env);
     ProcessResult r;
     p.start();
     if (!p.waitForStarted(timeoutMs)) {
