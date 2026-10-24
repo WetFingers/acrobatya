@@ -214,6 +214,19 @@ if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   set_tests_properties(compat.rtf PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_rtf SKIP_RETURN_CODE 77
     TIMEOUT 300)
 endif()
+# Совместимость новых шрифтов редактора (план 3.2): font_embed_compat.DISABLED_write пишет <сборка>/compat/fonts/*.pdf
+# (смешанная строка новым Type0 Arial — с подмножеством и полным шрифтом, латиница простым TrueType WinAnsi),
+# tools/compat_check.py — qpdf --check, pdfcpu validate -m strict, mutool clean, pypdfium2; нет qpdf — 77, пропуск.
+if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_test(NAME compat.fonts.generate
+    COMMAND unit_tests --gtest_also_run_disabled_tests --gtest_filter=font_embed_compat.* --gtest_brief=1)
+  set_tests_properties(compat.fonts.generate PROPERTIES LABELS "compat;slow" FIXTURES_SETUP compat_fonts
+    ENVIRONMENT "OTTISK_COMPAT_OUT=${CMAKE_BINARY_DIR}/compat" TIMEOUT 120)
+  add_test(NAME compat.fonts COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/compat_check.py" --quiet
+    "${CMAKE_BINARY_DIR}/compat/fonts")
+  set_tests_properties(compat.fonts PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_fonts
+    SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+endif()
 # Печать в файл через GDI (план 2.6): print_compat.DISABLED_gdi_to_file — «Microsoft Print to PDF» без окна драйвера
 # в <сборка>/compat/print/gdi.pdf, MuPDF читает страницы; нет такого принтера — пропуск (GTEST_SKIP).
 if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")

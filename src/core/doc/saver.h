@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <optional>
 #include <string>
 
@@ -60,6 +61,9 @@ struct SaveOptions {
     std::optional<bool> objectStreams;   // потоки объектов (do_use_objstms) — меньше файл
     std::optional<bool> compressImages;  // сжать несжатые картинки (do_compress_images)
     bool subsetFonts = false;  // встроенные шрифты — подмножествами (pdf_subset_fonts) перед записью
+    // Подготовка документа перед полной записью (после решения о режиме, до subsetFonts): редактор урезает
+    // шрифты, которые встроил сам (core/edit/font_embed.h). Исключение — как ошибка записи.
+    std::function<void(Document&)> prepare;
 };
 
 struct SaveReport {

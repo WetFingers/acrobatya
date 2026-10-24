@@ -272,6 +272,9 @@ SaveReport Saver::save(Document& doc, const fs::path& target, const SaveOptions&
     fs::path temp = tempPathFor(absTarget);
     try {
         dropDanglingTrailerRefs(doc);
+        if (options.prepare && r.mode != SaveMode::Incremental) {
+            options.prepare(doc);
+        }
         if (options.subsetFonts && r.mode != SaveMode::Incremental) {
             // Шаг журнала: при неудачной записи документ остаётся с подмножествами (undo вернёт шрифты).
             fz_context* ctx = doc.context().get();
