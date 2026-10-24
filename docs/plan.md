@@ -467,7 +467,7 @@
 - [x] **Панель инструмента и настройки «Комментирование»:** панель `CommentTool` слева (группы, цвет, толщина, непрозрачность, иконка, «закрепить»), страница настроек «Комментирование» (Identity: имя, должность, организация; «всегда имя входа»; шрифт/размер popup; открывать popup автоматически; линии-связки). Закрывает comment-24, comment-08 (умолчания), comment-42. Тесты: `tests/ui/comment_tool_panel_test.cpp`; сцены `tool-panel-comments`, `preferences-commenting`.
 - [x] **Показ/скрытие, фильтр оверлея, матрица в compat:** визуальный фильтр `annotsHidden`/по типам (основа фильтров 5.4) в ключе кеша и оверлее, `Ctrl+Shift+8`; `compat.annots` — наш инкрементально сохранённый `annots-all.pdf` рендерится `pypdfium2 render` без ошибок и сверяется с нашим рендером `imgcmp --cross` (в bbox каждой аннотации оба растра непустые ≥ 50 пикселей, SSIM по серому ≥ 0,8, IoU масок «не фон» ≥ 0,7 — строгие `fuzzy`-пороги только для нашего Debug ↔ Release, у pdfium другое сглаживание и толщина линий); `tests/scripts/annots_forms.json` — часть с 14 типами аннотаций через `annot.create` (поля добавит 6.2), им пользуется Р3. Закрывает comment-19 (показ/скрытие). Тесты: `tests/ui/annots_visibility_test.cpp`, `tests/ui/script_annots_test.cpp`, `compat.annots`.
 
-### Сессия 5.2 · Текст, выноски, фигуры, штампы, вложения и свойства · усилие xhigh · ходов 320
+### Сессия 5.2 · Текст, выноски, фигуры, штампы, вложения и свойства · усилие xhigh · ходов 400
 
 Читать: design.md 3.4 («Инструмент», «Ядро» — `/DA`, `/BE`, «Свойства комментария», «Acrobat» — штампы), 6.3 («Комментарии»: палитра штампов, Identity), 6.5 (иконки), 1.4 (comment-13 частично), 4.7 (`stamps\`)
 
@@ -482,7 +482,7 @@
 - [ ] **Свойства комментария:** `src/ui/dialogs/annot_props_dialog.cpp` (Общие/Вид/История/Заблокировано/По умолчанию) с набором полей по типу, контекстное меню аннотации целиком. Закрывает comment-08. Тесты: `tests/ui/annot_props_test.cpp`; сцены `annot-props-appearance`, `annot-props-general`.
 - [ ] **Штампы и вложения:** `assets/stamps/` (свои PDF, 3 категории), `src/core/annot/stamps.{h,cpp}` (каталог, постановка из PDF/картинки/буфера, динамические, Identity), `src/ui/dialogs/stamps_palette.cpp` (категории, избранное, создать/управлять), `src/ui/tools/comment/{stamp_tool.cpp,attach_tool.cpp}`. Закрывает comment-11, comment-12, comment-13 (частично), comment-14, comment-41. Тесты: `tests/unit/stamps_test.cpp`, `tests/ui/stamps_palette_test.cpp`; сцены `stamps-palette`, `annot-stamp-custom`, `annot-stamp-dynamic`, `annot-attachment`.
 
-### Сессия 5.3 · Fill & Sign: текст, отметки, подпись и инициалы, умное размещение · усилие xhigh · ходов 300
+### Сессия 5.3 · Fill & Sign: текст, отметки, подпись и инициалы, умное размещение · усилие xhigh · ходов 360
 
 Читать: design.md 3.5, 6.2 (инструмент 4), 6.3 («Fill & Sign»), 4.7 (`signatures\`), 12 (вопрос 9), 2 (сценарий 3)
 
@@ -497,7 +497,7 @@
 - [ ] **Размещение подписи и плоская копия:** постановка `/Stamp` подписи/инициалов, перемещение/масштаб/цвет/удаление, «Сохранить как → Плоская копия» (`pdf_bake_document`), предупреждение на подписанном документе, подсказка «Заполнить форму» для AcroForm. Закрывает sign-01 (размещение), forms-07 (плоские формы). Тесты: `tests/ui/fillsign_place_test.cpp` + `compat.fillsign` (плоская копия, `qpdf --check`); сцены `fill-sign-placed`, `fill-sign-flatten-dialog`.
 - [ ] **Сцены и сценарий 3:** действия `--script` `fillsign.placeText{page,point,text}`, `fillsign.placeSignature{page,rect,kind}` и `tests/scripts/fillsign.json` (сценарий 3 эталона: анкета → текст → подпись → инкремент), сцены в тёмной теме, «Нужна ручная проверка»: Fill & Sign-файл в Acrobat Reader — штамп с картинкой виден. Тесты: `tests/ui/script_fillsign_test.cpp`, `ui.shots.stage5-fillsign`.
 
-### Сессия 5.4 · Панель «Комментарии», ответы, статусы, FDF/XFDF и сводка · усилие xhigh · ходов 320
+### Сессия 5.4 · Панель «Комментарии», ответы, статусы, FDF/XFDF и сводка · усилие xhigh · ходов 400
 
 Читать: design.md 3.4 («Попапы и ответы», «Панель «Комментарии»», «FDF/XFDF», «Acrobat»), 6.1 (правая панель), 4.7 (`state.sqlite` — прочитанные), 7.3 (подтверждение импорта), 2 (сценарий 2)
 
@@ -512,7 +512,7 @@
 - [ ] **Ответы и статусы:** поле ответа в панели и popup, `/RC` простой HTML, статусы рецензии и «галочка», «непрочитанное», история проверок в свойствах. Закрывает comment-20, comment-21. Тесты: `tests/ui/replies_status_test.cpp`; сцены `comment-reply`, `comment-status`.
 - [ ] **FDF/XFDF и сводка:** `src/core/annot/fdf.{h,cpp}`, `src/core/annot/xfdf.{h,cpp}` + `src/services/xfdf_xml.{h,cpp}`, команды «Экспорт/Импорт комментариев» с подтверждением, `src/core/annot/summary.{h,cpp}` + `src/ui/dialogs/summary_dialog.cpp`, действия `--script` `comment.reply{nm,text}`, `comment.setStatus{nm,state}`, `comments.export{path,format}`, `comments.import{path}` и `tests/scripts/comments.json` (сценарий 2 эталона). Закрывает comment-27, comment-25, security-36 (импорт — подтверждение). Тесты: `tests/unit/fdf_test.cpp`, `tests/unit/xfdf_test.cpp` (round-trip на матрице 28 подтипов), `tests/unit/summary_test.cpp`, `tools/xfdf_check.py` в `compat.xfdf`; сцены `comments-export`, `summary-dialog`, `summary-result`.
 
-### Сессия 5.5 · Измерения, выравнивание пометок и завершение этапа · усилие xhigh · ходов 280
+### Сессия 5.5 · Измерения, выравнивание пометок и завершение этапа · усилие xhigh · ходов 340
 
 Читать: design.md 3.4 («Измерения», «Выделение и правка» — выравнивание), 6.2 (инструмент 14), 1.5 (comment-40, 44)
 
@@ -534,7 +534,7 @@
 
 **Цель:** заполнение с JavaScript и данными, конструктор «Подготовить форму», автоопределение полей, сбор ответов, консоль JavaScript. **Закрывает:** forms-01, 02, 03, 05, 06, 08, 09, 10, 11, 12, 13, 14, 15, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 33 (частично), 35, 36, 37, 43, 46, 47 (nice — консоль), 49 (нет — `docs/limitations.md`); edit-46; security-37, 40 (JavaScript). Версия 0.6.0.
 
-### Сессия 6.1 · Заполнение форм, JavaScript, данные и отправка · усилие xhigh · ходов 320
+### Сессия 6.1 · Заполнение форм, JavaScript, данные и отправка · усилие xhigh · ходов 400
 
 Читать: design.md 3.6, 6.2 (инструмент 16 — только политика JS), 6.1 (фиолетовая полоса), 7.2, 7.4 (`SubmitForm`), 1.4 (security-36), 1.5 (forms-43), 3.18 («Почта»)
 
@@ -550,7 +550,7 @@
 - [ ] **Отправка формы и почта:** `src/core/forms/submit.{h,cpp}` (разбор `/SubmitForm`, флаги, формат, цель), `src/services/mail.{h,cpp}` (`MAPISendMailW`, `Mailer` + `FakeMailer` — ядро для `mailto:`), POST через `HttpFetcher` с подтверждением, ответ `#FDF`. Закрывает forms-30, cloud-08 (ядро). Тесты: `tests/unit/submit_test.cpp`, `tests/ui/submit_dialog_test.cpp`; сцена `form-submit-confirm`.
 - [ ] **Настройки «Формы» и сцены:** страница настроек (подсветка, цвета, автопересчёт, рамка фокуса, ссылка на политику JS), печать «только поля формы» в диалоге печати (режим из 2.6 с живыми виджетами), сцены тёмной темы. Закрывает forms-43, forms-05 (печать формы). Тесты: `tests/ui/forms_settings_test.cpp`, `tests/ui/print_forms_test.cpp`; сцена `preferences-forms`.
 
-### Сессия 6.2 · Конструктор форм в ядре: FieldFactory, свойства, действия, порядок табуляции и вычислений · усилие xhigh · ходов 320
+### Сессия 6.2 · Конструктор форм в ядре: FieldFactory, свойства, действия, порядок табуляции и вычислений · усилие xhigh · ходов 400
 
 Читать: design.md 3.7 («Ядро (`FieldFactory`)», «Свойства поля», «Граничные случаи», «Acrobat»), 4.3, 1.5 (edit-46), 1.6 (forms-49)
 
@@ -565,7 +565,7 @@
 - [ ] **AF-скрипты, проверка, вычисления и порядок `/CO`:** `src/core/forms/af_scripts.{h,cpp}` (генерация Format/Keystroke/Validate/Calculate, упрощённая нотация, проверка скобок), `src/core/forms/calc_order.{h,cpp}`. Закрывает forms-26, forms-27, forms-28 (ядро и порядок вычислений). Тесты: `tests/unit/af_scripts_test.cpp` (скрипты исполняются MuJS на фикстуре), `tests/unit/calc_order_test.cpp`.
 - [ ] **Порядок табуляции и сценарии документа:** `src/core/forms/tab_order.{h,cpp}` (`/Tabs`, ручной порядок `/Annots`), `src/core/forms/doc_scripts.{h,cpp}` (`/Names /JavaScript`, `/AA` документа), строка о forms-49 в `docs/limitations.md`. Закрывает forms-25 (ядро), edit-46, forms-46 (ядро), forms-49 (честный отказ). Тесты: `tests/unit/tab_order_test.cpp`, `tests/unit/doc_scripts_test.cpp`.
 
-### Сессия 6.3 · Режим «Подготовить форму»: рабочее пространство, диалог свойств, панель «Поля», копии и выравнивание · усилие xhigh · ходов 320
+### Сессия 6.3 · Режим «Подготовить форму»: рабочее пространство, диалог свойств, панель «Поля», копии и выравнивание · усилие xhigh · ходов 400
 
 Читать: design.md 3.7 («Режим «Подготовить форму»», «Свойства поля»), 6.2 (инструмент 5), 6.3 («Формы»), 6.8 (`F`, `B`, `O`, `L`, `Ctrl+U`, `Ctrl+Shift+U`, `Ctrl+R`), 6.1 (панель «Поля»)
 
@@ -580,7 +580,7 @@
 - [ ] **Панель «Поля», порядок обхода и вычислений, предпросмотр:** `src/ui/panes/fields_pane.cpp` (дерево, сортировка, номера обхода, drag-and-drop ручного порядка, меню Параметры ▾), диалоги «Порядок вычислений» и «Порядок табуляции», режим «Просмотр/Правка», команда «Очистить форму» из 6.1 — в меню Параметры ▾. Закрывает forms-24, forms-25, forms-28 (порядок), forms-10. Тесты: `tests/ui/fields_pane_test.cpp`; сцены `pane-fields`, `pane-fields-tab-numbers`, `calc-order-dialog`, `form-preview`.
 - [ ] **Сценарии документа и консоль JavaScript:** `src/ui/tools/javascript/{javascript_tool.cpp,doc_scripts_dialog.cpp,js_console.cpp}` («Использовать JavaScript» в `ToolRegistry`: консоль — один `QPlainTextEdit` с выводом `console.println`, включение для файла, сценарии документа — список, редактор, проверка скобок). Закрывает forms-46, forms-47 (nice: консоль без отладчика; если человек в этапе 0 forms-47 не подтвердил — консоль остаётся частью forms-46/security-40 без `OT_FEATURE("forms-47")`), security-40 (UI включения). Тесты: `tests/ui/doc_scripts_dialog_test.cpp`, `tests/ui/js_console_test.cpp`; сцены `doc-scripts-dialog`, `js-console`.
 
-### Сессия 6.4 · Автоопределение полей и сбор ответов · усилие xhigh · ходов 320
+### Сессия 6.4 · Автоопределение полей и сбор ответов · усилие xhigh · ходов 400
 
 Читать: design.md 3.7 («Автоопределение полей», «Сбор ответов»), 1.4 (forms-33 частично), 11 (риск 8), 9.1 («сначала тесты» для XL)
 
@@ -597,7 +597,7 @@
 
 **Проверка:** `f1040.pdf` заполняется, сохраняется, `qpdf --json --json-key=acroform` показывает значения, `pypdfium2 render --draw-forms` их рисует; JS-форма с вычислениями совпадает с ожиданиями при включённом JS и предупреждает при выключенном; созданная нами форма (8 типов полей, формат, вычисление, кнопка сброса) заполняется в нашем же заполнителе и в pypdfium2; автоопределение на плоских фикстурах ≥ 0,75/0,70 (числа записаны); FDF/XFDF/XML/TSV round-trip; сбор ответов даёт таблицу; версия 0.6.0.
 
-### Рубеж Р3 · Комментарии и формы · этапы 5, 6 · усилие xhigh · ходов 300
+### Рубеж Р3 · Комментарии и формы · этапы 5, 6 · усилие xhigh · ходов 360
 
 `py -3.14 tools\verify.py --full` (debug полностью и `--preset msvc-release --labels "render|bench"`); ASan `unit|engine`; фаззер 10 мин (семена — файлы с нашими аннотациями и формами); `tools/bench_compare.py docs/bench/baseline-r2.json build/bench/*.json` → `docs/bench/baseline-r3.json`; сцены этапов 5–6: `tools/shots.ps1 -All`, контакт-листы `review_refs.py --shots --sheet 16`, поштучно — pHash > 8 к `.queue/shots-prev/` и `tools/main_scenes.txt` — против эталона 6.1–6.3 (левая панель инструмента 320, правая панель 280, карточки комментариев 64 px); `--smoke 8` с `QT_QPA_PLATFORM=''`; `tools/lint.ps1 -All`, `msvc-analyze` + `analyze_summary.py` против baseline. Скрипт `tools/verify_r3.py` (`"$env:OTTISK_PYTHON" -X utf8 -I`, в Git; артефакты — `.queue/r3/`; замеры — `--release-exe`): (1) для 14 типов аннотаций и 8 типов полей — создать через `AcroBatya.exe --script tests/scripts/annots_forms.json` (файл собран в 5.1 и 6.2 из действий `annot.create`/`form.createField`), сохранить инкрементом → `qpdf --check` = 0, `pdfcpu validate -m strict` = 0, `pypdfium2 render --draw-forms` ↔ наш рендер по `imgcmp --cross`; (2) XFDF/FDF round-trip на 20 файлах корпуса `annots` и матрице 28 подтипов; (3) `f1040`, `fw4` и 5 форм pdfium `fx/form` — заполнение всех текстовых полей значением «Тест-123» и сохранение → значения в `qpdf --json`; (4) автоопределение на плоских фикстурах — метрики в журнал; (5) Fill & Sign: сценарий 3 скриптом, плоская копия проходит `qpdf`; (6) 50 undo/redo вперемешку (аннотации + поля) через `doc.undo`/`doc.redo` 2.4b → объекты равны исходным после полной записи; (7) `tools/scope_report.py`. Контрольная точка **M3** (эталон 9.6); ручная часть — строки в «Нужна ручная проверка» (не `[~]`): открыть наш файл с комментариями, ответами, Fill & Sign и формой в Acrobat Reader/Edge; заполнить созданную нами форму в Reader (сумма считается). Установщик `AcroBatya-0.6.0-setup.exe` — тихая установка, `--self-check` (с `QT_QPA_PLATFORM=''` и под offscreen), деинсталляция; при пустом `git diff --stat v0.6.0 HEAD -- src tools installer assets i18n` не пересобирать, иначе после сборки `git tag -f v0.6.0`. Итог — в `docs/progress.md`.
 
@@ -607,7 +607,7 @@
 
 **Цель:** остаток объёма Standard вокруг документа: «Упорядочить страницы», «Создать PDF», «Объединить файлы», «Экспорт PDF», Office ↔ PDF, колонтитулы/знаки/фон, ссылки/закладки/вложения/назначения, «Защитить» и Диспетчер доверия. **Закрывает:** edit-13, 14, 15, 16, 17, 18, 19, 20, 22, 23, 24, 27, 28, 29, 30, 33, 34, 36, 37, 44, 50; create-01, 03, 09, 12, 13, 14, 15, 17, 18, 21, 25, 26, 28, 29, 30, 31, 32, 33, 34, 36, 40, 41; security-01, 02, 03, 04, 05, 06, 07, 08, 09, 11 (заглушка; см. вопрос 12.1), 15, 17, 36, 37, 39, 40, 42, 43; view-17, 50. Версия 0.7.0.
 
-### Сессия 7.1 · Упорядочить страницы · усилие xhigh · ходов 320
+### Сессия 7.1 · Упорядочить страницы · усилие xhigh · ходов 400
 
 Читать: design.md 3.10, 6.2 (инструмент 2), 6.3 («Страницы»), 4.4 (полная запись после удаления), 6.8 (`Ctrl+Shift+R/D/I/T/E`), 2 (сценарии 6, 7)
 
@@ -622,7 +622,7 @@
 - [ ] **Режим «Упорядочить страницы»:** `src/ui/tools/organize/{organize_tool.cpp,organize_view.cpp,page_grid_model.cpp}` (регистрация, сетка, выбор, диапазоны, DnD, кнопки, панель команд), буфер страниц между вкладками, клавиши, перетаскивание миниатюр из панели; действия `--script` `pages.rotate{pages,deg}`, `pages.delete{pages}`, `pages.extract{pages,path,removeFromSource}`, `pages.insert{path,at}` через `ScriptRunner::registerAction` — ими пользуются 7.5 (`pages.json`) и Р4 (сессия-владелец регистрирует свои действия, правило 2.4b). Закрывает edit-13, edit-16 (UI). Тесты: `tests/ui/organize_view_test.cpp` (модель `movePages`, выбор, `dropEvent` синтетически), `tests/ui/pages_actions_test.cpp` (действия `--script`); сцены `pages-organize`, `pages-organize-selected`, `pages-organize-dark`.
 - [ ] **Диалоги страниц и обрезка:** `src/ui/dialogs/{insert_pages_dialog.cpp,replace_pages_dialog.cpp,extract_pages_dialog.cpp,split_dialog.cpp,page_labels_dialog.cpp,crop_dialog.cpp,transitions_dialog.cpp}`, инструмент «Обрезка» с рамкой, контекстное меню миниатюр (edit-44). Закрывает edit-17 (диалог), edit-18, edit-19, edit-20, edit-22, edit-23 (UI), edit-44. Тесты: `tests/ui/page_dialogs_test.cpp`; сцены `insert-dialog`, `extract-dialog`, `split-dialog`, `labels-dialog`, `crop-dialog`, `thumbnails-context-menu`.
 
-### Сессия 7.2 · Создание из изображений, буфера и HTML; объединение; экспорт в изображения и текст · усилие xhigh · ходов 320
+### Сессия 7.2 · Создание из изображений, буфера и HTML; объединение; экспорт в изображения и текст · усилие xhigh · ходов 400
 
 Читать: design.md 3.11, 3.12 («Текстовые форматы»), 6.2 (инструменты 6, 7, 8), 6.3 («Создание и экспорт»), 6.7 (Главная: «Создать»), 1.3 (create-01, create-09 — границы), 4.3 («операции с перезаписью»)
 
@@ -638,7 +638,7 @@
 - [ ] **Экспорт в изображения и все изображения:** `src/core/create/pdf_to_images.{h,cpp}`, `src/core/create/tiff_writer.{h,cpp}`, `src/core/create/extract_images.{h,cpp}`, `src/ui/dialogs/export_images_dialog.cpp`. Закрывает create-31, create-32. Тесты: `tests/unit/pdf_to_images_test.cpp`, `tests/unit/tiff_writer_test.cpp`; сцена `export-images`.
 - [ ] **Экспорт текста и диспетчер создания:** `src/ui/tools/export/{export_tool.cpp,export_dialog.cpp}` (DOCX — 7.3, изображения, TXT, HTML, RTF, XML; XLSX/PPTX — «недоступно»), `src/core/create/dispatcher.{h,cpp}` (create-01 по типу), меню «Создать → Из файла», страница настроек «Конвертация» (настройки экспорта), действия `--script` `create.fromFiles{paths}`, `combine.files{paths,bookmarks}`, `export.images{dir,format,dpi}`, `export.text{path,format}` и сценарий 6 эталона в `tests/scripts/combine.json`. Закрывает create-33, create-34, create-01 (кроме Office), create-36. Тесты: `tests/ui/export_dialog_test.cpp`, `tests/unit/dispatcher_test.cpp`, `tests/ui/script_combine_test.cpp`; сцены `export-dialog`, `export-dialog-unavailable`.
 
-### Сессия 7.3 · Office ↔ PDF: LibreOffice headless и Word COM · усилие xhigh · ходов 300
+### Сессия 7.3 · Office ↔ PDF: LibreOffice headless и Word COM · усилие xhigh · ходов 360
 
 Читать: design.md 3.12, 1.4 (create-40/41), 1.6 (create-15/17/21/29/30 — что вместо), 4.7 (`lo-prof-N`), 5.6 (кодировки путей, `file:///`), 8.1 (человек ставит LibreOffice), 12 (вопрос 13), 2 (сценарии 9, 10)
 
@@ -653,7 +653,7 @@
 - [ ] **XLSX/PPTX честно и таблицы в CSV:** `src/core/create/tables_csv.{h,cpp}` (`TextPage::Options{tableHunt}` → CSV по таблице/странице), пункты «недоступно» с пояснением и ссылкой на справку (раздел появится в 9.1), строки в `docs/limitations.md` по ID (create-15, create-17, create-21, create-29, create-30). Закрывает create-29, create-30 (честный отказ), create-21 (нет — `docs/limitations.md`). Тесты: `tests/unit/tables_csv_test.cpp`; сцены `export-tables-csv`, `export-office-unavailable`.
 - [ ] **Настройки «Конвертация», вставка Office и сценарии 9–10:** страница настроек (путь `soffice.com`, «предпочитать Word», пресеты, таймауты), «Создать из файла» и «Вставить из файла» для Office через временный PDF, плашка при отсутствии LibreOffice, действия `--script` `office.toPdf{path,preset}`, `office.toDocx{path}` и `tests/scripts/office.json` (сценарии 9 и 10 эталона на `FakeOfficeBackend`), «Нужна ручная проверка»: docx с картинками через LibreOffice, DOCX из Word глазами. Закрывает create-18 (настройки), edit-17 (из Office-файла). Тесты: `tests/ui/convert_settings_test.cpp`, `tests/ui/script_office_test.cpp`; сцены `preferences-convert`, `office-missing-dialog`.
 
-### Сессия 7.4 · Колонтитулы, водяные знаки и фон как `/Artifact` · усилие xhigh · ходов 300
+### Сессия 7.4 · Колонтитулы, водяные знаки и фон как `/Artifact` · усилие xhigh · ходов 360
 
 Читать: design.md 3.13 («Колонтитулы», «Водяной знак», «Фон», «Механика», «Граничные случаи»), 6.2 (инструмент 1: Колонтитулы ▾, Водяной знак ▾, Фон ▾), 4.3
 
@@ -667,7 +667,7 @@
 - [ ] **Диалоги оформления:** `src/ui/dialogs/{header_footer_dialog.cpp,watermark_dialog.cpp,background_dialog.cpp}` (предпросмотр, диапазоны, пресеты в ini, пресет «Номера страниц» у колонтитулов, «Обновить/Удалить»), пункты в панели «Редактировать PDF», действия `--script` `decor.headerFooter{…}`, `decor.watermark{…}` (для конвейера Р4; сессия-владелец). Закрывает edit-24, edit-27, edit-28 (UI). Тесты: `tests/ui/decor_dialogs_test.cpp`; сцены `header-footer`, `watermark`, `background`, `page-numbers`.
 - [ ] **Пакет файлов (BatchRunner):** `src/services/batch_runner.{h,cpp}` (очередь, папка вывода, правила имён, прогресс, отмена, отчёт), `src/ui/dialogs/batch_dialog.cpp`, «Применить к нескольким файлам» для колонтитулов/знаков/фона. Закрывает edit-24, edit-27, edit-28 (пакет). Тесты: `tests/unit/batch_runner_test.cpp`, `tests/ui/batch_dialog_test.cpp`; сцены `batch-apply`, `batch-report`.
 
-### Сессия 7.5 · Ссылки, закладки, вложения, назначения, метаданные и начальный вид · усилие xhigh · ходов 320
+### Сессия 7.5 · Ссылки, закладки, вложения, назначения, метаданные и начальный вид · усилие xhigh · ходов 400
 
 Читать: design.md 3.13 («Ссылки», «Закладки», «Вложения», «Назначения», «Метаданные и начальный вид», «Граничные случаи»), 6.2 (инструмент 1: Ссылка ▾, Вложить файл), 6.8 (`G`, `Ctrl+B`), 1.5 (edit-36, 50), 7.3
 
@@ -683,7 +683,7 @@
 - [ ] **Панель «Назначения», чистка ссылок и сценарии 6–7:** `src/core/links/destinations_write.{h,cpp}` (запись name tree `/Names /Dests`, создать/переименовать/удалить, сканирование), `src/ui/panes/destinations_pane.cpp` (редактирование), перенаправление ссылок и закладок через назначения, `tests/scripts/pages.json` (сценарии 6 и 7 эталона на действиях `pages.*` из 7.1 и `doc.undo` из 2.4b; объединение — действие из `tests/scripts/combine.json` 7.2; сценарий 6 — без шага «Уменьшить размер», его добавит 9.3 в `tests/scripts/scenarios/`). Закрывает view-50, edit-15 (ссылки на удалённые). Тесты: `tests/unit/destinations_test.cpp`, `tests/ui/script_pages_test.cpp`; сцена `pane-destinations-edit`.
 - [ ] **Начальный вид — полнота и сцены этапа:** вкладка «Начальный вид» — недостающие ключи `/ViewerPreferences` (HideToolbar, HideMenubar, HideWindowUI, FitWindow, CenterWindow, DisplayDocTitle, NonFullScreenPageMode, Direction, PrintScaling, Duplex), `/PageMode /UseAttachments` из вложений, связка назначений с диалогами ссылок и закладок, сцены этапа в тёмной теме. Закрывает view-47 (полнота). Тесты: `tests/unit/initial_view_full_test.cpp`; сцена `properties-initial-view-full`.
 
-### Сессия 7.6 · Защита: пароли, права, политики и Диспетчер доверия · усилие xhigh · ходов 320
+### Сессия 7.6 · Защита: пароли, права, политики и Диспетчер доверия · усилие xhigh · ходов 400
 
 Читать: design.md 3.14, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 6.2 (инструмент 9), 6.3 («Защита»), 1.4 (security-36), 1.5 (security-06), 1.6 (security-11), 4.4 (смена шифрования = полная запись), 12 (вопросы 1, 5), 2 (сценарий 8)
 
@@ -706,7 +706,7 @@
 
 **Цель:** сканы становятся текстом (свой слой, ориентация перебором, подозрения, пакет), сканирование WIA с `FakeScanSource`, улучшение сканов и фото, перекомпоновка, чтение вслух, клавиатура и `QAccessible`, базовое автотегирование. **Закрывает:** ocr-01, 02, 03, 04, 05, 06, 07, 08, 09, 11, 12, 14, 18, 32, 35, 36, 37, 38 (связка), 40 (частично), 41, 45; edit-17 (со сканера). Версия 0.8.0, тег `v0.8.0`.
 
-### Сессия 8.1 · OCR-сервис: движок, свой слой, ориентация и диалог «Распознать текст» · усилие xhigh · ходов 320
+### Сессия 8.1 · OCR-сервис: движок, свой слой, ориентация и диалог «Распознать текст» · усилие xhigh · ходов 400
 
 Читать: design.md 3.15 («Распознать текст», «Движок», «Граничные случаи», «Acrobat»), 4.7 (`tessdata\`, ASCII), 5.6 (`toShortPath`), 6.7 (первый OCR без языков), 11 (риск 6), 12 (вопрос 7), 10.3 (tessdata в deploy, `--self-check`)
 
@@ -720,7 +720,7 @@
 - [ ] **Свой слой, ориентация и режимы:** `src/core/ocr/text_layer.{h,cpp}` (поток `/AcroBatyaOcr`, `3 Tr`, CID-шрифт, `ToUnicode`, матрицы слов, поворот, замена старого слоя), `src/core/ocr/orientation.{h,cpp}` (4 поворота, порог 12), deskew перед OCR, режимы Searchable Image/Exact, `DocumentSession::recognize(pages, opts)`. Закрывает ocr-08, ocr-09 (режимы). Тесты: `tests/unit/text_layer_test.cpp`, `tests/unit/orientation_test.cpp` + `compat.ocr` (`pypdfium2 extract-text`).
 - [ ] **Инструмент «Сканировать и OCR» и диалог «Распознать текст»:** `src/ui/tools/scan/{scan_ocr_tool.cpp,ocr_dialog.cpp}` (регистрация; диапазон, языки, режим, разрешение, «только без текста», «определить ориентацию», «повернуть по результату»), кнопки «Распознать» в полосе сканов (3.4) и в поиске (2.5), прогресс в строке состояния с отменой, действие `ocr.recognize` для `--script`. Закрывает ocr-08 (UI). Тесты: `tests/ui/ocr_dialog_test.cpp` (`FakeOcrBackend`); сцены `ocr-dialog`, `ocr-progress`, `scan-bar-recognize`.
 
-### Сессия 8.1b · Подозрения, пакетное OCR и сценарий 12 · усилие xhigh · ходов 280
+### Сессия 8.1b · Подозрения, пакетное OCR и сценарий 12 · усилие xhigh · ходов 340
 
 Читать: design.md 3.15 («Распознать текст» — подозрения, пакет; «Граничные случаи»), 4.7 (`state.sqlite`), 2 (сценарий 12)
 
@@ -734,7 +734,7 @@
 - [ ] **Пакетное OCR:** `src/ui/dialogs/ocr_batch_dialog.cpp` (файлы/папки, правила имён, параметры, пропуск распознанных, отчёт) на `BatchRunner`, изображения через `image_to_pdf`, отмена. Закрывает ocr-12. Тесты: `tests/ui/ocr_batch_test.cpp` (`FakeOcrBackend`); сцена `ocr-batch`.
 - [ ] **Сценарий 12, замеры и сцены OCR:** `tests/scripts/ocr.json` (сценарий 12 эталона), замер времени на страницу и пиковой памяти (A4 300 dpi, A3 600 dpi) в журнал, сцены 8.1/8.1b в тёмной теме. Закрывает ocr-08 (сквозной сценарий). Тесты: `tests/ui/script_ocr_test.cpp`, `engine.ocr.scenario12` (`slow`), `ui.shots.stage8-ocr`.
 
-### Сессия 8.2 · Сканирование WIA, FakeScanSource, улучшение сканов и фото · усилие xhigh · ходов 300
+### Сессия 8.2 · Сканирование WIA, FakeScanSource, улучшение сканов и фото · усилие xhigh · ходов 360
 
 Читать: design.md 3.15 («Сканирование», «Граничные случаи»), 6.3 («OCR, сканирование, печать»: сканер, улучшить скан, улучшить фото), 1.3 (ocr-01/03/04/05/06/07), 1.5 (ocr-02), 8.2 (строка этапа 8 таблицы — `FakeScanSource`), 3.15 («Сканирование»), 2 (сценарий 13)
 
@@ -749,7 +749,7 @@
 - [ ] **Диалог сканера, пресеты и хук OCR:** `src/ui/tools/scan/scan_dialog.cpp` (устройство, параметры, вывод, оптимизация, «Распознать текст» → 8.1, метаданные, «ещё страницы»), пресеты, «Вставить со сканера» в 7.1, Главная → «Сканы», действие `--script` `scan.run{source,preset,dpi,ocr}` и `tests/scripts/scan.json` (сценарий 13 эталона на `FakeScanSource`). Закрывает ocr-01 (UI), ocr-03, ocr-02, edit-17 (со сканера). Тесты: `tests/ui/scan_dialog_test.cpp` (Fake), `tests/ui/script_scan_test.cpp`; сцены `scan-dialog`, `scan-more-pages`, `scan-presets`.
 - [ ] **Улучшить скан и фото:** `src/ui/dialogs/{enhance_scan_dialog.cpp,enhance_photo_dialog.cpp}` (фильтры, сжатие, предпросмотр «до/после», диапазон; углы и уровень для фото), замена XObject страниц через журнал, «Нужна ручная проверка»: скан с WIA-сканера, фото телефона. Закрывает ocr-04, ocr-06, ocr-07, ocr-05 (UI). Тесты: `tests/ui/enhance_dialogs_test.cpp`; сцены `enhance-scan`, `enhance-photo-corners`.
 
-### Сессия 8.3 · Перекомпоновка, чтение вслух, клавиатура и QAccessible · усилие xhigh · ходов 300
+### Сессия 8.3 · Перекомпоновка, чтение вслух, клавиатура и QAccessible · усилие xhigh · ходов 360
 
 Читать: design.md 3.16 («Перекомпоновка», «Читать вслух», «Клавиатура и дикторы», «Граничные случаи»), 6.9, 6.8 (клавиши чтения вслух, `F6`), 1.4 (ocr-40 частично), 1.5 (ocr-41, 42, 45), 6.2 (инструмент 15)
 
@@ -764,7 +764,7 @@
 - [ ] **Клавиатурный доступ:** `F6` цикл по эталону 6.9, курсор выделения и `Ctrl+стрелки`, автопрокрутка (команда, скорость), `Menu`/`Shift+F10`, мнемоники и `Esc` в диалогах этой сессии (аудит всех диалогов — 9.2), страница настроек «Доступность» (курсор выделения, автопрокрутка, порядок чтения; переключатели «Крупные элементы» и «Высокая контрастность» живут только на странице «Общие» — 2.4b/9.1, здесь не дублировать). Закрывает ocr-41, ocr-45 (страница «Доступность»), view-08 (автопрокрутка). Тесты: `tests/ui/keyboard_access_test.cpp`, `tests/ui/dialog_mnemonics_test.cpp`; сцены `selection-cursor`, `accessibility-page`, `view-high-contrast-large`.
 - [ ] **QAccessible для своих виджетов:** `src/ui/a11y/accessible_page_view.cpp` (`QAccessibleTextInterface` над страницей по порядку чтения), имена/роли всех компонентов, тест «у каждого видимого виджета есть имя», порядок табуляции в диалогах этой сессии (`setTabOrder`; все диалоги — 9.2), «Замена цветов» в инструменте «Специальные возможности». Закрывает ocr-40 (оболочка), ocr-38 (связка). Тесты: `tests/ui/accessible_names_test.cpp` (`ui.a11y.names`), `tests/ui/tab_order_test.cpp`.
 
-### Сессия 8.4 · Автоматическое добавление тегов (базовое), отчёт и язык · усилие xhigh · ходов 320
+### Сессия 8.4 · Автоматическое добавление тегов (базовое), отчёт и язык · усилие xhigh · ходов 400
 
 Читать: design.md 3.16 («Автоматическое добавление тегов», «Acrobat»), 1.4 (ocr-18 — объём «базовое»), 3.13 («Механика» — `/Artifact`), 4.3, 9.4 (`structcheck.py`, veraPDF как индикатор), 11 (риск 8)
 
@@ -781,7 +781,7 @@
 
 **Проверка:** скан 300 dpi с кириллицей после «Распознать» ищется и копируется (≥ 90 % слов), повёрнутый скан распознаётся с ориентацией 4/4, исходная картинка не изменена; `FakeScanSource` (и `OTTISK_FAKE_SCANNER`) даёт PDF с CCITT G4 и OCR сквозным сценарием 13; перекомпоновка и чтение вслух (`FakeTts`) идут по порядку чтения; автотегирование даёт валидное дерево (`structcheck`, veraPDF без синтаксических ошибок структуры) и не меняет рендер; память OCR ≤ 1,2 ГБ; все сцены сверены с эталоном 6.3; версия 0.8.0.
 
-### Рубеж Р4 · Весь объём Standard · этапы 7, 8 · усилие xhigh · ходов 300
+### Рубеж Р4 · Весь объём Standard · этапы 7, 8 · усилие xhigh · ходов 360
 
 `py -3.14 tools\verify.py --full` (debug полностью и `--preset msvc-release --labels "render|bench"`; `compat` с LibreOffice/Word/veraPDF, если есть); ASan `unit|engine`; фаззер 10 мин (семена — файлы после OCR, декораций, шифрования); `tools/bench_compare.py docs/bench/baseline-r3.json build/bench/*.json` → `docs/bench/baseline-r4.json`; сцены этапов 7–8: `tools/shots.ps1 -All` (светлые/тёмные и «Крупные элементы»), контакт-листы `review_refs.py --shots --sheet 16`, поштучно — pHash > 8 к `.queue/shots-prev/` и `tools/main_scenes.txt` — против эталона 6.2–6.3; `--smoke 8` с `QT_QPA_PLATFORM=''` (с `OTTISK_FAKE_SCANNER` — диалог сканера живой); `tools/lint.ps1 -All`, `msvc-analyze` + `analyze_summary.py` против baseline. Скрипт `tools/verify_r4.py` (`"$env:OTTISK_PYTHON" -X utf8 -I`, в Git; артефакты — `.queue/r4/`; замеры — `--release-exe`): (1) конвейер страниц и оформления на 20 файлах корпуса (как в «Проверке» этапа 7) — `qpdf --check`, `pdfcpu validate -m strict`, pypdfium2 на каждом шаге; (2) Office: если `soffice.com` найден — `docx/xlsx/pptx` фикстуры → PDF (stext, картинки), PDF/A-2b через veraPDF; Word → DOCX; иначе запись «пропущено, LibreOffice/Word нет»; (3) матрица шифрования R4/R6 × user/owner + права — открывается pypdfium2; (4) OCR на 10 своих сканах `tests/fixtures/scans/*.pdf` с эталонами `*.txt` (этап 0: кириллица/латиница/немецкий, повороты 0/90/180/270, перекос ±3°) через `--script` `ocr.recognize` — доля слов ≥ 0,85 (цель 0,93), ориентация 4/4, ≤ 6 с/страница на Release; корпус `scan` (тег скачан в этапе 0; нет — `SKIP` и строка в «Нужна ручная проверка») — только устойчивость: 20 файлов проходят `ocr.recognize` без падений и `qpdf --check` = 0; (5) Fake-скан сквозной (`tests/scripts/scan.json`); (6) автотегирование на 20 файлах — `structcheck` чисто, рендер `pixels == 0`; (7) память: OCR 50 страниц ≤ 1,2 ГБ пиковой, конвейер страниц на 1 200 стр. ≤ 800 МБ; (8) `tools/scope_report.py`. Контрольная точка **M4** (эталон 9.6); ручная часть — строки в «Нужна ручная проверка» (не `[~]`): скан с WIA-сканера; фото телефона; docx через LibreOffice с картинками; DOCX из Word глазами; AES-256 файл, колонтитулы и водяной знак в Acrobat Reader; буклет на принтере; NVDA/Экранный диктор читает страницу. Установщик `AcroBatya-0.8.0-setup.exe`, тихая установка `/DIR=<temp>` (ASCII; кириллическая папка — 9.4), `--self-check` (проверяет tessdata **загрузкой** `TessBaseAPI::Init("{app}\tessdata", "rus")` = 0 — деплой `tessdata` и `Init` в `--self-check` сделаны в 8.1, qpdf, soffice; с `QT_QPA_PLATFORM=''` и под offscreen), деинсталляция; при пустом `git diff --stat v0.8.0 HEAD -- src tools installer assets i18n` не пересобирать, иначе после сборки `git tag -f v0.8.0`. Итог — в `docs/progress.md`.
 
@@ -791,7 +791,7 @@
 
 **Цель:** всё, что осталось в оболочке (панель быстрых действий, справка, почта, ассоциации, первый запуск, печать «Комментарии и формы» со сводкой), английский интерфейс и диалог клавиш, «Уменьшить размер»/оптимизация/аудит/линеаризация, производительность, сквозные сценарии §2, сборка и установщик 0.9.0 с тегом. **Закрывает:** cloud-08, 38, 44, 60 (упоминание в справке, без `OT_FEATURE` — они `out`: cloud-01, 03, 04, 05, 06, 07, 09, 10, 11, 12, 15, 16, 17, 18, 19, 22, 23, 32, 36, 42, 43); pro-28; view-29, 31, 32, 36, 42 (сводка); ocr-40 (диалоги), 42; решение 10 (установщик). Версия 0.9.0, тег `v0.9.0`.
 
-### Сессия 9.1 · Панель быстрых действий, справка, почта, ассоциации, первый запуск и печать со сводкой · усилие xhigh · ходов 300
+### Сессия 9.1 · Панель быстрых действий, справка, почта, ассоциации, первый запуск и печать со сводкой · усилие xhigh · ходов 360
 
 Читать: design.md 3.18 («Главная», «Справка», «Почта», «Ассоциации и первый запуск»), 6.1 (глобальная панель, QuickBar), 6.7, 10.4, 1.6 (облачные функции — что вместо), 3.3 («Сводка комментариев» в печати), 3.4 («Сводка комментариев»)
 
@@ -807,7 +807,7 @@
 - [ ] **Печать «Комментарии и формы» со сводкой и самопроверка:** «Сводка комментариев» в диалоге печати (страницы сводки вторым заданием), проверка режимов «документ и пометки»/«только поля» с живыми аннотациями и полями, печать из закладки и миниатюр, полный `--self-check`. Закрывает view-42 (сводка), view-37 (полнота), forms-05 (печать формы — полнота). Тесты: `tests/ui/print_summary_test.cpp`, `tests/unit/self_check_full_test.cpp`; сцены `print-dialog-summary`, `print-dialog-comments-forms`.
 - [ ] **Аудит оболочки по эталону 6.1:** сравнение всех сцен с раскладкой (48/320/48/44/280/32, сетка 4, акцент только у активного, иконки 20/16), исправления в токенах/компонентах, недостающие сцены, контекстные меню везде (страница, миниатюра, закладка, комментарий, поле, вкладка), единый тон текстов полос и диалогов (на «вы») — механически: страж `tools/i18n_terms_guard.py` → ctest `unit.guard.terms` (все строки `ottisk_ru.ts` без «ты»-форм по списку регулярок, без «…»/«etc», термины из `docs/glossary.md` — создать здесь: таблица RU → EN по названиям инструментов 6.2, панелей 6.1, категорий Установок 3.18 и статусов подписей 3.8, как в русском и английском Acrobat; страж и перевод 9.2 читают её), результат пункта — страж зелёный и `docs/glossary.md` в Git. Закрывает view-25 (тема — полнота), view-21 (режимы — полнота). Тесты: `tests/ui/layout_metrics_test.cpp` (геометрия панелей в пикселях), `unit.guard.terms`; сцены `shell-audit-*`.
 
-### Сессия 9.2 · Английский интерфейс, диалог клавиш, «Крупные элементы» и Установки целиком · усилие xhigh · ходов 300
+### Сессия 9.2 · Английский интерфейс, диалог клавиш, «Крупные элементы» и Установки целиком · усилие xhigh · ходов 360
 
 Читать: design.md 5.7, 6.8 (полная таблица клавиш), 3.18 («Настройки» — все категории), 6.4 (`Tokens::scaled`), 1.5 (cloud-60, ocr-42), 12 (вопрос 8)
 
@@ -822,7 +822,7 @@
 - [ ] **Установки целиком, «Крупные элементы» и доступность диалогов:** все категории эталона 3.18 плюс «Доступность» (8.3) и «Измерения (2D)» (5.5) без заглушек, «Сбросить настройки», миграция `meta/version`, единственный полный аудит: все экраны этапов 1–9 при `Tokens::scaled(1.25)` (сцены `*-large`), порядок табуляции и `accessibleName` во всех диалогах, сцены при `QT_SCALE_FACTOR` 1,25/1,5. Закрывает view-36 (полнота настроек), ocr-40 (диалоги), ocr-42 (все экраны), view-30 (состояние панелей в ini). Тесты: `tests/ui/preferences_full_test.cpp`, `tests/ui/tab_order_full_test.cpp`; сцены `preferences-*` (все страницы), `view-single-scale125`, `view-single-scale150`, `*-large`.
 - [ ] **Контрольные тексты и сцены EN в тёмной теме:** аудит всех строк интерфейса стражем `unit.guard.terms` (9.1) на обоих `.ts` — тон, «вы», термины `docs/glossary.md` RU↔EN совпадают, названия команд как в русском и английском Acrobat; сцены `*-en-dark` для главных экранов, `CHANGELOG.md`. Тесты: `unit.guard.terms`, `ui.shots.stage9-en`.
 
-### Сессия 9.3 · Уменьшить размер, быстрый веб-просмотр, производительность и сквозные сценарии · усилие xhigh · ходов 300
+### Сессия 9.3 · Уменьшить размер, быстрый веб-просмотр, производительность и сквозные сценарии · усилие xhigh · ходов 360
 
 Читать: design.md 3.17, 6.2 (инструмент 10), 4.4, 5.8, 2 (все 15 сценариев), 9.1 (`tests/e2e/`), 4.1 («Память»)
 
@@ -837,7 +837,7 @@
 - [ ] **Производительность и память:** замеры против `docs/bench/baseline-r1…r4.json` по целям эталона 5.8, профиль старта (`--self-check --timing`), исправления регрессий (кеш, пул), `lowMemory`, стресс открыть/закрыть под ASan, таблица «было/стало» в `docs/progress.md`. Закрывает view-01 (скорость). Тесты: `engine.stress.openclose`, `bench.*` (числа в `build/bench/`), `tools/bench_compare.py` зелёный.
 - [ ] **Сквозные сценарии §2:** `tests/e2e/scenarios_test.cpp` (15 сценариев эталона 2 через `core`/`services` без UI, Fake* и локальный TSA, `compat_check` на каждом артефакте), `tests/fixtures/demo/` дополнен (договор с полями и подписью, скан, многостраничный с закладками/слоями/вложением, комментарии всех типов), `tests/scripts/scenarios/*.json` для рубежа. Закрывает view-27 (многодокументность — сценарии), edit-13 (сценарии 6–7). Тесты: `e2e.scenario.*` (`e2e;slow`).
 
-### Сессия 9.4 · Сборка выпуска, установщик, руководство и выпуск 0.9.0 · усилие xhigh · ходов 300
+### Сессия 9.4 · Сборка выпуска, установщик, руководство и выпуск 0.9.0 · усилие xhigh · ходов 360
 
 Читать: design.md 10.1, 10.2, 10.3, 10.4, 10.5, 5.5, 6.7, 1.6 (что вместо виртуального принтера — текст руководства), 9.6 (правило «установщик не пересобирать при пустом diff»), 12 (вопросы 7, 11)
 
@@ -854,7 +854,7 @@
 
 **Проверка:** `AcroBatya-0.9.0-setup.exe` ставится без администратора, программа запускается из установленной копии, открывает/правит/подписывает/печатает файлы, справка и английский язык работают, «Все инструменты» показывает весь объём эталона 1 без серых пунктов, 15 сценариев e2e зелёные, `verify.py --full` зелёный на debug и release, бенчмарки не хуже Р1 на 25 %, тег `v0.9.0` стоит.
 
-### Рубеж Р5 · Выпуск 0.9.0 · этапы 9 · усилие xhigh · ходов 300
+### Рубеж Р5 · Выпуск 0.9.0 · этапы 9 · усилие xhigh · ходов 360
 
 `py -3.14 tools\verify.py --full` (debug полностью и `--preset msvc-release --labels "render|bench"`); ASan `unit|engine`; фаззер 10 мин; сцены всех этапов: `tools/shots.ps1 -All` снимает все варианты (светлые/тёмные, ru/en, 1,0/1,25/1,5, «Крупные элементы»), смотрятся контакт-листы `tools/review_refs.py --shots --sheet 16` (по 16 сцен на лист) и поштучно только (а) сцены с pHash-расстоянием > 8 к снимкам Р4 (`.queue/shots-prev/`) и (б) 30 главных сцен `tools/main_scenes.txt` во всех вариантах — против эталона 6 (≈ 840 PNG по одному `Read` за 300 ходов не посмотреть); `--smoke 8` из установленной копии с `QT_QPA_PLATFORM=''` (код 0, без «Could not load the Qt platform plugin»); `tools/lint.ps1 -All` и `cl /analyze` + `tools/analyze_summary.py` против baseline — новых предупреждений 0. Скрипт `tools/verify_r5.py` (`"$env:OTTISK_PYTHON" -X utf8 -I`, в Git; артефакты — `.queue/r5/`; замеры — `--release-exe`): (1) полный регресс рубежей Р1–Р4 (`tools/verify_r1…r4.py` — повторно, с текущей сборкой); (2) 15 сквозных сценариев `e2e` зелёные и те же сценарии через `AcroBatya.exe --script tests/scripts/scenarios/*.json` (открыть → комментарий → подпись → печать в PDF → сохранить; скан-фикстура → OCR → поиск; docx → PDF (Fake) → объединить → защитить); (3) состав deploy и установщика, тихая установка/удаление в папку с кириллицей, `--self-check` из установленной копии с `QT_QPA_PLATFORM=''` и под offscreen, включая `Init` tessdata (`tests/build/install_test.py`, `OTTISK_ALLOW_REGISTRY=1` для ассоциаций); (4) `tools/scope_report.py` — ≥ 95 % ID `full` из `docs/scope.json` с хотя бы одним `OT_FEATURE`-тестом, список без теста — в `docs/progress.md`; `unit.guard.scope` зелёный; (5) `tools/bench_compare.py docs/bench/baseline-r1.json build/bench/*.json` — без регрессии > 25 % к Р1, итог `docs/bench/baseline-r5.json`. Контрольная точка **M5** (эталон 9.6); ручная часть — строки в «Нужна ручная проверка» (не `[~]`): установка на чистую учётную запись без администратора, ассоциация `.pdf` через Параметры, SmartScreen; затем две недели пилота по `docs/pilot.md` → сессия 10.1 (человек снимает `[~]`). Тег `v0.9.0` стоит; установщик не пересобирается при пустом `git diff --stat v0.9.0 HEAD -- src tools installer assets i18n`; итог — в `docs/progress.md`.
 
