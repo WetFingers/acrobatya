@@ -12,6 +12,8 @@
 #include "core/doc/document.h"
 #include "core/doc/journal.h"
 #include "core/doc/props.h"
+#include "core/edit/font_embed.h"
+#include "core/edit/font_resolver.h"
 #include "core/links/layers.h"
 #include "core/mu/call.h"
 #include "core/mu/context.h"
@@ -21,6 +23,7 @@
 #include "core/render/renderer.h"
 #include "core/text/stext.h"
 #include "core/util/paths.h"
+#include "services/system_fonts_dwrite.h"
 #include "services/task_context.h"
 
 namespace ot {
@@ -312,6 +315,7 @@ void DocumentSession::loop() {
     // Остановка: документ закрывается в своём потоке (его контекст — только этого потока).
     displayCache_->clear();
     textCache_->clear();
+    textEditing_.reset();
     doc_.reset();
 }
 
@@ -419,10 +423,82 @@ QFuture<SaveReport> DocumentSession::saveCopy(const QString& path, const SaveOpt
         TaskPriority::Normal, QStringLiteral("save copy"));
 }
 
+struct DocumentSession::TextEditing {
+    std::unique_ptr<edit::FontLibrary> library;
+    std::unique_ptr<edit::Rewriter> rewriter;
+    const Document* doc = nullptr;
+};
+
+edit::Rewriter& DocumentSession::rewriter(Document& doc) {
+    if (!textEditing_ || textEditing_->doc != &doc) {
+        edit::FallbackFonts fallback;
+        {
+            const std::lock_guard lock(mutex_);
+            fallback = editFallback_;
+        }
+        auto t = std::make_unique<TextEditing>();
+        t->library = std::make_unique<edit::FontLibrary>(doc.context().get());
+        t->rewriter = std::make_unique<edit::Rewriter>(doc, *t->library, systemFonts(), fallback);
+        t->doc = &doc;
+        textEditing_ = std::move(t);
+    }
+    return *textEditing_->rewriter;
+}
+
+QFuture<EditTextResult> DocumentSession::editText(edit::ParagraphEditor editor, QString name) {
+    const std::string operation = name.toStdString();
+    return edit(std::move(name), [this, editor = std::move(editor), operation](TaskContext& tc) mutable {
+        EditTextResult result;
+        edit::RewriteOptions options;
+        options.operation = operation;
+        result.report = rewriter(tc.document()).rewrite(editor, options);
+        if (result.report.ok()) {
+            tc.touchPage(editor.source().page);
+            tc.markHeavyEdit();
+        }
+        result.editor = std::move(editor);
+        return result;
+    });
+}
+
+QFuture<edit::ParagraphEditor> DocumentSession::layoutText(edit::ParagraphEditor editor) {
+    return post(
+        [this, editor = std::move(editor)](TaskContext& tc) mutable {
+            (void)rewriter(tc.document()).layout(editor);
+            return editor;
+        },
+        TaskPriority::High, QStringLiteral("layout text"));
+}
+
+void DocumentSession::setEditFallback(const edit::FallbackFonts& fallback) {
+    {
+        const std::lock_guard lock(mutex_);
+        editFallback_ = fallback;
+    }
+    post([this, fallback](TaskContext&) {
+        if (textEditing_) {
+            textEditing_->rewriter->setFallback(fallback);
+        }
+    });
+}
+
 QFuture<SaveReport> DocumentSession::saveTo(const QString& path, const SaveOptions& options) {
     return post(
-        [this, path, options](TaskContext& tc) {
+        [this, path, saveOptions = options](TaskContext& tc) {
             Document& doc = tc.document();
+            SaveOptions options = saveOptions;
+            // Встроенные редактором шрифты — подмножествами перед полной записью (Saver зовёт prepare только
+            // для неё); после записи документ переоткрыт — Rewriter создаётся заново.
+            if (textEditing_ && textEditing_->doc == &doc) {
+                options.prepare = [this, user = options.prepare](Document& d) {
+                    if (user) {
+                        user(d);
+                    }
+                    if (textEditing_) {
+                        (void)textEditing_->rewriter->subsetFonts();
+                    }
+                };
+            }
             const SaveReport report =
                 path.isEmpty() ? Saver::save(doc, options)
                                : Saver::save(doc, std::filesystem::path(path.toStdWString()), options);
@@ -433,10 +509,12 @@ QFuture<SaveReport> DocumentSession::saveTo(const QString& path, const SaveOptio
 }
 
 void DocumentSession::afterSave(const SaveReport& report) {
+    textEditing_.reset();
     displayCache_->clear();
     textCache_->clear();
     if (report.error == SaveError::ReopenFailed || doc_->handle() == nullptr) {
         // Записанный файл не открылся — документа больше нет.
+        textEditing_.reset();
         doc_.reset();
         {
             const std::lock_guard lock(mutex_);
@@ -537,6 +615,7 @@ QFuture<OpenSummary> DocumentSession::openAsync(const QString& path, const QStri
         [this, path, password](TaskContext&) {
             displayCache_->clear();
             textCache_->clear();
+            textEditing_.reset();
             doc_.reset();
             OpenSummary s;
             OpenResult r = Document::open(std::filesystem::path(path.toStdWString()), password.toStdString());
@@ -566,6 +645,7 @@ QFuture<OpenSummary> DocumentSession::recoverAsync(const QString& autosaveDir, c
         [this, autosaveDir, entry, password](TaskContext&) {
             displayCache_->clear();
             textCache_->clear();
+            textEditing_.reset();
             doc_.reset();
             OpenSummary s;
             RecoverResult r = Autosave(std::filesystem::path(autosaveDir.toStdWString()))
@@ -638,6 +718,7 @@ void DocumentSession::close() {
         [this](TaskContext&) {
             displayCache_->clear();
             textCache_->clear();
+            textEditing_.reset();
             doc_.reset();
             {
                 const std::lock_guard lock(mutex_);

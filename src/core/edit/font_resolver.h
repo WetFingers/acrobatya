@@ -23,6 +23,7 @@
 #include <string_view>
 #include <vector>
 
+#include "core/edit/edit_types.h"
 #include "core/edit/font_embed.h"
 #include "core/edit/system_fonts.h"
 #include "core/util/geometry.h"
@@ -34,15 +35,6 @@ struct FontDetails;
 
 enum class FontRule : std::uint8_t { Original = 1, Extend = 2, Fallback = 3, Replace = 4 };
 const char* fontRuleCode(FontRule rule) noexcept;  // "original", "extend", "fallback", "replace"
-
-// Запасные шрифты (edit-49: «Шрифт подстановки» в Установках → Редактирование).
-struct FallbackFonts {
-    std::string family;  // выбран человеком; пусто — «автоматически» (по засечкам шрифта пробега)
-    std::string sans = "Segoe UI";
-    std::string serif = "Times New Roman";
-    std::string mono = "Courier New";
-    std::string symbol = "Segoe UI Symbol";  // символы, которых нет в запасном
-};
 
 // Начертание, которое просят (панель FORMAT TEXT): 0 / −1 — как у шрифта пробега.
 struct StyleRequest {
@@ -63,22 +55,6 @@ struct FontChoice {
     bool sameFont(const FontChoice& o) const;
 };
 
-enum class FontNoticeKind : std::uint8_t {
-    SubsetExtended,  // правило 2: подмножество дополнено системным шрифтом
-    Substituted,     // правило 3 или 4 с другим семейством: «шрифт подменён на …»
-    Synthesized,     // начертания нет — синтетический жирный/курсив
-    MissingGlyph,    // глифа нет ни в одном шрифте
-};
-const char* fontNoticeCode(FontNoticeKind kind) noexcept;
-
-// Сообщение для человека (ui переводит по коду): одно на вид, шрифт и замену, символы копятся.
-struct FontNotice {
-    FontNoticeKind kind = FontNoticeKind::Substituted;
-    std::string font;         // шрифт пробега (/BaseFont без префикса)
-    std::string replacement;  // семейство, которым набрано
-    std::u32string chars;     // символы, из-за которых
-};
-
 struct ResolvedRun {
     FontChoice choice;
     std::u32string text;
@@ -95,6 +71,11 @@ public:
     FontChoice resolve(FontProbe& run, char32_t ch, const StyleRequest& style = {});
     // Текст по пробегам одного шрифта: пробел остаётся в текущем пробеге, если его шрифт знает пробел.
     std::vector<ResolvedRun> runs(FontProbe& run, std::u32string_view text, const StyleRequest& style = {});
+    // Текст семейством family, выбранным в панели FORMAT TEXT (грань по весу и курсиву, новым CID-шрифтом;
+    // грани нет — синтетика); символа нет в семействе — запасной как в правиле 3. font — шрифт пробега для
+    // сообщений (пусто — family). Семейства нет вовсе — всё запасным.
+    std::vector<ResolvedRun> runsInFamily(const std::string& family, std::u32string_view text,
+                                          const StyleRequest& style = {}, const std::string& font = {});
     // Можно ли набрать ch выбором choice (у Original — шрифтом run).
     bool canEncode(const FontChoice& choice, FontProbe& run, char32_t ch);
 

@@ -41,6 +41,8 @@
 #include "core/doc/autosave.h"
 #include "core/doc/permissions.h"
 #include "core/doc/saver.h"
+#include "core/edit/paragraph_editor.h"
+#include "core/edit/rewriter.h"
 #include "core/links/initial_view.h"
 #include "core/mu/error.h"
 #include "core/text/text_types.h"
@@ -77,6 +79,12 @@ struct UndoState {
     QString undoName;
     QString redoName;
     bool operator==(const UndoState&) const = default;
+};
+
+// Итог правки абзаца (editText): отчёт Rewriter и редактор после неё (новый источник и раскладка).
+struct EditTextResult {
+    edit::RewriteReport report;
+    edit::ParagraphEditor editor;
 };
 
 // Итог открытия (копия флагов OpenResult и размеры страниц — раскладка знает только их).
@@ -163,6 +171,18 @@ public:
     // Экспорт текста в файл (эталон 3.12; TXT в UTF-8/UTF-16/CP1251, HTML, XHTML, XML, RTF) — задача
     // документа, файл пишется целиком. Ошибка — исключение в QFuture; cancelAll() прерывает между страницами.
     QFuture<void> exportText(const QString& path, const TextExportOptions& options);
+
+    // Правка абзаца редактора текста (эталон 3.9, план 3.3): Rewriter пишет абзац editor (страница
+    // editor.source().page) правкой name — шрифты набора, перевёрстка, поток, одна операция журнала, страница
+    // в pageChanged. Отказ (Stale, Signed, ReadOnly) — в отчёте, документ как был, шага истории нет; ошибка
+    // MuPDF — исключение в QFuture, правка откатана. Шрифты набора и Rewriter — один на документ; save и
+    // saveAs перед полной записью урезают встроенные редактором шрифты (SaveOptions::prepare).
+    QFuture<EditTextResult> editText(edit::ParagraphEditor editor,
+                                     QString name = QStringLiteral("Edit text"));
+    // Раскладка без записи (курсор во время набора): редактор с раскладкой по шрифтам набора.
+    QFuture<edit::ParagraphEditor> layoutText(edit::ParagraphEditor editor);
+    // Запасные шрифты редактора (edit-49, ключ editing/fallbackFont) — для следующих правок.
+    void setEditFallback(const edit::FallbackFonts& fallback);
 
     // Растр страницы при dpi (BGRA → QImage ARGB32_Premultiplied) с ожиданием; пустой — ошибка
     // (errorString()). Для окна этапа 0 — до тайлов PageView (сессия 2.2).
@@ -264,6 +284,8 @@ private:
     QFuture<SaveReport> saveTo(const QString& path, const SaveOptions& options);
     // После Saver::save: документ переоткрыт — сводка, списки и история заново (в потоке документа).
     void afterSave(const SaveReport& report);
+    // Rewriter документа (создаётся при первой правке текста; сбрасывается вместе с документом).
+    edit::Rewriter& rewriter(Document& doc);
     // После задачи: раскладка (структурная правка) и состояние истории — в summary_/undoState_ с сигналами.
     void refreshLayout();
     void refreshUndoState();
@@ -290,6 +312,8 @@ private:
     std::shared_ptr<Document> doc_;
     std::unique_ptr<DisplayCache> displayCache_;
     std::unique_ptr<TextCache> textCache_;
+    struct TextEditing;
+    std::unique_ptr<TextEditing> textEditing_;
     TaskContext* current_ = nullptr;
 
     // Итог открытия — читается из любого потока (под mutex_).
@@ -299,6 +323,7 @@ private:
     UndoState undoState_;
     std::atomic<quint64> revision_{0};
     std::atomic<quint64> layersHash_{0};
+    edit::FallbackFonts editFallback_;  // под mutex_
 };
 
 // ---------------------------------------------------------------- шаблоны

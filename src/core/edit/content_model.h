@@ -241,6 +241,8 @@ public:
     bool modified(int stream) const;
     // Заменённые операции: индекс → новые байты (с пробелами перед ней, как у исходной).
     const std::map<int, std::string>& replacements() const noexcept { return replaced_; }
+    // Заменить байты операции op (с пробелами перед ней) — serialize пишет их вместо исходных (Rewriter).
+    void replace(int op, std::string bytes) { replaced_[op] = std::move(bytes); }
 
     // «Пустая правка» (эталон 3.9 «Стабильность»): операторы показа абзаца block (Tj, TJ, ', ") заменяются
     // новыми байтами без изменения текста — явная матрица текста (Tm) и TJ с кодами глифов и сдвигами по их

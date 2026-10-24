@@ -127,6 +127,48 @@ CompareResult compareBitmaps(const Bitmap& a, const Bitmap& b, Bitmap* diff) {
     return r;
 }
 
+long long diffPixelsOutside(const Bitmap& a, const Bitmap& b, const std::vector<IRect>& masks) {
+    if (a.width != b.width || a.height != b.height || a.components != b.components) {
+        return static_cast<long long>(std::max(a.width, b.width)) * std::max(a.height, b.height);
+    }
+    long long n = 0;
+    const int c = a.components;
+    for (int y = 0; y < a.height; ++y) {
+        const std::uint8_t* ra = a.row(y);
+        const std::uint8_t* rb = b.row(y);
+        for (int x = 0; x < a.width; ++x) {
+            bool masked = false;
+            for (const IRect& m : masks) {
+                if (x >= m.x0 && x < m.x1 && y >= m.y0 && y < m.y1) {
+                    masked = true;
+                    break;
+                }
+            }
+            if (masked) {
+                continue;
+            }
+            for (int k = 0; k < c; ++k) {
+                if (ra[static_cast<std::size_t>(x) * static_cast<std::size_t>(c) +
+                       static_cast<std::size_t>(k)] !=
+                    rb[static_cast<std::size_t>(x) * static_cast<std::size_t>(c) +
+                       static_cast<std::size_t>(k)]) {
+                    ++n;
+                    break;
+                }
+            }
+        }
+    }
+    return n;
+}
+
+IRect pixelRect(const RectF& points, float dpi, float margin) {
+    const float k = dpi / 72.0f;
+    return {static_cast<int>(std::floor((points.x0 - margin) * k)),
+            static_cast<int>(std::floor((points.y0 - margin) * k)),
+            static_cast<int>(std::ceil((points.x1 + margin) * k)),
+            static_cast<int>(std::ceil((points.y1 + margin) * k))};
+}
+
 Bitmap cropBitmap(const Bitmap& src, const IRect& area) {
     const int x0 = std::max(0, area.x0), y0 = std::max(0, area.y0);
     const int x1 = std::min(src.width, area.x1), y1 = std::min(src.height, area.y1);

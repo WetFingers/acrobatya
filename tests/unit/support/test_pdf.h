@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <string>
+#include <vector>
 
 #include "core/mu/context.h"
 
@@ -12,6 +13,11 @@ namespace ot::test {
 // PDF из pages страниц A4; на каждой — чёрный квадрат 100×100 pt в точке (100, 100) от левого
 // верхнего угла и (на второй и далее) номер страницы текстом Helvetica.
 std::string makePdf(MuContext& mu, int pages = 1);
+// Страницы A4 с потоками contents (как есть, без сжатия) и шрифтами /F1 — Helvetica, /F2 — Times-Roman
+// (простые, не встроены, WinAnsi); shared — у всех страниц один поток первой; marked — каталог с /MarkInfo
+// << /Marked true >> (тегированный документ без дерева структуры).
+std::string makeTextPdf(MuContext& mu, const std::vector<std::string>& contents, bool shared = false,
+                        bool marked = false);
 
 // «Тяжёлая» страница A4: curves длинных кривых Безье через всю страницу (толщина 3 pt, детерминированно).
 // Каждая кривая — отдельный узел display list: рендер на 600 dpi идёт секунды, отмена через fz_cookie

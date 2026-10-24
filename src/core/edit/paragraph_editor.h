@@ -36,7 +36,8 @@ struct CharStyle {
     std::string family;        // семейство, выбранное человеком (системный шрифт); пусто — шрифт пробега
     float size = 12;           // кегль, пт
     std::uint32_t color = 0xFF000000;  // sRGB 0xAARRGGBB
-    std::string colorOps;  // исходные операторы цвета заливки («/CS0 cs 0.2 scn»); пусто — color через rg
+    std::string colorOps;   // исходные операторы цвета заливки («/CS0 cs 0.2 scn»); пусто — color через rg
+    std::string strokeOps;  // исходные операторы цвета обводки (Tr 1, 2); пусто — как заливка
     bool bold = false;
     bool italic = false;
     bool underline = false;
@@ -152,7 +153,8 @@ public:
     // ширина набора — до края колонки или до поля страницы, зеркального левому. Блок «только чтение» —
     // std::invalid_argument.
     static ParagraphEditor fromBlock(const ContentModel& model, const TextBlock& block,
-                                     const std::vector<TextBlock>& pageBlocks = {});
+                                     const std::vector<TextBlock>& pageBlocks);
+    static ParagraphEditor fromBlock(const ContentModel& model, const TextBlock& block);
 
     // Текст.
     int size() const noexcept { return static_cast<int>(chars_.size()); }
@@ -185,8 +187,9 @@ public:
     const ParagraphGeometry& geometry() const noexcept { return geometry_; }
     void setGeometry(const ParagraphGeometry& g) { geometry_ = g; }
     const ParagraphSource& source() const noexcept { return source_; }
-    // После записи (Rewriter): абзац теперь — эти операторы новой модели; коды символов — новые.
-    void markWritten(ParagraphSource source, std::vector<EditChar> chars, std::vector<CharStyle> styles);
+    // После записи (Rewriter): абзац теперь — эти операторы новой модели (коды символов прежние: исходный
+    // шрифт тот же, новые шрифты выбираются заново тем же правилом).
+    void markWritten(ParagraphSource source);
 
     // Раскладка и курсор.
     const TextLayout& layout() const noexcept { return layout_; }

@@ -7,6 +7,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "core/render/bitmap.h"
 #include "core/util/geometry.h"
@@ -40,6 +41,12 @@ CompareResult compareBitmaps(const Bitmap& a, const Bitmap& b, Bitmap* diff = nu
 
 // Часть растра (область обрезается границами растра; пустое пересечение — пустой растр).
 Bitmap cropBitmap(const Bitmap& src, const IRect& area);
+
+// Пиксели, которые отличаются хоть одним каналом, вне масок (редактор: «рендер вне блока — pixels == 0»).
+// Разные размеры — все пиксели большего растра (−1 не бывает).
+long long diffPixelsOutside(const Bitmap& a, const Bitmap& b, const std::vector<IRect>& masks);
+// Прямоугольник пунктов страницы (y вниз) в пикселях при dpi, расширенный на margin пунктов.
+IRect pixelRect(const RectF& points, float dpi, float margin = 0);
 
 struct CrossThreshold {
     int minInk = 50;        // пикселей «не фон» в области у каждого растра

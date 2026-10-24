@@ -227,6 +227,49 @@ bool FontResolver::canEncode(const FontChoice& choice, FontProbe& run, char32_t 
     return usable(choice.face, ch, choice.embed);
 }
 
+std::vector<ResolvedRun> FontResolver::runsInFamily(const std::string& familyName, std::u32string_view text,
+                                                    const StyleRequest& style, const std::string& font) {
+    FontDetails d;
+    d.name = font.empty() ? familyName : font;
+    d.family = familyName;
+    d.serif = isSerifFamily(familyName);
+    d.fixedPitch = isMonospaceFamily(familyName);
+    const int weight = style.weight > 0 ? style.weight : 400;
+    const bool italic = style.italic > 0;
+    d.weight = weight;
+    d.bold = weight >= 600;
+    d.italic = italic;
+    const std::optional<SystemFace> face = family(familyName, weight, italic);
+    auto choose = [&](char32_t ch) {
+        FontChoice c;
+        if (face && usable(*face, ch, EmbedKind::Cid)) {
+            c.rule = FontRule::Replace;
+            c.newFont = true;
+            c.embed = EmbedKind::Cid;
+            c.face = *face;
+            synthetic(c, d, ch);
+            return c;
+        }
+        return fallbackFor(d, ch, weight, italic);
+    };
+    std::vector<ResolvedRun> out;
+    for (char32_t ch : text) {
+        FontChoice c;
+        if (!out.empty() && frd::isSpace(ch) && out.back().choice.newFont &&
+            usable(out.back().choice.face, ch, out.back().choice.embed)) {
+            c = out.back().choice;
+        } else {
+            c = choose(ch);
+        }
+        if (!out.empty() && out.back().choice.sameFont(c)) {
+            out.back().text.push_back(ch);
+        } else {
+            out.push_back({std::move(c), std::u32string(1, ch)});
+        }
+    }
+    return out;
+}
+
 std::vector<ResolvedRun> FontResolver::runs(FontProbe& run, std::u32string_view text,
                                             const StyleRequest& style) {
     std::vector<ResolvedRun> out;

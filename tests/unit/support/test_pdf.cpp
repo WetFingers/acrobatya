@@ -69,6 +69,70 @@ std::string makePdf(MuContext& mu, int pages) {
     return bytes;
 }
 
+std::string makeTextPdf(MuContext& mu, const std::vector<std::string>& contents, bool shared, bool marked) {
+    fz_context* ctx = mu.get();
+    pdf_document* pdf = nullptr;
+    pdf_obj* page = nullptr;
+    pdf_obj* resources = nullptr;
+    pdf_obj* first = nullptr;
+    fz_buffer* buf = nullptr;
+    fz_buffer* out = nullptr;
+    fz_output* stream = nullptr;
+    fz_font* helvetica = nullptr;
+    fz_font* times = nullptr;
+    std::string bytes;
+    mu::call(ctx, [&] {
+        pdf = pdf_create_document(ctx);
+        helvetica = fz_new_base14_font(ctx, "Helvetica");
+        times = fz_new_base14_font(ctx, "Times-Roman");
+        resources = pdf_add_new_dict(ctx, pdf, 1);
+        pdf_obj* fonts = pdf_dict_put_dict(ctx, resources, PDF_NAME(Font), 2);
+        pdf_dict_puts_drop(ctx, fonts, "F1",
+                           pdf_add_simple_font(ctx, pdf, helvetica, PDF_SIMPLE_ENCODING_LATIN));
+        pdf_dict_puts_drop(ctx, fonts, "F2", pdf_add_simple_font(ctx, pdf, times, PDF_SIMPLE_ENCODING_LATIN));
+        for (std::size_t i = 0; i < contents.size(); ++i) {
+            buf = fz_new_buffer_from_copied_data(
+                ctx, reinterpret_cast<const unsigned char*>(contents[i].data()), contents[i].size());
+            page = pdf_add_page(ctx, pdf, fz_make_rect(0, 0, 595, 842), 0, resources, buf);
+            if (shared && first != nullptr) {
+                pdf_dict_put(ctx, page, PDF_NAME(Contents), first);
+            } else if (shared) {
+                first = pdf_keep_obj(ctx, pdf_dict_get(ctx, page, PDF_NAME(Contents)));
+            }
+            pdf_insert_page(ctx, pdf, -1, page);
+            pdf_drop_obj(ctx, page);
+            page = nullptr;
+            fz_drop_buffer(ctx, buf);
+            buf = nullptr;
+        }
+        if (marked) {
+            pdf_obj* root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf), PDF_NAME(Root));
+            pdf_obj* info = pdf_new_dict(ctx, pdf, 1);
+            pdf_dict_puts(ctx, info, "Marked", PDF_TRUE);
+            pdf_dict_puts_drop(ctx, root, "MarkInfo", info);
+        }
+        out = fz_new_buffer(ctx, 4096);
+        stream = fz_new_output_with_buffer(ctx, out);
+        pdf_write_options opts = pdf_default_write_options;
+        opts.do_compress = 0;
+        pdf_write_document(ctx, pdf, stream, &opts);
+        fz_close_output(ctx, stream);
+    });
+    unsigned char* data = nullptr;
+    const size_t len = fz_buffer_storage(ctx, out, &data);
+    bytes.assign(reinterpret_cast<const char*>(data), len);
+    fz_drop_output(ctx, stream);
+    fz_drop_font(ctx, helvetica);
+    fz_drop_font(ctx, times);
+    fz_drop_buffer(ctx, out);
+    fz_drop_buffer(ctx, buf);
+    pdf_drop_obj(ctx, first);
+    pdf_drop_obj(ctx, resources);
+    pdf_drop_obj(ctx, page);
+    pdf_drop_document(ctx, pdf);
+    return bytes;
+}
+
 std::string makeHeavyPdf(MuContext& mu, int curves, bool clipped) {
     fz_context* ctx = mu.get();
     pdf_document* pdf = nullptr;

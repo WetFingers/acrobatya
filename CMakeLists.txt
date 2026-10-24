@@ -227,6 +227,19 @@ if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   set_tests_properties(compat.fonts PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_fonts
     SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endif()
+# Совместимость правки текста (план 3.3): rewriter_compat.DISABLED_write пишет <сборка>/compat/edit/*.pdf (абзацы
+# фикстур со вставкой латиницы и кириллицы, удалённый абзац, форматирование; полная запись с подмножествами) и
+# expected-text.json; tools/compat_check.py — qpdf --check, pdfcpu strict, mutool clean, pypdfium2 рендер и текст.
+if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_test(NAME compat.edit.generate
+    COMMAND unit_tests --gtest_also_run_disabled_tests --gtest_filter=rewriter_compat.* --gtest_brief=1)
+  set_tests_properties(compat.edit.generate PROPERTIES LABELS "compat;slow" FIXTURES_SETUP compat_edit
+    ENVIRONMENT "OTTISK_COMPAT_OUT=${CMAKE_BINARY_DIR}/compat" TIMEOUT 120)
+  add_test(NAME compat.edit COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/compat_check.py" --quiet
+    --expect-text "${CMAKE_BINARY_DIR}/compat/edit/expected-text.json" "${CMAKE_BINARY_DIR}/compat/edit")
+  set_tests_properties(compat.edit PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_edit
+    SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+endif()
 # Печать в файл через GDI (план 2.6): print_compat.DISABLED_gdi_to_file — «Microsoft Print to PDF» без окна драйвера
 # в <сборка>/compat/print/gdi.pdf, MuPDF читает страницы; нет такого принтера — пропуск (GTEST_SKIP).
 if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")

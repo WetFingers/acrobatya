@@ -2,6 +2,7 @@
 
     "%OTTISK_PYTHON%" -X utf8 -I tools/compat_check.py <файл.pdf | каталог> […] [--json out.json]
         [--password PWD] [--forms] [--expect-sig INTACT|TRUSTED|…] [--trust cert.pem] [--pdfa] [--tagged]
+        [--expect-text ожидания.json]
 
 Каталог — все *.pdf в нём (по имени; пустой каталог — ошибка). Проверки по каждому файлу:
   * qpdf --check                  — код 0 (3 = предупреждения — тоже красный);
@@ -12,7 +13,9 @@
                                     (summary, например «INTACT:UNTRUSTED,UNTOUCHED») есть все токены S
                                     («INTACT», «TRUSTED», «INTACT,UNTOUCHED»…); --trust — доверенный корень;
   * --pdfa                        — verapdf -f 0 (автоопределение части/уровня) — соответствует;
-  * --tagged                      — tools/structcheck.py, если он уже есть (иначе пропуск с пометкой).
+  * --tagged                      — tools/structcheck.py, если он уже есть (иначе пропуск с пометкой);
+  * --expect-text F.json          — pypdfium2 извлекает текст первой страницы, и в нём (без пробелов и
+                                    переводов строк) есть каждая строка из F.json {"имя.pdf": ["…", …]}.
 JSON (--json): [{"file", "ok", "checks": [{"tool", "version", "exit", "ok", "skipped", "warnings": [...]}]}].
 Код 0 — все файлы прошли, 1 — нет, 77 — нет qpdf (ctest SKIP_RETURN_CODE 77), 2 — неверные аргументы.
 Инструменты: OTTISK_TOOLS (по умолчанию C:\\Tools)\\{qpdf\\bin\\qpdf.exe, pdfcpu\\pdfcpu.exe,
@@ -172,6 +175,25 @@ def check_pdfium(pdf: Path, password: str | None, forms: bool) -> dict:
         return result("pypdfium2 render", str(ver), 1, False, [f"{type(exc).__name__}: {exc}"])
 
 
+def check_text(pdf: Path, password: str | None, expected: list[str]) -> dict:
+    import pypdfium2 as pdfium
+
+    def squeeze(s: str) -> str:
+        return "".join(ch for ch in s if not ch.isspace())
+
+    try:
+        doc = pdfium.PdfDocument(str(pdf), password=password)
+        try:
+            text = squeeze(doc[0].get_textpage().get_text_range())
+        finally:
+            doc.close()
+    except Exception as exc:  # noqa: BLE001
+        return result("pypdfium2 text", None, 1, False, [f"{type(exc).__name__}: {exc}"])
+    missing = [e for e in expected if squeeze(e) not in text]
+    return result("pypdfium2 text", None, 0 if not missing else 1, not missing,
+                  [f"нет «{m}»" for m in missing] or [f"строк {len(expected)}"])
+
+
 def check_signatures(pdf: Path, expect: str, trust: list[Path]) -> dict:
     try:
         from importlib.metadata import version as pkg_version
@@ -255,6 +277,7 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--pdfa", action="store_true", help="файл заявлен как PDF/A — veraPDF")
     ap.add_argument("--tagged", action="store_true", help="файл тегирован — tools/structcheck.py")
     ap.add_argument("--quiet", action="store_true", help="печатать только итог и упавшее")
+    ap.add_argument("--expect-text", type=Path, help="JSON {имя файла: [строки]} — текст первой страницы (pypdfium2)")
     args = ap.parse_args(argv)
     files: list[Path] = []
     for p in args.files:
@@ -267,6 +290,9 @@ def main(argv: list[str]) -> int:
         else:
             files.append(p)
     args.files = files
+    expected_text: dict[str, list[str]] = {}
+    if args.expect_text:
+        expected_text = json.loads(args.expect_text.read_text(encoding="utf-8"))
 
     t = tools_dir()
     qpdf = find_tool(None, [t / "qpdf" / "bin" / "qpdf.exe"], ["qpdf"])
@@ -303,6 +329,8 @@ def main(argv: list[str]) -> int:
             checks.append(check_verapdf(verapdf, pdf))
         if args.tagged:
             checks.append(check_tagged(pdf))
+        if pdf.name in expected_text:
+            checks.append(check_text(pdf, args.password, expected_text[pdf.name]))
         ok = all(c["ok"] for c in checks)
         all_ok = all_ok and ok
         reports.append({"file": str(pdf), "ok": ok, "seconds": round(time.monotonic() - started, 2), "checks": checks})

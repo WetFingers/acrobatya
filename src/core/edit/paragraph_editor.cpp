@@ -84,6 +84,7 @@ CharStyle StyleChange::applied(CharStyle style) const {
     if (color) {
         if (*color != style.color) {
             style.colorOps.clear();
+            style.strokeOps.clear();
         }
         style.color = *color;
     }
@@ -112,6 +113,10 @@ CharStyle StyleChange::applied(CharStyle style) const {
         style.render = *render;
     }
     return style;
+}
+
+ParagraphEditor ParagraphEditor::fromBlock(const ContentModel& model, const TextBlock& block) {
+    return fromBlock(model, block, {});
 }
 
 ParagraphEditor ParagraphEditor::fromBlock(const ContentModel& model, const TextBlock& block,
@@ -143,6 +148,9 @@ ParagraphEditor ParagraphEditor::fromBlock(const ContentModel& model, const Text
         st.size = std::fabs(s.size) * sy;
         st.color = s.fill;
         st.colorOps = model.colorOps(s.refs);
+        if (s.render == 1 || s.render == 2) {
+            st.strokeOps = model.colorOps(s.refs, true);
+        }
         st.rise = s.rise * sy;
         st.charSpacing = s.charSpace * s.scale * sx;
         // Tw действует только на однобайтовый код 32; у абзаца по ширине это растяжка строки, не стиль.
@@ -535,11 +543,8 @@ void ParagraphEditor::setLineSpacing(float factor) {
     }
 }
 
-void ParagraphEditor::markWritten(ParagraphSource source, std::vector<EditChar> chars,
-                                  std::vector<CharStyle> styles) {
+void ParagraphEditor::markWritten(ParagraphSource source) {
     source_ = std::move(source);
-    chars_ = std::move(chars);
-    styles_ = std::move(styles);
     modified_ = false;
 }
 
