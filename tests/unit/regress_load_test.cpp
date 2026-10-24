@@ -1,7 +1,8 @@
 // unit.regress.load — каждый файл tests/fixtures/regress/ (входы, на которых падали фаззер или корпус;
 // tools\fuzz.ps1 кладёт падения в build\fuzz\artifacts) открывается без падения процесса: открыть →
 // страницы → первая страница 32 × 32 → закрыть. Ошибка MuPDF (MuError) допустима, падение и чужое
-// исключение — нет. Закрывает security-34 (вместо песочницы — устойчивость парсера, решение человека).
+// исключение — нет. Замена песочницы security-34 — устойчивость парсера (решение человека); сам ID — out
+// (docs/scope.json), OT_FEATURE на него не ставится (рубеж Р1: scope_report.py предупреждал).
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -12,7 +13,6 @@
 #include "core/doc/document.h"
 #include "core/mu/error.h"
 #include "core/render/renderer.h"
-#include "core/util/features.h"
 #include "core/util/paths.h"
 #include "support/test_pdf.h"
 
@@ -56,7 +56,6 @@ std::string loadOnce(const fs::path& file) {
 }  // namespace
 
 TEST(regress, load) {
-    OT_FEATURE("security-34");
     const fs::path dir = ot::test::sourceDir() / L"tests" / L"fixtures" / L"regress";
     ASSERT_TRUE(fs::is_directory(dir)) << "нет tests/fixtures/regress";
     int files = 0;

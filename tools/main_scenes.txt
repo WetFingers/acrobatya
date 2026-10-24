@@ -44,3 +44,7 @@ view-night-dark
 # 2.6 — печать
 print-dialog
 print-dialog-dark
+
+# Р1 — M1: «Все инструменты» и Установки во второй теме
+all-tools-dark
+preferences-general-dark
