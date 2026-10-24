@@ -17,6 +17,7 @@
 extern "C" {
 #include <mupdf/fitz.h>
 #include <mupdf/pdf.h>
+#include <mupdf/ucdn.h>
 }
 
 namespace ot::edit {
@@ -75,12 +76,6 @@ std::uint32_t argbFromComponents(const std::vector<float>& c) noexcept {
         return static_cast<std::uint32_t>(std::lround(std::clamp(v, 0.0f, 1.0f) * 255.0f));
     };
     return 0xFF000000u | (byte(r) << 16) | (byte(g) << 8) | byte(b);
-}
-
-bool isCombiningMark(char32_t c) noexcept {
-    return (c >= 0x0300 && c <= 0x036F) || (c >= 0x0483 && c <= 0x0489) || (c >= 0x0591 && c <= 0x05BD) ||
-           (c >= 0x0610 && c <= 0x061A) || (c >= 0x064B && c <= 0x065F) || (c >= 0x1AB0 && c <= 0x1AFF) ||
-           (c >= 0x1DC0 && c <= 0x1DFF) || (c >= 0x20D0 && c <= 0x20FF) || (c >= 0xFE20 && c <= 0xFE2F);
 }
 
 // pdf_obj (прямой, уже разобранный pdf_parse_array/pdf_parse_dict) → Operand. Ссылки не разрешаются.
@@ -252,6 +247,18 @@ bool isShowOp(OpKind kind) noexcept {
 std::string_view ContentModel::raw(int op) const {
     const Operation& o = ops_.at(static_cast<std::size_t>(op));
     return std::string_view(streams_.at(static_cast<std::size_t>(o.stream)).bytes).substr(o.offset, o.length);
+}
+
+std::string ContentModel::serialize(int stream) const {
+    const ContentStream& cs = streams_.at(static_cast<std::size_t>(stream));
+    std::string out;
+    out.reserve(cs.bytes.size());
+    for (int op : cs.ops) {
+        const Operation& o = ops_[static_cast<std::size_t>(op)];
+        out.append(cs.bytes, o.offset, o.length);
+    }
+    out.append(cs.bytes, cs.tail, std::string::npos);
+    return out;
 }
 
 std::string ContentModel::spanText(int span) const {
@@ -810,6 +817,16 @@ private:
             case OpKind::EndCompat:
                 break;
             case OpKind::BeginMarked: {
+                // Выключенный слой — как pdf_process_BDC/BMC: внутри скрытого счётчик растёт на каждом
+                // BMC/BDC.
+                if (hidden_ > 0) {
+                    ++hidden_;
+                } else if (op.name == "BDC") {
+                    const Operand* tag = first(op, Operand::Kind::Name);
+                    if (tag != nullptr && tag->text == "OC" && ocHidden(op)) {
+                        ++hidden_;
+                    }
+                }
                 int mcid = mcids_.empty() ? -1 : mcids_.back();
                 if (op.name == "BDC") {
                     const Operand* props = last(op, Operand::Kind::Dict);
@@ -825,6 +842,9 @@ private:
             case OpKind::EndMarked:
                 if (!mcids_.empty()) {
                     mcids_.pop_back();
+                }
+                if (hidden_ > 0) {
+                    --hidden_;
                 }
                 break;
             case OpKind::FillColor:
@@ -847,6 +867,48 @@ private:
             default:
                 break;
         }
+    }
+
+    // Цепочка ресурсов для MuPDF (верхний — первый).
+    std::vector<pdf_resource_stack> resourceStack() const {
+        std::vector<pdf_resource_stack> stack(resources_.size());
+        for (std::size_t i = 0; i < resources_.size(); ++i) {
+            stack[i].resources = resources_[resources_.size() - 1 - i];
+            stack[i].next = i + 1 < resources_.size() ? &stack[i + 1] : nullptr;
+        }
+        return stack;
+    }
+
+    // Слой ocg (имя свойства или словарь) выключен для просмотра — pdf_is_ocg_hidden, назначение View.
+    bool isHidden(const char* name, pdf_obj* ocg) {
+        std::vector<pdf_resource_stack> stack = resourceStack();
+        mu::PdfObjHandle temp(ctx_);
+        int hidden = 0;
+        try {
+            mu::call(ctx_, [&] {
+                if (name != nullptr) {
+                    temp.reset(pdf_new_name(ctx_, name));
+                }
+                hidden =
+                    pdf_is_ocg_hidden(ctx_, doc_, stack.data(), "View", name != nullptr ? temp.get() : ocg);
+            });
+        } catch (const MuError& e) {
+            if (e.kind() == ErrorKind::Aborted || e.kind() == ErrorKind::System) {
+                throw;
+            }
+        }
+        return hidden != 0;
+    }
+
+    // BDC /OC <имя свойства>; словарь свойств прямо в потоке — виден (MuPDF проверил бы и его — редкость).
+    bool ocHidden(const Operation& op) {
+        int names = 0;
+        for (const Operand& o : op.operands) {
+            if (o.kind == Operand::Kind::Name && ++names == 2) {
+                return isHidden(o.text.c_str(), nullptr);
+            }
+        }
+        return false;
     }
 
     void applyExtGState(const Operation& op) {
@@ -881,7 +943,9 @@ private:
         int objnum = 0;
         Matrix matrix;
         pdf_obj* res = nullptr;
+        pdf_obj* ocg = nullptr;
         mu::call(ctx_, [&] {
+            ocg = pdf_dict_get(ctx_, xobj, PDF_NAME(OC));
             isForm = pdf_is_stream(ctx_, xobj) &&
                      pdf_name_eq(ctx_, pdf_dict_get(ctx_, xobj, PDF_NAME(Subtype)), PDF_NAME(Form));
             if (isForm) {
@@ -893,6 +957,9 @@ private:
         });
         if (!isForm) {
             return;
+        }
+        if (ocg != nullptr && isHidden(nullptr, ocg)) {
+            return;  // как pdf_process_Do: форма в выключенном слое не выполняется
         }
         const int depth = m_.streams_[static_cast<std::size_t>(op.stream)].depth + 1;
         if (depth > kMaxFormDepth ||
@@ -989,6 +1056,7 @@ private:
         span.stream = op.stream;
         span.form = m_.streams_[static_cast<std::size_t>(op.stream)].form;
         span.mcid = mcids_.empty() ? -1 : mcids_.back();
+        span.hidden = hidden_ > 0;
         span.firstGlyph = static_cast<int>(m_.glyphs_.size());
         span.bbox = RectF::none();
         span.baseline = transformPoint({0, 0}, concat(tm_, g.ctm));
@@ -1097,7 +1165,9 @@ private:
         const bool strokes = span.render == 1 || span.render == 2 || span.render == 5 || span.render == 6;
         const bool textSyntax =
             span.textObject >= 0 && m_.texts_[static_cast<std::size_t>(span.textObject)].syntaxError;
-        if (span.form) {
+        if (span.hidden) {
+            span.reason = ReadOnly::Hidden;
+        } else if (span.form) {
             span.reason = ReadOnly::Form;
         } else if (textSyntax) {
             span.reason = ReadOnly::Syntax;
@@ -1138,6 +1208,7 @@ private:
     Matrix tm_;
     Matrix tlm_;
     std::vector<int> mcids_;
+    int hidden_ = 0;  // глубина выключенного слоя (как proc->hidden)
     std::vector<int> formStack_;
     int formCount_ = 0;
     std::vector<std::unique_ptr<GlyphMap>> maps_;
@@ -1224,16 +1295,53 @@ CrossCheck ContentModel::crossCheck(const Document& doc, int page, const Content
             }
         }
     }
+    // Символы модели так, как их сложил бы fz_stext (stext-device.c, fz_add_stext_char_imp): заполнители
+    // «один глиф — несколько символов» и метки Mn — нулевой ширины у пера; символ, равный предыдущему, ближе
+    // 0,1 кегля к его началу на той же строке, выбрасывается («ложный жирный» — текст, напечатанный дважды).
     std::vector<Char> mine;
+    bool line = false;
+    PointF lineDir{1, 0};
+    bool lineVertical = false;
+    char32_t lastChar = 0;
+    PointF lagPen{0, 0};
     for (const Glyph& g : model.glyphs()) {
+        const TextSpan& span = model.spans()[static_cast<std::size_t>(g.span)];
+        if (span.hidden) {
+            continue;  // выключенный слой: MuPDF текст не показывает и не извлекает
+        }
+        const bool vertical = model.fonts()[static_cast<std::size_t>(span.font)].vertical;
+        const PointF filler = vertical ? g.quad.lr : g.quad.ur;
+        const PointF fillerLow = g.quad.lr;
         for (std::size_t i = 0; i < g.unicode.size(); ++i) {
-            if (i == 0 && !isCombiningMark(g.unicode[0])) {
-                mine.push_back({g.unicode[0], g.quad, false});
-            } else {
-                // Заполнители «один глиф — несколько символов» и метки — нулевой ширины у пера: углы не
-                // сверяются.
-                mine.push_back({g.unicode[i], {g.quad.ur, g.quad.ur, g.quad.lr, g.quad.lr}, true});
+            const char32_t c = g.unicode[i];
+            const bool mark = ucdn_get_general_category(c) == UCDN_GENERAL_CATEGORY_MN;
+            if (line && (i > 0 || mark)) {
+                mine.push_back({c, {filler, filler, fillerLow, fillerLow}, true});
+                lastChar = c;
+                continue;
             }
+            PointF ndir = span.dir;
+            if (vertical) {
+                const Matrix trm = concat(Matrix{span.size * span.scale, 0, 0, span.size, 0, span.rise},
+                                          concat(span.tm, concat(span.ctm, model.pageMatrix())));
+                const PointF v = transformVector({0, -1}, trm);
+                const float len = std::hypot(v.x, v.y);
+                ndir = len > 0 ? PointF{v.x / len, v.y / len} : PointF{0, 1};
+            }
+            const PointF start = vertical ? g.quad.ll : g.origin;
+            if (line && lineVertical == vertical && ndir.x * lineDir.x + ndir.y * lineDir.y >= 0.999f) {
+                const float size = span.fontSize > 0 ? span.fontSize : 1.0f;
+                if (std::hypot(start.x - lagPen.x, start.y - lagPen.y) / size < 0.1f && c == lastChar) {
+                    continue;
+                }
+            } else {
+                line = true;
+                lineDir = ndir;
+                lineVertical = vertical;
+            }
+            mine.push_back({c, g.quad, false});
+            lastChar = c;
+            lagPen = start;
         }
     }
     CrossCheck out;

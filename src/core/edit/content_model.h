@@ -15,8 +15,11 @@
 // Глифы (core/edit/glyph_map.h): Unicode и ширины как у MuPDF; геометрия — Tsm × Tm × CTM (с Tz, Tc, Tw
 // только у однобайтового кода 32, Ts, TJ-сдвиги), координаты страницы MuPDF (как TextPage: y вниз, с
 // /Rotate), рамка символа — как у fz_stext без ACCURATE_BBOXES (восходящий и нисходящий элементы шрифта по
-// ширине глифа). crossCheck — перекрёстная проверка через pdf_new_run_processor + fz_stext по индексу
-// символа.
+// ширине глифа).
+// Выключенные слои (BDC /OC, форма с /OC) — как у интерпретатора (pdf_is_ocg_hidden, назначение View): текст
+// в модели есть, но «только чтение» (Hidden); форма с выключенным /OC не разворачивается. crossCheck —
+// перекрёстная проверка через pdf_new_run_processor + fz_stext по индексу символа (скрытый текст fz_stext не
+// видит — он пропускается; строки справа налево fz_stext переставляет — они расходятся).
 //
 // Модель — значения без MuPDF: строится в потоке документа (build), читается из любого потока.
 #pragma once
@@ -159,7 +162,8 @@ struct TextSpan {
     RectF bbox;          // объединение рамок глифов, координаты страницы
     int stream = 0;
     bool form = false;
-    int mcid = -1;  // ближайший BDC с /MCID (−1 — нет)
+    int mcid = -1;        // ближайший BDC с /MCID (−1 — нет)
+    bool hidden = false;  // в выключенном слое (BDC /OC, форма с /OC) — как proc->hidden интерпретатора
     ReadOnly reason = ReadOnly::None;
     bool editable() const noexcept { return reason == ReadOnly::None; }
 };
@@ -194,6 +198,9 @@ public:
 
     // Исходные байты операции (с пробелами перед ней).
     std::string_view raw(int op) const;
+    // Декодированный поток stream заново: байты операций по порядку и хвост. Без правок — байт в байт как
+    // ContentStream::bytes (массив /Contents — по элементу, inline image и BX/EX — как были).
+    std::string serialize(int stream) const;
     // Текст спана в UTF-8 (только глифы потока, без добавленных пробелов).
     std::string spanText(int span) const;
 

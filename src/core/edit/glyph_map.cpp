@@ -52,6 +52,8 @@ const char* readOnlyCode(ReadOnly reason) noexcept {
     switch (reason) {
         case ReadOnly::None:
             return "";
+        case ReadOnly::Hidden:
+            return "hidden";
         case ReadOnly::Form:
             return "form";
         case ReadOnly::Syntax:

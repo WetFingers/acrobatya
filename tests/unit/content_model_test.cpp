@@ -154,6 +154,19 @@ TEST(content_model, operations_cover_every_stream_byte) {
     }
 }
 
+TEST(content_model, serialize_without_edits_is_byte_identical) {
+    for (const auto& [name, fx] : expected()["fixtures"].items()) {
+        SCOPED_TRACE(name);
+        auto doc = Document::openOrThrow(editFixture(name));
+        for (int page = 0; page < doc->pageCount(); ++page) {
+            const ContentModel model = ContentModel::build(*doc, page);
+            for (size_t s = 0; s < model.streams().size(); ++s) {
+                EXPECT_EQ(model.serialize(static_cast<int>(s)), model.streams()[s].bytes) << "поток " << s;
+            }
+        }
+    }
+}
+
 TEST(content_model, operators_and_operands) {
     auto doc = Document::openOrThrow(editFixture("tj-kerning.pdf"));
     const ContentModel model = ContentModel::build(*doc, 0);
