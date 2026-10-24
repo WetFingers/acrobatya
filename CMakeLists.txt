@@ -173,6 +173,14 @@ else()
 endif()
 ottisk_gtest_exe(engine_tests tests/engine engine "engine;slow" 600 ottisk_services
   PROPERTIES FIXTURES_REQUIRED "corpus\;mutants" TIMEOUT_AFTER_MATCH "120\;^progress:" PROCESSORS ${_engine_slots})
+# Матрица подписей engine.sign.matrix (план 4.3, п. 4) — помощники unit-тестов: тестовая PKI и openssl.exe, подписи
+# файла, PDF и временные каталоги.
+if(TARGET engine_tests)
+  target_sources(engine_tests PRIVATE "${CMAKE_SOURCE_DIR}/tests/unit/support/pki.cpp"
+    "${CMAKE_SOURCE_DIR}/tests/unit/support/sign_support.cpp" "${CMAKE_SOURCE_DIR}/tests/unit/support/test_pdf.cpp"
+    "${CMAKE_SOURCE_DIR}/tests/unit/support/qt_app.cpp")
+  target_include_directories(engine_tests PRIVATE "${CMAKE_SOURCE_DIR}/tests/unit")
+endif()
 if(TARGET engine_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_test(NAME engine.corpus.verify
     COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/fetch_corpus.py" --verify --dry-run --missing-code 77

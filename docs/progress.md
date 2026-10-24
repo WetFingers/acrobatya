@@ -8,6 +8,18 @@
 Новые пункты — сверху, с номером сессии или рубежа. Ничего из этого не блокирует очередь: она работает на
 `Fake*`-реализациях и фикстурах, живая часть ждёт здесь (эталон 8.1 «Человек отдельно», 9.7).
 
+- **Сессия 4.3 · Подпись сертификатом из хранилища Windows** — нужен сертификат с неэкспортируемым ключом в
+  `Cert:\CurrentUser\My` (смарт-карта или токен с мини-драйвером либо `New-SelfSignedCertificate -Subject
+  "CN=АкроБатя проверка" -CertStoreLocation Cert:\CurrentUser\My -KeyExportPolicy NonExportable -KeyUsage
+  DigitalSignature -Type Custom -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.4")`). (1) Уже сейчас, без
+  интерфейса: `$env:PATH = "C:\Qt\6.12.0\msvc2022_64\bin;$env:PATH"; $env:OTTISK_LIVE_CERT='<отпечаток>';
+  build\debug\bin\engine_tests.exe --gtest_also_run_disabled_tests --gtest_filter=sign_live.*` — у карты Windows
+  показывает своё окно PIN, отмена PIN — ошибка «отменено» без изменения файла; итог
+  `build\debug\compat\sign\live\my-cert.pdf` открыть в Acrobat Reader — подпись цела, подписант — ваш сертификат.
+  (2) После 4.6 — то же через диалог подписания: «Выбрать из хранилища Windows» открывает системный диалог только с
+  подходящими сертификатами (есть ключ и право подписи), окно PIN — поверх окна программы. Тестовый сертификат потом
+  удалить (certmgr.msc).
+
 - **Сессия 4.2 · Подписанные файлы в Acrobat Reader** — после
   `cmd /c "tools\vcenv.cmd && ctest --test-dir build/debug -R compat.sign --output-on-failure"` открыть в Acrobat Reader
   файлы `build\debug\compat\sign\{b,b-multi,t,dts}\*.pdf`: без предложений восстановить файл; панель подписей
@@ -2041,3 +2053,75 @@
   `unit_tests` 7–23 с; `verify.py` — первый прогон ~4 мин (ctest 189 с), повторный 42 с (563 теста).
 - Проверки: `verify.py` зелёный; `compat.sign.b`, `.b.multi`, `.t`, `.dts` зелёные; сцен нет — интерфейса в сессии
   нет (снимки вида подписи — эталоны unit-теста, просмотрены).
+
+### 2026-10-24 · Сессия 4.3 · CNG-подписант: хранилище Windows и внешний PKCS7-путь
+- Сделано:
+  1. **Хранилище Windows и перечисление:** `core/sign/cng_store` — `CertStore` («Личное» только чтение, запись — по
+     команде; память; `importPfx` с ключом в памяти процесса или в KSP пользователя), `CertContext` (RAII над
+     `PCCERT_CONTEXT`, DER, X509, отпечаток SHA-1, связь с ключом по свойствам — без открытия ключа, KSP), фильтр
+     «ключ + подпись документов» (`allowedForDocumentSigning`), истёкшие — с пометкой, карты и токены — по KSP, поиск по
+     отпечатку в любом написании (пробелы, регистр, невидимый U+200E из certmgr), `filtered` — ссылки для диалога,
+     `importIdentity` по команде; `importToWindows` (4.2) переведён на `cng_store`; `services/cert_picker`
+     (`CryptUIDlgSelectCertificateFromStore` над отфильтрованным «Личное», только на экране — в offscreen выключен);
+     страж `boundaries` — Windows SDK не в заголовках `core`. `unit.cng_store` (7), `unit.cert_picker` (1). sign-08.
+  2. **NCryptSignHash и внешняя подпись:** `core/sign/cng_signer` — `CngKey` (`CryptAcquireCertificatePrivateKey`
+     PREFER_NCRYPT + CACHE + COMPARE_KEY, окно PIN — WINDOW_HANDLE, silent; RSA PKCS#1 v1.5 и PSS, ECDSA P1363 → DER;
+     ключ старого CSP — `NCryptTranslateHandle`, иначе RSA через CryptoAPI `CryptSignHash` с переоткрытием контейнера в
+     PROV_RSA_AES), `CngError` (`NotFound`, `NoPrivateKey`, `LegacyProvider`, `Cancelled`, `UiRequired`,
+     `UnsupportedKey`, `SignFailed`), `CngIdentity` (сертификат, цепочка `CertGetCertificateChain` только из кэша, ключ),
+     `cngCmsFromDigest`; `core/sign/cms_external` — signed-атрибуты CAdES-B своим DER-кодом (content-type,
+     message-digest, ESS signing-certificate-v2 с issuerSerial), PKCS7-API с подписью в `enc_digest`; запись DER в
+     `der.h`. `unit.cng_signer` (8), `unit.cms_external` (5), `unit.der_writer` (1). sign-08, sign-06.
+  3. **CNG в потоке подписания:** `SignRequest::identity` — `SigningIdentity` (variant: .pfx или `WindowsCert{отпечаток,
+     окно PIN, silent, хранилище}`), `AcroBatyaSigner` выбирает ветку, B-T — одинаково по значению подписи готового DER,
+     `openWindowsIdentity` — сертификат и ключ до записи; `SignStatus::NoPrivateKey/Cancelled/KeyFailed`;
+     `support/sign_support` — `windowsIdentity` и `localTsa`. `unit.sign_cng_flow` (6), `compat.sign.cng` (4 файла:
+     pyHanko INTACT, TRUSTED; у B-T — TIMESTAMPED). sign-08, sign-12.
+  4. **Регрессия крипто-ядра:** `tests/engine/sign_matrix_test.cpp` — `engine.sign.matrix`: RSA/ECDSA × .pfx/CNG ×
+     {B-B, B-T, B-B adbe.pkcs7.detached} = 12 файлов в `build/<пресет>/sign-matrix/{bb,bt}`: своя CMS_verify с цепочкой,
+     `openssl cms -verify -cades` по /ByteRange, pyHanko (`compat_check.py`: INTACT, TRUSTED, UNTOUCHED; у B-T —
+     TIMESTAMPED, TIMESTAMP_TRUSTED; qpdf, pdfcpu strict, mutool, pdfium), пары .pfx ↔ CNG — один формат;
+     `sign_live.DISABLED_windows_my` — живая подпись сертификатом «Личное» по `OTTISK_LIVE_CERT` (человек). sign-18.
+- Расхождения CNG-пути с OpenSSL-путём (все найдены тестами и закрыты или объяснены):
+  - PKCS7-API по умолчанию пишет digestAlgorithm с NULL-параметром (CMS — без параметров) и сертификаты SEQUENCE OF в
+    порядке добавления (CMS — DER-порядок SET OF): `X509_ALGOR_set_md` и сортировка сертификатов по DER — после этого
+    RSA-CMS CNG-пути равна OpenSSL-пути байт в байт (PKCS#1 v1.5 детерминирован), у ECDSA равны всё, кроме значения
+    подписи.
+  - Файлы, подписанные .pfx и CNG, целиком не совпадают: MuPDF обновляет второй элемент `/ID` трейлера при каждой
+    записи, и он входит во второй отрезок /ByteRange (другой message-digest). Сравнение — CMS над хэшем /ByteRange
+    файла.
+  - Цепочка CNG-пути строится `CertGetCertificateChain` (только кэш, без сети) и включает корень, если он есть в
+    хранилищах; у .pfx — цепочка файла. На тестовой PKI оба набора — выпускающий ЦС и корень.
+  - RSA-PSS подписывается на уровне хэша (`CngPadding::Pss`), но в CMS не пишется — эталон 3.8 («RSA-PSS на запись —
+    нет»).
+- Решения:
+  - Фильтр «есть закрытый ключ и Digital Signature» (эталон) — через `allowedForDocumentSigning` 4.1: KU digitalSignature
+    или nonRepudiation и EKU подписи документов, как у валидатора; истёкшие остаются в списке с пометкой (Acrobat
+    показывает их серыми), `excludeExpired` — по желанию интерфейса.
+  - `CngError` — класс с вложенным перечислением (`CngError::NoPrivateKey` из плана буквально); в `SignError` — свои
+    статусы: NotFound → `NoIdentity`, `NoPrivateKey`, `Cancelled`, остальное — `KeyFailed`.
+  - `WindowsCert::store` — хранилище сертификата (тесты — PFX-импорт в памяти), `nullptr` — «Личное» только для чтения.
+    Сертификат и ключ открываются до записи; PIN спрашивается в `create_digest` посреди записи (отмена —
+    `Saver::revert`).
+  - Ключ старого CSP: сначала `NCryptTranslateHandle`, иначе RSA через CryptoAPI (PROV_RSA_FULL без SHA-2 — переоткрыть
+    контейнер в PROV_RSA_AES; ключ без контейнера — честный `LegacyProvider`). ECDSA в CSP не бывает.
+  - Импорт удостоверения в хранилище (`importIdentity`, `importToWindows`) — только по явной команде; ключ «только в
+    памяти» переносится ссылкой (копия хранилища теряет дескриптор).
+  - sign-07 (PKCS#11) — `out` в `scope.json`: карты и токены с мини-драйвером видны через KSP (`CertEntry::smartCard`),
+    `OT_FEATURE("sign-07")` не ставится.
+  - «12 файлов» матрицы при 2 × 2 × 2 = 8 сочетаниях — третий режим B-B `adbe.pkcs7.detached` («совместимость»).
+  - `engine_tests` берёт помощники unit-тестов (`pki`, `sign_support`, `test_pdf`, `qt_app`) через `target_sources` в
+    `CMakeLists.txt`; `compat.sign.cng` — `--expect-sig INTACT,TRUSTED` (в каталоге есть файл с двумя подписями).
+  - Живая проверка до интерфейса 4.6 — отключённый `sign_live.DISABLED_windows_my` в `engine_tests` по
+    `OTTISK_LIVE_CERT` (новых режимов exe нет).
+- Подводные камни:
+  - Ключ `PFXImportCertStore(PKCS12_NO_PERSIST_KEY)` доступен только через свойство KEY_CONTEXT: без
+    `CRYPT_ACQUIRE_CACHE_FLAG` — «Cannot find the certificate and private key»; кэшированный дескриптор живёт в
+    контексте — `CngKey` держит копию `CertContext`.
+  - `CertAddCertificateContextToStore` копирует сертификат без дескриптора ключа «в памяти» — для списков и импорта в
+    память — `CertAddCertificateLinkToStore`.
+  - Без `PKCS12_ALWAYS_CNG_KSP` RSA-ключ .pfx уходит в «Enhanced Cryptographic Provider» (PROV_RSA_FULL, без SHA-2:
+    «Invalid algorithm specified»), а эфемерный ключ не переводится в CNG («Invalid type specified»).
+  - Первый элемент `certs` PFX-хранилища — не обязательно подписант: отпечаток подписанта брать по фильтру.
+  - PowerShell 5.1 `Set-Content -Encoding utf8` пишет BOM — исходники править через `[IO.File]::WriteAllText` без BOM
+    или Python-скриптом файлом (длинный heredoc в Bash-инструменте по-прежнему рвётся на кавычках).
