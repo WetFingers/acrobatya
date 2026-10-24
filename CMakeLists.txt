@@ -268,7 +268,8 @@ endif()
 # TIMESTAMP_TRUSTED; dts — метка времени документа (/DocTimeStamp, validate_pdf_timestamp) отдельно и после B-T;
 # cng (план 4.3) — подписи сертификатом хранилища Windows через CNG (PFX-импорт в памяти): RSA и ECDSA B-B, RSA B-T,
 # .pfx затем CNG — INTACT, TRUSTED; lt (план 4.5) — B-T + /DSS (RSA, ECDSA, с /VRI): ещё LTV — доверие по данным /DSS
-# без сети с обязательным отзывом.
+# без сети с обязательным отзывом; lta — B-LTA (подпись → /DSS → метка документа) и продлённая: ещё LTA — pyHanko
+# ades_lta_validation (ETSI EN 319 102-1 5.6.3) PASSED, метки документа INTACT, TRUSTED.
 if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(_compat_sign "${CMAKE_BINARY_DIR}/compat/sign")
   add_test(NAME compat.sign.generate
@@ -286,8 +287,10 @@ if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_test(NAME compat.sign.cng COMMAND ${_compat_sign_check} --expect-sig INTACT,TRUSTED "${_compat_sign}/cng")
   add_test(NAME compat.sign.lt COMMAND ${_compat_sign_check}
     --expect-sig INTACT,TRUSTED,TIMESTAMPED,TIMESTAMP_TRUSTED,LTV "${_compat_sign}/lt")
+  add_test(NAME compat.sign.lta COMMAND ${_compat_sign_check}
+    --expect-sig INTACT,TRUSTED,TIMESTAMPED,TIMESTAMP_TRUSTED,LTV,LTA --expect-ts INTACT,TRUSTED "${_compat_sign}/lta")
   set_tests_properties(compat.sign.b compat.sign.b.multi compat.sign.t compat.sign.dts compat.sign.cng compat.sign.lt
-    PROPERTIES
+    compat.sign.lta PROPERTIES
     LABELS "compat;slow"
     FIXTURES_REQUIRED compat_sign SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endif()

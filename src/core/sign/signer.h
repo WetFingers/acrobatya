@@ -42,6 +42,7 @@
 #include <stdexcept>
 #include <string>
 #include <variant>
+#include <vector>
 
 #include "core/doc/saver.h"
 #include "core/sign/appearance.h"
@@ -62,6 +63,7 @@ namespace cng {
 class CertStore;
 }
 struct CngIdentity;
+class TrustStore;
 
 enum class SubFilter {
     CadesDetached,  // ETSI.CAdES.detached — PAdES (по умолчанию, вопрос 12.3)
@@ -89,6 +91,12 @@ struct WindowsCert {
 // Удостоверение подписи: .pfx (ключ в памяти, обязателен вместе с сертификатом) или хранилище Windows.
 using SigningIdentity = std::variant<std::shared_ptr<const SigningKey>, WindowsCert>;
 
+// Уровень PAdES при подписании (ETSI EN 319 142-1; план 4.5, п. 2; sign-21): B — без метки; T — метка времени
+// в подписи; LT — B-T и сведения для проверки (/DSS, core/sign/ltv.h) следующей инкрементальной секцией; LTA
+// — ещё метка времени документа (DocTimeStamp) третьей секцией.
+enum class SignLevel { B, T, LT, LTA };
+const char* signLevelName(SignLevel level);  // "B", "T", "LT", "LTA"
+
 struct SignRequest {
     SigningIdentity identity;  // обязательно
     std::string reason;        // /Reason (UTF-8; пусто — ключа нет)
@@ -110,6 +118,13 @@ struct SignRequest {
     std::function<bool(const TsaError&)> withoutTimestamp;
     DigestAlgorithm digest = DigestAlgorithm::Sha256;
     std::int64_t signingTime = 0;  // /M, секунды Unix (UTC); 0 — сейчас
+    // Уровень: B — метки нет и при заданной службе; T — метка (службы нет — B, как раньше); LT, LTA — нужна
+    // служба времени (нет — SignError TimestampFailed до записи). Шаги после подписи (/DSS, метка документа)
+    // подпись не отменяют: их сбой — ltvError / archiveError в SignResult.
+    SignLevel level = SignLevel::T;
+    const TrustStore* trust = nullptr;              // LT/LTA: якоря цепочек для /DSS
+    net::HttpFetcher* revocationFetcher = nullptr;  // LT/LTA: OCSP, CRL, AIA (nullptr — только данные файла)
+    bool vri = false;                               // LT/LTA: /VRI в /DSS (совместимость)
 };
 
 enum class SignStatus {
@@ -156,6 +171,21 @@ struct SignResult {
     TimestampInfo timestamp;       // её сведения
     std::string timestampError;    // служба не ответила, подписано без метки (withoutTimestamp → true)
     SaveReport save;               // запись с подписью
+
+    SignLevel level = SignLevel::B;  // достигнутый уровень
+    // LT: /DSS следующей секцией.
+    bool dssWritten = false;
+    int dssCertificates = 0;  // новых потоков /DSS
+    int dssOcsps = 0;
+    int dssCrls = 0;
+    bool ltvComplete = false;             // весь материал подписи в документе («LTV включено»)
+    std::vector<std::string> ltvMissing;  // чего не хватило (английский)
+    std::string ltvError;                 // сбой шага /DSS (подпись записана)
+    // LTA: метка времени документа третьей секцией.
+    bool docTimestamped = false;
+    std::string docTimestampField;
+    TimestampInfo docTimestamp;
+    std::string archiveError;  // сбой метки документа (подпись и /DSS записаны)
 };
 
 // Подписант MuPDF поверх функции «хэш /ByteRange → DER для /Contents». Создаётся std::make_shared (объект

@@ -828,6 +828,24 @@ LtvResult addValidationInfo(Document& doc, const LtvOptions& options, const fs::
     return result;
 }
 
+ArchiveResult extendArchiveTimestamp(Document& doc, std::shared_ptr<TsaClient> tsa, const LtvOptions& options,
+                                     const fs::path& target) {
+    if (!tsa) {
+        throw SignError(SignStatus::TimestampFailed, "no timestamp service", SaveError::None,
+                        TsaStatus::NetworkError);
+    }
+    ArchiveResult result;
+    result.ltv = addValidationInfo(doc, options, target);
+    if (!result.ltv.save.ok()) {
+        throw SignError(SignStatus::SaveFailed, "validation info: " + result.ltv.save.message,
+                        result.ltv.save.error);
+    }
+    // Записано (в т. ч. в новый путь) — документ уже на цели.
+    result.timestamp =
+        addDocumentTimestamp(doc, std::move(tsa), result.ltv.save.bytes > 0 ? fs::path() : target);
+    return result;
+}
+
 std::vector<LtvSignature> ltvStatus(Document& doc, const LtvOptions& options) {
     return collect(doc, options, nullptr).signatures;
 }

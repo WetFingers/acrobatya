@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <ctime>
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -28,6 +29,7 @@
 #include <vector>
 
 #include "core/doc/saver.h"
+#include "core/sign/doc_timestamp.h"
 #include "core/sign/ossl.h"
 #include "core/sign/trust_store.h"
 #include "core/sign/verifier.h"
@@ -107,6 +109,16 @@ struct LtvResult {
 // записи — в save.
 LtvResult addValidationInfo(Document& doc, const LtvOptions& options,
                             const std::filesystem::path& target = {});
+
+// Продление архивной метки (B-LTA, sign-20): сведения для проверки всех подписей и меток документа (/DSS,
+// если есть новое), затем новая метка времени документа — каждая своей инкрементальной секцией. Нет службы
+// времени, сбой записи /DSS или метки — SignError (что успело записаться — остаётся).
+struct ArchiveResult {
+    LtvResult ltv;
+    DocTimestampResult timestamp;
+};
+ArchiveResult extendArchiveTimestamp(Document& doc, std::shared_ptr<TsaClient> tsa, const LtvOptions& options,
+                                     const std::filesystem::path& target = {});
 
 // Состояние «LTV включено» всех подписей — сборка без сети (fetcher не используется).
 std::vector<LtvSignature> ltvStatus(Document& doc, const LtvOptions& options = {});

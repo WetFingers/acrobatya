@@ -635,6 +635,31 @@ QFuture<sign::LtvResult> DocumentSession::addValidationInfo(std::shared_ptr<cons
         TaskPriority::Normal, QStringLiteral("ltv"));
 }
 
+QFuture<sign::ArchiveResult> DocumentSession::extendTimestamp(std::shared_ptr<sign::TsaClient> tsa,
+                                                              std::shared_ptr<const sign::TrustStore> trust,
+                                                              const QString& target) {
+    return post(
+        [this, tsa = std::move(tsa), trust = std::move(trust), target](TaskContext& tc) {
+            const std::filesystem::path to =
+                target.isEmpty() ? std::filesystem::path() : std::filesystem::path(target.toStdWString());
+            sign::LtvOptions options;
+            options.trust = trust.get();
+            options.fetcher = &httpFetcher();
+            sign::ArchiveResult result;
+            try {
+                result = sign::extendArchiveTimestamp(tc.document(), tsa, options, to);
+            } catch (...) {
+                SaveReport failed;
+                failed.error = SaveError::WriteFailed;
+                afterSave(failed, true);
+                throw;
+            }
+            afterSave(result.timestamp.save);
+            return result;
+        },
+        TaskPriority::Normal, QStringLiteral("timestamp"));
+}
+
 void DocumentSession::afterSave(const SaveReport& report, bool reloaded) {
     textEditing_.reset();
     displayCache_->clear();

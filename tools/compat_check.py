@@ -16,7 +16,8 @@
                                     у подписи с меткой времени (B-T) в сводке ещё TIMESTAMPED и, если
                                     цепочка службы доверена, TIMESTAMP_TRUSTED; у файла с /DSS — LTV, если
                                     подпись (и её метка) доверены по данным /DSS без сети с обязательной
-                                    проверкой отзыва (revocation_mode="require");
+                                    проверкой отзыва (revocation_mode="require"); LTA (только если ожидается) —
+                                    pyHanko ades_lta_validation (ETSI EN 319 102-1 5.6.3) даёт AdESPassed;
   * --expect-ts S                 — метки времени документа (/DocTimeStamp, validate_pdf_timestamp): в файле
                                     есть хотя бы одна, у каждой в сводке («DOC_TIMESTAMP:INTACT:TRUSTED,…»)
                                     все токены S; без --expect-ts метки документа проверяются на INTACT;
@@ -202,6 +203,34 @@ def check_text(pdf: Path, password: str | None, expected: list[str]) -> dict:
                   [f"нет «{m}»" for m in missing] or [f"строк {len(expected)}"])
 
 
+def lta_passed(sig, roots: list) -> bool:
+    """PAdES B-LTA по ETSI EN 319 102-1 5.6.3 (pyHanko ades_lta_validation): цепочка меток документа, данные /DSS,
+    отзыв обязателен для конечного и промежуточных сертификатов; итог — AdESPassed."""
+    import asyncio
+    import logging
+
+    from pyhanko.sign.validation import ades
+    from pyhanko.sign.validation.policy_decl import PdfSignatureValidationSpec, SignatureValidationSpec
+    from pyhanko_certvalidator.context import CertValidationPolicySpec
+    from pyhanko_certvalidator.policy_decl import CertRevTrustPolicy, RevocationCheckingPolicy, RevocationCheckingRule
+    from pyhanko_certvalidator.registry import SimpleTrustManager
+
+    logging.getLogger("pyhanko_certvalidator").setLevel(logging.CRITICAL)
+    required = RevocationCheckingRule.CRL_OR_OCSP_REQUIRED
+    policy = CertValidationPolicySpec(
+        trust_manager=SimpleTrustManager.build(trust_roots=roots),
+        revinfo_policy=CertRevTrustPolicy(
+            RevocationCheckingPolicy(ee_certificate_rule=required, intermediate_ca_cert_rule=required)
+        ),
+    )
+    spec = PdfSignatureValidationSpec(SignatureValidationSpec(cert_validation_policy=policy))
+    try:
+        res = asyncio.run(ades.ades_lta_validation(sig, spec))
+    except Exception:  # noqa: BLE001
+        return False
+    return isinstance(res.ades_subindic, ades.AdESPassed)
+
+
 def check_signatures(pdf: Path, expect: str | None, trust: list[Path], expect_ts: str | None = None) -> dict:
     try:
         from importlib.metadata import version as pkg_version
@@ -267,6 +296,8 @@ def check_signatures(pdf: Path, expect: str | None, trust: list[Path], expect_ts
                         lts = getattr(lt, "timestamp_validity", None)
                         if lt.intact and lt.trusted and (lts is None or lts.trusted):
                             summary += ",LTV"
+                    if "LTA" in wanted and lta_passed(sig, roots):
+                        summary += ",LTA"
                     expected = wanted
                 tokens = set(re.split(r"[:,]", summary))
                 missing = [t for t in expected if t not in tokens]

@@ -15,6 +15,8 @@
 #include "core/mu/handles.h"
 #include "core/sign/cng_signer.h"
 #include "core/sign/cng_store.h"
+#include "core/sign/doc_timestamp.h"
+#include "core/sign/ltv.h"
 #include "core/sign/sign_field.h"
 #include "core/sign/x509_info.h"
 #include "core/util/paths.h"
@@ -280,6 +282,72 @@ void checkAppearanceFiles(const SignRequest& request) {
 
 std::string nextSignatureFieldName(Document& doc) { return detail::nextFieldName(doc, "Signature"); }
 
+namespace {
+
+// LT: /DSS следующей секцией; LTA: ещё метка времени документа. Подпись уже записана — сбой шага не отменяет
+// её.
+void extendLevel(Document& doc, const SignRequest& request, SignResult& result) {
+    LtvOptions options;
+    options.trust = request.trust;
+    options.fetcher = request.revocationFetcher;
+    options.vri = request.vri;
+    try {
+        const LtvResult l = addValidationInfo(doc, options);
+        result.dssWritten = l.dss.written;
+        result.dssCertificates = l.dss.certs;
+        result.dssOcsps = l.dss.ocsps;
+        result.dssCrls = l.dss.crls;
+        for (const LtvSignature& s : l.collected.signatures) {
+            if (s.field == result.field) {
+                result.ltvComplete = s.complete();
+                result.ltvMissing = s.missing;
+            }
+        }
+        if (!l.save.ok()) {
+            result.ltvError = l.save.message;
+        } else if (result.timestamped) {
+            result.level = SignLevel::LT;
+        }
+    } catch (const std::exception& e) {
+        result.ltvError = e.what();
+    }
+    if (!result.ltvError.empty()) {
+        spdlog::error("sign: validation info after signing failed: {}", result.ltvError);
+        return;
+    }
+    if (request.level != SignLevel::LTA) {
+        return;
+    }
+    try {
+        const DocTimestampResult d = addDocumentTimestamp(doc, request.timestamp);
+        result.docTimestamped = true;
+        result.docTimestampField = d.field;
+        result.docTimestamp = d.timestamp;
+        if (result.level == SignLevel::LT) {
+            result.level = SignLevel::LTA;
+        }
+    } catch (const std::exception& e) {
+        result.archiveError = e.what();
+        spdlog::error("sign: document time-stamp after signing failed: {}", result.archiveError);
+    }
+}
+
+}  // namespace
+
+const char* signLevelName(SignLevel level) {
+    switch (level) {
+        case SignLevel::B:
+            return "B";
+        case SignLevel::T:
+            return "T";
+        case SignLevel::LT:
+            return "LT";
+        case SignLevel::LTA:
+            return "LTA";
+    }
+    return "?";
+}
+
 SignResult signDocument(Document& doc, const SignRequest& request, const fs::path& target) {
     if (doc.pdf() == nullptr) {
         throw SignError(SignStatus::NotPdf, "only PDF documents are signed");
@@ -298,18 +366,23 @@ SignResult signDocument(Document& doc, const SignRequest& request, const fs::pat
         throw SignError(SignStatus::NotAllowed, "document permissions do not allow signing");
     }
     checkAppearanceFiles(request);
+    const bool ltv = request.level == SignLevel::LT || request.level == SignLevel::LTA;
+    if (ltv && !request.timestamp) {
+        throw SignError(SignStatus::TimestampFailed, "B-LT and B-LTA need a time-stamping service",
+                        SaveError::None, TsaStatus::NetworkError);
+    }
+    const std::shared_ptr<TsaClient> tsa = request.level == SignLevel::B ? nullptr : request.timestamp;
     // Сертификат и ключ хранилища — до записи: нет сертификата или ключа — файл не трогается.
     std::shared_ptr<AcroBatyaSigner> signer;
     X509* cert = nullptr;
     if (windows != nullptr) {
         std::shared_ptr<const CngIdentity> id = openWindowsIdentity(*windows);
         cert = id->cert.get();
-        signer = std::make_shared<AcroBatyaSigner>(std::move(id), request.digest, request.timestamp,
-                                                   request.withoutTimestamp);
+        signer =
+            std::make_shared<AcroBatyaSigner>(std::move(id), request.digest, tsa, request.withoutTimestamp);
     } else {
         cert = key->cert.get();
-        signer = std::make_shared<AcroBatyaSigner>(key, request.digest, request.timestamp,
-                                                   request.withoutTimestamp);
+        signer = std::make_shared<AcroBatyaSigner>(key, request.digest, tsa, request.withoutTimestamp);
     }
     const std::int64_t t =
         request.signingTime != 0 ? request.signingTime : static_cast<std::int64_t>(std::time(nullptr));
@@ -387,6 +460,10 @@ SignResult signDocument(Document& doc, const SignRequest& request, const fs::pat
     spdlog::info("sign: {} signed field \"{}\" ({}, {}, {}, {} bytes)", paths::toUtf8(doc.path()),
                  result.field, subFilterName(request.subFilter), result.timestamped ? "B-T" : "B-B",
                  windows != nullptr ? "Windows store" : "PKCS#12", result.contentsSize);
+    result.level = result.timestamped ? SignLevel::T : SignLevel::B;
+    if (ltv) {
+        extendLevel(doc, request, result);
+    }
     return result;
 }
 
