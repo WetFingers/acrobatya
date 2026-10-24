@@ -227,6 +227,47 @@ private slots:
         }
         std::printf("OT_FEATURE:view-25\n");
     }
+
+    // ui.shots.stage3 (план 3.4, п. 5): сцены редактора — светлые и тёмные (закреплённая тема) — снимаются,
+    // кадр 1440 × 900; у тёмных глобальная панель тёмная; полоса «Похоже на скан» на скане.
+    void stage3() {
+        QTemporaryDir dir;
+        ShotOptions o;
+        o.outDir = dir.path();
+        const QStringList names = {QStringLiteral("edit-mode"),
+                                   QStringLiteral("edit-caret"),
+                                   QStringLiteral("edit-readonly-block"),
+                                   QStringLiteral("edit-format-panel"),
+                                   QStringLiteral("edit-add-text"),
+                                   QStringLiteral("edit-image-selected"),
+                                   QStringLiteral("edit-image-crop"),
+                                   QStringLiteral("find-replace"),
+                                   QStringLiteral("preferences-editing"),
+                                   QStringLiteral("scan-bar"),
+                                   QStringLiteral("edit-mode-dark"),
+                                   QStringLiteral("edit-format-panel-dark"),
+                                   QStringLiteral("edit-image-selected-dark")};
+        for (const QString& n : names) {
+            QVERIFY2(sceneNames().contains(n), qPrintable(n));
+        }
+        QCOMPARE(runShots(names, o), 0);
+        for (const QString& n : names) {
+            const QImage img(QDir(dir.path()).filePath(n + QStringLiteral(".png")));
+            QVERIFY2(!img.isNull(), qPrintable(n));
+            QCOMPARE(img.size(), QSize(1440, 900));
+            long sum = 0;
+            int count = 0;
+            for (int y = 4; y < 44; y += 2) {
+                for (int x = 0; x < img.width(); x += 4) {
+                    sum += qGray(img.pixel(x, y));
+                    ++count;
+                }
+            }
+            const bool dark = n.endsWith(QLatin1String("-dark"));
+            QVERIFY2(dark ? sum / count < 90 : sum / count > 150,
+                     qPrintable(n + QStringLiteral(": %1").arg(sum / count)));
+        }
+    }
 };
 
 OT_UI_TEST(ShotsTest, "shots");

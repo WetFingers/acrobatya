@@ -48,3 +48,11 @@ print-dialog-dark
 # Р1 — M1: «Все инструменты» и Установки во второй теме
 all-tools-dark
 preferences-general-dark
+
+# 3.4 — «Редактировать PDF»: режим, формат текста, картинки, найти и заменить, полоса скана
+edit-mode
+edit-mode-dark
+edit-format-panel
+edit-image-selected
+find-replace
+scan-bar

@@ -164,6 +164,28 @@ std::vector<Scene> editScenes() {
     readOnly.make = editScene(QStringLiteral("edit/rotated.pdf"));
     readOnly.ready = [](QWidget* w) { return editReady(w, false); };
     scenes.push_back(readOnly);
+
+    // 3.4 п. 5: главные экраны редактора — и в тёмной теме; полоса «Похоже на скан».
+    for (const Scene& s : std::vector<Scene>(scenes)) {
+        if (s.name == QLatin1String("edit-mode") || s.name == QLatin1String("edit-format-panel") ||
+            s.name == QLatin1String("edit-image-selected")) {
+            Scene dark = s;
+            dark.name = s.name + QStringLiteral("-dark");
+            dark.theme = ThemeChoice::Dark;
+            scenes.push_back(dark);
+        }
+    }
+    Scene scan;
+    scan.name = QStringLiteral("scan-bar");
+    scan.make =
+        withMainWindow([](MainWindow& w) { w.openFile(sceneFixture(QStringLiteral("scans/scan-01.pdf"))); });
+    scan.ready = [](QWidget* w) {
+        auto* window = static_cast<MainWindow*>(w);
+        DocumentView* doc = window->currentDocument();
+        return doc != nullptr && doc->findChild<QWidget*>(QStringLiteral("scanBar")) != nullptr &&
+               sceneDocumentReady(w);
+    };
+    scenes.push_back(scan);
     return scenes;
 }
 

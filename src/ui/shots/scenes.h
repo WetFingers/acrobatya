@@ -89,7 +89,8 @@ std::vector<Scene> renderScenes();
 // print-from-thumbnails (2.6).
 std::vector<Scene> printScenes();
 // edit_scenes.cpp — edit-mode, edit-caret, edit-format-panel, edit-add-text, edit-image-selected,
-// edit-image-crop, edit-readonly-block (3.4).
+// edit-image-crop, edit-readonly-block, edit-mode-dark, edit-format-panel-dark, edit-image-selected-dark,
+// scan-bar (3.4).
 std::vector<Scene> editScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.

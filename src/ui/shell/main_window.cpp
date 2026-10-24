@@ -38,6 +38,7 @@
 #include "services/document_registry.h"
 #include "services/i18n.h"
 #include "services/memory_guard.h"
+#include "services/ocr_ops.h"
 #include "services/print_job.h"
 #include "services/recent.h"
 #include "services/render_pool.h"
@@ -347,6 +348,27 @@ DocumentView* MainWindow::addDocumentView(const DocumentRegistry::Opened& opened
             MessageKind::Repaired, tr("Файл был повреждён и восстановлен при открытии. Сохранение будет "
                                       "полным: файл запишется заново."));
         bar->setObjectName(QStringLiteral("repairedBar"));
+    }
+    // «Похоже на скан» (3.4; эталон 3.15, 6.1 — синяя полоса): первая страница — одна картинка без текста.
+    // «Распознать текст» — с 8.1.
+    if (opened.summary.isPdf && opened.summary.pageCount > 0) {
+        QPointer<DocumentView> target = view;
+        ocr::scanCheck(view->session(), 0).then(this, [this, target](QFuture<ocr::ScanCheck> done) {
+            bool scan = false;
+            try {
+                scan = done.result().scan;
+            } catch (const std::exception&) {  // NOLINT(bugprone-empty-catch): нет ответа — полосы нет
+            }
+            if (!scan || target == nullptr) {
+                return;
+            }
+            MessageBar* bar = target->messageStack().showMessage(MessageKind::LooksScanned,
+                                                                 tr("Похоже на скан — распознать текст?"));
+            bar->setObjectName(QStringLiteral("scanBar"));
+            QPushButton* ocr = bar->addAction(tr("Распознать текст"), QStringLiteral("ocr"), true);
+            ocr->setEnabled(false);
+            ocr->setToolTip(tr("«Распознать текст» появится в версии 0.8"));
+        });
     }
     // PDF/A (pro-45): только чтение, пока не «Включить редактирование» (Установки → Документы).
     if (opened.summary.pdfa && opened.summary.isPdf && Settings().get(settings::kPdfaReadOnly)) {
