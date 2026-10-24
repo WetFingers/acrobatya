@@ -1186,6 +1186,30 @@ Verdict verdictFromFindings(const std::vector<Finding>& findings) {
     return worst;
 }
 
+CertifiedPrivileges certifiedPrivileges(const DocumentVerification& verification, const TrustStore& store) {
+    CertifiedPrivileges p;
+    for (const SignatureInfo& s : verification.signatures) {
+        if (s.kind != SignatureKind::Certification) {
+            continue;
+        }
+        p.certified = true;
+        if (s.chain.empty() || !s.trusted ||
+            (s.verdict != Verdict::Valid && s.verdict != Verdict::ValidWithChanges)) {
+            break;
+        }
+        const TrustAnchor* a = store.find(ossl::toHex(s.chain.back().sha256));
+        if (a == nullptr || (a->flags & kTrustCertification) == 0) {
+            break;
+        }
+        p.trusted = true;
+        p.anchor = a->sha256;
+        p.dynamicContent = (a->flags & kTrustDynamicContent) != 0;
+        p.javaScript = (a->flags & kTrustJavaScript) != 0;
+        break;
+    }
+    return p;
+}
+
 DocumentStatus documentStatus(const std::vector<SignatureInfo>& signatures) {
     if (signatures.empty()) {
         return DocumentStatus::NotSigned;

@@ -1,6 +1,8 @@
 // Хранилище доверия проверки подписей (эталон 3.8 «Доверие (sign-30–34)», «Валидатор»; 3.14; вопрос 12.4;
+// план 4.5, п. 5 — хранилище целиком: импорт из подписи и хранилища Windows ROOT/CA по согласию, экспорт
+// .cer/.p7c/.fdf, корни Windows по назначениям (подписи / сертифицированные документы, как iMSStoreTrusted);
 // план 4.4, п. 2; sign-30 — ядро, sign-32): якоря — свои (импорт .cer DER/PEM, .p7b/.p7c, .fdf Acrobat), кеш
-// EUTL и AATL (сессия 4.5 — тем же add с источником), корни Windows — опция, по умолчанию выключена (как
+// EUTL и AATL (replaceSource по источнику, 4.5), корни Windows — опция, по умолчанию выключена (как
 // iMSStoreTrusted=0 у Acrobat). Флаги доверия — как в диалоге Acrobat «Доверенные сертификаты»: подписи,
 // сертифицированные документы, динамический контент, JavaScript. Отпечатки — SHA-1 (как в certmgr) и SHA-256,
 // поиск в любом написании. Хранение — каталог данных (%LOCALAPPDATA%\AcroBatya\trust\anchors.json: DER в
@@ -19,6 +21,9 @@
 #include "core/sign/x509_info.h"
 
 namespace ot::sign {
+
+struct SignatureInfo;
+enum class CertFormat;
 
 // Для чего доверять якорю (биты).
 enum TrustFlags : unsigned {
@@ -78,9 +83,22 @@ public:
     bool remove(std::string_view thumbprint);
     const std::vector<TrustAnchor>& anchors() const noexcept { return anchors_; }
 
-    // Корни Windows (хранилище ROOT текущего пользователя и машины) как якоря подписей; по умолчанию — нет.
-    void setUseWindowsRoots(bool on) noexcept { windowsRoots_ = on; }
-    bool useWindowsRoots() const noexcept { return windowsRoots_; }
+    // Корни Windows (хранилище ROOT текущего пользователя и машины) как якоря — для назначений flags (подписи
+    // и (или) сертифицированные документы; Acrobat «Trust ALL root certificates in the Windows Certificate
+    // Store for»); по умолчанию — нет. Не копируются в хранилище — читаются при сборке X509_STORE.
+    void setWindowsRootsFlags(unsigned flags) noexcept { windowsRootsFlags_ = flags; }
+    unsigned windowsRootsFlags() const noexcept { return windowsRootsFlags_; }
+    void setUseWindowsRoots(bool on) noexcept { windowsRootsFlags_ = on ? kTrustSignatures : 0u; }
+    bool useWindowsRoots() const noexcept { return windowsRootsFlags_ != 0; }
+
+    // Импорт из хранилища Windows (только чтение; зовётся по явному согласию человека): ROOT и (или) CA
+    // текущего пользователя и машины — якоря источника Windows с флагами flags. Число новых.
+    int importWindows(bool root, bool ca, unsigned flags = kTrustSignatures);
+
+    // Экспорт якоря: .cer (DER), .p7c, .fdf (identity.h exportCertificate); нет такого — пусто.
+    Bytes exportAnchor(std::string_view thumbprint, CertFormat format) const;
+    // Все якоря одним .p7c (PKCS#7 только сертификаты).
+    Bytes exportAll() const;
 
     // Якоря с любым из битов flags (и корни Windows, если включены) — новое хранилище для ChainBuilder.
     Ossl<X509_STORE> x509Store(unsigned flags) const;
@@ -89,10 +107,20 @@ public:
 
 private:
     std::vector<TrustAnchor> anchors_;
-    bool windowsRoots_ = false;
+    unsigned windowsRootsFlags_ = 0;
 };
 
+// Системные хранилища Windows: ROOT — корневые ЦС, CA — промежуточные.
+enum class WindowsStore { Root, Ca };
+// Сертификаты хранилища текущего пользователя и машины (только чтение) — DER без повторов.
+std::vector<Bytes> windowsStoreCertificates(WindowsStore store);
 // Сертификаты хранилища ROOT Windows (только чтение) — DER.
-std::vector<Bytes> windowsRootCertificates();
+inline std::vector<Bytes> windowsRootCertificates() { return windowsStoreCertificates(WindowsStore::Root); }
+
+// «Доверять» из подписи (Certificate Viewer → «Доверие» → «Добавить в доверенные», sign-34): сертификат с
+// отпечатком thumbprint из построенной цепочки или CMS подписи; пусто — верх цепочки (корень), без цепочки —
+// самоподписанный из CMS, иначе подписант. true — добавлен (уже был или нет такого — false).
+bool trustFromSignature(TrustStore& store, const SignatureInfo& sig, unsigned flags,
+                        std::string_view thumbprint = {});
 
 }  // namespace ot::sign

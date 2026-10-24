@@ -13,6 +13,7 @@
 #include <system_error>
 
 #include "core/sign/identity.h"
+#include "core/sign/verifier.h"
 #include "core/util/paths.h"
 
 // Windows SDK — после OpenSSL: wincrypt.h определяет макросы X509_NAME, OCSP_* (ниже они не нужны).
@@ -134,7 +135,9 @@ TrustStore TrustStore::load(const fs::path& dir) {
     }
     try {
         const json j = json::parse(paths::readFile(file));
-        store.windowsRoots_ = j.value("windowsRoots", false);
+        store.windowsRootsFlags_ = j.contains("windowsRootsFlags")
+                                       ? flagsFromJson(j.at("windowsRootsFlags"))
+                                       : (j.value("windowsRoots", false) ? kTrustSignatures : 0u);
         for (const json& a : j.at("anchors")) {
             store.add(ossl::base64Decode(a.at("der").get<std::string>()),
                       flagsFromJson(a.value("flags", json::array())),
@@ -160,7 +163,10 @@ void TrustStore::save(const fs::path& dir) const {
                            {"label", a.label},
                            {"der", ossl::base64Encode(a.cert.der)}});
     }
-    const json j = {{"version", 1}, {"windowsRoots", windowsRoots_}, {"anchors", anchors}};
+    const json j = {{"version", 1},
+                    {"windowsRoots", windowsRootsFlags_ != 0},
+                    {"windowsRootsFlags", flagsToJson(windowsRootsFlags_)},
+                    {"anchors", anchors}};
     std::error_code ec;
     fs::create_directories(dir, ec);
     paths::writeFile(dir / kFile, j.dump(1));
@@ -286,7 +292,7 @@ Ossl<X509_STORE> TrustStore::x509Store(unsigned flags) const {
             addDer(a.cert.der);
         }
     }
-    if (windowsRoots_ && (flags & kTrustSignatures) != 0) {
+    if ((windowsRootsFlags_ & flags) != 0) {
         for (const Bytes& der : windowsRootCertificates()) {
             addDer(der);
         }
@@ -295,12 +301,82 @@ Ossl<X509_STORE> TrustStore::x509Store(unsigned flags) const {
     return store;
 }
 
-std::vector<Bytes> windowsRootCertificates() {
+int TrustStore::importWindows(bool root, bool ca, unsigned flags) {
+    int added = 0;
+    for (const auto& [want, which] : {std::pair{root, WindowsStore::Root}, std::pair{ca, WindowsStore::Ca}}) {
+        if (!want) {
+            continue;
+        }
+        for (const Bytes& der : windowsStoreCertificates(which)) {
+            try {
+                added += add(der, flags, TrustSource::Windows) ? 1 : 0;
+            } catch (const std::exception& e) {
+                spdlog::debug("trust: Windows certificate skipped: {}", e.what());
+            }
+        }
+    }
+    spdlog::info("trust: {} anchors imported from the Windows store (ROOT {}, CA {})", added, root, ca);
+    return added;
+}
+
+Bytes TrustStore::exportAnchor(std::string_view thumbprint, CertFormat format) const {
+    const TrustAnchor* a = find(thumbprint);
+    if (a == nullptr) {
+        return {};
+    }
+    Ossl<X509> x = loadCertificate(a->cert.der);
+    return exportCertificate(x.get(), format);
+}
+
+Bytes TrustStore::exportAll() const {
+    Ossl<PKCS7> p7(ossl::checkPtr(PKCS7_new(), "PKCS7_new"));
+    ossl::check(PKCS7_set_type(p7.get(), NID_pkcs7_signed), "PKCS7_set_type");
+    ossl::check(PKCS7_content_new(p7.get(), NID_pkcs7_data), "PKCS7_content_new");
+    for (const TrustAnchor& a : anchors_) {
+        Ossl<X509> x = loadCertificate(a.cert.der);
+        ossl::check(PKCS7_add_certificate(p7.get(), x.get()), "PKCS7_add_certificate");
+    }
+    return ossl::toDer(p7.get(), i2d_PKCS7, "i2d_PKCS7");
+}
+
+bool trustFromSignature(TrustStore& store, const SignatureInfo& sig, unsigned flags,
+                        std::string_view thumbprint) {
+    const CertSummary* pick = nullptr;
+    if (!thumbprint.empty()) {
+        const std::string want = normalizeThumbprint(thumbprint);
+        for (const std::vector<CertSummary>* list : {&sig.chain, &sig.certificates}) {
+            for (const CertSummary& c : *list) {
+                if (pick == nullptr &&
+                    (ossl::toHex(c.sha256) == want || hexDigest(c.der, EVP_sha1()) == want)) {
+                    pick = &c;
+                }
+            }
+        }
+    } else if (!sig.chain.empty()) {
+        pick = &sig.chain.back();
+    } else {
+        for (const CertSummary& c : sig.certificates) {
+            if (pick == nullptr && c.subject == c.issuer) {
+                pick = &c;
+            }
+        }
+        if (pick == nullptr && sig.signer) {
+            pick = &*sig.signer;
+        }
+    }
+    if (pick == nullptr) {
+        return false;
+    }
+    return store.add(pick->der, flags, TrustSource::User);
+}
+
+std::vector<Bytes> windowsStoreCertificates(WindowsStore which) {
     std::vector<Bytes> out;
+    const wchar_t* name = which == WindowsStore::Root ? L"ROOT" : L"CA";
     for (const DWORD location : {CERT_SYSTEM_STORE_CURRENT_USER, CERT_SYSTEM_STORE_LOCAL_MACHINE}) {
         HCERTSTORE store =
             CertOpenStore(CERT_STORE_PROV_SYSTEM_W, 0, 0,
-                          location | CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG, L"ROOT");
+                          location | CERT_STORE_OPEN_EXISTING_FLAG | CERT_STORE_READONLY_FLAG, name);
         if (store == nullptr) {
             continue;
         }

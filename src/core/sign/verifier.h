@@ -248,6 +248,18 @@ struct VerifyOptions {
     std::optional<std::time_t> now;  // «сейчас» (тесты); nullopt — часы
 };
 
+// Права сертифицированного документа (sign-30 «Certified documents»: Dynamic content, Embedded high privilege
+// JavaScript): сертифицирующая подпись цела и доверена якорем с флагом «сертифицированные документы» —
+// trusted; динамический контент и JavaScript — по флагам того же якоря (верх построенной цепочки).
+struct CertifiedPrivileges {
+    bool certified = false;  // есть сертифицирующая подпись
+    bool trusted = false;    // она действительна и доверена для сертификации
+    bool dynamicContent = false;
+    bool javaScript = false;
+    std::string anchor;  // SHA-256 якоря (HEX)
+};
+CertifiedPrivileges certifiedPrivileges(const DocumentVerification& verification, const TrustStore& store);
+
 // Проверить все подписанные поля документа. Не PDF — пустой результат (NotSigned).
 DocumentVerification verifyDocument(Document& doc, const VerifyOptions& options = {});
 
