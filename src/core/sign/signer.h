@@ -8,7 +8,9 @@
 // Подписант: max_digest_size — константа 16 384 (резерв /Contents, 32 768 hex; без «сухого прогона» — со
 // смарт-картой это лишний PIN), create_digest(in, digest, len) — хэш потока /ByteRange → contents(хэш) → DER;
 // ошибка — 0 (MuPDF бросает «signer provided no signature digest»), причина — error(). AcroBatyaSigner —
-// CMS CAdES-B (CmsBuilder::buildFromDigest).
+// CMS CAdES-B (CmsBuilder::buildFromDigest), для B-T (sign-19, п. 2) — метка времени по хэшу значения подписи
+// (RFC 3161 прил. A) unsigned-атрибутом id-aa-timeStampToken; служба недоступна — спросить (колбэк
+// withoutTimestamp: да — подпись B-B, нет — SignError TimestampFailed).
 //
 // Словарь /V после pdf_sign_signature_with_appearance и до записи: /SubFilter → ETSI.CAdES.detached (или
 // adbe.pkcs7.detached — «совместимость»), /Reason, /Location, /ContactInfo, /Name, /Prop_Build; /M ставит
@@ -36,6 +38,7 @@
 #include "core/doc/saver.h"
 #include "core/sign/cms.h"
 #include "core/sign/pkcs12.h"
+#include "core/sign/tsa.h"
 #include "core/util/geometry.h"
 
 struct pdf_pkcs7_signer;
@@ -72,6 +75,11 @@ struct SignRequest {
     // подписания — все поля формы (и сама подпись) становятся ReadOnly, /Reference FieldMDP в подписи.
     // false — /Lock поля остаётся, как его поставил автор формы (у нового поля его нет).
     bool lock = false;
+    // B-T: служба времени (nullptr — B-B). Метка по хэшу подписи; токен — в CMS, резерв общий (16 КиБ).
+    std::shared_ptr<TsaClient> timestamp;
+    // Служба времени не ответила или ответ не прошёл проверку: true — подписать без метки (B-B), false или
+    // пусто — отказ (SignError TimestampFailed). Зовётся в потоке документа посреди записи.
+    std::function<bool(const TsaError&)> withoutTimestamp;
     DigestAlgorithm digest = DigestAlgorithm::Sha256;
     std::int64_t signingTime = 0;  // /M, секунды Unix (UTC); 0 — сейчас
 };
@@ -86,20 +94,24 @@ enum class SignStatus {
     BadPlacement,       // нет такой страницы
     NoTarget,           // документ без файла и цель не задана
     CmsFailed,          // OpenSSL при сборке CMS
+    TimestampFailed,    // служба времени, причина — tsaStatus()
     TooLarge,           // CMS больше резерва /Contents
     SaveFailed,         // запись (предварительная или с подписью), причина — saveError()
 };
 
 class SignError : public std::runtime_error {
 public:
-    SignError(SignStatus status, const std::string& message, SaveError save = SaveError::None)
-        : std::runtime_error(message), status_(status), save_(save) {}
+    SignError(SignStatus status, const std::string& message, SaveError save = SaveError::None,
+              TsaStatus tsa = TsaStatus::Ok)
+        : std::runtime_error(message), status_(status), save_(save), tsa_(tsa) {}
     SignStatus status() const noexcept { return status_; }
     SaveError saveError() const noexcept { return save_; }
+    TsaStatus tsaStatus() const noexcept { return tsa_; }
 
 private:
     SignStatus status_;
     SaveError save_;
+    TsaStatus tsa_;
 };
 
 struct SignResult {
@@ -108,6 +120,9 @@ struct SignResult {
     RectF rect;  // рамка на странице (пусто — невидимая)
     bool visible = false;
     std::size_t contentsSize = 0;  // DER в /Contents
+    bool timestamped = false;      // B-T: метка в подписи
+    TimestampInfo timestamp;       // её сведения
+    std::string timestampError;    // служба не ответила, подписано без метки (withoutTimestamp → true)
     SaveReport save;               // запись с подписью
 };
 
@@ -145,11 +160,17 @@ private:
     std::size_t contentsSize_ = 0;
 };
 
-// CMS CAdES-B по удостоверению.
+// CMS CAdES-B по удостоверению; с tsa — B-T.
 class AcroBatyaSigner : public PdfSigner {
 public:
-    explicit AcroBatyaSigner(std::shared_ptr<const SigningKey> identity,
-                             DigestAlgorithm digest = DigestAlgorithm::Sha256);
+    AcroBatyaSigner(std::shared_ptr<const SigningKey> identity,
+                    DigestAlgorithm digest = DigestAlgorithm::Sha256,
+                    std::shared_ptr<TsaClient> tsa = nullptr,
+                    std::function<bool(const TsaError&)> withoutTimestamp = {});
+
+    bool timestamped() const noexcept { return timestamped_; }
+    const TimestampInfo& timestampInfo() const noexcept { return timestampInfo_; }
+    const std::string& timestampError() const noexcept { return timestampError_; }
 
 protected:
     Bytes contents(std::span<const std::uint8_t> digest) override;
@@ -157,6 +178,11 @@ protected:
 
 private:
     std::shared_ptr<const SigningKey> identity_;
+    std::shared_ptr<TsaClient> tsa_;
+    std::function<bool(const TsaError&)> withoutTimestamp_;
+    bool timestamped_ = false;
+    TimestampInfo timestampInfo_;
+    std::string timestampError_;
 };
 
 // Подписать документ и записать в target (пусто — файл документа). Ошибка — SignError.

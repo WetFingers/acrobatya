@@ -96,6 +96,18 @@ inline constexpr StringKey kInternetAccess{"trust/internetAccess", "ask", "ask|a
 // AIA, списки доверия) / «выключена» — services/http_fetcher.h, единая точка сети.
 inline constexpr StringKey kNetworkAccess{"trust/network", "allowed", "allowed|signaturesOnly|off"};
 
+// --- Подписи (signatures/; эталон 3.8, вопросы 12.2, 12.3; страница «Установок» — 4.6) ---
+// Серверы времени — JSON core/sign/tsa_servers.h (имя, адрес, логин; по умолчанию DigiCert), пусто —
+// умолчания; пароли — не здесь.
+inline constexpr StringKey kTsaServers{"signatures/tsaServers", ""};
+// Служба времени недоступна при подписи: спросить / подписать без метки / отменить подпись.
+inline constexpr StringKey kTimestampFallback{"signatures/timestampFallback", "ask",
+                                              "ask|withoutTimestamp|cancel"};
+// Подпись с меткой времени (B-T, решение 4) — по умолчанию; выкл. — B-B.
+inline constexpr BoolKey kTimestampSignatures{"signatures/timestamp", true};
+// «Совместимость»: /SubFilter adbe.pkcs7.detached вместо ETSI.CAdES.detached.
+inline constexpr BoolKey kSignCompatibility{"signatures/pkcs7Compatibility", false};
+
 // --- Печать (print/; эталон 3.3, 3.18 «Печать»; view-37, create-16; сессия 2.6) ---
 // Принтер по умолчанию диалога «Печать» (пусто — системный).
 inline constexpr StringKey kPrintPrinter{"print/printer", ""};

@@ -53,6 +53,8 @@ namespace ot {
 namespace sign {
 struct SignRequest;
 struct SignResult;
+struct DocTimestampResult;
+class TsaClient;
 }  // namespace sign
 
 class Document;
@@ -233,6 +235,10 @@ public:
     // как»). Записанный файл переоткрыт (история пуста, сигнал saved, pageChanged страницы подписи); ошибка —
     // sign::SignError в QFuture, документ возвращён к файлу на диске.
     QFuture<sign::SignResult> sign(sign::SignRequest request, const QString& target = {});
+    // Метка времени документа (core/sign/doc_timestamp.h, sign-20) — отдельной секцией, так же записью и
+    // переоткрытием; ошибка — sign::SignError в QFuture.
+    QFuture<sign::DocTimestampResult> timestampDocument(std::shared_ptr<sign::TsaClient> tsa,
+                                                        const QString& target = {});
 
     // С ожиданием: исключение задачи бросается здесь. Из потока документа (внутри задачи) выполняется сразу.
     template <class F>

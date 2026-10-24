@@ -21,6 +21,7 @@
 #include "core/render/display_cache.h"
 #include "core/render/fit.h"
 #include "core/render/renderer.h"
+#include "core/sign/doc_timestamp.h"
 #include "core/sign/signer.h"
 #include "core/text/stext.h"
 #include "core/util/paths.h"
@@ -582,6 +583,27 @@ QFuture<sign::SignResult> DocumentSession::sign(sign::SignRequest request, const
             return result;
         },
         TaskPriority::Normal, QStringLiteral("sign"));
+}
+
+QFuture<sign::DocTimestampResult> DocumentSession::timestampDocument(std::shared_ptr<sign::TsaClient> tsa,
+                                                                     const QString& target) {
+    return post(
+        [this, tsa = std::move(tsa), target](TaskContext& tc) {
+            const std::filesystem::path to =
+                target.isEmpty() ? std::filesystem::path() : std::filesystem::path(target.toStdWString());
+            sign::DocTimestampResult result;
+            try {
+                result = sign::addDocumentTimestamp(tc.document(), tsa, to);
+            } catch (...) {
+                SaveReport failed;
+                failed.error = SaveError::WriteFailed;
+                afterSave(failed, true);
+                throw;
+            }
+            afterSave(result.save);
+            return result;
+        },
+        TaskPriority::Normal, QStringLiteral("timestamp"));
 }
 
 void DocumentSession::afterSave(const SaveReport& report, bool reloaded) {

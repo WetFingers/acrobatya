@@ -1,7 +1,8 @@
 """Совместимость PDF без Acrobat (эталон 9.4): косвенный критерий «Acrobat откроет без ремонта».
 
     "%OTTISK_PYTHON%" -X utf8 -I tools/compat_check.py <файл.pdf | каталог> […] [--json out.json]
-        [--password PWD] [--forms] [--expect-sig INTACT|TRUSTED|…] [--trust cert.pem] [--pdfa] [--tagged]
+        [--password PWD] [--forms] [--expect-sig INTACT|TRUSTED|…] [--expect-ts INTACT|…] [--trust cert.pem]
+        [--pdfa] [--tagged]
         [--expect-text ожидания.json]
 
 Каталог — все *.pdf в нём (по имени; пустой каталог — ошибка). Проверки по каждому файлу:
@@ -12,6 +13,11 @@
   * --expect-sig S                — pyHanko: каждая подпись проверяется без сети, в сводке
                                     (summary, например «INTACT:UNTRUSTED,UNTOUCHED») есть все токены S
                                     («INTACT», «TRUSTED», «INTACT,UNTOUCHED»…); --trust — доверенный корень;
+                                    у подписи с меткой времени (B-T) в сводке ещё TIMESTAMPED и, если
+                                    цепочка службы доверена, TIMESTAMP_TRUSTED;
+  * --expect-ts S                 — метки времени документа (/DocTimeStamp, validate_pdf_timestamp): в файле
+                                    есть хотя бы одна, у каждой в сводке («DOC_TIMESTAMP:INTACT:TRUSTED,…»)
+                                    все токены S; без --expect-ts метки документа проверяются на INTACT;
   * --pdfa                        — verapdf -f 0 (автоопределение части/уровня) — соответствует;
   * --tagged                      — tools/structcheck.py, если он уже есть (иначе пропуск с пометкой);
   * --expect-text F.json          — pypdfium2 извлекает текст первой страницы, и в нём (без пробелов и
@@ -194,12 +200,12 @@ def check_text(pdf: Path, password: str | None, expected: list[str]) -> dict:
                   [f"нет «{m}»" for m in missing] or [f"строк {len(expected)}"])
 
 
-def check_signatures(pdf: Path, expect: str, trust: list[Path]) -> dict:
+def check_signatures(pdf: Path, expect: str | None, trust: list[Path], expect_ts: str | None = None) -> dict:
     try:
         from importlib.metadata import version as pkg_version
 
         from pyhanko.pdf_utils.reader import PdfFileReader
-        from pyhanko.sign.validation import validate_pdf_signature
+        from pyhanko.sign.validation import validate_pdf_signature, validate_pdf_timestamp
         from pyhanko_certvalidator import ValidationContext
     except ImportError as exc:
         return result("pyhanko sign validate", None, None, False, [f"нет pyHanko ({exc})"])
@@ -208,7 +214,12 @@ def check_signatures(pdf: Path, expect: str, trust: list[Path]) -> dict:
 
     for name in ("pyhanko", "pyhanko_certvalidator"):  # самоподписанный и т. п. — не трассировки в stderr
         logging.getLogger(name).setLevel(logging.CRITICAL)
-    wanted = [t for t in re.split(r"[:,\s]+", expect.upper()) if t]
+
+    def tokens_of(text: str | None) -> list[str]:
+        return [t for t in re.split(r"[:,\s]+", (text or "").upper()) if t]
+
+    wanted = tokens_of(expect)
+    wanted_ts = tokens_of(expect_ts) if expect_ts else ["INTACT"]
     warnings: list[str] = []
     ok = True
     try:
@@ -226,15 +237,29 @@ def check_signatures(pdf: Path, expect: str, trust: list[Path]) -> dict:
             sigs = list(reader.embedded_signatures)
             if not sigs:
                 return result("pyhanko sign validate", ver, 1, False, ["подписей в файле нет"])
+            doc_timestamps = 0
             for sig in sigs:
-                status = validate_pdf_signature(sig, vc)
-                summary = status.summary()
+                if sig.sig_object_type == "/DocTimeStamp":
+                    doc_timestamps += 1
+                    status = validate_pdf_timestamp(sig, validation_context=vc)
+                    summary = "DOC_TIMESTAMP:" + status.summary()
+                    expected = wanted_ts
+                else:
+                    status = validate_pdf_signature(sig, vc)
+                    summary = status.summary()
+                    ts = getattr(status, "timestamp_validity", None)
+                    if ts is not None:
+                        summary += ",TIMESTAMPED" + (",TIMESTAMP_TRUSTED" if ts.trusted else "")
+                    expected = wanted
                 tokens = set(re.split(r"[:,]", summary))
-                missing = [t for t in wanted if t not in tokens]
+                missing = [t for t in expected if t not in tokens]
                 warnings.append(f"{sig.field_name}: {summary}")
                 if missing:
                     ok = False
-                    warnings.append(f"{sig.field_name}: нет {', '.join(missing)} (ожидалось {expect})")
+                    warnings.append(f"{sig.field_name}: нет {', '.join(missing)} (ожидалось {', '.join(expected)})")
+            if expect_ts and doc_timestamps == 0:
+                ok = False
+                warnings.append("меток времени документа нет (ожидалась хотя бы одна)")
     except Exception as exc:  # noqa: BLE001
         return result("pyhanko sign validate", ver, 1, False, [f"{type(exc).__name__}: {exc}"])
     return result("pyhanko sign validate", ver, 0 if ok else 1, ok, warnings)
@@ -273,6 +298,7 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--forms", action="store_true", help="pypdfium2 рендерит с полями форм (--draw-forms)")
     ap.add_argument("--draw-forms", dest="forms", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--expect-sig", help="ожидаемые токены сводки pyHanko: INTACT, TRUSTED, UNTOUCHED…")
+    ap.add_argument("--expect-ts", help="метки времени документа: ожидаемые токены сводки (INTACT, TRUSTED…)")
     ap.add_argument("--trust", type=Path, action="append", default=[], help="доверенный корень (PEM/DER)")
     ap.add_argument("--pdfa", action="store_true", help="файл заявлен как PDF/A — veraPDF")
     ap.add_argument("--tagged", action="store_true", help="файл тегирован — tools/structcheck.py")
@@ -323,8 +349,8 @@ def main(argv: list[str]) -> int:
             check_mutool(mutool, pdf, args.password),
             check_pdfium(pdf, args.password, args.forms),
         ]
-        if args.expect_sig:
-            checks.append(check_signatures(pdf, args.expect_sig, args.trust))
+        if args.expect_sig or args.expect_ts:
+            checks.append(check_signatures(pdf, args.expect_sig, args.trust, args.expect_ts))
         if args.pdfa:
             checks.append(check_verapdf(verapdf, pdf))
         if args.tagged:

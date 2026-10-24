@@ -256,7 +256,8 @@ endif()
 # Совместимость подписей (план 4.2): sign_compat.DISABLED_* пишет <сборка>/compat/sign/<набор>/*.pdf; tools/compat_check.py
 # — pyHanko с корнем тестовой PKI (--expect-sig), qpdf --check, pdfcpu strict, mutool clean, pypdfium2.
 # b — одна подпись B-B (RSA, ECDSA, adbe.pkcs7.detached, невидимая, в готовом поле, с блокировкой): INTACT, TRUSTED,
-# UNTOUCHED; b-multi — две подписи подряд (первая уже дополнена).
+# UNTOUCHED; b-multi — две подписи подряд (первая уже дополнена); t — B-T (метка службы PKI): ещё TIMESTAMPED и
+# TIMESTAMP_TRUSTED; dts — метка времени документа (/DocTimeStamp, validate_pdf_timestamp) отдельно и после B-T.
 if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(_compat_sign "${CMAKE_BINARY_DIR}/compat/sign")
   add_test(NAME compat.sign.generate
@@ -267,7 +268,11 @@ if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     --trust "${CMAKE_SOURCE_DIR}/tests/fixtures/pki/root.pem")
   add_test(NAME compat.sign.b COMMAND ${_compat_sign_check} --expect-sig INTACT,TRUSTED,UNTOUCHED "${_compat_sign}/b")
   add_test(NAME compat.sign.b.multi COMMAND ${_compat_sign_check} --expect-sig INTACT,TRUSTED "${_compat_sign}/b-multi")
-  set_tests_properties(compat.sign.b compat.sign.b.multi PROPERTIES LABELS "compat;slow"
+  add_test(NAME compat.sign.t COMMAND ${_compat_sign_check}
+    --expect-sig INTACT,TRUSTED,UNTOUCHED,TIMESTAMPED,TIMESTAMP_TRUSTED "${_compat_sign}/t")
+  add_test(NAME compat.sign.dts COMMAND ${_compat_sign_check} --expect-sig INTACT,TRUSTED,TIMESTAMPED
+    --expect-ts INTACT,TRUSTED "${_compat_sign}/dts")
+  set_tests_properties(compat.sign.b compat.sign.b.multi compat.sign.t compat.sign.dts PROPERTIES LABELS "compat;slow"
     FIXTURES_REQUIRED compat_sign SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endif()
 # Публичные службы времени (план 4.1, п. 4): tsa_compat.DISABLED_public_servers — DigiCert, Sectigo, GlobalSign
