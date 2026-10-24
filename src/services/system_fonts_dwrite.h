@@ -15,6 +15,7 @@
 #include <string_view>
 #include <vector>
 
+#include "core/edit/font_resolver.h"
 #include "core/edit/system_fonts.h"
 
 namespace ot {
@@ -41,5 +42,9 @@ private:
 
 // Системные шрифты процесса (DirectWrite, создаётся при первом вызове).
 edit::SystemFonts& systemFonts();
+
+class Settings;
+// Запасные шрифты редактора из настроек (editing/fallbackFont, edit-49).
+edit::FallbackFonts editFallbackFonts(const Settings& settings);
 
 }  // namespace ot

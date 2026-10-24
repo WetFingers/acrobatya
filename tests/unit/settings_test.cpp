@@ -13,8 +13,10 @@
 
 #include <filesystem>
 
+#include "core/util/features.h"
 #include "services/app_info.h"
 #include "services/settings.h"
+#include "services/system_fonts_dwrite.h"
 #include "support/qt_app.h"
 #include "support/test_pdf.h"
 
@@ -174,4 +176,19 @@ TEST(settings, default_format_is_ini_in_data_dir_not_registry) {
     const Settings s;
     EXPECT_EQ(QDir::cleanPath(s.fileName()), QDir::cleanPath(ot::app::settingsPath()));
     EXPECT_TRUE(s.fileName().endsWith(QStringLiteral("settings.ini")));
+}
+
+// edit-49: «Шрифт подстановки» редактора — по умолчанию «автоматически» (пусто), выбранное семейство уходит в
+// FontResolver (services/system_fonts_dwrite.h).
+TEST(settings, edit_fallback_font) {
+    OT_FEATURE("edit-49");
+    ot::test::qtApp();
+    ot::test::TempDir dir;
+    Settings s(iniIn(dir));
+    EXPECT_EQ(s.get(keys::kEditFallbackFont), QString());
+    EXPECT_TRUE(ot::editFallbackFonts(s).family.empty());
+    EXPECT_EQ(ot::editFallbackFonts(s).sans, "Segoe UI");
+    EXPECT_EQ(ot::editFallbackFonts(s).serif, "Times New Roman");
+    s.set(keys::kEditFallbackFont, QStringLiteral(" Georgia "));
+    EXPECT_EQ(ot::editFallbackFonts(s).family, "Georgia");
 }

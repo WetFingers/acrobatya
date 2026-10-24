@@ -131,4 +131,9 @@ inline constexpr BoolKey kFullScreenTransitions{"fullScreen/transitions", true};
 inline constexpr StringKey kFullScreenDefaultTransition{"fullScreen/defaultTransition", ""};
 inline constexpr StringKey kFullScreenBackground{"fullScreen/background", "#000000"};
 
+// --- Редактирование (editing/; страница Установок — 3.4; edit-49) ---
+// Шрифт подстановки, когда шрифта документа нет в системе (эталон 3.9, правило 3 FontResolver): семейство;
+// пусто — «Выбрать автоматически» (Segoe UI или Times New Roman по засечкам).
+inline constexpr StringKey kEditFallbackFont{"editing/fallbackFont", ""};
+
 }  // namespace ot::settings

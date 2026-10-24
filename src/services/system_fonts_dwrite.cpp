@@ -10,6 +10,7 @@
 #include <spdlog/spdlog.h>
 
 #include "core/util/paths.h"
+#include "services/settings.h"
 
 #pragma comment(lib, "dwrite.lib")
 
@@ -214,6 +215,12 @@ std::vector<std::string> DWriteSystemFonts::families() {
 edit::SystemFonts& systemFonts() {
     static DWriteSystemFonts fonts;
     return fonts;
+}
+
+edit::FallbackFonts editFallbackFonts(const Settings& settings) {
+    edit::FallbackFonts f;
+    f.family = settings.get(settings::kEditFallbackFont).trimmed().toStdString();
+    return f;
 }
 
 }  // namespace ot
