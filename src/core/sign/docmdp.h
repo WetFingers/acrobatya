@@ -3,7 +3,13 @@
 // /TransformMethod /DocMDP и /TransformParams /P (1 — никаких изменений, 2 — заполнение форм и подписи, 3 — и
 // комментарии; нет /P — 2, ISO 32000-1 12.8.2.2); FieldMDP подписи — /Reference /FieldMDP и /Lock её поля
 // (/Action /All | /Include | /Exclude, /Fields — полные имена). MuPDF P=2 и P=3 не различает
-// (pdf_find_locked_fields) — поэтому свой разбор. Запись DocMDP — сессия 4.5. Поток — поток документа.
+// (pdf_find_locked_fields) — поэтому свой разбор. Поток — поток документа.
+//
+// Запись (план 4.5, п. 3; sign-16 — «Сертифицировать»): сертифицирующая подпись — /Reference [<</Type /SigRef
+// /TransformMethod /DocMDP /TransformParams <</Type /TransformParams /P n /V /1.2>>>>] в её /V (первым,
+// FieldMDP блокировки — после) и /Perms <</DocMDP v>> в каталоге — в той же инкрементальной секции, что
+// подпись (патч /V до записи, signer.h SignRequest::certify); сертифицировать можно только документ без
+// подписей; P ∈ {1, 2, 3}. Правила для интерфейса — mdpAllows (те же уровни, что анализ изменений changes.h).
 #pragma once
 
 #include <string>
@@ -53,6 +59,27 @@ MdpPermission signatureDocMdp(fz_context* ctx, pdf_obj* v);
 
 // Поле заблокировано хоть одним правилом.
 bool isFieldLocked(const std::vector<FieldLock>& locks, std::string_view fullName);
+
+// Записать DocMDP сертифицирующей подписи: /Reference в v и /Perms /DocMDP каталога (внутри операции журнала,
+// в секции подписи). p — NoChanges, FormFilling или Annotations (None — std::invalid_argument).
+void writeDocMdp(fz_context* ctx, pdf_document* pdf, pdf_obj* v, MdpPermission p);
+
+// Почему нельзя сертифицировать: None — можно; Signed — в документе есть подписи (сертифицирующая — только
+// первая); Certified — уже есть /Perms /DocMDP; NotPdf.
+enum class CertifyBlock { None, NotPdf, Signed, Certified };
+CertifyBlock certifyBlock(Document& doc);
+
+// Действия над сертифицированным документом (интерфейс серит инструменты). None (не сертифицирован) — DocMDP
+// ничего не запрещает.
+enum class MdpAction {
+    AddValidationInfo,  // /DSS, метка времени документа — всегда
+    FillForms,          // P ≥ 2
+    Sign,               // подписать поле, добавить поле подписи — P ≥ 2
+    Annotate,           // комментарии — P = 3
+    EditPages,          // страницы, содержимое, поля формы — никогда
+    EditContent,
+};
+bool mdpAllows(MdpPermission p, MdpAction action);
 
 const char* mdpPermissionName(MdpPermission p);
 

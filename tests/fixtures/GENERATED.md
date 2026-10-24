@@ -181,6 +181,12 @@ O=Оттиск, C=RU, 2026-01-01 + 3650 дней, KeyUsage digitalSignature+nonR
 рисует сам тест). Пересоздать: `OTTISK_UPDATE_SIG_APPEARANCE=1` и `unit_tests --gtest_filter=sig_appearance.*`, затем
 посмотреть PNG глазами. Зависят от Segoe UI машины (`%WINDIR%\Fonts\segoeui.ttf`).
 
+`warnings.pdf` (сессия 4.5, sign-17; `make_warnings.py`, pikepdf, `static_id`) — две страницы A4 со всем, что сканер
+предупреждений перед подписанием (`core/sign/warnings_scan.h`) обязан найти: JavaScript (дерево имён, /OpenAction, /AA
+каталога, страницы и поля, /Next ссылки, закладка), /Launch, /URI, /GoToR, /RichMedia, /Sound, вложения (дерево имён и
+/FileAttachment), /XFA, /NeedAppearances true — 16 предупреждений; ожидания — `tests/unit/warnings_scan_test.cpp`;
+`compat_check.py` зелёный.
+
 ### `tests/fixtures/pki/` — `tools/pki/make_test_pki.ps1` + `make_ocsp_fixtures.ps1` (состав и ожидания — `pki.json`)
 
 Не из `tools/gen`: openssl 3.5 из Git for Windows, ключи случайные (файлы не детерминированы, коммитятся как есть);

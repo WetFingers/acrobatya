@@ -366,6 +366,17 @@ SignResult signDocument(Document& doc, const SignRequest& request, const fs::pat
         throw SignError(SignStatus::NotAllowed, "document permissions do not allow signing");
     }
     checkAppearanceFiles(request);
+    if (request.certify) {
+        if (*request.certify == MdpPermission::None) {
+            throw SignError(SignStatus::CannotCertify, "certification needs DocMDP permission 1, 2 or 3");
+        }
+        if (const CertifyBlock block = certifyBlock(doc); block != CertifyBlock::None) {
+            throw SignError(SignStatus::CannotCertify,
+                            block == CertifyBlock::Certified
+                                ? "the document is already certified"
+                                : "only a document without signatures can be certified");
+        }
+    }
     const bool ltv = request.level == SignLevel::LT || request.level == SignLevel::LTA;
     if (ltv && !request.timestamp) {
         throw SignError(SignStatus::TimestampFailed, "B-LT and B-LTA need a time-stamping service",
@@ -411,7 +422,7 @@ SignResult signDocument(Document& doc, const SignRequest& request, const fs::pat
     if (request.subFilter == SubFilter::CadesDetached) {
         job.before = [](fz_context* ctx, pdf_document* pdf) { detail::ensureEsic(ctx, pdf, 2); };
     }
-    job.patch = [&](fz_context* ctx, pdf_document*, pdf_obj* v, bool locked) {
+    job.patch = [&](fz_context* ctx, pdf_document* pdf, pdf_obj* v, bool locked) {
         const char* sub = subFilterName(request.subFilter);
         const char* reason = request.reason.c_str();
         const char* location = request.location.c_str();
@@ -444,6 +455,9 @@ SignResult signDocument(Document& doc, const SignRequest& request, const fs::pat
                 pdf_dict_del(ctx, v, PDF_NAME(Reference));
             }
         });
+        if (request.certify) {
+            writeDocMdp(ctx, pdf, v, *request.certify);
+        }
     };
 
     const detail::FieldOutcome outcome = detail::signField(doc, job, *signer, target);

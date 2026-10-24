@@ -47,6 +47,7 @@
 #include "core/doc/saver.h"
 #include "core/sign/appearance.h"
 #include "core/sign/cms.h"
+#include "core/sign/docmdp.h"
 #include "core/sign/pkcs12.h"
 #include "core/sign/tsa.h"
 #include "core/util/geometry.h"
@@ -125,6 +126,9 @@ struct SignRequest {
     const TrustStore* trust = nullptr;              // LT/LTA: якоря цепочек для /DSS
     net::HttpFetcher* revocationFetcher = nullptr;  // LT/LTA: OCSP, CRL, AIA (nullptr — только данные файла)
     bool vri = false;                               // LT/LTA: /VRI в /DSS (совместимость)
+    // «Сертифицировать» (sign-16): DocMDP с этими правами — /Reference в /V и /Perms в каталоге той же
+    // секцией; только документ без подписей (иначе SignError CannotCertify до записи).
+    std::optional<MdpPermission> certify;
 };
 
 enum class SignStatus {
@@ -142,6 +146,7 @@ enum class SignStatus {
     CmsFailed,          // OpenSSL при сборке CMS
     TimestampFailed,    // служба времени, причина — tsaStatus()
     TooLarge,           // CMS больше резерва /Contents
+    CannotCertify,      // сертифицировать можно только документ без подписей
     BadAppearance,      // картинка или логотип внешнего вида не читаются
     SaveFailed,         // запись (предварительная или с подписью), причина — saveError()
 };

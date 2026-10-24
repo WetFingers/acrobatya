@@ -751,27 +751,32 @@ DssWriteResult writeDss(Document& doc, const LtvCollection& collected, bool vri)
             l.push_back(crls.ref(der, added));
         }
         const char* key = s->vriKey.c_str();
+        pdf_obj* entry = nullptr;
         mu::call(ctx, [&] {
             pdf_obj* v = pdf_dict_gets(ctx, dss, "VRI");
             if (!pdf_is_dict(ctx, v)) {
                 pdf_dict_puts_drop(ctx, dss, "VRI", pdf_new_dict(ctx, pdf, 2));
                 v = pdf_dict_gets(ctx, dss, "VRI");
             }
-            pdf_obj* e = pdf_new_dict(ctx, pdf, 3);
-            pdf_dict_puts_drop(ctx, v, key, e);
-            const std::pair<const char*, const std::vector<int>*> lists[] = {
-                {"Cert", &c}, {"OCSP", &o}, {"CRL", &l}};
-            for (const auto& [name, nums] : lists) {
-                if (nums->empty()) {
-                    continue;
-                }
-                pdf_obj* arr = pdf_new_array(ctx, pdf, static_cast<int>(nums->size()));
-                pdf_dict_puts_drop(ctx, e, name, arr);
-                for (const int num : *nums) {
-                    pdf_array_push_drop(ctx, arr, pdf_new_indirect(ctx, pdf, num, 0));
-                }
-            }
+            pdf_dict_puts_drop(ctx, v, key, pdf_new_dict(ctx, pdf, 3));
+            entry = pdf_dict_gets(ctx, v, key);
         });
+        const std::pair<const char*, const std::vector<int>*> lists[] = {
+            {"Cert", &c}, {"OCSP", &o}, {"CRL", &l}};
+        for (const auto& [name, nums] : lists) {
+            if (nums->empty()) {
+                continue;
+            }
+            const int* data = nums->data();
+            const int count = static_cast<int>(nums->size());
+            mu::call(ctx, [&] {
+                pdf_obj* arr = pdf_new_array(ctx, pdf, count);
+                pdf_dict_puts_drop(ctx, entry, name, arr);
+                for (int i = 0; i < count; ++i) {
+                    pdf_array_push_drop(ctx, arr, pdf_new_indirect(ctx, pdf, data[i], 0));
+                }
+            });
+        }
         ++result.vri;
     }
     op.commit();

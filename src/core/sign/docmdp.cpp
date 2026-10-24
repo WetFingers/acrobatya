@@ -3,8 +3,11 @@
 #include <algorithm>
 
 #include "core/doc/document.h"
+#include "core/doc/revisions.h"
 #include "core/mu/call.h"
 #include "core/mu/context.h"
+
+#include <stdexcept>
 
 namespace ot::sign {
 
@@ -135,6 +138,67 @@ bool isFieldLocked(const std::vector<FieldLock>& locks, std::string_view fullNam
             (l.action == FieldLock::Action::Exclude && !listed)) {
             return true;
         }
+    }
+    return false;
+}
+
+void writeDocMdp(fz_context* ctx, pdf_document* pdf, pdf_obj* v, MdpPermission p) {
+    if (p == MdpPermission::None) {
+        throw std::invalid_argument("DocMDP permission must be 1, 2 or 3");
+    }
+    const int n = static_cast<int>(p);
+    mu::call(ctx, [&] {
+        pdf_obj* old = pdf_dict_get(ctx, v, PDF_NAME(Reference));
+        pdf_obj* refs = pdf_new_array(ctx, pdf, 2);
+        pdf_obj* ref = pdf_array_push_dict(ctx, refs, 3);
+        pdf_dict_put(ctx, ref, PDF_NAME(Type), PDF_NAME(SigRef));
+        pdf_dict_put(ctx, ref, PDF_NAME(TransformMethod), PDF_NAME(DocMDP));
+        pdf_obj* params = pdf_dict_put_dict(ctx, ref, PDF_NAME(TransformParams), 3);
+        pdf_dict_put(ctx, params, PDF_NAME(Type), PDF_NAME(TransformParams));
+        pdf_dict_put_int(ctx, params, PDF_NAME(P), n);
+        pdf_dict_put_drop(ctx, params, PDF_NAME(V), pdf_new_name(ctx, "1.2"));
+        // Прежние правила (FieldMDP блокировки) — после DocMDP.
+        for (int i = 0; i < pdf_array_len(ctx, old); ++i) {
+            pdf_obj* r = pdf_array_get(ctx, old, i);
+            if (!pdf_name_eq(ctx, pdf_dict_get(ctx, r, PDF_NAME(TransformMethod)), PDF_NAME(DocMDP))) {
+                pdf_array_push(ctx, refs, r);
+            }
+        }
+        pdf_dict_put_drop(ctx, v, PDF_NAME(Reference), refs);
+        pdf_obj* root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf), PDF_NAME(Root));
+        pdf_obj* perms = pdf_dict_get(ctx, root, PDF_NAME(Perms));
+        if (!pdf_is_dict(ctx, perms)) {
+            perms = pdf_dict_put_dict(ctx, root, PDF_NAME(Perms), 1);
+        }
+        pdf_dict_put(ctx, perms, PDF_NAME(DocMDP), v);
+    });
+}
+
+CertifyBlock certifyBlock(Document& doc) {
+    if (doc.pdf() == nullptr) {
+        return CertifyBlock::NotPdf;
+    }
+    if (!revisions::signatures(doc).empty()) {
+        return CertifyBlock::Signed;
+    }
+    if (readDocMdp(doc).permission != MdpPermission::None) {
+        return CertifyBlock::Certified;
+    }
+    return CertifyBlock::None;
+}
+
+bool mdpAllows(MdpPermission p, MdpAction action) {
+    switch (action) {
+        case MdpAction::AddValidationInfo:
+            return true;
+        case MdpAction::FillForms:
+        case MdpAction::Sign:
+            return p != MdpPermission::NoChanges;
+        case MdpAction::Annotate:
+            return p == MdpPermission::None || p == MdpPermission::Annotations;
+        case MdpAction::EditPages:
+        case MdpAction::EditContent:
+            return p == MdpPermission::None;
     }
     return false;
 }
