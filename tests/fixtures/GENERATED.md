@@ -201,6 +201,20 @@ O=Оттиск, C=RU, 2026-01-01 + 3650 дней, KeyUsage digitalSignature+nonR
 простой TrueType WinAnsi), заголовки → закладки, теги (`/StructTreeRoot`), таблица, картинка. CID Identity-H и
 Type1 с `/Differences` — в `tests/data/mini`.
 
+### `tests/fixtures/edit/` — `make_edit_fixtures.ps1` (Word COM) + `make_edit_fixtures.py` (сессия 3.1; ожидания — `expected.json`)
+
+Свои PDF редактора текста с точной «истиной» (генератор сам считает, где стоит каждый глиф): `latin.pdf`,
+`cyr-cid.pdf` (один BT: TL, T*, «'»), `type1-diff.pdf` (Helvetica без встраивания, /Differences), `base14.pdf`
+(Times-Roman без /Widths — `mutool create`), `tj-kerning.pdf`, `tz-tc-tw.pdf` (Tc/Tw/Tz/Ts, Tr 1 и 7),
+`rotated.pdf`, `two-streams.pdf` (операнды Td в первом потоке, оператор — во втором), `xobject-form.pdf`,
+`columns-2.pdf`, `columns-3.pdf` (строки рядами через колонки), `align-{left,right,center,justify}.pdf`,
+`inline-image.pdf` (BI…EI с « EI » в данных, /AHx, BX/EX, BDC). Из Word (по одному шрифту Arial — файл ≤ 50 КБ):
+`word-paragraphs.pdf`, `word-lists.pdf`, `word-columns.pdf` (колонки выровнены разрывом «на текущей странице»),
+`word-table.pdf`, `word-rotated.pdf` (надпись снизу вверх); ожидания Word — текст и выравнивание из задания,
+x0/x1 — по рамкам символов pypdfium2. `lo-paragraphs.pdf` — тот же текст из LibreOffice, только если он установлен.
+`expected.json`: спаны (один на оператор показа: текст, шрифт, кегль, x0/x1/базовая линия или начало и угол, цвет,
+«только чтение») и блоки (текст, x0/x1, первая и последняя базовая линия, строки, выравнивание).
+
 ### `tests/fixtures/demo/` — `make_demo.py` (сводка — `demo.json`) — для сцен и `--smoke`
 
 `report.pdf` (12 стр.: обложка с фото, оглавление со ссылками `/Dest`, 5 глав, векторная диаграмма, таблица,

@@ -10,6 +10,7 @@
       make_images.py → make_mini.py → make_annots.py → make_forms.py → make_enc.py → make_sig.py →
       make_cyr_fixtures.ps1 (Word) → make_office_fixtures.ps1 (Word) → make_office_fixtures.py →
       make_scans.py → make_demo.py → make_imgcmp.py → make_text.py → stext_expected.py → make_view.py → make_pages.py →
+      make_edit_fixtures.ps1 (Word + make_edit_fixtures.py; без Word — только make_edit_fixtures.py) →
       make_big.py (корпус) → make_mutants.py (корпус) → verify_fixtures.py.
     -Out     — корень, под которым создаются tests\data\mini и tests\fixtures\… (по умолчанию — репозиторий;
                check_determinism.ps1 передаёт сюда временные каталоги).
@@ -127,6 +128,12 @@ Invoke-Step 'make_text.py' { Invoke-Gen 'make_text.py' }
 Invoke-Step 'stext_expected.py' { Invoke-Gen 'stext_expected.py' }
 Invoke-Step 'make_view.py' { Invoke-Gen 'make_view.py' }
 Invoke-Step 'make_pages.py' { Invoke-Gen 'make_pages.py' }
+if (-not $SkipWord) {
+    Invoke-Step 'make_edit_fixtures.ps1' { Invoke-Ps 'make_edit_fixtures.ps1' }
+}
+else {
+    Invoke-Step 'make_edit_fixtures.py' { Invoke-Gen 'make_edit_fixtures.py' }
+}
 if (-not $SkipBig) {
     Invoke-Step 'make_big.py' { Invoke-Gen 'make_big.py' @('--corpus', $Corpus) }
     Invoke-Step 'make_mutants.py' { Invoke-Gen 'make_mutants.py' @('--corpus', $Corpus) }

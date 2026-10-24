@@ -1,0 +1,2175 @@
+{
+  "generator": "tools/gen/make_edit_fixtures.py",
+  "coordinates": "points, origin top-left (MuPDF page space); baseline — y of the glyph origin",
+  "span": "one text-showing operator (Tj, TJ, ', \"); x0 — origin of the first glyph, x1 — origin of the last glyph plus its advance (w0 × size × Tz)",
+  "block": "paragraph: spans in reading order, lines joined by one space; x0/x1 — extent of its spans; firstBaseline/lastBaseline — baselines of the first and last line (without Ts)",
+  "readOnly": "empty — editable; otherwise the reason code (rotated, form, clip, type3, pattern, …)",
+  "fixtures": {
+    "latin.pdf": {
+      "about": "три абзаца латиницы, Type0 Arial, каждая строка — свой BT…ET",
+      "kinds": [
+        "latin",
+        "cid"
+      ],
+      "source": "tools/gen/make_edit_fixtures.py",
+      "pages": 1,
+      "spans": [
+        {
+          "text": "The editor builds a model of every text object on the page: glyphs with positions, fonts and",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 510.394,
+          "baseline": 90.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "the text matrix. Lines are clustered by baseline and angle, then grouped into paragraphs.",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 503.673,
+          "baseline": 104.5,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "A paragraph is a block with a bounding rectangle and style runs. Text shown by several BT",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 514.035,
+          "baseline": 133.5,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "and ET pairs that belong to one paragraph is merged into a single block.",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 423.571,
+          "baseline": 148.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Untouched operators are written back byte for byte, so an empty edit leaves the page",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 486.546,
+          "baseline": 177.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "unchanged.",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 129.486,
+          "baseline": 191.5,
+          "readOnly": "",
+          "page": 0
+        }
+      ],
+      "blocks": [
+        {
+          "text": "The editor builds a model of every text object on the page: glyphs with positions, fonts and the text matrix. Lines are clustered by baseline and angle, then grouped into paragraphs.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 2,
+          "spans": [
+            0,
+            1
+          ],
+          "x0": 72.0,
+          "x1": 510.394,
+          "firstBaseline": 90.0,
+          "lastBaseline": 104.5,
+          "page": 0
+        },
+        {
+          "text": "A paragraph is a block with a bounding rectangle and style runs. Text shown by several BT and ET pairs that belong to one paragraph is merged into a single block.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 2,
+          "spans": [
+            2,
+            3
+          ],
+          "x0": 72.0,
+          "x1": 514.035,
+          "firstBaseline": 133.5,
+          "lastBaseline": 148.0,
+          "page": 0
+        },
+        {
+          "text": "Untouched operators are written back byte for byte, so an empty edit leaves the page unchanged.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 2,
+          "spans": [
+            4,
+            5
+          ],
+          "x0": 72.0,
+          "x1": 486.546,
+          "firstBaseline": 177.0,
+          "lastBaseline": 191.5,
+          "page": 0
+        }
+      ]
+    },
+    "cyr-cid.pdf": {
+      "about": "два абзаца кириллицы одним BT (TL, T*, '), отступ первой строки без интервала",
+      "kinds": [
+        "cyrillic",
+        "cid"
+      ],
+      "source": "tools/gen/make_edit_fixtures.py",
+      "pages": 1,
+      "spans": [
+        {
+          "text": "Редактор строит модель каждого текстового объекта страницы: глифы с",
+          "font": "TimesNewRomanPSMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 96.0,
+          "x1": 466.38,
+          "baseline": 100.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "позициями, шрифтами и матрицей текста. Строки собираются по базовой линии, а",
+          "font": "TimesNewRomanPSMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 495.876,
+          "baseline": 115.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "затем — в абзацы.",
+          "font": "TimesNewRomanPSMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 165.888,
+          "baseline": 130.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Новый абзац начинается с отступа первой строки, даже если интервала между",
+          "font": "TimesNewRomanPSMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 96.0,
+          "x1": 497.82,
+          "baseline": 145.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "абзацами нет. Съешь же ещё этих мягких французских булок, да выпей чаю.",
+          "font": "TimesNewRomanPSMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 464.976,
+          "baseline": 160.0,
+          "readOnly": "",
+          "page": 0
+        }
+      ],
+      "blocks": [
+        {
+          "text": "Редактор строит модель каждого текстового объекта страницы: глифы с позициями, шрифтами и матрицей текста. Строки собираются по базовой линии, а затем — в абзацы.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 3,
+          "spans": [
+            0,
+            1,
+            2
+          ],
+          "x0": 72.0,
+          "x1": 495.876,
+          "firstBaseline": 100.0,
+          "lastBaseline": 130.0,
+          "page": 0
+        },
+        {
+          "text": "Новый абзац начинается с отступа первой строки, даже если интервала между абзацами нет. Съешь же ещё этих мягких французских булок, да выпей чаю.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 2,
+          "spans": [
+            3,
+            4
+          ],
+          "x0": 72.0,
+          "x1": 497.82,
+          "firstBaseline": 145.0,
+          "lastBaseline": 160.0,
+          "page": 0
+        }
+      ]
+    },
+    "type1-diff.pdf": {
+      "about": "Type1 /Helvetica без встраивания, WinAnsi + /Differences (кириллица cp1251)",
+      "kinds": [
+        "type1",
+        "differences",
+        "cyrillic",
+        "non-embedded"
+      ],
+      "source": "tools/gen/make_edit_fixtures.py",
+      "pages": 1,
+      "spans": [
+        {
+          "text": "Type1 Helvetica with Differences: Привет, мир! Съешь ещё этих мягких булок.",
+          "font": "Helvetica",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 500.76,
+          "baseline": 100.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Текст без ToUnicode извлекается по именам глифов afii.",
+          "font": "Helvetica",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 388.056,
+          "baseline": 115.0,
+          "readOnly": "",
+          "page": 0
+        }
+      ],
+      "blocks": [
+        {
+          "text": "Type1 Helvetica with Differences: Привет, мир! Съешь ещё этих мягких булок. Текст без ToUnicode извлекается по именам глифов afii.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 2,
+          "spans": [
+            0,
+            1
+          ],
+          "x0": 72.0,
+          "x1": 500.76,
+          "firstBaseline": 100.0,
+          "lastBaseline": 115.0,
+          "page": 0
+        }
+      ]
+    },
+    "base14.pdf": {
+      "about": "Type1 /Times-Roman base14 без встраивания и без /Widths (mutool create)",
+      "kinds": [
+        "type1",
+        "base14",
+        "non-embedded",
+        "no-widths"
+      ],
+      "source": "tools/gen/make_edit_fixtures.py",
+      "pages": 1,
+      "spans": [
+        {
+          "text": "Base fourteen fonts are not embedded: the viewer substitutes a metric compatible face.",
+          "font": "Times-Roman",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 488.244,
+          "baseline": 100.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Widths come from the font program, not from the file.",
+          "font": "Times-Roman",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 332.964,
+          "baseline": 115.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "A second paragraph after an empty line checks the paragraph distance rule.",
+          "font": "Times-Roman",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 432.552,
+          "baseline": 145.0,
+          "readOnly": "",
+          "page": 0
+        }
+      ],
+      "blocks": [
+        {
+          "text": "Base fourteen fonts are not embedded: the viewer substitutes a metric compatible face. Widths come from the font program, not from the file.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 2,
+          "spans": [
+            0,
+            1
+          ],
+          "x0": 72.0,
+          "x1": 488.244,
+          "firstBaseline": 100.0,
+          "lastBaseline": 115.0,
+          "page": 0
+        },
+        {
+          "text": "A second paragraph after an empty line checks the paragraph distance rule.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 1,
+          "spans": [
+            2
+          ],
+          "x0": 72.0,
+          "x1": 432.552,
+          "firstBaseline": 145.0,
+          "lastBaseline": 145.0,
+          "page": 0
+        }
+      ]
+    },
+    "tj-kerning.pdf": {
+      "about": "TJ: кернинг пар, отступ внутри массива, литеральные строки",
+      "kinds": [
+        "tj",
+        "kerning"
+      ],
+      "source": "tools/gen/make_edit_fixtures.py",
+      "pages": 1,
+      "spans": [
+        {
+          "text": "AVATAR WAVE",
+          "font": "ArialMT",
+          "size": 14.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 167.116,
+          "baseline": 100.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Typography: kerning Дед АУ",
+          "font": "ArialMT",
+          "size": 14.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 248.456,
+          "baseline": 118.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Name:Value (with parens) and back\\slash",
+          "font": "ArialMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 322.884,
+          "baseline": 160.0,
+          "readOnly": "",
+          "page": 0
+        }
+      ],
+      "blocks": [
+        {
+          "text": "AVATAR WAVE Typography: kerning Дед АУ",
+          "align": "left",
+          "readOnly": "",
+          "lines": 2,
+          "spans": [
+            0,
+            1
+          ],
+          "x0": 72.0,
+          "x1": 248.456,
+          "firstBaseline": 100.0,
+          "lastBaseline": 118.0,
+          "page": 0
+        },
+        {
+          "text": "Name:Value (with parens) and back\\slash",
+          "align": "left",
+          "readOnly": "",
+          "lines": 1,
+          "spans": [
+            2
+          ],
+          "x0": 72.0,
+          "x1": 322.884,
+          "firstBaseline": 160.0,
+          "lastBaseline": 160.0,
+          "page": 0
+        }
+      ]
+    },
+    "tz-tc-tw.pdf": {
+      "about": "Tc, Tw, Tz, Ts, Tw у двухбайтового шрифта, Tr 1 и Tr 7",
+      "kinds": [
+        "tc",
+        "tw",
+        "tz",
+        "ts"
+      ],
+      "source": "tools/gen/make_edit_fixtures.py",
+      "pages": 1,
+      "spans": [
+        {
+          "text": "Letter spacing with Tc 1.5",
+          "font": "ArialMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 246.228,
+          "baseline": 100.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Word spacing applies to every space",
+          "font": "ArialMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 298.08,
+          "baseline": 130.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Horizontal scale Tz 75 percent",
+          "font": "ArialMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 193.545,
+          "baseline": 160.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "E = mc",
+          "font": "ArialMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 109.68,
+          "baseline": 190.0,
+          "readOnly": "",
+          "lineBaseline": 190.0,
+          "page": 0
+        },
+        {
+          "text": "2",
+          "font": "ArialMT",
+          "size": 8.0,
+          "color": "#000000",
+          "x0": 109.68,
+          "x1": 114.128,
+          "baseline": 185.0,
+          "readOnly": "",
+          "lineBaseline": 190.0,
+          "page": 0
+        },
+        {
+          "text": " and H",
+          "font": "ArialMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 114.128,
+          "x1": 149.48,
+          "baseline": 190.0,
+          "readOnly": "",
+          "lineBaseline": 190.0,
+          "page": 0
+        },
+        {
+          "text": "2",
+          "font": "ArialMT",
+          "size": 8.0,
+          "color": "#000000",
+          "x0": 149.48,
+          "x1": 153.928,
+          "baseline": 193.0,
+          "readOnly": "",
+          "lineBaseline": 190.0,
+          "page": 0
+        },
+        {
+          "text": "O in one line",
+          "font": "ArialMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 153.928,
+          "x1": 221.296,
+          "baseline": 190.0,
+          "readOnly": "",
+          "lineBaseline": 190.0,
+          "page": 0
+        },
+        {
+          "text": "Tw does not apply to two byte codes",
+          "font": "ArialMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 266.1,
+          "baseline": 220.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Outline text with Tr 1",
+          "font": "ArialMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 222.04,
+          "baseline": 250.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Clip only text with Tr 7",
+          "font": "ArialMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 240.032,
+          "baseline": 280.0,
+          "readOnly": "clip",
+          "page": 0
+        }
+      ],
+      "blocks": [
+        {
+          "text": "Letter spacing with Tc 1.5",
+          "align": "left",
+          "readOnly": "",
+          "lines": 1,
+          "spans": [
+            0
+          ],
+          "x0": 72.0,
+          "x1": 246.228,
+          "firstBaseline": 100.0,
+          "lastBaseline": 100.0,
+          "page": 0
+        },
+        {
+          "text": "Word spacing applies to every space",
+          "align": "left",
+          "readOnly": "",
+          "lines": 1,
+          "spans": [
+            1
+          ],
+          "x0": 72.0,
+          "x1": 298.08,
+          "firstBaseline": 130.0,
+          "lastBaseline": 130.0,
+          "page": 0
+        },
+        {
+          "text": "Horizontal scale Tz 75 percent",
+          "align": "left",
+          "readOnly": "",
+          "lines": 1,
+          "spans": [
+            2
+          ],
+          "x0": 72.0,
+          "x1": 193.545,
+          "firstBaseline": 160.0,
+          "lastBaseline": 160.0,
+          "page": 0
+        },
+        {
+          "text": "E = mc2 and H2O in one line",
+          "align": "left",
+          "readOnly": "",
+          "lines": 1,
+          "spans": [
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "x0": 72.0,
+          "x1": 221.296,
+          "firstBaseline": 190.0,
+          "lastBaseline": 190.0,
+          "page": 0
+        },
+        {
+          "text": "Tw does not apply to two byte codes",
+          "align": "left",
+          "readOnly": "",
+          "lines": 1,
+          "spans": [
+            8
+          ],
+          "x0": 72.0,
+          "x1": 266.1,
+          "firstBaseline": 220.0,
+          "lastBaseline": 220.0,
+          "page": 0
+        },
+        {
+          "text": "Outline text with Tr 1",
+          "align": "left",
+          "readOnly": "",
+          "lines": 1,
+          "spans": [
+            9
+          ],
+          "x0": 72.0,
+          "x1": 222.04,
+          "firstBaseline": 250.0,
+          "lastBaseline": 250.0,
+          "page": 0
+        },
+        {
+          "text": "Clip only text with Tr 7",
+          "align": "left",
+          "readOnly": "clip",
+          "lines": 1,
+          "spans": [
+            10
+          ],
+          "x0": 72.0,
+          "x1": 240.032,
+          "firstBaseline": 280.0,
+          "lastBaseline": 280.0,
+          "page": 0
+        }
+      ]
+    },
+    "rotated.pdf": {
+      "about": "абзац, строка под 90° и строка под 30° (Tm)",
+      "kinds": [
+        "rotated"
+      ],
+      "source": "tools/gen/make_edit_fixtures.py",
+      "pages": 1,
+      "spans": [
+        {
+          "text": "Horizontal text stays editable, rotated lines become read only blocks.",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 406.422,
+          "baseline": 100.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Vertical line rotated by 90 degrees",
+          "font": "ArialMT",
+          "size": 12.0,
+          "color": "#000000",
+          "origin": [
+            60.0,
+            541.89
+          ],
+          "angle": 90.0,
+          "readOnly": "rotated",
+          "page": 0
+        },
+        {
+          "text": "Line at thirty degrees",
+          "font": "ArialMT",
+          "size": 12.0,
+          "color": "#000000",
+          "origin": [
+            200.0,
+            441.89
+          ],
+          "angle": 30.0,
+          "readOnly": "rotated",
+          "page": 0
+        }
+      ],
+      "blocks": [
+        {
+          "text": "Horizontal text stays editable, rotated lines become read only blocks.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 1,
+          "spans": [
+            0
+          ],
+          "x0": 72.0,
+          "x1": 406.422,
+          "firstBaseline": 100.0,
+          "lastBaseline": 100.0,
+          "page": 0
+        },
+        {
+          "text": "Vertical line rotated by 90 degrees",
+          "align": "left",
+          "readOnly": "rotated",
+          "lines": 1,
+          "spans": [
+            1
+          ],
+          "page": 0
+        },
+        {
+          "text": "Line at thirty degrees",
+          "align": "left",
+          "readOnly": "rotated",
+          "lines": 1,
+          "spans": [
+            2
+          ],
+          "page": 0
+        }
+      ]
+    },
+    "two-streams.pdf": {
+      "about": "/Contents из двух потоков; операнды Td — в конце первого, Td — во втором",
+      "kinds": [
+        "contents-array"
+      ],
+      "source": "tools/gen/make_edit_fixtures.py",
+      "pages": 1,
+      "spans": [
+        {
+          "text": "Line one is shown by the first content stream",
+          "font": "ArialMT",
+          "size": 12.0,
+          "color": "#000099",
+          "x0": 72.0,
+          "x1": 309.444,
+          "baseline": 100.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "and the second line too, in the same text object;",
+          "font": "ArialMT",
+          "size": 12.0,
+          "color": "#000099",
+          "x0": 72.0,
+          "x1": 326.148,
+          "baseline": 116.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "the third line starts in stream two.",
+          "font": "ArialMT",
+          "size": 12.0,
+          "color": "#000099",
+          "x0": 72.0,
+          "x1": 248.064,
+          "baseline": 132.0,
+          "readOnly": "",
+          "page": 0
+        }
+      ],
+      "blocks": [
+        {
+          "text": "Line one is shown by the first content stream and the second line too, in the same text object; the third line starts in stream two.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 3,
+          "spans": [
+            0,
+            1,
+            2
+          ],
+          "x0": 72.0,
+          "x1": 326.148,
+          "firstBaseline": 100.0,
+          "lastBaseline": 132.0,
+          "page": 0
+        }
+      ]
+    },
+    "xobject-form.pdf": {
+      "about": "абзац страницы и текст XObject-формы (/Matrix, cm) — только чтение",
+      "kinds": [
+        "form"
+      ],
+      "source": "tools/gen/make_edit_fixtures.py",
+      "pages": 1,
+      "spans": [
+        {
+          "text": "Page text before the form. Text inside a form XObject is read only: its stream may be",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 484.06,
+          "baseline": 100.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "shared by other pages.",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 184.508,
+          "baseline": 114.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Text inside a form XObject",
+          "font": "ArialMT",
+          "size": 14.0,
+          "color": "#990000",
+          "x0": 82.0,
+          "x1": 213.958,
+          "baseline": 297.89,
+          "readOnly": "form",
+          "page": 0
+        },
+        {
+          "text": "scaled by its /Matrix",
+          "font": "ArialMT",
+          "size": 14.0,
+          "color": "#990000",
+          "x0": 82.0,
+          "x1": 180.336,
+          "baseline": 312.29,
+          "readOnly": "form",
+          "page": 0
+        }
+      ],
+      "blocks": [
+        {
+          "text": "Page text before the form. Text inside a form XObject is read only: its stream may be shared by other pages.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 2,
+          "spans": [
+            0,
+            1
+          ],
+          "x0": 72.0,
+          "x1": 484.06,
+          "firstBaseline": 100.0,
+          "lastBaseline": 114.0,
+          "page": 0
+        },
+        {
+          "text": "Text inside a form XObject scaled by its /Matrix",
+          "align": "left",
+          "readOnly": "form",
+          "lines": 2,
+          "spans": [
+            2,
+            3
+          ],
+          "x0": 82.0,
+          "x1": 213.958,
+          "firstBaseline": 297.89,
+          "lastBaseline": 312.29,
+          "page": 0
+        }
+      ]
+    },
+    "columns-2.pdf": {
+      "about": "две колонки по два абзаца, колонка за колонкой",
+      "kinds": [
+        "columns"
+      ],
+      "source": "tools/gen/make_edit_fixtures.py",
+      "pages": 1,
+      "spans": [
+        {
+          "text": "The editor builds a model of every text object on",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 60.0,
+          "x1": 272.88,
+          "baseline": 90.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "the page: glyphs with positions, fonts and the text",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 60.0,
+          "x1": 278.46,
+          "baseline": 103.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "matrix. Lines are clustered by baseline and",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 60.0,
+          "x1": 250.08,
+          "baseline": 116.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "angle, then grouped into paragraphs.",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 60.0,
+          "x1": 223.99,
+          "baseline": 129.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "A paragraph is a block with a bounding rectangle",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 60.0,
+          "x1": 276.22,
+          "baseline": 155.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "and style runs. Text shown by several BT and ET",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 60.0,
+          "x1": 277.87,
+          "baseline": 168.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "pairs that belong to one paragraph is merged into",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 60.0,
+          "x1": 278.45,
+          "baseline": 181.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "a single block.",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 60.0,
+          "x1": 123.36,
+          "baseline": 194.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Редактор строит модель каждого текстового",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 310.0,
+          "x1": 517.53,
+          "baseline": 90.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "объекта страницы: глифы с позициями,",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 310.0,
+          "x1": 494.88,
+          "baseline": 103.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "шрифтами и матрицей текста. Строки",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 310.0,
+          "x1": 487.1,
+          "baseline": 116.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "собираются по базовой линии, а затем — в",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 310.0,
+          "x1": 512.76,
+          "baseline": 129.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "абзацы.",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 310.0,
+          "x1": 347.13,
+          "baseline": 142.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Новый абзац начинается с отступа первой",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 310.0,
+          "x1": 509.15,
+          "baseline": 168.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "строки, даже если интервала между абзацами",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 310.0,
+          "x1": 527.19,
+          "baseline": 181.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "нет. Съешь же ещё этих мягких французских",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 310.0,
+          "x1": 520.32,
+          "baseline": 194.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "булок, да выпей чаю.",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 310.0,
+          "x1": 409.13,
+          "baseline": 207.0,
+          "readOnly": "",
+          "page": 0
+        }
+      ],
+      "blocks": [
+        {
+          "text": "The editor builds a model of every text object on the page: glyphs with positions, fonts and the text matrix. Lines are clustered by baseline and angle, then grouped into paragraphs.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 4,
+          "spans": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "x0": 60.0,
+          "x1": 278.46,
+          "firstBaseline": 90.0,
+          "lastBaseline": 129.0,
+          "page": 0
+        },
+        {
+          "text": "A paragraph is a block with a bounding rectangle and style runs. Text shown by several BT and ET pairs that belong to one paragraph is merged into a single block.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 4,
+          "spans": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "x0": 60.0,
+          "x1": 278.45,
+          "firstBaseline": 155.0,
+          "lastBaseline": 194.0,
+          "page": 0
+        },
+        {
+          "text": "Редактор строит модель каждого текстового объекта страницы: глифы с позициями, шрифтами и матрицей текста. Строки собираются по базовой линии, а затем — в абзацы.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 5,
+          "spans": [
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          "x0": 310.0,
+          "x1": 517.53,
+          "firstBaseline": 90.0,
+          "lastBaseline": 142.0,
+          "page": 0
+        },
+        {
+          "text": "Новый абзац начинается с отступа первой строки, даже если интервала между абзацами нет. Съешь же ещё этих мягких французских булок, да выпей чаю.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 4,
+          "spans": [
+            13,
+            14,
+            15,
+            16
+          ],
+          "x0": 310.0,
+          "x1": 527.19,
+          "firstBaseline": 168.0,
+          "lastBaseline": 207.0,
+          "page": 0
+        }
+      ]
+    },
+    "columns-3.pdf": {
+      "about": "три колонки по абзацу, строки в потоке — рядами через колонки",
+      "kinds": [
+        "columns"
+      ],
+      "source": "tools/gen/make_edit_fixtures.py",
+      "pages": 1,
+      "spans": [
+        {
+          "text": "The editor builds a model of",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 50.0,
+          "x1": 173.39,
+          "baseline": 90.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Редактор строит модель",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 225.0,
+          "x1": 340.0,
+          "baseline": 90.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Второй абзац того же блока",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 400.0,
+          "x1": 530.46,
+          "baseline": 90.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "every text object on the page:",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 50.0,
+          "x1": 181.19,
+          "baseline": 103.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "каждого текстового объекта",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 225.0,
+          "x1": 355.15,
+          "baseline": 103.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "проверяет, что интервал",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 400.0,
+          "x1": 515.73,
+          "baseline": 103.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "glyphs with positions, fonts and",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 50.0,
+          "x1": 188.4,
+          "baseline": 116.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "страницы: глифы с позициями,",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 225.0,
+          "x1": 369.48,
+          "baseline": 116.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "больше полутора кеглей",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 400.0,
+          "x1": 515.11,
+          "baseline": 116.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "the text matrix. Lines are",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 50.0,
+          "x1": 159.49,
+          "baseline": 129.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "шрифтами и матрицей текста.",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 225.0,
+          "x1": 366.43,
+          "baseline": 129.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "отделяет абзацы друг от друга,",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 400.0,
+          "x1": 546.95,
+          "baseline": 129.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "clustered by baseline and angle,",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 50.0,
+          "x1": 193.41,
+          "baseline": 142.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Строки собираются по базовой",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 225.0,
+          "x1": 370.6,
+          "baseline": 142.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "а строки внутри абзаца — нет.",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 400.0,
+          "x1": 542.85,
+          "baseline": 142.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "then grouped into paragraphs.",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 50.0,
+          "x1": 183.97,
+          "baseline": 155.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "линии, а затем — в абзацы.",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 225.0,
+          "x1": 354.96,
+          "baseline": 155.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Untouched operators are written",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 50.0,
+          "x1": 192.84,
+          "baseline": 168.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "back byte for byte, so an empty",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 50.0,
+          "x1": 188.96,
+          "baseline": 181.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "edit leaves the page unchanged.",
+          "font": "ArialMT",
+          "size": 10.0,
+          "color": "#000000",
+          "x0": 50.0,
+          "x1": 194.54,
+          "baseline": 194.0,
+          "readOnly": "",
+          "page": 0
+        }
+      ],
+      "blocks": [
+        {
+          "text": "The editor builds a model of every text object on the page: glyphs with positions, fonts and the text matrix. Lines are clustered by baseline and angle, then grouped into paragraphs. Untouched operators are written back byte for byte, so an empty edit leaves the page unchanged.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 9,
+          "spans": [
+            0,
+            3,
+            6,
+            9,
+            12,
+            15,
+            17,
+            18,
+            19
+          ],
+          "x0": 50.0,
+          "x1": 194.54,
+          "firstBaseline": 90.0,
+          "lastBaseline": 194.0,
+          "page": 0
+        },
+        {
+          "text": "Редактор строит модель каждого текстового объекта страницы: глифы с позициями, шрифтами и матрицей текста. Строки собираются по базовой линии, а затем — в абзацы.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 6,
+          "spans": [
+            1,
+            4,
+            7,
+            10,
+            13,
+            16
+          ],
+          "x0": 225.0,
+          "x1": 370.6,
+          "firstBaseline": 90.0,
+          "lastBaseline": 155.0,
+          "page": 0
+        },
+        {
+          "text": "Второй абзац того же блока проверяет, что интервал больше полутора кеглей отделяет абзацы друг от друга, а строки внутри абзаца — нет.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 5,
+          "spans": [
+            2,
+            5,
+            8,
+            11,
+            14
+          ],
+          "x0": 400.0,
+          "x1": 546.95,
+          "firstBaseline": 90.0,
+          "lastBaseline": 142.0,
+          "page": 0
+        }
+      ]
+    },
+    "align-left.pdf": {
+      "about": "два абзаца, выравнивание left",
+      "kinds": [
+        "align",
+        "left"
+      ],
+      "source": "tools/gen/make_edit_fixtures.py",
+      "pages": 1,
+      "spans": [
+        {
+          "text": "Выравнивание по левому краю: правые концы строк неровные, а левые",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 442.139,
+          "baseline": 100.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "совпадают. Mixed text: Привет, world! Всё на своих местах.",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 373.708,
+          "baseline": 114.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Второй абзац того же блока проверяет, что интервал больше полутора",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 438.861,
+          "baseline": 142.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "кеглей отделяет абзацы друг от друга, а строки внутри абзаца — нет.",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 430.523,
+          "baseline": 156.0,
+          "readOnly": "",
+          "page": 0
+        }
+      ],
+      "blocks": [
+        {
+          "text": "Выравнивание по левому краю: правые концы строк неровные, а левые совпадают. Mixed text: Привет, world! Всё на своих местах.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 2,
+          "spans": [
+            0,
+            1
+          ],
+          "x0": 72.0,
+          "x1": 442.139,
+          "firstBaseline": 100.0,
+          "lastBaseline": 114.0,
+          "page": 0
+        },
+        {
+          "text": "Второй абзац того же блока проверяет, что интервал больше полутора кеглей отделяет абзацы друг от друга, а строки внутри абзаца — нет.",
+          "align": "left",
+          "readOnly": "",
+          "lines": 2,
+          "spans": [
+            2,
+            3
+          ],
+          "x0": 72.0,
+          "x1": 438.861,
+          "firstBaseline": 142.0,
+          "lastBaseline": 156.0,
+          "page": 0
+        }
+      ]
+    },
+    "align-right.pdf": {
+      "about": "два абзаца, выравнивание right",
+      "kinds": [
+        "align",
+        "right"
+      ],
+      "source": "tools/gen/make_edit_fixtures.py",
+      "pages": 1,
+      "spans": [
+        {
+          "text": "Выравнивание по левому краю: правые концы строк неровные, а левые",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 101.861,
+          "x1": 472.0,
+          "baseline": 100.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "совпадают. Mixed text: Привет, world! Всё на своих местах.",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 170.292,
+          "x1": 472.0,
+          "baseline": 114.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Второй абзац того же блока проверяет, что интервал больше полутора",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 105.139,
+          "x1": 472.0,
+          "baseline": 142.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "кеглей отделяет абзацы друг от друга, а строки внутри абзаца — нет.",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 113.477,
+          "x1": 472.0,
+          "baseline": 156.0,
+          "readOnly": "",
+          "page": 0
+        }
+      ],
+      "blocks": [
+        {
+          "text": "Выравнивание по левому краю: правые концы строк неровные, а левые совпадают. Mixed text: Привет, world! Всё на своих местах.",
+          "align": "right",
+          "readOnly": "",
+          "lines": 2,
+          "spans": [
+            0,
+            1
+          ],
+          "x0": 101.861,
+          "x1": 472.0,
+          "firstBaseline": 100.0,
+          "lastBaseline": 114.0,
+          "page": 0
+        },
+        {
+          "text": "Второй абзац того же блока проверяет, что интервал больше полутора кеглей отделяет абзацы друг от друга, а строки внутри абзаца — нет.",
+          "align": "right",
+          "readOnly": "",
+          "lines": 2,
+          "spans": [
+            2,
+            3
+          ],
+          "x0": 105.139,
+          "x1": 472.0,
+          "firstBaseline": 142.0,
+          "lastBaseline": 156.0,
+          "page": 0
+        }
+      ]
+    },
+    "align-center.pdf": {
+      "about": "два абзаца, выравнивание center",
+      "kinds": [
+        "align",
+        "center"
+      ],
+      "source": "tools/gen/make_edit_fixtures.py",
+      "pages": 1,
+      "spans": [
+        {
+          "text": "Выравнивание по левому краю: правые концы строк неровные, а левые",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 86.93,
+          "x1": 457.069,
+          "baseline": 100.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "совпадают. Mixed text: Привет, world! Всё на своих местах.",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 121.146,
+          "x1": 422.854,
+          "baseline": 114.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Второй абзац того же блока проверяет, что интервал больше полутора",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 88.57,
+          "x1": 455.43,
+          "baseline": 142.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "кеглей отделяет абзацы друг от друга, а строки внутри абзаца — нет.",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 92.738,
+          "x1": 451.261,
+          "baseline": 156.0,
+          "readOnly": "",
+          "page": 0
+        }
+      ],
+      "blocks": [
+        {
+          "text": "Выравнивание по левому краю: правые концы строк неровные, а левые совпадают. Mixed text: Привет, world! Всё на своих местах.",
+          "align": "center",
+          "readOnly": "",
+          "lines": 2,
+          "spans": [
+            0,
+            1
+          ],
+          "x0": 86.93,
+          "x1": 457.069,
+          "firstBaseline": 100.0,
+          "lastBaseline": 114.0,
+          "page": 0
+        },
+        {
+          "text": "Второй абзац того же блока проверяет, что интервал больше полутора кеглей отделяет абзацы друг от друга, а строки внутри абзаца — нет.",
+          "align": "center",
+          "readOnly": "",
+          "lines": 2,
+          "spans": [
+            2,
+            3
+          ],
+          "x0": 88.57,
+          "x1": 455.43,
+          "firstBaseline": 142.0,
+          "lastBaseline": 156.0,
+          "page": 0
+        }
+      ]
+    },
+    "align-justify.pdf": {
+      "about": "два абзаца, выравнивание justify",
+      "kinds": [
+        "align",
+        "justify"
+      ],
+      "source": "tools/gen/make_edit_fixtures.py",
+      "pages": 1,
+      "spans": [
+        {
+          "text": "Justified text stretches every line except the last one to the full width of the",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 472.0,
+          "baseline": 100.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "column, so both edges are straight. Word spacing comes from the Tw operator in",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 472.0,
+          "baseline": 114.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "this paragraph.",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 145.37,
+          "baseline": 128.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Во втором абзаце ширина набирается сдвигами внутри массива TJ после",
+          "font": "TimesNewRomanPSMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 472.0,
+          "baseline": 158.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "каждого пробела: так делают многие программы вёрстки, когда шрифт",
+          "font": "TimesNewRomanPSMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 472.0,
+          "baseline": 173.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "двухбайтовый и оператор Tw не действует.",
+          "font": "TimesNewRomanPSMT",
+          "size": 12.0,
+          "color": "#000000",
+          "x0": 72.0,
+          "x1": 294.168,
+          "baseline": 188.0,
+          "readOnly": "",
+          "page": 0
+        }
+      ],
+      "blocks": [
+        {
+          "text": "Justified text stretches every line except the last one to the full width of the column, so both edges are straight. Word spacing comes from the Tw operator in this paragraph.",
+          "align": "justify",
+          "readOnly": "",
+          "lines": 3,
+          "spans": [
+            0,
+            1,
+            2
+          ],
+          "x0": 72.0,
+          "x1": 472.0,
+          "firstBaseline": 100.0,
+          "lastBaseline": 128.0,
+          "page": 0
+        },
+        {
+          "text": "Во втором абзаце ширина набирается сдвигами внутри массива TJ после каждого пробела: так делают многие программы вёрстки, когда шрифт двухбайтовый и оператор Tw не действует.",
+          "align": "justify",
+          "readOnly": "",
+          "lines": 3,
+          "spans": [
+            3,
+            4,
+            5
+          ],
+          "x0": 72.0,
+          "x1": 472.0,
+          "firstBaseline": 158.0,
+          "lastBaseline": 188.0,
+          "page": 0
+        }
+      ]
+    },
+    "inline-image.pdf": {
+      "about": "комментарии, BI…ID…EI с « EI » в данных, /AHx, BX/EX, BDC, экранирование",
+      "kinds": [
+        "inline-image",
+        "bx-ex",
+        "marked-content"
+      ],
+      "source": "tools/gen/make_edit_fixtures.py",
+      "pages": 1,
+      "spans": [
+        {
+          "text": "Inline image (BI) and BX/EX",
+          "font": "ArialMT",
+          "size": 14.0,
+          "color": "#333333",
+          "x0": 72.0,
+          "x1": 246.3,
+          "baseline": 100.0,
+          "readOnly": "",
+          "page": 0
+        },
+        {
+          "text": "Markedcontent with (parens) \\ A",
+          "font": "ArialMT",
+          "size": 11.0,
+          "color": "#333333",
+          "x0": 72.0,
+          "x1": 230.642,
+          "baseline": 130.0,
+          "readOnly": "",
+          "page": 0
+        }
+      ],
+      "blocks": [
+        {
+          "text": "Inline image (BI) and BX/EX",
+          "align": "left",
+          "readOnly": "",
+          "lines": 1,
+          "spans": [
+            0
+          ],
+          "x0": 72.0,
+          "x1": 246.3,
+          "firstBaseline": 100.0,
+          "lastBaseline": 100.0,
+          "page": 0
+        },
+        {
+          "text": "Markedcontent with (parens) \\ A",
+          "align": "left",
+          "readOnly": "",
+          "lines": 1,
+          "spans": [
+            1
+          ],
+          "x0": 72.0,
+          "x1": 230.642,
+          "firstBaseline": 130.0,
+          "lastBaseline": 130.0,
+          "page": 0
+        }
+      ]
+    },
+    "word-paragraphs.pdf": {
+      "about": "Word: абзацы латиницы, кириллицы и смешанные, четыре выравнивания, отступ первой строки",
+      "kinds": [
+        "word",
+        "align"
+      ],
+      "source": "tools/gen/make_edit_fixtures.ps1 (Word)",
+      "pages": 1,
+      "blocks": [
+        {
+          "text": "Word paragraphs for the editor",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 64.18,
+          "x1": 281.61,
+          "tolerance": 2.0
+        },
+        {
+          "text": "The editor builds a model of every text object on the page: glyphs with positions, fonts and the text matrix. Lines are clustered by baseline and angle, then grouped into paragraphs.",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 64.18,
+          "x1": 520.34,
+          "tolerance": 2.0
+        },
+        {
+          "text": "Редактор строит модель каждого текстового объекта страницы: глифы с позициями, шрифтами и матрицей текста. Строки собираются по базовой линии, а затем — в абзацы.",
+          "align": "justify",
+          "readOnly": "",
+          "page": 0,
+          "x0": 64.75,
+          "x1": 530.21,
+          "tolerance": 2.0
+        },
+        {
+          "text": "Абзац по центру: строки симметричны относительно середины колонки. Centered text, смешанный текст.",
+          "align": "center",
+          "readOnly": "",
+          "page": 0,
+          "x0": 77.06,
+          "x1": 517.32,
+          "tolerance": 2.0
+        },
+        {
+          "text": "Правый край ровный, левый — нет: так выравнивают подписи и даты. Right aligned text.",
+          "align": "right",
+          "readOnly": "",
+          "page": 0,
+          "x0": 81.29,
+          "x1": 530.42,
+          "tolerance": 2.0
+        },
+        {
+          "text": "Новый абзац начинается с отступа первой строки, даже если интервала между абзацами нет. Съешь же ещё этих мягких французских булок, да выпей чаю.",
+          "align": "justify",
+          "readOnly": "",
+          "page": 0,
+          "x0": 64.38,
+          "x1": 531.13,
+          "tolerance": 2.0
+        }
+      ],
+      "blocksMatch": "contains"
+    },
+    "word-lists.pdf": {
+      "about": "Word: маркированный и нумерованный списки",
+      "kinds": [
+        "word",
+        "lists"
+      ],
+      "source": "tools/gen/make_edit_fixtures.ps1 (Word)",
+      "pages": 1,
+      "blocks": [
+        {
+          "text": "Списки в Word",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 64.69,
+          "x1": 158.02,
+          "tolerance": 2.0
+        },
+        {
+          "text": "Первый пункт маркированного списка",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 100.85,
+          "x1": 293.66,
+          "tolerance": 2.0
+        },
+        {
+          "text": "Second bulleted item with Latin text",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 100.48,
+          "x1": 272.93,
+          "tolerance": 2.0
+        },
+        {
+          "text": "Третий пункт",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 100.24,
+          "x1": 165.77,
+          "tolerance": 2.0
+        },
+        {
+          "text": "Нумерованный пункт один",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 100.87,
+          "x1": 234.66,
+          "tolerance": 2.0
+        },
+        {
+          "text": "Numbered item two",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 100.82,
+          "x1": 195.07,
+          "tolerance": 2.0
+        }
+      ],
+      "blocksMatch": "contains"
+    },
+    "word-columns.pdf": {
+      "about": "Word: раздел в две колонки и раздел в три колонки (колонки выровнены разрывами «на текущей странице»)",
+      "kinds": [
+        "word",
+        "columns"
+      ],
+      "source": "tools/gen/make_edit_fixtures.ps1 (Word)",
+      "pages": 1,
+      "blocks": [],
+      "blocksMatch": "contains",
+      "columns": [
+        2,
+        3
+      ],
+      "paragraphTexts": [
+        "The editor builds a model of every text object on the page: glyphs with positions, fonts and the text matrix. Lines are clustered by baseline and angle, then grouped into paragraphs.",
+        "Редактор строит модель каждого текстового объекта страницы: глифы с позициями, шрифтами и матрицей текста. Строки собираются по базовой линии, а затем — в абзацы.",
+        "A paragraph is a block with a bounding rectangle and style runs. Text shown by several BT and ET pairs that belong to one paragraph is merged into a single block.",
+        "Новый абзац начинается с отступа первой строки, даже если интервала между абзацами нет. Съешь же ещё этих мягких французских булок, да выпей чаю.",
+        "Выравнивание по левому краю: правые концы строк неровные, а левые совпадают. Mixed text: Привет, world! Всё на своих местах.",
+        "Второй абзац того же блока проверяет, что интервал больше полутора кеглей отделяет абзацы друг от друга, а строки внутри абзаца — нет.",
+        "Untouched operators are written back byte for byte, so an empty edit leaves the page unchanged."
+      ]
+    },
+    "word-table.pdf": {
+      "about": "Word: таблица 3 × 3 — ячейка рядом с ячейкой не склеивается в строку",
+      "kinds": [
+        "word",
+        "table"
+      ],
+      "source": "tools/gen/make_edit_fixtures.ps1 (Word)",
+      "pages": 1,
+      "blocks": [
+        {
+          "text": "Город",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 68.7,
+          "x1": 97.33,
+          "tolerance": 2.0
+        },
+        {
+          "text": "Население",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 224.49,
+          "x1": 279.44,
+          "tolerance": 2.0
+        },
+        {
+          "text": "Регион",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 380.12,
+          "x1": 413.92,
+          "tolerance": 2.0
+        },
+        {
+          "text": "Казань",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 68.7,
+          "x1": 102.95,
+          "tolerance": 2.0
+        },
+        {
+          "text": "1 300 000",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 224.81,
+          "x1": 272.19,
+          "tolerance": 2.0
+        },
+        {
+          "text": "Татарстан",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 379.52,
+          "x1": 430.51,
+          "tolerance": 2.0
+        },
+        {
+          "text": "Sochi",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 68.32,
+          "x1": 94.61,
+          "tolerance": 2.0
+        },
+        {
+          "text": "470 000",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 223.75,
+          "x1": 262.95,
+          "tolerance": 2.0
+        },
+        {
+          "text": "Krasnodar",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 380.08,
+          "x1": 430.27,
+          "tolerance": 2.0
+        }
+      ],
+      "blocksMatch": "contains"
+    },
+    "word-rotated.pdf": {
+      "about": "Word: надпись с текстом, повёрнутым на 90°, — только чтение",
+      "kinds": [
+        "word",
+        "rotated"
+      ],
+      "source": "tools/gen/make_edit_fixtures.ps1 (Word)",
+      "pages": 1,
+      "blocks": [
+        {
+          "text": "Обычный абзац над надписью остаётся редактируемым.",
+          "align": "left",
+          "readOnly": "",
+          "page": 0,
+          "x0": 64.51,
+          "x1": 354.6,
+          "tolerance": 2.0
+        }
+      ],
+      "blocksMatch": "contains",
+      "rotatedText": "Повёрнутый текст надписи"
+    }
+  }
+}
