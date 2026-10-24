@@ -15,7 +15,10 @@
 //     слева от поля (callout_tool.cpp);
 //   Фигуры (5.2) — линия, стрелка, прямоугольник (R), овал — протягиванием; многоугольник, облако, ломаная
 //     — щелчками по вершинам, конец — двойной щелчок, Enter или щелчок по первой вершине, Backspace —
-//     убрать вершину; Shift — линия под 45°, квадрат, круг (shape_tools.cpp).
+//     убрать вершину; Shift — линия под 45°, квадрат, круг (shape_tools.cpp);
+//   Штамп (K, 5.2) — щелчок ставит выбранный в палитре штамп в его размере центром в точке, протягивание — в
+//     рамке с теми же пропорциями; динамический — с Identity и датой; картинка буфера обмена (comment-41) — один
+//     раз (stamp_tool.cpp); Вложить файл — щелчок, выбор файла и значок /FileAttachment (attach_tool.cpp).
 // Каждое действие — операция журнала (services/annot_ops.h); стиль — умолчания ядра + свой стиль инструмента
 // (services/comment_settings.h). Записка, вставка, замена, текстовое поле, выноска и фигуры — однократные
 // (после действия — прежний инструмент, если не «закреплён», comment-42); разметка, карандаш и ластик
@@ -24,6 +27,10 @@
 #pragma once
 
 #include <QElapsedTimer>
+#include <QImage>
+#include <QSizeF>
+
+#include <functional>
 #include <QFuture>
 #include <QObject>
 #include <QPointF>
@@ -62,7 +69,9 @@ enum class CommentAction {
     Oval,
     Polygon,
     Cloud,
-    PolyLine
+    PolyLine,
+    Stamp,
+    Attach
 };
 
 class CommentMode : public QObject, public ViewTool {
@@ -122,6 +131,16 @@ public:
     // открыть окно записки у первой. Ответ — refs созданных.
     void markupSelection(CommentAction action, const std::map<int, TextSelection>& selection, bool note);
 
+    // Штамп инструмента (id каталога services/stamps_catalog.h; пусто — commenting/stamp) и картинка буфера обмена
+    // для следующей постановки (comment-41; после постановки — снова штамп каталога).
+    void setStamp(const QString& id);
+    QString stamp() const;
+    void setClipboardStamp(const QImage& image);
+    bool hasClipboardStamp() const noexcept { return !clipboardStamp_.isNull(); }
+    // Выбор файла вложения (тесты подменяют; по умолчанию — диалог «Открыть»).
+    using FilePrompt = std::function<QString()>;
+    static void setFilePrompt(FilePrompt prompt);
+
     // Правка своего текстового поля на странице (InlineTextEditor; щелчок «Текстовым полем», двойной щелчок
     // «Выбором объектов»).
     void editTextBox(const annot::AnnotRef& ref);
@@ -173,6 +192,12 @@ private:
     void textBoxRelease();
     // callout_tool.cpp
     void calloutRelease();
+    // stamp_tool.cpp
+    void stampRelease();
+    void paintStampPreview(QPainter& painter);
+    QSizeF stampSize();
+    // attach_tool.cpp
+    void attachPress(const Locator& at);
     // shape_tools.cpp
     QPointF shapeEnd() const;
     void shapeRelease();
@@ -198,6 +223,10 @@ private:
     bool shift_ = false;           // Shift при протягивании фигуры
     std::vector<QPointF> poly_;    // вершины фигуры по щелчкам (пункты страницы polyPage_)
     int polyPage_ = -1;
+    QString stamp_;                 // id штампа (пусто — из настроек)
+    QImage clipboardStamp_;         // картинка буфера — на одну постановку
+    QString sizedStamp_;            // id, для которого известен размер
+    QSizeF stampSize_;              // размер штампа, пт
 };
 
 }  // namespace ot::ui

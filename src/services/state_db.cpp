@@ -66,6 +66,12 @@ const std::vector<std::function<void(sqlite3*)>>& migrations() {
         // 5: удостоверения подписи (4.2, core/sign/identity.h: identities — .pfx в ids\ и сертификаты
         // хранилища Windows, по умолчанию, тайм-аут пароля, пароль DPAPI)
         [](sqlite3* db) { sign::IdentityStore::createSchema(db); },
+        // 6: избранные штампы палитры (5.2, services/stamps_catalog.h)
+        [](sqlite3* db) {
+            exec(db,
+                 "CREATE TABLE IF NOT EXISTS stamp_favorites(id TEXT PRIMARY KEY, added_at INTEGER NOT NULL "
+                 "DEFAULT 0)");
+        },
     };
     return steps;
 }

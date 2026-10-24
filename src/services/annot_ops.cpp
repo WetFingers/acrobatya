@@ -128,4 +128,38 @@ QFuture<std::vector<AnnotRef>> paste(DocumentSession& session, int page, AnnotCl
                         });
 }
 
+QFuture<AnnotRef> createStamp(DocumentSession& session, int page, StampSource source, StampValues values,
+                              AnnotProps props) {
+    return session.edit(QString::fromStdString(createStepName(AnnotType::Stamp)),
+                        [page, source = std::move(source), values = std::move(values),
+                         props = std::move(props)](TaskContext& tc) {
+                            AnnotRef ref = ot::annot::createStamp(tc.document(), page, source, values, props);
+                            tc.touchPage(page);
+                            return ref;
+                        });
+}
+
+QFuture<AnnotRef> createImageStamp(DocumentSession& session, int page, std::string image, AnnotProps props,
+                                   std::string name) {
+    return session.edit(QString::fromStdString(createStepName(AnnotType::Stamp)),
+                        [page, image = std::move(image), props = std::move(props),
+                         name = std::move(name)](TaskContext& tc) {
+                            AnnotRef ref = ot::annot::createImageStamp(tc.document(), page, image, props, name);
+                            tc.touchPage(page);
+                            return ref;
+                        });
+}
+
+QFuture<void> setStampRotation(DocumentSession& session, AnnotRef ref, float degrees) {
+    return session.edit(QString::fromLatin1(kRotateStampStep), [ref, degrees](TaskContext& tc) {
+        ot::annot::setStampRotation(tc.document(), ref, degrees);
+        tc.touchPage(ref.page);
+    });
+}
+
+QFuture<float> stampRotation(DocumentSession& session, AnnotRef ref) {
+    return session.post([ref](TaskContext& tc) { return ot::annot::stampRotation(tc.document(), ref); },
+                        TaskPriority::High, QStringLiteral("Stamp rotation"));
+}
+
 }  // namespace ot::annot

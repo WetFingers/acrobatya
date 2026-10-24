@@ -210,5 +210,7 @@ inline constexpr BoolKey kCommentKeepTool{"commenting/keepToolSelected", false};
 // "width": 1, "icon": "Comment"}} (панель инструмента «Добавить комментарии»; «Сделать свойствами по
 // умолчанию»).
 inline constexpr StringKey kCommentToolStyles{"commenting/toolStyles", ""};
+// Штамп инструмента «Штамп» (5.2): id каталога (services/stamps_catalog.h) — последний выбранный в палитре.
+inline constexpr StringKey kCommentStamp{"commenting/stamp", "standard/approved"};
 
 }  // namespace ot::settings

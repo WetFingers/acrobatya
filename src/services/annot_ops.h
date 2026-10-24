@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "core/annot/annots.h"
+#include "core/annot/stamps.h"
 #include "core/util/geometry.h"
 #include "services/document_session.h"
 
@@ -27,6 +28,7 @@ inline constexpr const char* kReplaceTextStep = "Replace text";
 inline constexpr const char* kEditNoteStep = "Edit note text";
 inline constexpr const char* kEditTextBoxStep = "Edit text box";
 inline constexpr const char* kMoveVertexStep = "Move vertex";
+inline constexpr const char* kRotateStampStep = "Rotate stamp";
 
 QFuture<std::vector<AnnotInfo>> list(DocumentSession& session, int page,
                                      TaskPriority priority = TaskPriority::Normal);
@@ -54,6 +56,13 @@ QFuture<void> setFlags(DocumentSession& session, std::vector<AnnotRef> refs, int
 QFuture<void> translate(DocumentSession& session, std::vector<AnnotRef> refs, float dx, float dy);
 QFuture<bool> eraseInk(DocumentSession& session, AnnotRef ref, std::vector<PointF> path, float radius);
 QFuture<AnnotClip> copy(DocumentSession& session, std::vector<AnnotRef> refs);
+// 5.2: штампы (core/annot/stamps.h) — шаг «Add stamp», поворот — «Rotate stamp».
+QFuture<AnnotRef> createStamp(DocumentSession& session, int page, StampSource source, StampValues values,
+                              AnnotProps props);
+QFuture<AnnotRef> createImageStamp(DocumentSession& session, int page, std::string image, AnnotProps props,
+                                   std::string name);
+QFuture<void> setStampRotation(DocumentSession& session, AnnotRef ref, float degrees);
+QFuture<float> stampRotation(DocumentSession& session, AnnotRef ref);
 QFuture<std::vector<AnnotRef>> paste(DocumentSession& session, int page, AnnotClip clip, PointF offset);
 
 }  // namespace ot::annot

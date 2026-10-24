@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "categories": ["standard", "sign-here", "dynamic"],
+  "stamps": [
+    {"id": "standard/approved", "file": "standard/approved.pdf", "name": "#Approved", "caption": "УТВЕРЖДЕНО", "color": "#2E7D32"},
+    {"id": "standard/not-approved", "file": "standard/not-approved.pdf", "name": "#NotApproved", "caption": "НЕ УТВЕРЖДЕНО", "color": "#C62828"},
+    {"id": "standard/draft", "file": "standard/draft.pdf", "name": "#Draft", "caption": "ЧЕРНОВИК", "color": "#1565C0"},
+    {"id": "standard/final", "file": "standard/final.pdf", "name": "#Final", "caption": "ОКОНЧАТЕЛЬНЫЙ", "color": "#2E7D32"},
+    {"id": "standard/confidential", "file": "standard/confidential.pdf", "name": "#Confidential", "caption": "КОНФИДЕНЦИАЛЬНО", "color": "#C62828"},
+    {"id": "standard/not-for-distribution", "file": "standard/not-for-distribution.pdf", "name": "#NotForPublicRelease", "caption": "НЕ ДЛЯ РАСПРОСТРАНЕНИЯ", "color": "#C62828"},
+    {"id": "standard/for-comment", "file": "standard/for-comment.pdf", "name": "#ForComment", "caption": "ДЛЯ КОММЕНТАРИЕВ", "color": "#1565C0"},
+    {"id": "sign-here/sign-here", "file": "sign-here/sign-here.pdf", "name": "#SignHere", "caption": "ПОДПИСАТЬ ЗДЕСЬ", "color": "#C62828", "shape": "arrow"},
+    {"id": "sign-here/initial-here", "file": "sign-here/initial-here.pdf", "name": "#InitialHere", "caption": "ИНИЦИАЛЫ", "color": "#EF6C00", "shape": "arrow"},
+    {"id": "sign-here/witness", "file": "sign-here/witness.pdf", "name": "#Witness", "caption": "СВИДЕТЕЛЬ", "color": "#1565C0", "shape": "arrow"},
+    {"id": "dynamic/approved", "file": "dynamic/approved.pdf", "name": "#DApproved", "caption": "УТВЕРЖДЕНО", "color": "#2E7D32", "dynamic": true,
+     "lines": [{"text": "{name}", "x": 100, "y": 47, "size": 9}, {"text": "{date} {time}", "x": 100, "y": 58, "size": 9}]},
+    {"id": "dynamic/received", "file": "dynamic/received.pdf", "name": "#DReceived", "caption": "ПОЛУЧЕНО", "color": "#1565C0", "dynamic": true,
+     "lines": [{"text": "{date} {time}", "x": 100, "y": 53, "size": 10}]},
+    {"id": "dynamic/reviewed", "file": "dynamic/reviewed.pdf", "name": "#DReviewed", "caption": "ПРОВЕРЕНО", "color": "#6A1B9A", "dynamic": true,
+     "lines": [{"text": "{name}, {date}", "x": 100, "y": 53, "size": 9}]}
+  ]
+}

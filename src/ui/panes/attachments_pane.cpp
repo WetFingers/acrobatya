@@ -225,6 +225,32 @@ void AttachmentsPane::fill(const std::vector<attachments::Attachment>& files) {
     }
     updateButtons();
     emit listChanged();
+    if (pendingOpen_) {
+        const PendingOpen want = *pendingOpen_;
+        pendingOpen_.reset();
+        for (std::size_t i = 0; i < files_.size(); ++i) {
+            const attachments::Attachment& a = files_[i];
+            if (a.source == attachments::Source::Annotation && a.page == want.page && a.objnum == want.objnum) {
+                select(static_cast<int>(i));
+                if (want.save) {
+                    saveCurrent();
+                } else if (canOpenHere(a)) {
+                    openCurrent();
+                } else {
+                    saveCurrent();  // чёрный список и защищённый просмотр — только «Сохранить…»
+                }
+                break;
+            }
+        }
+    }
+}
+
+void AttachmentsPane::openAnnotation(DocumentView* view, int page, int objnum, bool save) {
+    pendingOpen_ = PendingOpen{page, objnum, save};
+    if (view != view_) {
+        setDocument(view);
+    }
+    reload();
 }
 
 int AttachmentsPane::current() const {

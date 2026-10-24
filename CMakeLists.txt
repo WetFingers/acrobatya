@@ -94,6 +94,12 @@ ottisk_pch(ottisk_services "${CMAKE_SOURCE_DIR}/src/services/pch.h")
 # Pinned-сертификаты подписантов EU LOTL (план 4.5, п. 4) — ресурс :/trust/lotl_pins.json (services/trust_lists.h).
 qt_add_resources(ottisk_services ottisk_trust PREFIX "/trust" BASE "${CMAKE_SOURCE_DIR}/assets/trust"
   FILES "${CMAKE_SOURCE_DIR}/assets/trust/lotl_pins.json")
+# Свои штампы (план 5.2, п. 4) — ресурс :/stamps/stamps.json и :/stamps/<категория>/<имя>.pdf (services/stamps_catalog.h);
+# PDF пишет генератор unit_tests stamps_assets.DISABLED_generate по stamps.json.
+file(GLOB OTTISK_STAMP_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/assets/stamps/stamps.json"
+  "${CMAKE_SOURCE_DIR}/assets/stamps/*/*.pdf")
+qt_add_resources(ottisk_services ottisk_stamps PREFIX "/stamps" BASE "${CMAKE_SOURCE_DIR}/assets/stamps"
+  FILES ${OTTISK_STAMP_FILES})
 
 # --- ui: Qt Widgets; всё, кроме app/main.cpp, — статическая ottisk_ui_lib (её берут ui_tests)
 file(GLOB_RECURSE OTTISK_UI_SRC CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/ui/*.cpp" "${CMAKE_SOURCE_DIR}/src/ui/*.h")

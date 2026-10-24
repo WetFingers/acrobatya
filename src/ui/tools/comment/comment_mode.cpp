@@ -66,6 +66,10 @@ QString CommentMode::actionTitle(CommentAction action) {
             return QCoreApplication::translate("ot::ui::CommentMode", "Облако");
         case CommentAction::PolyLine:
             return QCoreApplication::translate("ot::ui::CommentMode", "Ломаная");
+        case CommentAction::Stamp:
+            return QCoreApplication::translate("ot::ui::CommentMode", "Штамп");
+        case CommentAction::Attach:
+            return QCoreApplication::translate("ot::ui::CommentMode", "Вложить файл");
     }
     return {};
 }
@@ -108,6 +112,10 @@ QString CommentMode::actionKey(CommentAction action) {
             return QStringLiteral("cloud");
         case CommentAction::PolyLine:
             return QStringLiteral("polyline");
+        case CommentAction::Stamp:
+            return QStringLiteral("stamp");
+        case CommentAction::Attach:
+            return QStringLiteral("attach");
     }
     return {};
 }
@@ -145,6 +153,10 @@ annot::AnnotType CommentMode::typeOf(CommentAction action) {
             return annot::AnnotType::Polygon;
         case CommentAction::PolyLine:
             return annot::AnnotType::PolyLine;
+        case CommentAction::Stamp:
+            return annot::AnnotType::Stamp;
+        case CommentAction::Attach:
+            return annot::AnnotType::FileAttachment;
     }
     return annot::AnnotType::Unknown;
 }
@@ -167,7 +179,8 @@ bool CommentMode::isPolyShape(CommentAction action) noexcept {
 bool CommentMode::oneShot() const noexcept {
     return action_ == CommentAction::Note || action_ == CommentAction::InsertText ||
            action_ == CommentAction::ReplaceText || action_ == CommentAction::TextBox ||
-           action_ == CommentAction::Callout || isDragShape(action_) || isPolyShape(action_);
+           action_ == CommentAction::Callout || isDragShape(action_) || isPolyShape(action_) ||
+           action_ == CommentAction::Stamp || action_ == CommentAction::Attach;
 }
 
 void CommentMode::setAction(CommentAction action) {
@@ -244,6 +257,9 @@ bool CommentMode::mousePress(QMouseEvent* event) {
         case CommentAction::InsertText:
             insertCaret(at);
             return true;
+        case CommentAction::Attach:
+            attachPress(at);
+            return true;
         default:
             break;
     }
@@ -263,6 +279,11 @@ bool CommentMode::mousePress(QMouseEvent* event) {
 }
 
 bool CommentMode::mouseMove(QMouseEvent* event) {
+    if (action_ == CommentAction::Stamp && !pressing_) {
+        hover_ = event->position();
+        view_.viewport()->update();  // рамка штампа за курсором
+        return false;
+    }
     if (!poly_.empty()) {
         hover_ = event->position();
         shift_ = (event->modifiers() & Qt::ShiftModifier) != 0;
@@ -306,6 +327,8 @@ bool CommentMode::mouseRelease(QMouseEvent* event) {
         calloutRelease();
     } else if (isDragShape(action_)) {
         shapeRelease();
+    } else if (action_ == CommentAction::Stamp) {
+        stampRelease();
     } else {
         attempts_ = 0;
         finishDrag(request_);
@@ -379,6 +402,10 @@ void CommentMode::paintOverlay(QPainter& painter) {
         paintShape(painter);
         return;
     }
+    if (action_ == CommentAction::Stamp) {
+        paintStampPreview(painter);
+        return;
+    }
     if (!pressing_ || page_ < 0) {
         return;
     }
@@ -437,6 +464,8 @@ QCursor CommentMode::cursor(QPointF point, Qt::KeyboardModifiers /*modifiers*/) 
         case CommentAction::Polygon:
         case CommentAction::Cloud:
         case CommentAction::PolyLine:
+        case CommentAction::Stamp:
+        case CommentAction::Attach:
             return QCursor(Qt::CrossCursor);
         default:
             return QCursor(Qt::IBeamCursor);

@@ -13,6 +13,7 @@
 #include <QPointer>
 
 #include <functional>
+#include <optional>
 #include <vector>
 
 #include "core/links/attachments.h"
@@ -64,6 +65,9 @@ public:
     // Действия выбранного (то же, что кнопки и двойной щелчок; заблокированное — «Сохранить…»).
     void openCurrent();
     void saveCurrent();
+    // Вложение комментария /FileAttachment (страница, номер объекта) вкладки view — открыть (5.2, двойной
+    // щелчок по значку) или сохранить, с теми же чёрным списком и подтверждением.
+    void openAnnotation(DocumentView* view, int page, int objnum, bool save = false);
 
     // Временная папка вложений процесса (удаляется при выходе).
     static QString tempFolder();
@@ -95,6 +99,12 @@ private:
     SaveChooser chooser_;
     quint64 generation_ = 0;
     bool dirty_ = true;
+    struct PendingOpen {
+        int page = -1;
+        int objnum = 0;
+        bool save = false;
+    };
+    std::optional<PendingOpen> pendingOpen_;
 };
 
 }  // namespace ot::ui

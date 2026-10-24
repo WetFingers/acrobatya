@@ -32,6 +32,7 @@ constexpr StepTitle kStepTitles[] = {
     {"Edit note text", QT_TRANSLATE_NOOP("ot::ui::UndoTitles", "текст записки")},
     {"Edit text box", QT_TRANSLATE_NOOP("ot::ui::UndoTitles", "текстовое поле")},
     {"Move vertex", QT_TRANSLATE_NOOP("ot::ui::UndoTitles", "вершина фигуры")},
+    {"Rotate stamp", QT_TRANSLATE_NOOP("ot::ui::UndoTitles", "поворот штампа")},
     {"Set annotation properties", QT_TRANSLATE_NOOP("ot::ui::UndoTitles", "свойства комментария")},
     {"Set annotation flags", QT_TRANSLATE_NOOP("ot::ui::UndoTitles", "свойства комментария")},
     {"Set annotation rectangle", QT_TRANSLATE_NOOP("ot::ui::UndoTitles", "перемещение комментария")},

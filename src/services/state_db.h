@@ -25,7 +25,7 @@ namespace ot {
 
 class StateDb {
 public:
-    static constexpr int kSchemaVersion = 5;
+    static constexpr int kSchemaVersion = 6;
 
     // <каталог данных>/state.sqlite.
     static QString defaultPath();
