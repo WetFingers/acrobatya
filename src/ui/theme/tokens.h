@@ -165,39 +165,41 @@ struct Metrics {
     int rightPanel = 280;         // правая панель
     int rightPanelMin = 220;      //   ширина тянется 220–480
     int rightPanelMax = 480;
-    int centerMin = 240;         // документ между панелями не уже (Главная его не расширяет, 2.4)
-    int statusBar = 32;          // строка состояния
-    int radius = 4;              // скругление кнопок и полей
-    int radiusLarge = 8;         // карточки, плавающая панель
-    int hitTarget = 32;          // зона нажатия не меньше
-    int iconPanel = 20;          // иконка в панелях
-    int iconRow = 16;            // иконка в строках и меню
-    int iconEmpty = 40;          // иконка пустого состояния
-    int panelTitlePx = 13;       // заголовок панели, 600
-    int homeTitlePx = 20;        // заголовок Главной
-    int homeNav = 240;           // левый столбец Главной: Недавние, Избранное, Файлы, Сканы (2.3)
-    int cardWidth = 184;         // карточка файла Главной: миниатюра 160 + поля
-    int cardHeight = 256;        //   и её высота (миниатюра до 200 + имя и дата)
-    int thumbWidth = 160;        // миниатюра первой страницы (эталон 3.18)
-    int focusRing = 2;           // рамка фокуса accent
-    int shadowBlur = 16;         // тень: размытие
-    int shadowOffset = 4;        //   и сдвиг вниз
-    int pageGap = 8;             // зазор между страницами и до края холста (эталон 3.1)
-    int toolWindowWidth = 280;   // окно «Лупы» и «Панорамирования и масштаба» (эталон 3.1)
-    int toolWindowHeight = 220;  //   и его высота
-    int handle = 8;              // ручка рамки выбранного объекта на странице (AnnotSelectTool)
-    int notePopupWidth = 240;    // окно записки на странице (5.1; эталон 3.4 «Попапы и ответы»)
-    int notePopupHeight = 160;   //   и его высота
-    int dialogWidth = 880;       // диалог с категориями слева: «Установки» (2.4b)
-    int dialogHeight = 600;      //   и его высота
-    int dialogNav = 220;         //   список категорий
-    int paletteWidth = 560;      // палитра команд (Ctrl+Shift+P, 2.4b)
-    int printPreview = 320;      // предпросмотр диалога «Печать» — не уже (2.6)
-    int paletteRows = 10;        //   строк списка без прокрутки (не размер — scaled() не трогает)
-    int pageBorder = 1;          // рамка страницы на холсте — волосяная: «Крупные элементы» её не меняют
-    double fontPt = 9.0;         // Segoe UI 9 pt
-    int motionMs = 120;          // движение
-    double scale = 1.0;          // k, с которым получены размеры
+    int centerMin = 240;          // документ между панелями не уже (Главная его не расширяет, 2.4)
+    int statusBar = 32;           // строка состояния
+    int radius = 4;               // скругление кнопок и полей
+    int radiusLarge = 8;          // карточки, плавающая панель
+    int hitTarget = 32;           // зона нажатия не меньше
+    int iconPanel = 20;           // иконка в панелях
+    int iconRow = 16;             // иконка в строках и меню
+    int iconEmpty = 40;           // иконка пустого состояния
+    int panelTitlePx = 13;        // заголовок панели, 600
+    int homeTitlePx = 20;         // заголовок Главной
+    int homeNav = 240;            // левый столбец Главной: Недавние, Избранное, Файлы, Сканы (2.3)
+    int cardWidth = 184;          // карточка файла Главной: миниатюра 160 + поля
+    int cardHeight = 256;         //   и её высота (миниатюра до 200 + имя и дата)
+    int thumbWidth = 160;         // миниатюра первой страницы (эталон 3.18)
+    int focusRing = 2;            // рамка фокуса accent
+    int shadowBlur = 16;          // тень: размытие
+    int shadowOffset = 4;         //   и сдвиг вниз
+    int pageGap = 8;              // зазор между страницами и до края холста (эталон 3.1)
+    int toolWindowWidth = 280;    // окно «Лупы» и «Панорамирования и масштаба» (эталон 3.1)
+    int toolWindowHeight = 220;   //   и его высота
+    int handle = 8;               // ручка рамки выбранного объекта на странице (AnnotSelectTool)
+    int notePopupWidth = 240;     // окно записки на странице (5.1; эталон 3.4 «Попапы и ответы»)
+    int notePopupHeight = 160;    //   и его высота
+    int propsDialogWidth = 520;   // «Свойства комментария» (5.2; эталон 3.4, 6.3)
+    int propsDialogHeight = 560;  //   и его высота
+    int dialogWidth = 880;        // диалог с категориями слева: «Установки» (2.4b)
+    int dialogHeight = 600;       //   и его высота
+    int dialogNav = 220;          //   список категорий
+    int paletteWidth = 560;       // палитра команд (Ctrl+Shift+P, 2.4b)
+    int printPreview = 320;       // предпросмотр диалога «Печать» — не уже (2.6)
+    int paletteRows = 10;         //   строк списка без прокрутки (не размер — scaled() не трогает)
+    int pageBorder = 1;           // рамка страницы на холсте — волосяная: «Крупные элементы» её не меняют
+    double fontPt = 9.0;          // Segoe UI 9 pt
+    int motionMs = 120;           // движение
+    double scale = 1.0;           // k, с которым получены размеры
 };
 
 // Все поля-размеры Metrics: их масштабирует Tokens::scaled (и проверяет ui.theme).
@@ -244,6 +246,8 @@ inline constexpr int Metrics::* kMetricSizes[] = {
     &Metrics::printPreview,
     &Metrics::notePopupWidth,
     &Metrics::notePopupHeight,
+    &Metrics::propsDialogWidth,
+    &Metrics::propsDialogHeight,
 };
 
 struct Tokens {

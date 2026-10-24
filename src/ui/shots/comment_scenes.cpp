@@ -9,7 +9,9 @@
 // редактор нового поля с набранным текстом и форматом панели (Times New Roman 16, синий, по центру);
 // annot-shapes — прямоугольник с заливкой, овал, линия, стрелка, многоугольник и ломаная с концами (панель —
 // «Прямоугольник»); annot-cloud — облако вокруг абзаца и облачный прямоугольник; annot-vertex-edit —
-// выбранный «Выбором объектов» многоугольник с маркерами вершин.
+// выбранный «Выбором объектов» многоугольник с маркерами вершин; annot-props-appearance — «Свойства
+// комментария» облачного прямоугольника (вкладка «Вид»), annot-props-general — текстового поля (вкладка
+// «Общие»).
 #include <QApplication>
 #include <QCoreApplication>
 #include <QFuture>
@@ -26,6 +28,7 @@
 #include "services/comment_settings.h"
 #include "services/document_session.h"
 #include "services/settings.h"
+#include "ui/dialogs/annot_props_dialog.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
 #include "ui/shots/scenes.h"
@@ -422,6 +425,38 @@ void vertexScene(MainWindow& w, DocumentView& doc, const TextPtr& /*text*/) {
     });
 }
 
+// Диалог «Свойства комментария» над созданной аннотацией props на вкладке tab; кадр — когда диалог загружен.
+void propsScene(MainWindow& w, DocumentView& doc, annot::AnnotProps props, AnnotPropsDialog::Tab tab) {
+    PageView* view = &doc.view();
+    annot::create(doc.session(), 0, std::move(props)).then(&w, [&w, view, tab](annot::AnnotRef ref) {
+        ToolRegistry::instance().deactivate();
+        AnnotPropsDialog* d = AnnotPropsDialog::openFor(*view, ref);
+        d->showTab(tab);
+        QObject::connect(d, &AnnotPropsDialog::loadedChanged, &w, [&w, d] {
+            embedCentered(w, d);
+            markDone(w);
+        });
+    });
+}
+
+void propsAppearanceScene(MainWindow& w, DocumentView& doc, const TextPtr& /*text*/) {
+    annot::AnnotProps p = sceneShape(CommentAction::Rectangle, 0xE53935, 2);
+    p.rect = {120, 400, 380, 520};
+    p.cloudy = true;
+    p.cloudIntensity = 1;
+    p.interiorColor = annot::AnnotColor::fromRgb(0xFFF59D);
+    p.opacity = 0.8f;
+    propsScene(w, doc, std::move(p), AnnotPropsDialog::Appearance);
+}
+
+void propsGeneralScene(MainWindow& w, DocumentView& doc, const TextPtr& /*text*/) {
+    annot::AnnotProps p =
+        sceneTextBox(QT_TRANSLATE_NOOP("ot::ui::CommentScenes", "Согласовано с юристом, правок нет."),
+                     {320, 400, 540, 440}, "Arial", 13);
+    p.subject = "Text Box";
+    propsScene(w, doc, std::move(p), AnnotPropsDialog::General);
+}
+
 }  // namespace
 
 std::vector<Scene> commentScenes() {
@@ -527,6 +562,23 @@ std::vector<Scene> commentScenes() {
     vertex.make = commentScene(doc, vertexScene);
     vertex.ready = commentReady;
     scenes.push_back(vertex);
+
+    Scene propsAppearance;
+    propsAppearance.name = QStringLiteral("annot-props-appearance");
+    propsAppearance.make = commentScene(doc, propsAppearanceScene);
+    propsAppearance.ready = commentReady;
+    scenes.push_back(propsAppearance);
+
+    Scene propsAppearanceDark = propsAppearance;
+    propsAppearanceDark.name = QStringLiteral("annot-props-appearance-dark");
+    propsAppearanceDark.theme = ThemeChoice::Dark;
+    scenes.push_back(propsAppearanceDark);
+
+    Scene propsGeneral;
+    propsGeneral.name = QStringLiteral("annot-props-general");
+    propsGeneral.make = commentScene(doc, propsGeneralScene);
+    propsGeneral.ready = commentReady;
+    scenes.push_back(propsGeneral);
     return scenes;
 }
 

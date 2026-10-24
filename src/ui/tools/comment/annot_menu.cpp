@@ -1,5 +1,8 @@
 #include "ui/tools/comment/annot_menu.h"
 
+#include "core/annot/freetext.h"
+#include "ui/dialogs/annot_props_dialog.h"
+
 #include <QCoreApplication>
 #include <QFuture>
 #include <QMenu>
@@ -20,8 +23,8 @@ namespace ot::ui {
 namespace {
 
 // Ключ стиля инструмента по типу (как CommentMode::actionKey; прочие — имя подтипа).
-QString styleKey(annot::AnnotType type) {
-    switch (type) {
+QString styleKey(const annot::AnnotProps& p) {
+    switch (p.type) {
         case annot::AnnotType::Text:
             return CommentMode::actionKey(CommentAction::Note);
         case annot::AnnotType::Highlight:
@@ -36,8 +39,26 @@ QString styleKey(annot::AnnotType type) {
             return CommentMode::actionKey(CommentAction::InsertText);
         case annot::AnnotType::Ink:
             return CommentMode::actionKey(CommentAction::Ink);
+        case annot::AnnotType::FreeText:
+            return CommentMode::actionKey(p.intent == "FreeTextCallout" ? CommentAction::Callout
+                                                                        : CommentAction::TextBox);
+        case annot::AnnotType::Line:
+            return CommentMode::actionKey(p.intent == "LineArrow" ? CommentAction::Arrow
+                                                                  : CommentAction::Line);
+        case annot::AnnotType::Square:
+            return CommentMode::actionKey(CommentAction::Rectangle);
+        case annot::AnnotType::Circle:
+            return CommentMode::actionKey(CommentAction::Oval);
+        case annot::AnnotType::Polygon:
+            return CommentMode::actionKey(p.cloudy ? CommentAction::Cloud : CommentAction::Polygon);
+        case annot::AnnotType::PolyLine:
+            return CommentMode::actionKey(CommentAction::PolyLine);
+        case annot::AnnotType::Stamp:
+            return QStringLiteral("stamp");
+        case annot::AnnotType::FileAttachment:
+            return QStringLiteral("attach");
         default: {
-            const std::string_view name = annot::annotTypeName(type);
+            const std::string_view name = annot::annotTypeName(p.type);
             return QString::fromLatin1(name.data(), static_cast<qsizetype>(name.size()));
         }
     }
@@ -50,20 +71,9 @@ void makeDefault(DocumentSession& session, const annot::AnnotRef& ref) {
             p = f.result();
         } catch (const std::exception&) {  // NOLINT(bugprone-empty-catch): нет свойств — нечего запоминать
         }
-        if (!p) {
-            return;
+        if (p) {
+            saveAsDefault(*p);
         }
-        comments::ToolStyle style;
-        if (!p->color.empty()) {
-            style.color = p->color;
-        }
-        style.opacity = p->opacity;
-        style.width = p->borderWidth;
-        if (!p->icon.empty()) {
-            style.icon = p->icon;
-        }
-        Settings settings;
-        comments::setToolStyle(settings, styleKey(p->type), style);
     });
 }
 
@@ -84,13 +94,31 @@ void fill(PageView& view, QMenu* menu) {
         });
     open->setObjectName(QStringLiteral("commentOpenPopup"));
     open->setEnabled(single);
+    const bool freeText = single && selection.front().type == annot::AnnotType::FreeText;
+    open->setVisible(!freeText);
+    QAction* editText =
+        menu->addAction(QCoreApplication::translate("ot::ui::CommentMenu", "Изменить текст"), [guard, ref] {
+            if (guard != nullptr) {
+                CommentTool::modeOf(*guard).editTextBox(ref);
+            }
+        });
+    editText->setObjectName(QStringLiteral("commentEditText"));
+    editText->setVisible(freeText);
+    editText->setEnabled(freeText && view.tools().editable() && !selection.front().locked());
     for (const char* later : {QT_TRANSLATE_NOOP("ot::ui::CommentMenu", "Ответить"),
-                              QT_TRANSLATE_NOOP("ot::ui::CommentMenu", "Статус"),
-                              QT_TRANSLATE_NOOP("ot::ui::CommentMenu", "Свойства…")}) {
+                              QT_TRANSLATE_NOOP("ot::ui::CommentMenu", "Статус")}) {
         QAction* a = menu->addAction(QCoreApplication::translate("ot::ui::CommentMenu", later));
         a->setEnabled(false);
         a->setToolTip(QCoreApplication::translate("ot::ui::CommentMenu", "Появится в версии 0.5"));
     }
+    QAction* props =
+        menu->addAction(QCoreApplication::translate("ot::ui::CommentMenu", "Свойства…"), [guard, ref] {
+            if (guard != nullptr) {
+                AnnotPropsDialog::openFor(*guard, ref);
+            }
+        });
+    props->setObjectName(QStringLiteral("commentProperties"));
+    props->setEnabled(single);
     DocumentSession* session = view.document();
     QAction* def =
         menu->addAction(QCoreApplication::translate("ot::ui::CommentMenu", "Сделать свойствами по умолчанию"),
@@ -104,6 +132,39 @@ void fill(PageView& view, QMenu* menu) {
 }
 
 }  // namespace
+
+QString styleKeyFor(const annot::AnnotProps& props) { return styleKey(props); }
+
+void saveAsDefault(const annot::AnnotProps& p) {
+    comments::ToolStyle style;
+    if (!p.color.empty()) {
+        style.color = p.color;
+    }
+    style.opacity = p.opacity;
+    style.width = p.borderWidth;
+    if (!p.icon.empty() && (p.type == annot::AnnotType::Text || p.type == annot::AnnotType::FileAttachment)) {
+        style.icon = p.icon;
+    }
+    const bool closed = p.type == annot::AnnotType::Square || p.type == annot::AnnotType::Circle ||
+                        p.type == annot::AnnotType::Polygon || p.type == annot::AnnotType::Line;
+    if (closed && !p.interiorColor.empty()) {
+        style.fill = p.interiorColor;
+    }
+    if (p.type == annot::AnnotType::Line || p.type == annot::AnnotType::PolyLine) {
+        style.lineStart = static_cast<int>(p.lineStartStyle);
+        style.lineEnd = static_cast<int>(p.lineEndStyle);
+    }
+    if (p.type == annot::AnnotType::FreeText) {
+        style.font = annot::textFontFamily(p.fontName);
+        style.fontSize = p.fontSize;
+        if (!p.textColor.empty()) {
+            style.textColor = p.textColor;
+        }
+        style.align = p.align;
+    }
+    Settings settings;
+    comments::setToolStyle(settings, styleKey(p), style);
+}
 
 void installCommentMenu(PageView& view) {
     QObject::connect(&view.tools(), &ToolController::annotContextMenu, &view,
