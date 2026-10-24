@@ -2327,3 +2327,127 @@
   lta` — 2–3 с; инкремент `unit_tests` 12–60 с; `verify.py` — 171 с (668 тестов).
 - Проверки: `verify.py` зелёный; `compat.sign.{b,b.multi,t,dts,cng,lt,lta,certified}`, `engine.sig.dss`, `compat.sig.pyhanko`,
   `engine.aatl` зелёные, `compat.trust.live` — пропуск (нет `OTTISK_LIVE_NET`); сцен нет — экранов в сессии нет.
+
+### 2026-10-24 · Сессия 4.6 · Интерфейс подписей: инструмент, диалоги, панель «Подписи», настройки
+- Сделано (запись восстановил оператор по коммитам 3837c88, 050b8d4, 8f4d74c, 0e75b8f и отметке 6bce3f5: сессия
+  остановилась по лимиту ходов (321) до журнала и карты кода; CHANGELOG, версия и ручная проверка — в 0e75b8f, тег `v0.4.0` поставил оператор):
+  1. **Инструмент и диалоги подписания:** `ui/tools/certificate` — `CertificateTool` (панель и меню «Подпись»: подпись,
+     сертификация видимая и невидимая, метка времени документа, «Проверить все», удостоверения; причина запрета —
+     подсказкой и строкой над кнопками), `SignPlacementTool` (слот `ViewToolId::Sign`: рамка или пустое поле /Sig),
+     `SignDialog`/`CertifyDialog`, `NewIdentityDialog`, `AppearanceDialog`, `WarningsDialog`, `TimestampDialog`,
+     `SignTexts`; `core/sign/sig_fields`, `services/{sign_ops,sign_settings,trust_service}`; «Сохранить как» →
+     `DocumentSession::sign`/`timestampDocument`. `unit.sig_fields` (3), `ui.sign_dialog` (9); сцены `sign-dialog`,
+     `certify-dialog`, `sign-appearance-dialog`, `sign-warnings`. sign-12, sign-13, sign-14, sign-16, sign-17, sign-20,
+     sign-05, sign-08, forms-17.
+  2. **Проверка при открытии, полоса, панель «Подписи»:** `services/crypto_worker` (своя копия файла в пуле из двух
+     потоков, зашифрованный — задачей сессии), `ui/shell/signature_status` (при открытии, после записи и смены доверия;
+     полосы синяя / жёлтая с «Доверять подписанту…» / красная, значки на полях, чип «Подписано» тоном итога),
+     `ui/panes/signatures_pane`, `SignaturePropertiesDialog`, `CertificateViewer` + `TrustDialog`,
+     `MainWindow::openSignedVersion`; core — `clearBlock`/`clearSignature`, `certDetails`. `unit.sig_clear` (3),
+     `unit.cert_details` (1), `ui.signatures_pane` (9); сцены `sig-bar-valid`, `sig-bar-problems`, `pane-signatures`,
+     `certificate-viewer`. sign-25, sign-26, sign-27, sign-28, sign-22, sign-34, security-09.
+  3. **Установки → Подписи:** `ui/shell/preferences/signatures_page` — живая категория из пяти вкладок: «Создание»
+     (PAdES/PKCS#7, причина, место и контакт, свои причины, «Проверять документ», внешние виды), «Проверка» (при
+     открытии, время проверки, отзыв, просроченные метки, «предлагать доверять», LTV после подписи, /VRI),
+     «Удостоверения» (`identities_widget`: .pfx, Windows на экране, создать, по умолчанию, экспорт .cer/.p7c/.fdf,
+     пароль и тайм-аут, забыть, удалить), «Доверенные» (`trusted_widget`: фильтр по источнику, импорт/экспорт,
+     `TrustDialog`, импорт и корни Windows, EUTL/AATL, «Обновить сейчас»), «Серверы времени» (`tsa_widget`,
+     «Проверить» тестовой меткой в фоне); `VerifyOptions::time` + `signatures/verifyTime`; LTV после B-B/B-T —
+     `signing::ltvDecision` → `CertificateTool::offerLtv`; `MainWindow::checkTrustListsLater`. `unit.verifier_time`
+     (2), `ui.sign_settings` (8); сцены `preferences-identities`, `-trusted`, `-tsa`, `-verification`,
+     `-sign-creation`. sign-05, sign-10, sign-11, sign-13, sign-14, sign-19, sign-21, sign-30, sign-31, sign-32, sign-34.
+  4. **Сцены, сценарии, версия 0.4.0:** тёмные двойники `sign-dialog`, `sig-bar-problems`, `pane-signatures`,
+     `certificate-viewer`, `preferences-trusted` (`*-dark`), четыре сцены — в `tools/main_scenes.txt`;
+     `ui/tools/certificate/sign_script` — действия `--script` `sign.sign`, `sign.certify`, `sign.timestamp`,
+     `sign.verifyAll`, `sign.trust`; `tests/scripts/sign.json` — сценарии 4 и 5 эталона и сертификация P=2 с меткой
+     документа; «Нужна ручная проверка» 4.6 (DigiCert в Reader/Edge, CNG на экране, 125–150 %, живые списки доверия,
+     «Очистить подпись»); CHANGELOG 0.4.0, версия 0.4.0 (тег `v0.4.0` — оператор). `ui.shots.stage4` (17 сцен),
+     `ui.script_sign` (2). sign-12, sign-25.
+- Решения:
+  - **Диалог подписи:** `signatures/reviewWarnings` (never|certify|always) по умолчанию always — план даёт «Проверить
+    документ» и подписи (у Acrobat — при сертификации); проверка сразу при показе, итог строкой у кнопки, список —
+    `WarningsDialog`. Видна причина, место и контакт — нет (`showReason` вкл., `showLocation` выкл.), как у Acrobat;
+    пустой `signatures/reasons` — шесть стандартных причин Acrobat. Пароль .pfx проверяется в самом диалоге (ошибка
+    — строкой, диалог остаётся); пустой — запомненный или кеш до тайм-аута удостоверения.
+  - **Уровень** по умолчанию B-T со службой по умолчанию «Серверов времени» (DigiCert); `signatures/timestamp` выкл.
+    или служб нет — B-B. B-LT/B-LTA — снимок `TrustService` до конца подписи, `httpFetcher()`, `signatures/ltvVri`.
+    Служба не ответила — `signatures/timestampFallback`: без метки, отмена или (ask) вопрос в окне из потока
+    документа через `Qt::BlockingQueuedConnection`. «Сохранить как» предлагает текущий файл (тот же — инкремент),
+    после записи вкладка следует за файлом (`DocumentSession::saved` → имя вкладки и заголовок окна).
+  - **Причины запрета** по порядку: нет документа, идёт подписание, не PDF, защищённый просмотр, только чтение, /P
+    без «заполнения форм и подписи», DocMDP P=1; сертификация — только без подписей. DocMDP и подписи — задачами
+    `signing::fields`/`signing::docMdp`, до ответа — «не сертифицирован, без подписей» (ядро всё равно откажет
+    `SignStatus::CannotCertify`).
+  - **Рамка** — отдельный слот `ViewToolId::Sign` (`kViewToolCount` 9), лениво через `ToolController::install`, как
+    Edit; однократный; сторона < 12 pt — щелчок: пустое видимое не «только чтение» поле /Sig под точкой (подсвечены
+    пунктиром), мимо — тост. Невидимая сертификация — без рамки, на текущей странице. Команды меню «Подпись» (новая
+    `sign.certifyInvisible`) — из `CertificateTool::commands`; `sign.fillSign` — заглушка этапа 5.
+  - «Выбрать в Windows…» — `CertPicker` только на экране, подпись — `WindowsCert{thumbprint, window}` (PIN спрашивает
+    Windows). Самоподписанное: страна — две латинские буквы (RU), RSA 3072 или ECDSA P-256, 5 лет. Внешние виды —
+    JSON-список `signatures/appearances`, по умолчанию — имя в `signatures/appearance`, «Стандартный» не правится;
+    ярлыки строк не хранятся — переводы `SignTexts::appearanceLabels` подставляются при подписи.
+  - ui-тесты без сети и Python: `tests/ui/support/sign_ui` — `FakeHttpFetcher`, служба времени тестовой PKI отвечает
+    на любой `application/timestamp-query` (и по адресу DigiCert), OCSP, CRL и ЦС — `http://pki.acrobatya.test/…`.
+  - **Проверяется записанный файл**, а не документ в памяти: подписи — свойство байтов на диске. `CryptoWorker` —
+    своя копия в пуле из двух потоков (OCSP/CRL/AIA до 15 с не держат поток документа). Повтор — после каждой записи
+    и по `TrustService::changed`; устаревший итог отбрасывается по поколению. `signatures/verifyOnOpen` (да),
+    `revocation` (bestEffort), `acceptExpiredTimestamps` (да), `promptTrust` (да); без проверки при открытии панель
+    «Подписи» проверяет сама, когда её открывают.
+  - **Расхождение с планом:** неразрешённая правка после подписи (EU DSS modified_after_signature.pdf, свой файл со
+    сменой /PageMode) — красная полоса «Хотя бы одна подпись недействительна», а не жёлтая из «Сначала тесты»:
+    полоса следует вердикту валидатора 4.4; в панели — «Изменения после подписи не разрешены (N)».
+  - «Доверять подписанту…» — при `promptTrust`, целой подписи и ValidUntrusted: просмотр сертификата на корне,
+    «Добавить в доверенные…» → `TrustDialog` (по умолчанию «подписанные документы») → `TrustService::edit` →
+    проверка открытых вкладок заново. «Детали» сертификата — расширения текстом OpenSSL по-английски, как в Acrobat.
+  - «Очистить подпись» — только последней и не в заблокированном поле: шаг журнала «Clear signature» и сразу
+    инкрементальная запись (ревизия с подписью остаётся в файле), у сертифицирующей снимается /Perms /DocMDP.
+    «Просмотреть подписанную версию» — [0, конец /ByteRange) в `%TEMP%\AcroBatya\<имя>.signed-<N>.pdf`, вкладка
+    «только чтение», файл уходит с вкладкой. «Проверить подпись» строки проверяет всю вкладку.
+  - **Установки → Подписи** — одна категория с вкладками (`SignaturesPage::showTab`), сцена `preferences-sign-creation`
+    — сверх плана. Удостоверения, якоря и корни Windows применяются сразу, как в Acrobat, остальное — по «ОК»;
+    «Обновить сейчас» сначала пишет флажки списков (`apply` + `sync`) — `TrustUpdater` читает Settings.
+  - «Время проверки» — `VerificationTime` в `VerifyOptions` (`signatures/verifyTime` signing|secure|current, по
+    умолчанию signing — как раньше): безопасное = метка, если пригодна, иначе «сейчас». LTV после подписи — только
+    B-B/B-T: `collectLtv` + размер файла → `decideAutoLtv` в потоке документа; ask — полоса `ltvOfferBar`.
+  - Списки доверия при запуске — через 5 с, только из `main.cpp` (не `--smoke`, не тесты), без сети — ничего;
+    Pending — тост «Установить» на 30 с. Импорт из Windows — по подтверждению и, как импорт файлом, только для
+    подписей. Удаление удостоверения удаляет и его .pfx; пароль службы времени — только в памяти.
+  - **`--script` шире плана:** у `sign.sign` ещё location, page, rect (пункты от левого верхнего угла; без рамки —
+    невидимая), field, lock, tsa, pkcs7, target; новое `sign.trust{cert, certified}` — без доверия корню PKI
+    сценарий 4 не даёт «все подписи действительны». Уровень по умолчанию T; ask при отказе службы — отказ шага.
+    `sign.verifyAll` — проверка вкладки, expect valid|certified|problems|invalid|notSigned; ошибки — английский
+    `ScriptError`.
+  - Тёмные сцены — копии светлых с `-dark` и `ThemeChoice::Dark` (эталон 6.10). CHANGELOG: раздел «0.4.0 —
+    2026-10-24: подписи PAdES» под опустевшим «Не выпущено» (строки 4.1–4.5 вошли в него); тег `v0.4.0` — на 6bce3f5.
+- Подводные камни:
+  - Unity-сборка: с новыми файлами `ui` встроенное тело `FormatPanel::mode()` перестало собираться (`EditMode` в
+    заголовке не полон) — вынесено в .cpp. Новый `ViewToolId::Sign` требует ветки в `QuickBar::sync`. Реестр
+    инструментов статический: `CertificateTool` после выхода `QApplication` виджетов не трогает.
+  - `pdf_clear_signature` MuPDF 1.28 открывает две операции журнала, а закрывает одну — `Journal::Operation` откатил
+    бы правку. Очистка своя, внутри нашей операции: `pdf_signature_appearance_unsigned`, снять /V у поля и виджета,
+    снять Locked. Подпись с /Lock /All делает только для чтения и само новое поле.
+  - QTreeView сам не считает высоту строки с переносом — «Подпись 1: имя (статус)» обрезалась в панели 280 px:
+    `WrapDelegate` по ширине столбца и `doItemsLayout()` в `resizeEvent`. `SignatureStatus` снимает слой значков
+    (z 45) с `PageView` — `signatures_.reset()` первым в деструкторе `DocumentView`.
+  - Длинные пункты выпадающих списков раздвигали диалог и Установки — `AdjustToMinimumContentsLengthWithIcon` и
+    `setMinimumContentsLength`; пункты уровня без службы — `setItemData(i, false, Qt::UserRole - 1)`.
+  - `TrustUpdater` держит `Settings` ссылкой: в фоне (`UpdateJob`, `TrustListsJob`) оба живут в одном `shared_ptr`
+    до конца работы и ответа тоста.
+  - Тесты зависят от порядка: удостоверение и пароль `ui.sign_dialog` живут в state.sqlite каталога данных теста,
+    `ui.sign_settings` подписывает паролем из кеша после теста удостоверений. В `ui.sign_dialog` —
+    `signatures/autoAddLtv=never` (иначе уровень выше выбранного).
+  - Кнопки полосы сообщений появляются с задержкой (QLayout) — сцены `sig-bar-*` ждут видимую кнопку; сцены
+    подписывают отчёт при снимке и доверяют корню PKI (без якоря полоса жёлтая), копии фикстур — с ASCII-именами.
+  - Итог проверки приходит сигналом из пула `CryptoWorker`, `script::await` не подходит: `sign.verifyAll` крутит
+    `processEvents` до `hasResult()` (не дольше 120 с). `timestampFallback` по умолчанию ask — `tests/scripts/sign.json`
+    без подмены службы (как в `ui.script_sign`) требует сети (DigiCert).
+  - Найдено оператором: `trust_dialog.h` говорит «отпечаток SHA-1», диалог показывает SHA-256; схема `sign.certify` не
+    принимает field, lock, pkcs7, хотя комментарий `sign_script.cpp` — «как у sign.sign»; в сообщении 8f4d74c —
+    `ui.sign_settings (9)`, слотов 8; отметки `[x]` шли следующим коммитом (п. 4 — отдельным 6bce3f5).
+    `docs/map.md` в 4.6 не менялся (последняя правка — 610835f): sign_script, crypto_worker, signature_status,
+    signatures_pane, certificate_tool, trust_service и страницы «Подписи» в карту не внесены.
+- Проверки: сессия остановилась по лимиту ходов (321) до итогового `verify.py`; запись оператор восстановил по
+  коммитам, карта кода не обновлена. Зелёный прогон новых тестов (`unit.sig_fields`, `unit.sig_clear`,
+  `unit.cert_details`, `unit.verifier_time`, `ui.sign_dialog`, `ui.signatures_pane`, `ui.sign_settings`,
+  `ui.shots.stage4`, `ui.script_sign`) и сцены журналом не подтверждены — их покрывает `verify.py --full` рубежа Р2,
+  начатого сразу после.
