@@ -67,7 +67,9 @@ $log = Join-Path $build 'fuzz.log'
 $before = @(Get-ChildItem -LiteralPath $artifacts -File).Count
 $args = @("`"$corpus`"") + ($seeds | ForEach-Object { "`"$_`"" }) + @(
     "-max_total_time=$Seconds", "-rss_limit_mb=$RssLimitMb", "-timeout=$Timeout",
-    "-artifact_prefix=`"$artifacts\`"", '-print_final_stats=1')
+    # Обратная косая перед закрывающей кавычкой удвоена: «\"» в разборе командной строки MSVCRT — кавычка внутри
+    # аргумента, и путь съедал следующий ключ (рубеж Р2: артефакт timeout-* уходил мимо каталога).
+    "-artifact_prefix=`"$artifacts\\`"", '-print_final_stats=1')
 $cmdLine = "`"$(Join-Path $root 'tools\vcenv.cmd')`" && `"$exe`" " + ($args -join ' ') + " > `"$log`" 2>&1"
 $t0 = Get-Date
 & cmd /c $cmdLine
