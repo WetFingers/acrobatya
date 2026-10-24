@@ -88,12 +88,18 @@ public:
 
     // Разобрать байты строки на коды (как show_string): каждый код — запись в out (добавляются в конец).
     void decode(std::string_view bytes, std::vector<Code>& out);
+    // Один код (с кешем) и без кеша — для обхода всех кодов кодировки (core/edit/font_info.h).
+    Code lookup(std::uint32_t code, int bytes);
+    Code compute(std::uint32_t code, int bytes) const;
+
+    // Шрифт MuPDF (живёт, пока жив GlyphMap): кодировка, ToUnicode, метрики, программа шрифта.
+    pdf_font_desc* desc() const noexcept { return font_; }
+    fz_context* context() const noexcept { return ctx_; }
 
     static bool isBase14(std::string_view name) noexcept;
 
 private:
     GlyphMap(fz_context* ctx, pdf_font_desc* font);
-    Code lookup(std::uint32_t code, int bytes);
 
     fz_context* ctx_;
     pdf_font_desc* font_;

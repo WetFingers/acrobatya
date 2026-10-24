@@ -179,6 +179,12 @@ GlyphMap::Code GlyphMap::lookup(std::uint32_t code, int bytes) {
     if (auto it = cache_.find(key); it != cache_.end()) {
         return it->second;
     }
+    Code c = compute(code, bytes);
+    cache_.emplace(key, c);
+    return c;
+}
+
+GlyphMap::Code GlyphMap::compute(std::uint32_t code, int bytes) const {
     Code c;
     c.code = code;
     c.bytes = static_cast<std::uint8_t>(bytes);
@@ -219,7 +225,6 @@ GlyphMap::Code GlyphMap::lookup(std::uint32_t code, int bytes) {
             c.vy = static_cast<float>(v.y) * 0.001f;
         }
     }
-    cache_.emplace(key, c);
     return c;
 }
 

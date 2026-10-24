@@ -1,0 +1,293 @@
+{
+  "fonts.pdf": {
+    "F1": {
+      "baseFont": "PGZGJP+Arial-BoldMT",
+      "name": "Arial-BoldMT",
+      "family": "Arial",
+      "subtype": "Type0",
+      "cidSubtype": "CIDFontType2",
+      "encoding": "Identity-H",
+      "file": "TrueType",
+      "embedded": true,
+      "subset": true,
+      "base14": false,
+      "toUnicode": true,
+      "flags": 32,
+      "italicAngle": 0,
+      "stemV": 120,
+      "weight": 700,
+      "bold": true,
+      "italic": false,
+      "serif": false,
+      "fixedPitch": false,
+      "has": [
+        "-",
+        ":",
+        "A",
+        "B",
+        "C",
+        "D",
+        "H",
+        "I",
+        "a",
+        "b",
+        "d",
+        "e",
+        "i",
+        "l",
+        "n",
+        "o",
+        "r",
+        "s",
+        "t",
+        "u",
+        "y"
+      ],
+      "missing": [
+        "ё",
+        "Ж",
+        "€",
+        "z",
+        "7"
+      ]
+    },
+    "F2": {
+      "name": "TimesNewRomanPS-ItalicMT",
+      "family": "Times New Roman",
+      "subtype": "TrueType",
+      "cidSubtype": "",
+      "file": "TrueType",
+      "embedded": true,
+      "subset": true,
+      "base14": false,
+      "toUnicode": false,
+      "flags": 98,
+      "italicAngle": -16.33,
+      "stemV": 80,
+      "weight": 400,
+      "bold": false,
+      "italic": true,
+      "serif": true,
+      "fixedPitch": false,
+      "has": [
+        "I",
+        "T",
+        "a",
+        "c",
+        "e",
+        "i",
+        "l",
+        "m",
+        "p",
+        "r",
+        "s",
+        "t",
+        "u",
+        "y"
+      ],
+      "missing": [
+        "ё",
+        "€",
+        "z",
+        "W"
+      ]
+    },
+    "F3": {
+      "name": "Courier",
+      "family": "Courier",
+      "subtype": "Type1",
+      "cidSubtype": "",
+      "encoding": "WinAnsiEncoding",
+      "file": "",
+      "embedded": false,
+      "subset": false,
+      "base14": true,
+      "toUnicode": false,
+      "weight": 400,
+      "bold": false,
+      "italic": false,
+      "fixedPitch": true,
+      "has": [
+        "C",
+        "z",
+        "7",
+        "€"
+      ],
+      "missing": [
+        "Ж"
+      ]
+    },
+    "F4": {
+      "name": "Arial,BoldItalic",
+      "family": "Arial",
+      "subtype": "TrueType",
+      "cidSubtype": "",
+      "encoding": "WinAnsiEncoding",
+      "file": "",
+      "embedded": false,
+      "subset": false,
+      "base14": false,
+      "toUnicode": false,
+      "flags": 262240,
+      "italicAngle": -12,
+      "stemV": 153,
+      "weight": 700,
+      "bold": true,
+      "italic": true,
+      "serif": false,
+      "fixedPitch": false,
+      "has": [
+        ",",
+        "A",
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "i",
+        "l",
+        "m",
+        "n",
+        "o",
+        "r",
+        "t"
+      ],
+      "missing": [
+        "Ж"
+      ]
+    },
+    "F5": {
+      "name": "Georgia",
+      "family": "Georgia",
+      "subtype": "Type0",
+      "cidSubtype": "CIDFontType2",
+      "encoding": "Identity-H",
+      "file": "TrueType",
+      "embedded": true,
+      "subset": false,
+      "base14": false,
+      "toUnicode": true,
+      "flags": 34,
+      "weight": 400,
+      "bold": false,
+      "italic": false,
+      "serif": true,
+      "has": [
+        "G",
+        "a",
+        "b",
+        "e",
+        "g",
+        "h",
+        "i",
+        "o",
+        "r",
+        "s",
+        "t",
+        "u",
+        "w"
+      ],
+      "missing": [
+        "ё",
+        "q",
+        "€"
+      ],
+      "baseFont": "Georgia"
+    },
+    "F6": {
+      "name": "",
+      "family": "",
+      "subtype": "Type3",
+      "cidSubtype": "",
+      "file": "",
+      "embedded": false,
+      "subset": false,
+      "base14": false,
+      "type3": true,
+      "has": [],
+      "missing": [
+        "a"
+      ]
+    },
+    "F7": {
+      "name": "FantasySans",
+      "family": "Fantasy Sans",
+      "subtype": "Type0",
+      "cidSubtype": "CIDFontType2",
+      "file": "TrueType",
+      "embedded": true,
+      "subset": true,
+      "base14": false,
+      "toUnicode": true,
+      "weight": 400,
+      "bold": false,
+      "italic": false,
+      "serif": false,
+      "has": [
+        "F",
+        "a",
+        "b",
+        "e",
+        "n",
+        "s",
+        "t",
+        "u",
+        "y"
+      ],
+      "missing": [
+        "ё",
+        "€"
+      ],
+      "baseFont": "PVIIKQ+FantasySans"
+    },
+    "F8": {
+      "name": "FantasySerif-Bold",
+      "family": "Fantasy Serif",
+      "subtype": "TrueType",
+      "file": "",
+      "embedded": false,
+      "subset": false,
+      "flags": 34,
+      "stemV": 136,
+      "weight": 700,
+      "bold": true,
+      "italic": false,
+      "serif": true
+    },
+    "F9": {
+      "name": "Tahoma-Italic",
+      "family": "Tahoma",
+      "subtype": "TrueType",
+      "file": "",
+      "embedded": false,
+      "subset": false,
+      "flags": 96,
+      "italicAngle": -10,
+      "weight": 400,
+      "bold": false,
+      "italic": true
+    }
+  },
+  "mixed": {
+    "x": 72,
+    "y": 713.0898,
+    "size": 12,
+    "font": "F1",
+    "text": "Привет, world! — 2026 €",
+    "runs": [
+      [
+        "Привет",
+        "new"
+      ],
+      [
+        ", world! ",
+        "original"
+      ],
+      [
+        "— 2026 €",
+        "new"
+      ]
+    ],
+    "lines": 2
+  }
+}
