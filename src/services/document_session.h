@@ -54,7 +54,9 @@ namespace sign {
 struct SignRequest;
 struct SignResult;
 struct DocTimestampResult;
+struct LtvResult;
 class TsaClient;
+class TrustStore;
 }  // namespace sign
 
 class Document;
@@ -239,6 +241,13 @@ public:
     // переоткрытием; ошибка — sign::SignError в QFuture.
     QFuture<sign::DocTimestampResult> timestampDocument(std::shared_ptr<sign::TsaClient> tsa,
                                                         const QString& target = {});
+
+    // «Добавить сведения для проверки» (core/sign/ltv.h, sign-21): /DSS отдельной инкрементальной секцией,
+    // сеть — httpFetcher() процесса (выключатель «Сеть»), якоря — trust (nullptr — до самоподписанного
+    // корня), vri — /VRI для совместимости; записанный файл переоткрыт (сигнал saved); нового нет — без
+    // записи.
+    QFuture<sign::LtvResult> addValidationInfo(std::shared_ptr<const sign::TrustStore> trust,
+                                               bool vri = false, const QString& target = {});
 
     // С ожиданием: исключение задачи бросается здесь. Из потока документа (внутри задачи) выполняется сразу.
     template <class F>

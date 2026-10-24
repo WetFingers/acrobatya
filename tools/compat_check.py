@@ -14,7 +14,9 @@
                                     (summary, например «INTACT:UNTRUSTED,UNTOUCHED») есть все токены S
                                     («INTACT», «TRUSTED», «INTACT,UNTOUCHED»…); --trust — доверенный корень;
                                     у подписи с меткой времени (B-T) в сводке ещё TIMESTAMPED и, если
-                                    цепочка службы доверена, TIMESTAMP_TRUSTED;
+                                    цепочка службы доверена, TIMESTAMP_TRUSTED; у файла с /DSS — LTV, если
+                                    подпись (и её метка) доверены по данным /DSS без сети с обязательной
+                                    проверкой отзыва (revocation_mode="require");
   * --expect-ts S                 — метки времени документа (/DocTimeStamp, validate_pdf_timestamp): в файле
                                     есть хотя бы одна, у каждой в сводке («DOC_TIMESTAMP:INTACT:TRUSTED,…»)
                                     все токены S; без --expect-ts метки документа проверяются на INTACT;
@@ -237,6 +239,16 @@ def check_signatures(pdf: Path, expect: str | None, trust: list[Path], expect_ts
             sigs = list(reader.embedded_signatures)
             if not sigs:
                 return result("pyhanko sign validate", ver, 1, False, ["подписей в файле нет"])
+            # LTV: только данные /DSS файла, без сети, отзыв обязателен для каждого сертификата цепочек.
+            ltv_context = None
+            try:
+                from pyhanko.sign.validation.dss import DocumentSecurityStore
+
+                ltv_context = DocumentSecurityStore.read_dss(reader).as_validation_context(
+                    dict(trust_roots=roots or None, allow_fetching=False, revocation_mode="require")
+                )
+            except Exception:  # noqa: BLE001 — нет /DSS
+                ltv_context = None
             doc_timestamps = 0
             for sig in sigs:
                 if sig.sig_object_type == "/DocTimeStamp":
@@ -250,6 +262,11 @@ def check_signatures(pdf: Path, expect: str | None, trust: list[Path], expect_ts
                     ts = getattr(status, "timestamp_validity", None)
                     if ts is not None:
                         summary += ",TIMESTAMPED" + (",TIMESTAMP_TRUSTED" if ts.trusted else "")
+                    if ltv_context is not None:
+                        lt = validate_pdf_signature(sig, ltv_context)
+                        lts = getattr(lt, "timestamp_validity", None)
+                        if lt.intact and lt.trusted and (lts is None or lts.trusted):
+                            summary += ",LTV"
                     expected = wanted
                 tokens = set(re.split(r"[:,]", summary))
                 missing = [t for t in expected if t not in tokens]

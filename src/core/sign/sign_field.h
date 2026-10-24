@@ -51,6 +51,10 @@ FieldOutcome signField(Document& doc, const FieldJob& job, PdfSigner& signer,
 // операции журнала, до подписи.
 void ensureEsic(fz_context* ctx, pdf_document* pdf, int level);
 
+// Перед дописыванием секции нужна обычная запись: несохранённые правки, файл нельзя дописать (ремонт) или
+// документа нет на диске.
+bool needsPreSave(Document& doc);
+
 // Поле по полному имени (UTF-8); nullptr — нет.
 pdf_obj* lookupField(fz_context* ctx, pdf_document* pdf, const std::string& name);
 // Свободное имя «<prefix>1», «<prefix>2»…

@@ -9,6 +9,8 @@
 
 #include <stdexcept>
 
+#include "core/sign/der.h"
+
 namespace ot::sign {
 
 namespace {
@@ -132,6 +134,30 @@ RevocationStatus worstStatus(const std::vector<RevocationResult>& results) {
         }
     }
     return worst;
+}
+
+RevocationData archivalRevocation(const Bytes& value) {
+    RevocationData out;
+    try {
+        der::Reader top(value);
+        der::Reader seq(top.expect(der::kSequence, "RevocationInfoArchival").value);
+        while (!seq.atEnd()) {
+            const der::Node n = seq.next();
+            if (n.tag != der::context(0) && n.tag != der::context(1)) {
+                continue;
+            }
+            der::Reader inner(n.value);
+            der::Reader list(inner.expect(der::kSequence, "RevocationInfoArchival list").value);
+            while (!list.atEnd()) {
+                const der::Node e = list.next();
+                (n.tag == der::context(0) ? out.crls : out.ocspResponses)
+                    .emplace_back(e.encoded.begin(), e.encoded.end());
+            }
+        }
+    } catch (const der::DerError& e) {
+        spdlog::debug("revocation: adbe-revocationInfoArchival: {}", e.what());
+    }
+    return out;
 }
 
 RevocationChecker::RevocationChecker(RevocationData known, net::HttpFetcher* fetcher)

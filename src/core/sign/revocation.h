@@ -62,6 +62,10 @@ struct RevocationData {
     std::vector<Bytes> crls;           // DER или PEM
 };
 
+// adbe-revocationInfoArchival (signed-атрибут Adobe, DER значения): SEQUENCE { [0] SEQUENCE OF CRL, [1]
+// SEQUENCE OF OCSPResponse, [2] … }; испорчен — пусто.
+RevocationData archivalRevocation(const Bytes& value);
+
 class RevocationChecker {
 public:
     // fetcher — сеть (AIA OCSP, CRL DP); nullptr — только известные данные.

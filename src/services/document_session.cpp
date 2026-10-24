@@ -22,9 +22,11 @@
 #include "core/render/fit.h"
 #include "core/render/renderer.h"
 #include "core/sign/doc_timestamp.h"
+#include "core/sign/ltv.h"
 #include "core/sign/signer.h"
 #include "core/text/stext.h"
 #include "core/util/paths.h"
+#include "services/http_fetcher.h"
 #include "services/system_fonts_dwrite.h"
 #include "services/task_context.h"
 
@@ -604,6 +606,33 @@ QFuture<sign::DocTimestampResult> DocumentSession::timestampDocument(std::shared
             return result;
         },
         TaskPriority::Normal, QStringLiteral("timestamp"));
+}
+
+QFuture<sign::LtvResult> DocumentSession::addValidationInfo(std::shared_ptr<const sign::TrustStore> trust,
+                                                            bool vri, const QString& target) {
+    return post(
+        [this, trust = std::move(trust), vri, target](TaskContext& tc) {
+            const std::filesystem::path to =
+                target.isEmpty() ? std::filesystem::path() : std::filesystem::path(target.toStdWString());
+            sign::LtvOptions options;
+            options.trust = trust.get();
+            options.fetcher = &httpFetcher();
+            options.vri = vri;
+            sign::LtvResult result;
+            try {
+                result = sign::addValidationInfo(tc.document(), options, to);
+            } catch (...) {
+                SaveReport failed;
+                failed.error = SaveError::WriteFailed;
+                afterSave(failed, true);
+                throw;
+            }
+            if (result.save.bytes > 0 || !result.save.ok()) {  // была запись (или её попытка)
+                afterSave(result.save);
+            }
+            return result;
+        },
+        TaskPriority::Normal, QStringLiteral("ltv"));
 }
 
 void DocumentSession::afterSave(const SaveReport& report, bool reloaded) {

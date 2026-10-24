@@ -107,6 +107,11 @@ inline constexpr StringKey kTimestampFallback{"signatures/timestampFallback", "a
 inline constexpr BoolKey kTimestampSignatures{"signatures/timestamp", true};
 // «Совместимость»: /SubFilter adbe.pkcs7.detached вместо ETSI.CAdES.detached.
 inline constexpr BoolKey kSignCompatibility{"signatures/pkcs7Compatibility", false};
+// «Автоматически добавлять сведения LTV при сохранении» (вопрос 12.3, core/sign/ltv.h decideAutoLtv): никогда
+// / спросить, если данных больше 10 % размера файла + 10 КБ / всегда.
+inline constexpr StringKey kAutoAddLtv{"signatures/autoAddLtv", "ask", "never|ask|always"};
+// /VRI в /DSS по хэшу подписи — для старых проверяющих (по умолчанию нет).
+inline constexpr BoolKey kLtvVri{"signatures/ltvVri", false};
 
 // --- Печать (print/; эталон 3.3, 3.18 «Печать»; view-37, create-16; сессия 2.6) ---
 // Принтер по умолчанию диалога «Печать» (пусто — системный).

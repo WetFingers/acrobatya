@@ -223,18 +223,6 @@ FieldOutcome prepare(Document& doc, const FieldJob& job, const FieldPlan& plan, 
     return prepared;
 }
 
-bool needsPreSave(Document& doc) {
-    fz_context* ctx = doc.context().get();
-    pdf_document* pdf = doc.pdf();
-    int changed = 0;
-    int appendable = 0;
-    mu::call(ctx, [&] {
-        changed = pdf_has_unsaved_changes(ctx, pdf);
-        appendable = pdf_can_be_saved_incrementally(ctx, pdf);
-    });
-    return changed != 0 || appendable == 0 || doc.filePath().empty();
-}
-
 [[noreturn]] void rethrowSignerError(const PdfSigner& signer, const SaveReport& report) {
     if (const std::exception_ptr cause = signer.error()) {
         try {
@@ -249,6 +237,18 @@ bool needsPreSave(Document& doc) {
 }
 
 }  // namespace
+
+bool needsPreSave(Document& doc) {
+    fz_context* ctx = doc.context().get();
+    pdf_document* pdf = doc.pdf();
+    int changed = 0;
+    int appendable = 0;
+    mu::call(ctx, [&] {
+        changed = pdf_has_unsaved_changes(ctx, pdf);
+        appendable = pdf_can_be_saved_incrementally(ctx, pdf);
+    });
+    return changed != 0 || appendable == 0 || doc.filePath().empty();
+}
 
 pdf_obj* lookupField(fz_context* ctx, pdf_document* pdf, const std::string& name) {
     pdf_obj* fields = nullptr;
