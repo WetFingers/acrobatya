@@ -1,17 +1,22 @@
 // ui.theme — токены и тема (эталон 6.4, 6.5): контраст текста ≥ 4,5:1 в трёх палитрах (формула WCAG —
 // support/contrast.h), QPalette и шрифт из токенов, смена темы без перезапуска, «Системная» по QStyleHints,
-// «Крупные элементы» × 1,25.
+// «Крупные элементы» × 1,25, рамки флажков и переключателей видны (≥ 3:1).
 #include <QAccessibilityHints>
 #include <QApplication>
+#include <QCheckBox>
+#include <QDir>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QSignalSpy>
 #include <QStyle>
 #include <QStyleHints>
+#include <QStyleOptionButton>
 #include <QVBoxLayout>
 #include <QtTest/QtTest>
 
+#include <algorithm>
 #include <cstdio>
 
 #include "support/contrast.h"
@@ -144,6 +149,55 @@ private slots:
         QCOMPARE(QApplication::font().pointSizeF(), 9.0);
         QVERIFY(!app().styleSheet().isEmpty());
         QCOMPARE(Theme::instance().kind(), ThemeKind::Light);
+    }
+
+    // Рамка флажка и переключателя видна во всех трёх палитрах (рубеж Р1: у Fusion на тёмной — #181818 на
+    // #1F1F1F): у пустого индикатора есть пиксель с контрастом к фону ≥ 3:1 (WCAG 1.4.11). Снимки —
+    // build/<пресет>/ui-shots/indicators-<тема>.png.
+    void indicatorsVisible() {
+        for (const ThemeChoice choice : {ThemeChoice::Light, ThemeChoice::Dark, ThemeChoice::HighContrast}) {
+            Theme::apply(app(), choice);
+            const Palette& p = Tokens::palette(Theme::instance().kind());
+            QWidget w;
+            auto* layout = new QVBoxLayout(&w);
+            auto* box = new QCheckBox(QStringLiteral("box"));
+            auto* radio = new QRadioButton(QStringLiteral("radio"));
+            auto* checked = new QCheckBox(QStringLiteral("checked"));
+            checked->setChecked(true);
+            layout->addWidget(box);
+            layout->addWidget(radio);
+            layout->addWidget(checked);
+            w.show();
+            QVERIFY(QTest::qWaitForWindowExposed(&w));
+            const QImage shot = w.grab().toImage().convertToFormat(QImage::Format_RGB32);
+            const QString dir = QCoreApplication::applicationDirPath() + QStringLiteral("/../ui-shots");
+            QDir().mkpath(dir);
+            shot.save(
+                dir +
+                QStringLiteral("/indicators-%1.png").arg(QLatin1String(kindName(Theme::instance().kind()))));
+            const auto best = [&](QAbstractButton* b, QStyle::SubElement e) {
+                QStyleOptionButton opt;
+                opt.initFrom(b);
+                const QRect r = b->style()->subElementRect(e, &opt, b).translated(b->pos());
+                double ratio = 1.0;
+                for (int y = r.top(); y <= r.bottom(); ++y) {
+                    for (int x = r.left(); x <= r.right(); ++x) {
+                        ratio = std::max(ratio, contrastRatio(QColor(shot.pixel(x, y)), p.surface.color()));
+                    }
+                }
+                return ratio;
+            };
+            const double boxRatio = best(box, QStyle::SE_CheckBoxIndicator);
+            const double radioRatio = best(radio, QStyle::SE_RadioButtonIndicator);
+            QVERIFY2(
+                boxRatio >= 3.0,
+                qPrintable(
+                    QStringLiteral("%1 checkbox %2").arg(kindName(Theme::instance().kind())).arg(boxRatio)));
+            QVERIFY2(
+                radioRatio >= 3.0,
+                qPrintable(
+                    QStringLiteral("%1 radio %2").arg(kindName(Theme::instance().kind())).arg(radioRatio)));
+        }
     }
 
     // Смена темы без перезапуска: палитра всех уже созданных виджетов меняется, themeChanged — один раз.
