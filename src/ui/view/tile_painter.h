@@ -29,6 +29,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "core/render/render_style.h"
 #include "core/render/tiles.h"
 #include "core/util/geometry.h"
 
@@ -78,6 +79,10 @@ public:
     // Видимость слоёв документа (DocumentSession::layersHash, поле ключа тайлов): другая — всё заново.
     void setLayersHash(quint64 hash);
     quint64 layersHash() const noexcept { return layers_; }
+    // Как рисовать (2.5b: замена цветов, overprint, сглаживание — RenderStyle::key() в поле style ключа):
+    // другой стиль — все растры заново, прежние не подменяют; бумага — paperColor(style).
+    void setStyle(const RenderStyle& style);
+    const RenderStyle& style() const noexcept { return style_; }
     // Смена экрана (dpr): растры документа и задачи — сброс.
     void resetDevice();
 
@@ -132,6 +137,8 @@ private:
     QPointer<DocumentSession> session_;
     quint64 docId_ = 0;
     quint64 layers_ = 0;  // DocumentSession::layersHash() — поле layersHash ключей
+    RenderStyle style_;
+    quint64 styleKey_ = 0;  // style_.key() — поле style ключей
     RenderPool* pool_ = nullptr;
     TileCache* cache_ = nullptr;
     std::unique_ptr<RenderPool> ownPool_;

@@ -104,6 +104,9 @@ const std::vector<Scene>& sceneTable() {
         for (Scene& s : trustScenes()) {  // 2.5b: protected-view, link-confirm
             table.push_back(std::move(s));
         }
+        for (Scene& s : renderScenes()) {  // 2.5b: view-night, view-high-contrast, view-overprint
+            table.push_back(std::move(s));
+        }
         return table;
     }();
     return SCENES;

@@ -27,7 +27,7 @@ struct TileKey {
     int tx = 0;            // номер тайла по x
     int ty = 0;            // номер тайла по y
     std::uint64_t layersHash = 0;  // видимость слоёв OCG
-    int recolor = 0;               // Recolor (замена цветов, 2.5b)
+    std::uint64_t style = 0;       // RenderStyle::key() (renderer.h): замена цветов, сглаживание, overprint
     std::uint64_t revision = 0;    // DocumentSession::revision()
 
     bool operator==(const TileKey&) const = default;
@@ -72,10 +72,12 @@ std::vector<TileRect> tilesIntersecting(const IRect& device, const IRect& visibl
 inline constexpr int kPreviewDivisor = 8;
 float previewZoom(float zoom) noexcept;
 TileKey makePreviewKey(std::uint64_t doc, int page, float zoom, float dpr, int rotation,
-                       std::uint64_t revision = 0, std::uint64_t layersHash = 0, int recolor = 0) noexcept;
+                       std::uint64_t revision = 0, std::uint64_t layersHash = 0,
+                       std::uint64_t style = 0) noexcept;
 
 // Ключ тайла: масштаб и dpr — в тысячных, поворот — нормализован.
 TileKey makeTileKey(std::uint64_t doc, int page, float zoom, float dpr, int rotation, const TileRect& tile,
-                    std::uint64_t revision = 0, std::uint64_t layersHash = 0, int recolor = 0) noexcept;
+                    std::uint64_t revision = 0, std::uint64_t layersHash = 0,
+                    std::uint64_t style = 0) noexcept;
 
 }  // namespace ot

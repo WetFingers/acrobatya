@@ -465,6 +465,7 @@ void DocumentSession::afterSave(const SaveReport& report) {
             s.pageLabels = pageLabelsOf(*doc_);
             s.initial = initialViewOf(*doc_);
             s.permissions = Permissions::of(*doc_);
+            s.pdfx = doc_->isPdfX();
             const QString docPath = QString::fromStdWString(doc_->path().wstring());
             const std::lock_guard lock(mutex_);
             summary_ = s;
@@ -599,6 +600,7 @@ void DocumentSession::install(std::unique_ptr<Document> doc, OpenSummary& s, con
             s.pageLabels = pageLabelsOf(*doc);
             s.initial = initialViewOf(*doc);
             s.permissions = Permissions::of(*doc);
+            s.pdfx = doc->isPdfX();
             layersHash_.store(layersHashOf(*doc));
             doc_ = std::shared_ptr<Document>(std::move(doc));
         } catch (const MuError& e) {

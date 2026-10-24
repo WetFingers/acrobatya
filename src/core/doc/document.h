@@ -130,6 +130,9 @@ public:
     bool isSigned() const;
     bool hasForm() const;
     bool hasXfa() const;
+    // PDF/X: в /OutputIntents каталога есть намерение /S /GTS_PDFX (предпросмотр наложения «Только для
+    // PDF/X»).
+    bool isPdfX() const;
     // Действующее право (core/doc/permissions.h: правила /P, пароль владельца — всё).
     bool allowed(Perm perm) const;
     DocProperties properties() const;

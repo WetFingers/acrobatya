@@ -29,7 +29,7 @@ public:
     // Принимает ссылку list (из fz_new_display_list…) и owner — клон контекста документа (только для отдачи
     // списка и для contentBounds в чужом потоке). bounds — рамка страницы (fz_bound_page).
     DisplayList(std::unique_ptr<MuContext> owner, fz_display_list* list, const RectF& bounds, int page,
-                bool annotations) noexcept;
+                bool annotations, bool usesOverprint = false) noexcept;
     ~DisplayList();
     DisplayList(const DisplayList&) = delete;
     DisplayList& operator=(const DisplayList&) = delete;
@@ -38,6 +38,9 @@ public:
     const RectF& bounds() const noexcept { return bounds_; }
     int page() const noexcept { return page_; }
     bool annotations() const noexcept { return annotations_; }
+    // Страница рисует с overprint (fz_page_uses_overprint: /OP, /op в ExtGState ресурсов) — симуляции
+    // наложения (RenderStyle::overprint) есть что показать; иначе она не включается (дешевле).
+    bool usesOverprint() const noexcept { return usesOverprint_; }
     // Семья контекстов документа: рисовать список можно только её контекстами (RenderPool проверяет).
     const void* family() const noexcept { return family_; }
     // Рамка нарисованного (bbox-устройство по списку) в пунктах ∩ рамка страницы — для «По видимому»;
@@ -56,6 +59,7 @@ private:
     RectF bounds_;
     int page_;
     bool annotations_;
+    bool usesOverprint_;
 };
 
 class DisplayCache {

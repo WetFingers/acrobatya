@@ -59,6 +59,9 @@ inline constexpr BoolKey kSmoothLineArt{"pageDisplay/smoothLineArt", true};
 inline constexpr BoolKey kEnhanceThinLines{"pageDisplay/enhanceThinLines", true};
 inline constexpr BoolKey kUseLogicalPageNumbers{"pageDisplay/useLogicalPageNumbers", true};  // view-08
 inline constexpr BoolKey kShowPageBoxes{"pageDisplay/showPageBoxes", false};  // рамки Art/Trim/Bleed
+// Предпросмотр наложения красок (pro-47): «Никогда / Всегда / Только для PDF/X» (как Acrobat — по умолчанию
+// PDF/X).
+inline constexpr StringKey kOverprintPreview{"pageDisplay/overprintPreview", "pdfx", "never|always|pdfx"};
 
 // --- Документы (documents/; автосохранение, восстановление и PDF/A в окне — сессия 2.5) ---
 inline constexpr BoolKey kRestoreLastView{"documents/restoreLastView", true};
@@ -66,6 +69,17 @@ inline constexpr BoolKey kAutosave{"documents/autosave", true};
 inline constexpr IntKey kAutosaveMinutes{"documents/autosaveMinutes", 5, 1, 30};  // AutosaveRunner: 1–30
 inline constexpr BoolKey kOfferRecovery{"documents/offerRecovery", true};
 inline constexpr BoolKey kPdfaReadOnly{"documents/pdfaReadOnly", true};
+
+// --- Чтение и специальные возможности (reading/; страница Установок — 8.3) ---
+// Замена цветов документа (2.5b; view-26, ocr-38): нет / ночной режим / высокая контрастность / свои цвета /
+// инвертировать всё (команды «Вид → Ночной режим», «Вид → Высокая контрастность»).
+inline constexpr StringKey kRecolor{"reading/recolor", "none", "none|night|highContrast|custom|invert"};
+inline constexpr StringKey kHighContrastScheme{"reading/highContrastScheme", "whiteOnBlack",
+                                               "greenOnBlack|yellowOnBlack|whiteOnBlack|blackOnWhite"};
+inline constexpr StringKey kRecolorText{"reading/recolorText", "#000000"};              // свои цвета: текст
+inline constexpr StringKey kRecolorBackground{"reading/recolorBackground", "#FFFFFF"};  // свои цвета: фон
+inline constexpr BoolKey kRecolorLineArt{"reading/recolorLineArt", true};       // «…и векторной графики»
+inline constexpr BoolKey kRecolorOnlyBlack{"reading/recolorOnlyBlack", false};  // «только чёрный текст…»
 
 // --- Доверие (trust/; Диспетчер доверия целиком — 7.6) ---
 inline constexpr BoolKey kAllowOpenAttachments{"trust/allowOpenAttachments", true};

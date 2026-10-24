@@ -33,7 +33,9 @@ DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool*
     column->addWidget(view_, 1);
     view_->setDocument(session_.get(), pool, cache);
     setFocusProxy(view_);
-    permissions_ = session_->summary().permissions;
+    const OpenSummary summary = session_->summary();
+    permissions_ = summary.permissions;
+    pdfx_ = summary.pdfx;
     view_->tools().setEditable(canAnnotate());
     view_->tools().setCopyAllowed(permissions_.copy);
     find_ = new FindBar(*session_, *view_, this);
@@ -46,9 +48,12 @@ DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool*
     connect(
         session_.get(), &DocumentSession::saved, this,
         [this] {
-            permissions_ = session_->summary().permissions;
+            const OpenSummary summary = session_->summary();
+            permissions_ = summary.permissions;
+            pdfx_ = summary.pdfx;
             view_->tools().setEditable(canAnnotate());
             view_->tools().setCopyAllowed(permissions_.copy);
+            view_->setRenderStyle(viewStyle_.styleFor(pdfx_));
         },
         Qt::QueuedConnection);
     updateModified();
@@ -83,6 +88,11 @@ void DocumentView::setReadOnly(bool readOnly) {
     readOnly_ = readOnly;
     view_->tools().setEditable(canAnnotate());
     emit readOnlyChanged(readOnly);
+}
+
+void DocumentView::setViewStyle(const ViewStyle& style) {
+    viewStyle_ = style;
+    view_->setRenderStyle(style.styleFor(pdfx_));
 }
 
 void DocumentView::setProtectedView(protected_view::Origin origin) {

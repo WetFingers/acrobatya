@@ -21,6 +21,7 @@
 #include <memory>
 #include <mutex>
 
+#include "core/render/render_style.h"
 #include "core/render/tiles.h"
 #include "core/util/geometry.h"
 #include "services/document_session.h"
@@ -35,7 +36,7 @@ struct TileRequest {
     Matrix matrix;                            // pageMatrix(list->bounds(), zoom, dpr, rotation)
     IRect rect;                               // тайл в device px этой матрицы
     qreal dpr = 1.0;                          // QImage::setDevicePixelRatio
-    int aa = -1;                              // сглаживание 0–8; −1 — как у контекста
+    RenderStyle style;                        // сглаживание, замена цветов, overprint (renderer.h)
     int priority = 0;                         // больше — раньше (видимые тайлы)
 };
 

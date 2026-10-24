@@ -129,6 +129,12 @@ public:
     void applyProtectedView(DocumentView* view, protected_view::Origin origin, const QString& title = {});
     // «Включить все функции» вкладки (кнопка полосы).
     void enableAllFeatures(DocumentView* view);
+    // Стиль рендера всех вкладок и полного экрана из settings.ini (2.5b; ui/view/view_style.h): замена
+    // цветов, сглаживание, тонкие линии, предпросмотр наложения. Зовут Установки («ОК») и команды «Вид».
+    void applyViewStyle();
+    // «Вид → Ночной режим» / «Высокая контрастность» (reading/recolor): повторный выбор — снять замену.
+    void setRecolorMode(const QString& mode);
+    QString recolorMode() const;
     // Автосохранение открытых PDF (services/autosave_runner.h; Установки → Документы): «Не сохранять» и
     // закрытие удаляют запись документа.
     AutosaveRunner& autosave() const { return *autosave_; }

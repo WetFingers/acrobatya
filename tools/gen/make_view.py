@@ -21,7 +21,11 @@
   nav.json          — что в nav.pdf (слои, вложения, назначения, закладки, переходы);
   present.pdf       — 3 слайда для полного экрана (сессия 2.4): /PageMode /FullScreen,
                       /NonFullScreenPageMode /UseThumbs, /Dur 1 на стр. 1, /Fade и /Box;
-  present.json      — что в present.pdf.
+  present.json      — что в present.pdf;
+  overprint.pdf     — 1 страница PDF/X (сессия 2.5b, pro-47): /OutputIntents /S /GTS_PDFX, голубой прямоугольник
+                      и поверх — пурпурный с /OP true /OPM 1 (с предпросмотром наложения пересечение синее, без —
+                      пурпурное), плашки серого и подписи — для ночного режима;
+  overprint.json    — что в overprint.pdf.
 Ожидания раскладки (layout_expected.json рядом) посчитаны вручную по правилам ui/view/layout.h — не этим
 скриптом.
 Откуда: свои тексты; шрифт Arial из C:\\Windows\\Fonts (подмножество).
@@ -325,6 +329,33 @@ def present(out: Path) -> dict:
                             {"page": 2, "type": "Box", "duration": 0.3}]}
 
 
+def overprint(out: Path) -> dict:
+    """1 страница PDF/X (сессия 2.5b): голубой и поверх пурпурный с overprint, подписи по-русски."""
+    doc = g.Doc("Наложение красок", "Предпросмотр наложения АкроБати", creator="tools/gen/make_view.py")
+    pdf = doc.pdf
+    font = doc.font("arial")
+    w, h = A4
+    cv = doc.canvas((w, h))
+    cv.text(72, h - 90, "Наложение красок (overprint)", font, 22)
+    cv.paragraph(72, h - 130, w - 144, "Пурпурный прямоугольник лежит поверх голубого с наложением: "
+                 "в предпросмотре наложения их пересечение синее, без него — пурпурное. Файл заявляет PDF/X "
+                 "(OutputIntents GTS_PDFX), поэтому режим «Только для PDF/X» включает предпросмотр.", font, 11)
+    cv.extg["GS1"] = Dictionary(Type=Name.ExtGState, OP=True, op=True, OPM=1)
+    cv.raw("q 1 0 0 0 k 110 360 220 200 re f Q")
+    cv.raw("q /GS1 gs 0 1 0 0 k 250 280 220 200 re f Q")
+    cv.rect(72, 160, 200, 60, fill=(0.85, 0.85, 0.85))
+    cv.text(84, 184, "Серая плашка", font, 14)
+    cv.text(300, 184, "Чёрный текст на белом", font, 14)
+    doc.add_page(cv)
+    pdf.Root.OutputIntents = Array([Dictionary(Type=Name.OutputIntent, S=Name.GTS_PDFX,
+                                               OutputConditionIdentifier=String("FOGRA39"),
+                                               Info=String("Coated FOGRA39 (ISO 12647-2:2004)"))])
+    doc.save(out)
+    return {"pages": 1, "pdfx": True,
+            "cyan": [110, 360, 220, 200], "magenta_overprint": [250, 280, 220, 200],
+            "overlap_center_pdf": [290, 420]}
+
+
 def main():
     args = g.common_args(__doc__)
     dst = Path(args.out) / "tests" / "fixtures" / "view"
@@ -349,6 +380,11 @@ def main():
     g.check_size(dst / "present.pdf", LIMIT)
     g.write_json(dst / "present.json", {"generator": "tools/gen/make_view.py", "pdf": "present.pdf", **present_meta})
     g.say("view: present.pdf")
+    overprint_meta = overprint(dst / "overprint.pdf")
+    g.check_size(dst / "overprint.pdf", LIMIT)
+    g.write_json(dst / "overprint.json", {"generator": "tools/gen/make_view.py", "pdf": "overprint.pdf",
+                                          **overprint_meta})
+    g.say("view: overprint.pdf")
 
 
 if __name__ == "__main__":

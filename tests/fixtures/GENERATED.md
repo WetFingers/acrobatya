@@ -89,7 +89,7 @@ openpyxl, python-pptx, odfpy), `mutool` из `C:\src\mupdf\platform\win32\x64\Re
 | `text.json` | строки генератора (страница, текст, кегль, базовая линия и x0/x1 в пунктах MuPDF — y вниз), число векторов `vectors.pdf` | |
 | `stext_expected.json` | слова и координаты PDFium (pypdfium2 5.14.0): точка пера, чернильная рамка, кегль — для `cyr-cid`, `type1-diff`, `truetype-nonembedded`, `search`; `embedded` — можно ли сравнивать чернила | `unit.stext.words_match_pdfium_reference` |
 
-### `tests/fixtures/view/` — `make_view.py` (сессии 2.2, 2.2b; ожидания раскладки — `layout_expected.json`, вручную)
+### `tests/fixtures/view/` — `make_view.py` (сессии 2.2, 2.2b, 2.4, 2.5b; ожидания раскладки — `layout_expected.json`, вручную)
 
 | Файл | Что внутри | Кто пользуется |
 |---|---|---|
@@ -102,6 +102,8 @@ openpyxl, python-pptx, odfpy), `mutool` из `C:\src\mupdf\platform\win32\x64\Re
 | `nav.json` | что в `nav.pdf`: строки слоёв, вложения (имя, описание, размер), назначения, закладки верхнего уровня, переходы | `unit.*` выше |
 | `present.pdf` | 3 слайда A4 альбомной (сессия 2.4): `/PageMode /FullScreen`, `/NonFullScreenPageMode /UseThumbs`; стр. 1 — `/Dur 1`, стр. 2 — `/Trans /Fade 0,3 с`, стр. 3 — `/Box` наружу | `ui.modes`, сцена `full-screen` |
 | `present.json` | что в `present.pdf` | |
+| `overprint.pdf` | 1 страница A4 PDF/X (сессия 2.5b): `/OutputIntents /S /GTS_PDFX`, голубой прямоугольник и поверх пурпурный с `/OP true /OPM 1` (с предпросмотром наложения пересечение синее), серая плашка и чёрный текст | `ui.view_style`, сцены `view-overprint`, `view-night`, `view-high-contrast` |
+| `overprint.json` | что в `overprint.pdf` | |
 
 ### `tests/fixtures/annots/` — `make_annots.py` (+ `tools/gen/annots.js`)
 

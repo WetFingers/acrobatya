@@ -36,6 +36,7 @@
 
 #include "core/links/links.h"
 #include "core/render/fit.h"
+#include "core/render/render_style.h"
 #include "core/text/search.h"
 #include "services/document_session.h"
 #include "ui/view/layout.h"
@@ -172,6 +173,9 @@ public:
     // Растр страниц (ui/view/tile_painter.h) и слои поверх них (ui/view/overlay.h): выделение текста,
     // совпадения поиска, рамки аннотаций — встроенные; инструменты добавляют свои.
     TilePainter& tilePainter() const noexcept { return *tiles_; }
+    // Как рисовать страницы (2.5b: замена цветов, overprint, сглаживание; ui/view/view_style.h).
+    void setRenderStyle(const RenderStyle& style);
+    const RenderStyle& renderStyle() const noexcept;
     OverlayStack& overlays() noexcept { return overlays_; }
     QuadOverlay& selectionOverlay() noexcept { return selection_; }
     QuadOverlay& searchOverlay() noexcept { return search_; }

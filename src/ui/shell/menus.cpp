@@ -384,6 +384,21 @@ void MainWindow::registerCommands() {
            .shortcuts = {key(Qt::Key_Escape)},
            .run = [this] { setReadMode(false); },
            .when = QLatin1String(kReadModeContext)});
+    // Замена цветов документа (2.5b; эталон 3.16; view-26, ocr-38): ночной режим и высокая контрастность.
+    const std::tuple<const char*, QString, const char*, bool> recolors[] = {
+        {"view.nightMode", tr("&Ночной режим"), "night", true},
+        {"view.highContrast", tr("Высокая &контрастность"), "highContrast", false},
+    };
+    for (const auto& [id, title, value, sep] : recolors) {
+        const QString v = QLatin1String(value);
+        r.add({.id = QLatin1String(id),
+               .title = title,
+               .run = [this, v] { setRecolorMode(v); },
+               .menu = QStringLiteral("view"),
+               .separatorBefore = sep,
+               .checkable = true,
+               .checked = [this, v] { return recolorMode() == v; }});
+    }
     r.add({.id = QStringLiteral("view.navPane"),
            .title = tr("Панель &навигации"),
            .shortcuts = {key(Qt::Key_F4)},

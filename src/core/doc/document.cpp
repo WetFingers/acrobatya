@@ -605,6 +605,24 @@ bool Document::hasXfa() const {
     return xfa != 0;
 }
 
+bool Document::isPdfX() const {
+    pdf_document* pdf = this->pdf();
+    if (pdf == nullptr) {
+        return false;
+    }
+    fz_context* ctx = mu_->get();
+    int found = 0;
+    mu::call(ctx, [&] {
+        pdf_obj* intents = pdf_dict_getp(ctx, pdf_trailer(ctx, pdf), "Root/OutputIntents");
+        const int n = pdf_array_len(ctx, intents);
+        for (int i = 0; i < n && found == 0; ++i) {
+            found = pdf_name_eq(ctx, pdf_dict_get(ctx, pdf_array_get(ctx, intents, i), PDF_NAME(S)),
+                                PDF_NAME(GTS_PDFX));
+        }
+    });
+    return found != 0;
+}
+
 bool Document::allowed(Perm perm) const { return Permissions::of(*this).allows(perm); }
 
 DocProperties Document::properties() const {

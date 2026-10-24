@@ -17,6 +17,7 @@
 #include "services/document_session.h"
 #include "services/protected_view.h"
 #include "services/recent.h"
+#include "ui/view/view_style.h"
 #include "ui/widgets/tone.h"
 
 class QVBoxLayout;
@@ -61,6 +62,10 @@ public:
     void setProtectedView(protected_view::Origin origin);
     protected_view::Origin protectedOrigin() const { return protected_; }
     bool isProtectedView() const { return protected_ != protected_view::Origin::None; }
+    // Стиль рендера окна (2.5b; view_style.h): замена цветов, сглаживание, overprint — для PDF/X по его
+    // OutputIntents.
+    void setViewStyle(const ViewStyle& style);
+    bool isPdfX() const { return pdfx_; }
     // Права /P документа (OpenSummary::permissions; после сохранения — заново).
     const Permissions& permissions() const { return permissions_; }
     // canEdit — не «только просмотр», не «только чтение», не защищённый просмотр; canSave — свой файл можно
@@ -124,6 +129,8 @@ private:
     bool readOnly_ = false;
     protected_view::Origin protected_ = protected_view::Origin::None;
     Permissions permissions_;
+    bool pdfx_ = false;
+    ViewStyle viewStyle_;
 };
 
 }  // namespace ot::ui

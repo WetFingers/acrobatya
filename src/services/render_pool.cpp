@@ -56,7 +56,7 @@ public:
             // Свой клон контекста у каждого потока пула; пиксели — прямо в память QImage.
             renderDisplayList(local.get(), *request_.list, request_.matrix, request_.rect, image.bits(),
                               static_cast<int>(image.bytesPerLine()), PixelFormat::Bgra32Premultiplied,
-                              &cancel_.cookie, request_.aa);
+                              &cancel_.cookie, request_.style);
             image.setDevicePixelRatio(request_.dpr);
             result.image = std::move(image);
         } catch (...) {

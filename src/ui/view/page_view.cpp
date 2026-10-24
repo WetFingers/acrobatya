@@ -1152,4 +1152,10 @@ void PageView::setCurrentSearchHit(int index) {
     viewport()->update();
 }
 
+// ---------------------------------------------------------------- стиль рендера
+
+void PageView::setRenderStyle(const RenderStyle& style) { tiles_->setStyle(style); }
+
+const RenderStyle& PageView::renderStyle() const noexcept { return tiles_->style(); }
+
 }  // namespace ot::ui

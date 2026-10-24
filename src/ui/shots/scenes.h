@@ -82,6 +82,8 @@ std::vector<Scene> searchScenes();
 std::vector<Scene> dialogScenes();
 // trust_scenes.cpp — protected-view, link-confirm (2.5b).
 std::vector<Scene> trustScenes();
+// render_scenes.cpp — view-night, view-high-contrast, view-overprint (2.5b).
+std::vector<Scene> renderScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.
 bool waitSceneReady(const Scene& scene, QWidget* window, int timeoutMs = 30000);

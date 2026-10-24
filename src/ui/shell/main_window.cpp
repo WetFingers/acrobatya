@@ -356,6 +356,7 @@ DocumentView* MainWindow::addDocumentView(const DocumentRegistry::Opened& opened
             }
         });
     }
+    view->setViewStyle(ViewStyle::fromSettings(Settings()));
     // Чужой файл (Zone.Identifier, временная папка; эталон 7.5) — защищённый просмотр.
     applyProtectedView(view, protected_view::check(view->path()));
     if (opened.summary.isPdf) {
@@ -694,7 +695,27 @@ void MainWindow::applyPreferences() {
     }
     setSingleKeyAccelerators(s.get(settings::kSingleKeyAccelerators));
     applyAutosaveSettings();
+    applyViewStyle();
     status_->reloadSettings();
+    updateActions();
+}
+
+void MainWindow::applyViewStyle() {
+    const ViewStyle style = ViewStyle::fromSettings(Settings());
+    for (int i = 0; i < documentCount(); ++i) {
+        document(i)->setViewStyle(style);
+    }
+    if (fullScreen_ != nullptr && currentDocument() != nullptr) {
+        fullScreen_->view().setRenderStyle(currentDocument()->view().renderStyle());
+    }
+}
+
+QString MainWindow::recolorMode() const { return Settings().get(settings::kRecolor); }
+
+void MainWindow::setRecolorMode(const QString& mode) {
+    Settings s;
+    s.set(settings::kRecolor, s.get(settings::kRecolor) == mode ? QStringLiteral("none") : mode);
+    applyViewStyle();
     updateActions();
 }
 
@@ -771,6 +792,7 @@ void MainWindow::enterFullScreen() {
         activateWindow();
     });
     fullScreen_ = fs;
+    fs->view().setRenderStyle(view->view().renderStyle());  // ночной режим и overprint — как во вкладке
     fs->start(screen());
 }
 

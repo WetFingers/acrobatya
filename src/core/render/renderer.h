@@ -10,6 +10,7 @@
 #include <cstdint>
 
 #include "core/render/bitmap.h"
+#include "core/render/render_style.h"
 #include "core/util/geometry.h"
 
 extern "C" {
@@ -21,9 +22,6 @@ namespace ot {
 class Document;
 class DisplayList;
 
-// Замена цветов при чтении (эталон 3.1, view-30) — устройство перекраски появится в сессии 2.5b.
-enum class Recolor { None };
-
 enum class PixelFormat {
     Bgra32Premultiplied,  // 4 байта B, G, R, A — память QImage::Format_ARGB32_Premultiplied
     Rgb24,                // 3 байта R, G, B без альфы — эталоны рендера, PNG
@@ -31,10 +29,9 @@ enum class PixelFormat {
 
 struct RenderRequest {
     int page = 0;
-    Matrix matrix;  // пункты страницы → пиксели устройства (Matrix::dpi(150), × rotate, × translate…)
-    IRect scissor;  // область устройства = буфер (тайл); пустая — вся страница (deviceBounds)
-    int aa = -1;    // сглаживание 0–8 бит; −1 — как у контекста документа
-    Recolor recolor = Recolor::None;
+    Matrix matrix;      // пункты страницы → пиксели устройства (Matrix::dpi(150), × rotate, × translate…)
+    IRect scissor;      // область устройства = буфер (тайл); пустая — вся страница (deviceBounds)
+    RenderStyle style;  // сглаживание, замена цветов, overprint (по умолчанию — как у контекста)
     bool annotations = true;  // false — только содержимое страницы (печать «без пометок»)
 };
 
@@ -60,11 +57,11 @@ private:
 };
 
 // Нарисовать готовый display list в buffer контекстом ctx (поток рендера — свой клон: MuContext::
-// forThisThread()): область area устройства при matrix, stride байт на строку, фон белый непрозрачный.
-// cookie->abort = 1 из другого потока прерывает рендер (MuError, ErrorKind::Aborted); aa — как у Renderer.
+// forThisThread()): область area устройства при matrix, stride байт на строку, фон белый непрозрачный (замена
+// цветов — цвет фона). cookie->abort = 1 из другого потока прерывает рендер (MuError, ErrorKind::Aborted).
 void renderDisplayList(fz_context* ctx, const DisplayList& list, const Matrix& matrix, const IRect& area,
                        std::uint8_t* buffer, int stride,
                        PixelFormat format = PixelFormat::Bgra32Premultiplied, fz_cookie* cookie = nullptr,
-                       int aa = -1);
+                       const RenderStyle& style = {});
 
 }  // namespace ot

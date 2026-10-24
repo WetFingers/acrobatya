@@ -100,6 +100,7 @@ struct OpenSummary {
     InitialView initial;
     // Действующие права /P (2.5b; core/doc/permissions.h): окно делает серыми печать, копирование, правку.
     Permissions permissions;
+    bool pdfx = false;  // OutputIntents /GTS_PDFX — предпросмотр наложения «Только для PDF/X» (2.5b)
     TaskFailed error;
 };
 

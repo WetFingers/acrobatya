@@ -9,13 +9,14 @@
 namespace ot {
 
 DisplayList::DisplayList(std::unique_ptr<MuContext> owner, fz_display_list* list, const RectF& bounds,
-                         int page, bool annotations) noexcept
+                         int page, bool annotations, bool usesOverprint) noexcept
     : owner_(std::move(owner)),
       family_(owner_ ? owner_->family() : nullptr),
       list_(list),
       bounds_(bounds),
       page_(page),
-      annotations_(annotations) {}
+      annotations_(annotations),
+      usesOverprint_(usesOverprint) {}
 
 DisplayList::~DisplayList() {
     if (list_ != nullptr && owner_) {
@@ -57,10 +58,12 @@ std::shared_ptr<const DisplayList> DisplayList::build(const Document& doc, int p
     mu::DisplayListHandle list(ctx);
     mu::DeviceHandle dev(ctx);
     fz_rect bounds{};
+    int overprint = 0;
     // Как fz_new_display_list_from_page(_contents), но с cookie: отмена прерывает интерпретацию.
     mu::call(ctx, [&] {
         p.reset(fz_load_page(ctx, doc.handle(), page));
         bounds = fz_bound_page(ctx, p);
+        overprint = fz_page_uses_overprint(ctx, p);
         list.reset(fz_new_display_list(ctx, bounds));
         dev.reset(fz_new_list_device(ctx, list));
         if (annotations) {
@@ -77,7 +80,7 @@ std::shared_ptr<const DisplayList> DisplayList::build(const Document& doc, int p
     auto owner = doc.context().clone();
     return std::make_shared<const DisplayList>(std::move(owner), list.release(),
                                                RectF{bounds.x0, bounds.y0, bounds.x1, bounds.y1}, page,
-                                               annotations);
+                                               annotations, overprint != 0);
 }
 
 std::shared_ptr<const DisplayList> DisplayCache::get(const Document& doc, int page, bool annotations,

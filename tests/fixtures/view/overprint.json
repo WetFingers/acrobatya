@@ -1,0 +1,22 @@
+{
+  "generator": "tools/gen/make_view.py",
+  "pdf": "overprint.pdf",
+  "pages": 1,
+  "pdfx": true,
+  "cyan": [
+    110,
+    360,
+    220,
+    200
+  ],
+  "magenta_overprint": [
+    250,
+    280,
+    220,
+    200
+  ],
+  "overlap_center_pdf": [
+    290,
+    420
+  ]
+}

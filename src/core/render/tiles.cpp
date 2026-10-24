@@ -40,7 +40,7 @@ std::size_t hashValue(const TileKey& k) noexcept {
     h = mix(h, asBits(k.rotation));
     h = mix(h, (asBits(k.tx) << 32) | asBits(k.ty));
     h = mix(h, k.layersHash);
-    h = mix(h, asBits(k.recolor));
+    h = mix(h, k.style);
     h = mix(h, k.revision);
     return static_cast<std::size_t>(h);
 }
@@ -113,7 +113,7 @@ std::vector<TileRect> tileRectsFor(const RectF& pageRect, float zoom, float dpr,
 }
 
 TileKey makeTileKey(std::uint64_t doc, int page, float zoom, float dpr, int rotation, const TileRect& tile,
-                    std::uint64_t revision, std::uint64_t layersHash, int recolor) noexcept {
+                    std::uint64_t revision, std::uint64_t layersHash, std::uint64_t style) noexcept {
     TileKey k;
     k.doc = doc;
     k.page = page;
@@ -124,7 +124,7 @@ TileKey makeTileKey(std::uint64_t doc, int page, float zoom, float dpr, int rota
     k.tx = tile.tx;
     k.ty = tile.ty;
     k.layersHash = layersHash;
-    k.recolor = recolor;
+    k.style = style;
     k.revision = revision;
     return k;
 }
@@ -134,9 +134,9 @@ float previewZoom(float zoom) noexcept {
 }
 
 TileKey makePreviewKey(std::uint64_t doc, int page, float zoom, float dpr, int rotation,
-                       std::uint64_t revision, std::uint64_t layersHash, int recolor) noexcept {
+                       std::uint64_t revision, std::uint64_t layersHash, std::uint64_t style) noexcept {
     TileKey k = makeTileKey(doc, page, previewZoom(zoom), dpr, rotation, TileRect{-1, -1, {}}, revision,
-                            layersHash, recolor);
+                            layersHash, style);
     k.zoomBucket = zoomBucket(zoom);
     return k;
 }

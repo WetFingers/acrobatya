@@ -147,7 +147,8 @@ private slots:
                 names << n;
             }
         }
-        QCOMPARE(names.size(), 9);
+        QCOMPARE(names.size(),
+                 12);  // 9 сцен PageView (2.2b) + view-night, view-high-contrast, view-overprint (2.5b)
         QCOMPARE(runShots(names, o), 0);
         for (const QString& n : names) {
             const QImage img(QDir(dir.path()).filePath(n + QStringLiteral(".png")));

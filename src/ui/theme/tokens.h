@@ -128,6 +128,23 @@ inline constexpr Rgba kAnnotationColors[] = {
 // теме страница остаётся белой, как в Acrobat; ночной режим — замена цветов 2.5b).
 inline constexpr Rgba kPaperColor = hex(0xFFFFFF);
 
+// Замена цветов документа (2.5b; эталон 3.16; view-26, ocr-38, ocr-45): пары «текст / фон» — данные
+// документа, а не тема (одни во всех палитрах; бумага при замене — цвет фона).
+struct ReadingColors {
+    Rgba text;
+    Rgba background;
+};
+// «Ночной режим» — светлый текст на тёмном фоне.
+inline constexpr ReadingColors kNightReading{hex(0xE6E6E6), hex(0x1E1E1E)};
+// «Высокая контрастность» — сочетания Acrobat (Установки → Специальные возможности) в порядке ключа
+// reading/highContrastScheme: зелёный на чёрном, жёлтый на чёрном, белый на чёрном, чёрный на белом.
+inline constexpr ReadingColors kHighContrastReading[] = {
+    {hex(0x00FF00), hex(0x000000)},
+    {hex(0xFFFF00), hex(0x000000)},
+    {hex(0xFFFFFF), hex(0x000000)},
+    {hex(0x000000), hex(0xFFFFFF)},
+};
+
 // Размеры, px при k = 1 (эталон 6.4–6.5). motionMs — время, scaled() его не трогает.
 struct Metrics {
     int grid = 4;                 // сетка
