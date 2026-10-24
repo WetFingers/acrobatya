@@ -304,7 +304,7 @@
 - [x] **Системные шрифты:** `src/core/edit/system_fonts.h` (интерфейс), `src/services/system_fonts_dwrite.{h,cpp}` (DirectWrite: семейство, вес, стиль, путь к файлу), `FakeSystemFonts`, таблица метрических замен base14. Закрывает edit-49 (поиск). Тесты: `tests/unit/system_fonts_test.cpp`, `tests/ui/dwrite_test.cpp` (живой DirectWrite находит Arial).
 - [x] **Встраивание и подмножества:** `src/core/edit/font_embed.{h,cpp}` (`pdf_add_cid_font`, `pdf_add_simple_font`, кеш «семейство → объект шрифта на страницу», `pdf_subset_fonts` при сохранении с откатом). Закрывает edit-01, edit-02 (шрифты). Тесты: `tests/unit/font_embed_test.cpp` + `compat.fonts`.
 - [x] **FontResolver и синтетика:** `src/core/edit/font_resolver.{h,cpp}` (четыре правила, предупреждения), синтетический bold/italic, настройка запасного шрифта. Закрывает edit-03 (начертания), edit-49. Тесты: `tests/unit/font_resolver_test.cpp`.
-- [ ] **Кириллица и смешанный текст:** фикстуры и тесты набора «Привет, world! — 2026 €» в абзац с латинским подмножеством: три пробега, два шрифта, рендер читаем (эталон строки от Release). Тесты: `tests/engine/font_mixed_test.cpp`.
+- [x] **Кириллица и смешанный текст:** фикстуры и тесты набора «Привет, world! — 2026 €» в абзац с латинским подмножеством: три пробега, два шрифта, рендер читаем (эталон строки от Release). Тесты: `tests/engine/font_mixed_test.cpp`.
 
 ### Сессия 3.3 · Редактор абзаца, перевёрстка и перегенерация потока · усилие xhigh · ходов 320
 

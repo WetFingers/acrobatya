@@ -8,6 +8,15 @@
 Новые пункты — сверху, с номером сессии или рубежа. Ничего из этого не блокирует очередь: она работает на
 `Fake*`-реализациях и фикстурах, живая часть ждёт здесь (эталон 8.1 «Человек отдельно», 9.7).
 
+- **Сессия 3.2 · Шрифты нового текста в Acrobat Reader** — открыть в Acrobat Reader (или Acrobat DC, который
+  стоит на машине) `build\debug\compat\fonts\cid-subset.pdf`, `cid-full.pdf`, `winansi-subset.pdf` и
+  `build\debug\font-mixed\mixed-typed.pdf`, `cyr-typed.pdf` (появляются после `ctest -R "compat.fonts|font_mixed"`):
+  нет сообщений об ошибке шрифта; строки «Привет, world! — 2026 €», «Съешь же ещё этих булок», «Café crème, 2026 €»
+  видны тем же шрифтом, что в Edge; «Файл → Свойства → Шрифты» — «ArialMT (встроенное подмножество)», Type0
+  Identity-H; Ctrl+F находит «Привет» и «world» (пробел — обычный), выделение и копирование дают тот же текст.
+  Живой DirectWrite: шрифты, установленные «только для пользователя» (`%LOCALAPPDATA%\Microsoft\Windows\Fonts`),
+  находятся так же (под offscreen проверены только шрифты Windows).
+
 - **Рубеж Р1 · Ручная часть контрольной точки M1 (эталон 9.6, 9.7)** — автоматическая часть зелёная
   (`tools/verify_r1.py`, отчёт `.queue/r1/report.md`). Человеку: (1) поставить `dist\AcroBatya-0.2.0-setup.exe`
   (на пользователя, без прав администратора) и открыть **10 своих PDF** — договоры, сканы, формы, книги; сравнить рендер
@@ -1617,3 +1626,72 @@
   до 10 страниц на файл, 72 dpi); `verify.py` 37 с (401 тест); инкремент `unit_tests`/`engine_tests` 5–12 с.
 - Проверки: `verify.py` зелёный; `engine.text_edit/ContentRoundtrip.*` и `engine.edit_stability.*` зелёные;
   стражи fztry, i18n, boundaries, format зелёные; экранов сессия не строила — сцен нет.
+
+### 2026-10-24 · Сессия 3.2 · Шрифты для редактирования: FontResolver, DirectWrite, встраивание
+- Сделано:
+  1. **Инспекция встроенных шрифтов:** `core/edit/font_info` — `FontProbe` (поверх `GlyphMap`, у него теперь
+     открыты `lookup`/`compute`/`desc`): `FontDetails` — тип и подтип потомка, кодировка («Identity-H»,
+     «WinAnsiEncoding+Differences»), программа (`FontFile`/`2`/`3`), подмножество, ToUnicode, /Flags, /ItalicAngle,
+     /StemV, /FontWeight, высоты, число глифов, итог стиля; `encode(U)` — обратная карта по codespace кодировки
+     (код → CID → Unicode как у MuPDF), глиф есть, если GID в программе и контур непустой (пробелы — без контура);
+     `parseFontName` — «ABCDEF+Arial-BoldMT», «Arial,BoldItalic», «TimesNewRomanPS-ItalicMT», «MS-Gothic».
+     Фикстуры `tests/fixtures/edit/fonts/` — генератор `tools/gen/make_font_fixtures.py` (в `make_all.ps1`),
+     детерминирован. `unit.font_info` — 10 фикстур, обратимость encode для каждого глифа их моделей.
+  2. **Системные шрифты:** `core/edit/system_fonts` (интерфейс, `findSystemFont`, `metricSubstitute` — base14 и
+     клоны Liberation/Nimbus/Arimo/Tinos/Cousine, `pickFace` как DirectWrite, `FakeSystemFonts` — 45 граней
+     `C:\Windows\Fonts`), `services/system_fonts_dwrite` (IDWriteFactory3: `FindFamilyName` +
+     `GetFirstMatchingFont`, `IDWriteFontSet::GetMatchingFonts` по PostScript- и полному имени, путь —
+     `IDWriteLocalFontFileLoader`, симуляции). `unit.system_fonts`, `ui.dwrite` (edit-49 — поиск).
+  3. **Встраивание и подмножества:** `core/edit/font_embed` — `FontLibrary` (файл через `fz_open_file_w`),
+     `FontEmbedder` (Type0/Identity-H и простой TrueType WinAnsi, дескриптор по post/OS/2, свой /ToUnicode, ресурс
+     `OtFn`), `subsetFonts` + `SaveOptions::prepare` в Saver. `unit.font_embed`, `compat.fonts` (qpdf, pdfcpu
+     strict, mutool clean, pypdfium2 — зелёные; с полным Arial файл 1,2 МБ, с подмножеством — 53 КБ). edit-01,
+     edit-02.
+  4. **FontResolver и синтетика:** `core/edit/font_resolver` — четыре правила, начертания по запросу, пробеги,
+     сообщения; синтетика Tr 2 / w = кегль · 0,03 / наклон 0,2; ключ `editing/fallbackFont` и `editFallbackFonts`.
+     `unit.font_resolver`, `unit.settings.edit_fallback_font`. edit-03, edit-49.
+  5. **Кириллица и смешанный текст:** `engine.font_mixed` — «Привет, world! — 2026 €» в абзац с латинским
+     подмножеством: три пробега, два шрифта, позиции глифов ±0,01 pt и рендер 144 dpi в порогах imgcmp против
+     строки-эталона генератора, после сохранения с подмножеством — qpdf 0, тот же рендер и текст; латиница в
+     кириллическое подмножество Times; синтетические жирный и курсив рисуются.
+- Решения:
+  - **Подмножество — не `pdf_subset_fonts`.** Он пересобирает все встроенные шрифты документа (и шрифты форм /DR,
+    которым нужны буквы для будущего заполнения), а с `pages` считает глифы только этих страниц и урезает общие
+    шрифты для остальных. `subsetFonts` урезает только шрифты, встроенные `FontEmbedder`, той же
+    `fz_subset_ttf_for_gids` (у CID GID сохраняются), глифы — по `ContentModel` всех страниц, где шрифт в
+    ресурсах; /W и /ToUnicode сокращаются до использованных; ошибка шрифта — он остаётся полным (spdlog), ошибка
+    записи — откат всей операции «Subset fonts». Существующий `SaveOptions::subsetFonts` (2.5) не тронут.
+  - **/ToUnicode — свой.** `pdf_add_cid_font` строит его обходом cmap, и глиф, общий для нескольких символов,
+    получает последний: пробел Arial извлекался бы как U+00A0, дефис — как мягкий перенос U+00AD (поиск в Reader не
+    нашёл бы слов). Берётся наименьший код (BMP и U+1F000–U+1FAFF).
+  - **Дескриптор доводится:** MuPDF пишет /Flags Nonsymbolic, /ItalicAngle 0, /StemV 80 и не пишет /CapHeight
+    (обязателен для латиницы) — берутся из post и OS/2 (засечки — sFamilyClass, StemV = 50 + (вес/65)²).
+  - **Кеш ресурсов MuPDF** (`pdf_find_font_resource`) журналом не откатывается и после подмножества указывает на
+    урезанный файл — перед `pdf_add_*_font` его запись снимается; переиспользование — свой кеш с проверкой
+    «объект жив и имя без префикса».
+  - **Правило 4** (невстроенный шрифт) — всегда встраивание системного (как Acrobat при правке): латиница WinAnsi —
+    простым TrueType, остальное — CID; правило 2 ищет тот же шрифт и его метрические клоны (встроенный
+    «LiberationSans» без буквы → Arial). Замена с другим семейством (Helvetica → Arial) — сообщение «подменён».
+  - **Пробеги:** пробел остаётся в шрифте текущего пробега, если тот его знает, — «Привет, world! — 2026 €» даёт
+    три пробега, а не семь; запасной для моноширинных — Courier New; настройка, указывающая на отсутствующий
+    шрифт, работает как «автоматически».
+  - **DirectWrite без COM-квартиры:** общая фабрика DirectWrite свободнопоточна и CoInitialize не требует (строка
+    плана «COM в STA GUI-потоке» — про COM вообще) — вызовы под своим mutex из потока документа; проверено
+    `ui.dwrite/otherThread`.
+  - Эталон строки — не PNG «от Release» (эталоны рендера правит только 1.1), а независимая строка генератора в
+    `mixed-expected.pdf` с /W как у MuPDF (trunc(1000 · advance)); рендер обоих — в одном тесте.
+  - Запись текста до Rewriter 3.3 — только в тестах (поток дописывается в /Contents); абзац целиком переписывает 3.3.
+- Подводные камни:
+  - `fztry_guard`: внутри `mu::call` нельзя `return` и объекты с деструкторами (`std::string`, `mu::*Handle`,
+    `std::map`) — строки и карты готовятся снаружи, внутрь — `const char*` и указатели (рецепт в карте).
+  - `PDF_NAME(CMapName)`, `FontWeight`, `FontFamily` в MuPDF не предопределены — `pdf_dict_gets` по строке.
+  - Новый файл с `Q_OBJECT` в `tests/ui` — AutoMoc не увидел `dwrite_test.moc` до удаления
+    `build/debug/ui_tests_autogen/timestamp` (как в карте).
+  - `pdf_resolve_indirect` для объекта, снятого undo, пишет в журнал ошибку MuPDF — сначала `pdf_object_exists`.
+  - Подмножества Word и генератора оставляют пустые слоты глифов — наличие глифа проверяется по рамке
+    (`fz_bound_glyph`), а не только по GID.
+  - Из Bash `python3 -` запустил заглушку Microsoft Store и ждал ввода 30 минут — только `"$OTTISK_PYTHON"`.
+- Замеры: генератор шрифтовых фикстур — 1 с (fonts.pdf 44 КБ, mixed-* 21 и 32 КБ); `unit.font_*` — 0,2–0,5 с,
+  `engine.font_mixed` — 0,7 с; `verify.py` — 102 с (424 теста).
+- Проверки: `verify.py` зелёный; `engine.text_edit/ContentRoundtrip.*`, `engine.edit_stability.*`,
+  `engine.font_mixed.*`, `compat.fonts` зелёные; экранов сессия не строила — сцен нет.
