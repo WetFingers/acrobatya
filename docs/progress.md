@@ -2463,3 +2463,112 @@
   `unit.cert_details`, `unit.verifier_time`, `ui.sign_dialog`, `ui.signatures_pane`, `ui.sign_settings`,
   `ui.shots.stage4`, `ui.script_sign`) и сцены журналом не подтверждены — их покрывает `verify.py --full` рубежа Р2,
   начатого сразу после.
+
+### 2026-10-24 · Рубеж Р2 · Редактор текста и подписи
+- Сделано:
+  1. **Проверки рубежа:** `verify.py --full` (Debug) — 681 + 313 тестов зелёные, 604 с; Release `--labels
+     "render|bench"` — 138 тестов (эталоны рендера бит в бит, bench), 53 с; ASan `ctest -L "unit|engine"` — 792 теста
+     зелёные (22 отключённых помощника), ошибок ASan 0, 1 595 с; фаззер — см. «Подводные камни» и «Замеры»;
+     `bench_compare.py docs/bench/baseline-r1.json build/bench/*.json` — красный по трём метрикам (поиск `search_all_ms`
+     +29 %, `ui-paging` первый кадр +28 %, страница без кеша +60 %), но это состояние машины, а не код: сборка `v0.2.0`
+     (worktree в `build/ab-r1`, Release `bench`) на этой же машине сейчас даёт те же 1,79–1,87 с поиска и 72–78 мс
+     первого кадра (на Р1 в 5 утра — 1,34 с и 57 мс; сейчас работают Discord, Chrome, Steam); цели 5.8 все в пределах →
+     база `docs/bench/baseline-r2.json`; `--smoke 8 -platform windows` (Release, на экране) — код 0, stderr пуст;
+     `scope_report.py` — закрыто 80 из 186 `full` (43,0 %), 3 из 8 `partial`, 16 из 28 `nice`; `tools\lint.ps1 -All
+     -Jobs 10` — 453 файла, 1 076 замечаний (cert-err33-c 334, modernize-use-ranges 158, bugprone-unchecked-optional-access
+     140 — тесты после `ASSERT`, performance-enum-size 125), 68 файлов clang не разобрал (неполные типы в заголовках, как
+     на Р1); `bugprone-*`/`clang-analyzer-*` кода этапов 3–4 разобраны — дефектов нет (`pickFace` — контракт «faces не
+     пуст», вызывающий проверяет; шрифт после `pdf_load_hail_mary_font` не null; `sizeof window` у
+     `NCRYPT_WINDOW_HANDLE_PROPERTY` — так и надо; `string_view` OID — литералы); `msvc-analyze` — см. «Решения»;
+     установщик `tools\build.ps1` → `dist\AcroBatya-0.4.0-setup.exe` (42,7 МБ, 62 с); `install_test.py` отказался: на
+     машине стоит рабочая копия человека с тем же AppId — тихая установка перехватила бы её ярлык и запись удаления
+     (`OTTISK_INSTALL_TEST_FORCE` не ставился); вместо этого `build\deploy\AcroBatya.exe --self-check` без Qt в PATH —
+     «ok» без QPA и под offscreen; установка поверх — строка «Нужна ручная проверка»; тег `v0.4.0` переставлен на итог
+     рубежа.
+  2. **`tools/verify_r2.py`** — автоматическая часть M2 (отчёт `.queue/r2/report.md`, JSON `verify_r2.json`), все 7
+     проверок «ok»: **edit** — 50 файлов тега `text-edit` (по порядку `rel`; 16 пропущено: подписаны, `/Perms` или
+     первые 6 абзацев стр. 1 «только чтение» — `fontMissing`, `noUnicode`) через Release `--script` (`doc.saveCopy` →
+     `edit.insertText` «Akrobatya » в начало первого редактируемого абзаца → `saveCopy` → `doc.undo` → `saveCopy`):
+     `qpdf --check` 0 — 43 (7 — предупреждение исходного файла, у `before.pdf` то же), pypdfium2 рисует все 50, слово в
+     stext MuPDF — 50, рендер MuPDF вне абзаца 0 px — 50 из 50 (pdfium — 48), undo = до правки по объектам и байтам
+     потоков (`qpdf --json=2 --json-stream-data=inline` без `/ID`) — 50; 35 с; **cyr** — «Проверка» в 10 латинских
+     файлов (путь кириллицей): pypdfium2 читает, `qpdf` 0 — 10 из 10; **stability** — `engine_tests edit_stability.*`:
+     313 файлов, с редактируемым текстом 262, стабильных 262 (100,0 %), 714 страниц, 14 146 блоков; **sign** — 10 файлов
+     × B-T и P=2 (Release `--script`, служба времени — `tools/pki/tsa_serve.py` на 127.0.0.1) × B-LT и B-LTA (`ui_tests
+     script_sign_r2` — те же действия `sign.sign` со службой PKI в процессе): `qpdf` 0, pypdfium2, pyHanko INTACT +
+     TRUSTED (+ TIMESTAMPED, LTV, LTA по уровню), метки документа INTACT, уровень по структуре
+     (`compare_pyhanko.pades_level`) T/T/LT/LTA, DocMDP 2 у P=2, `openssl cms -verify -cades` 0 — 40 из 40; **dss** —
+     118 из 124 (95,1 %); **cng** — `engine_tests sign.matrix` (CNG с ключом в памяти = OpenSSL-путь по атрибутам, у
+     RSA — и подпись); **scope** — как выше.
+  3. **Сцены:** `tools\shots.ps1 -All` — 393 снимка, 25 контакт-листов `review_refs.py --shots --sheet 16 --main`; pHash
+     > 8 или новые — 324 (сцены этапов 3–4 и их варианты новые; остальные сдвинули «Все инструменты» с двумя живыми
+     инструментами и панель «Подписи»); поштучно — главные сцены этапов 3–4 (`edit-mode`, `edit-mode-dark`,
+     `edit-image-selected`, `find-replace`, `sign-dialog`, `sign-dialog-large`, `pane-signatures`, `sig-bar-problems`,
+     `certificate-viewer`, `preferences-trusted-dark`) против эталона 6.2–6.3 и листы 02, 03, 13, 20 (диалоги подписи,
+     режим правки, Установки → Подписи во всех вариантах): 48/320/44/280/32, токены, кириллица, значки — совпадает;
+     `-en` пока по-русски (английский — 9.2). Снимки рубежа — в `.queue/shots-prev/` для Р3.
+  4. **Ревизия пунктов этапов 3–4 по коду** (два читателя-агента): всё на месте, кроме исправленного ниже; журнал и
+     карту 4.6 восстановил оператор (коммиты 4a0320e, 5c0e755) во время рубежа.
+- Исправлено рубежом:
+  - **Выход программы висел или падал** (15 из 15 запусков `--script` со свежим каталогом данных: «ok: 7 steps», затем
+    зависание или segfault): Главная ставила миниатюру закрытого файла, и пул `ThumbnailCache::shared()` дорисовывал её
+    во время разрушения статиков после `main` (MuPDF и очередь Qt уже разбирались); то же грозило `CryptoWorker`
+    (проверка подписи при открытии). Оба пула дожидаются задач из `qAddPostRoutine` (деструктор `QCoreApplication`),
+    `ThumbnailCache::stop` (новые рендеры не ставятся) — 0 из 15; `ui.home`. У человека — закрыть программу сразу после
+    закрытия документа (строка «Нужна ручная проверка»).
+  - **3.4 против эталона 6.2:** в панели «Редактировать PDF» не было «Найти и заменить» — строка открывает поле «Заменить
+    на» панели «Найти» (как Ctrl+Shift+H), серая с причиной при запрете правки; поворот картинки на произвольный угол
+    был только в ядре (`ImageOps::rotate`) — «Повернуть на угол…» в контекстном меню картинки; `ui.edit_tool`,
+    `ui.image_tool`.
+  - `tools/fuzz.ps1`: `-artifact_prefix="…\artifacts\"` — MSVCRT читал `\"` как кавычку внутри аргумента, путь съедал
+    `-print_final_stats=1`, и артефакт `timeout-*` писался мимо каталога (на Р1 артефактов не было — не было видно);
+    обратная косая удвоена.
+  - `cl /analyze` C6246 в `EditTool::buildPanel` (локальная `m` скрывала метрики темы).
+  - `CHANGELOG.md` 0.4.0 обещал переключатель сети `trust/network` в Установках с 4.6 — он в «Установки → Защита» (этап
+    7); комментарии `trust_dialog.h` (отпечаток SHA-256) и `sign_script.cpp` (аргументы `sign.certify`) — по замечаниям
+    оператора к 4.6.
+- Решения:
+  - **B-LT/B-LTA рубежа — через `ui_tests script_sign_r2`, а не через `AcroBatya.exe --script`:** адреса OCSP/CRL/AIA
+    тестовой PKI — домен `.test` (`http://pki.acrobatya.test/…`), в сети их нет, а режима подмены сети у exe нет, и рубеж
+    его не вводит; помощник гоняет те же действия `sign.sign` со службой PKI в процессе (`PkiNetwork`), без переменной
+    `OTTISK_R2_SIGN_SCRIPT` — пропуск (как DISABLED-помощники Р1). B-T и сертификация — настоящим Release-exe с
+    локальной `tsa_serve.py`.
+  - **«Рендер вне абзаца pixels == 0» — по MuPDF (`mutool draw`, движок программы, как `engine.edit_render`):** у pdfium
+    на 2 файлах из 50 перерисовываются отдельные глифы текста, идущего после правленого абзаца в том же `BT … ET`: он
+    встаёт по восстановленной матрице текста с точностью float (сдвиг 3·10⁻⁵ pt — `FPDFText_GetCharOrigin` до/после), а
+    pdfium кеширует растры глифов по долям пикселя. Глазу это не видно; идея на будущее — восстанавливать матрицу
+    исходными операторами, а не `Tm` из float.
+  - Абзац для проверки — рамка символов pypdfium2, у которых сменились текст или место (выравнивание текста до/после),
+    ± 3 pt; первый абзац в порядке чтения бывает за MediaBox (служебные метки IRS) — stext MuPDF с `-O clip=no`.
+  - `qpdf --check` после правки и подписи сверяется с исходным: подпись — инкремент, предупреждение исходного файла
+    («input stream is complete but output may still be valid» у `irs/i1040gi.pdf`) остаётся в его байтах.
+  - **`docs/analyze-baseline.json` обновлена** (`--update-baseline`): код этапов 3–4 впервые через `msvc-analyze` — 9 513
+    «новых»; PREfast: C6246 исправлено, C6031 (`qWaitForWindowActive` под offscreen) и C6001 (`nonceBytes` после
+    `RAND_bytes` в тесте) ложные; C26451 — индексы строк и float; остальное — стиль Core Guidelines и макросы gtest/QTest.
+  - Аудит 4.6: «Проверить подпись» в меню панели проверяет документ целиком (проверка — по документу, итог одной
+    подписи обновляется тем же проходом) — оставлено; `modified_after_signature.pdf` даёт красную полосу, а не жёлтую из
+    «Сначала тесты» 4.6 — так решает валидатор 4.4 (изменение, которое подпись не разрешает, — «недействительна», как в
+    Acrobat) — оставлено; sign-07 стоит в строке «Закрывает» этапа 4, но в `scope.json` — `out` (журнал 4.3: смарт-карты
+    через KSP, `OT_FEATURE` не ставится) — план рубеж не правит.
+- Подводные камни:
+  - **Патологический JBIG2:** фаззер нашёл мутант (81 КБ, `.queue/r2/slow/`), на котором рендер стр. 1–4 идёт ~200 с —
+    это MuPDF 1.28.5 (`mutool draw` — те же 3 мин 20 с, «cannot decode jbig2 image»), не наш код; патчи MuPDF не
+    планируются, в `tests/fixtures/regress/` не положен (`unit.regress.load` шёл бы минуты). В программе рендер идёт в
+    пуле с отменой, окно не стоит, но ядро процессора занято; идея — предел времени рендера страницы (решение человека,
+    как и предел памяти MuPDF «Между 1.2 и 1.3»).
+  - Первый прогон фаззера (параллельно с clang-tidy) упал по таймауту на 300-й секунде, и артефакт потерялся (ошибка
+    `fuzz.ps1` выше); второй — на 70-й секунде по JBIG2-мутанту; итог — третий прогон («Замеры»).
+  - pypdfium2 не потокобезопасен — в `verify_r2.py` весь pdfium под замком (иначе Python молча падает);
+    `PdfPage.get_cropbox()` не видит рамку, унаследованную от `/Pages` (вернул Letter вместо A4), — `get_bbox()`.
+  - `--script` печатает «ok: N steps» не обязательно в stdout — искать в обоих потоках.
+  - `python -I -` с пустым heredoc снова запустил REPL на 30 минут — только скрипт-файлом.
+  - Из Git Bash `cmd //c "tools\vcenv.cmd && ctest … -L \"unit|engine\""` в подоболочке даёт «The system cannot find
+    the path specified» и «No tests were found» — ctest под ASan запускать из PowerShell.
+  - Новый `*_test.cpp` с `Q_OBJECT` — снова «нет .moc» (AutoMoc): удалить `build/debug/ui_tests_autogen/timestamp`.
+- Замеры: Debug `--full` 604 с; Release сборка + ctest `render|bench` 53 с; ASan сборка 66 с, `unit|engine` 1 595 с;
+  `msvc-analyze` 303 с; clang-tidy `-All` 2 261 с в 10 потоков; `shots.ps1 -All` 98 с (393 снимка); `build.ps1` 62 с;
+  `verify_r2.py` целиком 4 мин 7 с (edit 33 с, sign 164 с); фаззер — итоговый прогон `pdf_open_fuzzer -fork=2
+  -ignore_timeouts=1 -max_total_time=600` (те же семена + 105 файлов, правленых редактором и подписанных `verify_r2`):
+  620 с, 62 018 запусков, корпус 157, падений 0, OOM 0, таймаутов 5 — все мутанты с JBIG2 (`.queue/r2/slow/`).
+- Проверки: всё выше зелёное (bench — с A/B-доводом); итоговые `verify.py` (682 теста) и `verify_r2.py` зелёные;
+  сцены — 393 снимка, сцены этапов 3–4 просмотрены поштучно и листами.
