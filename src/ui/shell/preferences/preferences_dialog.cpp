@@ -12,6 +12,7 @@
 #include <QVBoxLayout>
 
 #include "services/settings.h"
+#include "ui/shell/preferences/commenting_page.h"
 #include "ui/shell/preferences/documents_page.h"
 #include "ui/shell/preferences/editing_page.h"
 #include "ui/shell/preferences/general_page.h"
@@ -128,7 +129,7 @@ PreferencesDialog::PreferencesDialog(QWidget* parent) : QDialog(parent) {
     addPage(new GeneralPage());
     addPage(new PageDisplayPage());
     addPage(new DocumentsPage());
-    addPage(new StubPreferencesPage(QStringLiteral("commenting"), 5));
+    addPage(new CommentingPage());
     addPage(new StubPreferencesPage(QStringLiteral("forms"), 6));
     addPage(new EditingPage());
     addPage(new SignaturesPage());

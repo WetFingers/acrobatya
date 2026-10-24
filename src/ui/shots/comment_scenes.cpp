@@ -301,6 +301,15 @@ std::vector<Scene> commentScenes() {
     ink.ready = commentReady;
     scenes.push_back(ink);
 
+    Scene panel;
+    panel.name = QStringLiteral("tool-panel-comments");
+    panel.make = commentScene(doc, [](MainWindow& w, DocumentView&, const TextPtr&) {
+        sceneCommentTool().start(CommentAction::Ink);
+        markDone(w);
+    });
+    panel.ready = commentReady;
+    scenes.push_back(panel);
+
     Scene selected;
     selected.name = QStringLiteral("annot-selected");
     selected.make = commentScene(doc, selectedScene);

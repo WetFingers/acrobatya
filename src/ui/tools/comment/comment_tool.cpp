@@ -1,17 +1,29 @@
 #include "ui/tools/comment/comment_tool.h"
 
+#include <QComboBox>
 #include <QCoreApplication>
+#include <QFormLayout>
+#include <QSignalBlocker>
 #include <QVBoxLayout>
+
+#include <cmath>
+#include <iterator>
 
 #include <memory>
 
+#include "core/annot/defaults.h"
+#include "services/comment_settings.h"
 #include "services/document_session.h"
+#include "services/settings.h"
+#include "services/settings_keys.h"
 #include "ui/shell/document_view.h"
 #include "ui/theme/icons.h"
 #include "ui/theme/theme.h"
 #include "ui/tools/tool_registry.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
+#include "ui/widgets/color_swatch.h"
+#include "ui/widgets/number_field.h"
 #include "ui/widgets/toast.h"
 #include "ui/widgets/tool_button.h"
 
@@ -93,7 +105,10 @@ void CommentTool::activate(DocumentView& view) {
     }));
     connections_.push_back(
         connect(&view.view().tools(), &ToolController::toolChanged, this, [this] { syncButtons(); }));
-    connections_.push_back(connect(&m, &CommentMode::actionChanged, this, [this] { syncButtons(); }));
+    connections_.push_back(connect(&m, &CommentMode::actionChanged, this, [this] {
+        syncButtons();
+        loadStyle();
+    }));
     settingsChanged();
     updateLock();
 }
@@ -116,7 +131,60 @@ void CommentTool::deactivate() {
     syncButtons();
 }
 
-void CommentTool::settingsChanged() {}
+void CommentTool::settingsChanged() {
+    setPinned(Settings().get(settings::kCommentKeepTool));
+    loadStyle();
+}
+
+void CommentTool::setPinned(bool pinned) {
+    if (view_ != nullptr) {
+        view_->view().tools().setPinned(pinned);
+    }
+    if (pin_ != nullptr && pin_->isChecked() != pinned) {
+        const QSignalBlocker block(pin_);
+        pin_->setChecked(pinned);
+    }
+}
+
+// Стиль действия в поля панели (умолчания ядра + свой стиль из settings.ini).
+void CommentTool::loadStyle() {
+    if (panel_ == nullptr) {
+        return;
+    }
+    const CommentAction action = mode() != nullptr ? mode()->action() : CommentAction::Note;
+    const annot::AnnotProps p =
+        comments::newProps(Settings(), CommentMode::typeOf(action), CommentMode::actionKey(action));
+    loadingStyle_ = true;
+    color_->setColor(p.color.empty() ? QColor() : QColor::fromRgb(static_cast<QRgb>(p.color.toRgb())));
+    width_->setValue(p.borderWidth);
+    width_->setEnabled(action == CommentAction::Ink);
+    opacity_->setValue(std::round(p.opacity * 100));
+    const int icon = icon_->findData(QString::fromStdString(p.icon));
+    icon_->setCurrentIndex(icon >= 0 ? icon : 0);
+    icon_->setEnabled(action == CommentAction::Note);
+    loadingStyle_ = false;
+}
+
+void CommentTool::saveStyle() {
+    if (loadingStyle_ || panel_ == nullptr) {
+        return;
+    }
+    const CommentAction action = mode() != nullptr ? mode()->action() : CommentAction::Note;
+    comments::ToolStyle style;
+    if (color_->color().isValid()) {
+        style.color =
+            annot::AnnotColor::fromRgb(static_cast<std::uint32_t>(color_->color().rgb() & 0xffffff));
+    }
+    style.opacity = static_cast<float>(opacity_->value() / 100.0);
+    if (action == CommentAction::Ink) {
+        style.width = static_cast<float>(width_->value());
+    }
+    if (action == CommentAction::Note) {
+        style.icon = icon_->currentData().toString().toStdString();
+    }
+    Settings settings;
+    comments::setToolStyle(settings, CommentMode::actionKey(action), style);
+}
 
 void CommentTool::start(CommentAction action) {
     if (view_ == nullptr || !lock_.isEmpty()) {
@@ -243,7 +311,61 @@ void CommentTool::buildPanel() {
     for (const ActionRow& row : kDrawRows) {
         addAction(row);
     }
+    buildStyle(column);
     column->addStretch(1);
+}
+
+void CommentTool::buildStyle(QVBoxLayout* column) {
+    addCaption(column, tr("Стиль"));
+    auto* form = new QFormLayout();
+    form->setContentsMargins(0, 0, 0, 0);
+    form->setSpacing(Theme::sizes().grid);
+    color_ = new ColorSwatch(QColor(), panel_);
+    color_->setObjectName(QStringLiteral("commentColor"));
+    color_->setAccessibleName(tr("Цвет"));
+    form->addRow(tr("Цвет:"), color_);
+    width_ = new NumberField(panel_);
+    width_->setObjectName(QStringLiteral("commentWidth"));
+    width_->setRange(0.5, 12);
+    width_->setSingleStep(0.5);
+    width_->setDecimals(1);
+    width_->setUnit(tr("пт"));
+    form->addRow(tr("Толщина:"), width_);
+    opacity_ = new NumberField(panel_);
+    opacity_->setObjectName(QStringLiteral("commentOpacity"));
+    opacity_->setRange(5, 100);
+    opacity_->setSingleStep(5);
+    opacity_->setDecimals(0);
+    opacity_->setUnit(QStringLiteral("%"));
+    form->addRow(tr("Непрозрачность:"), opacity_);
+    icon_ = new QComboBox(panel_);
+    icon_->setObjectName(QStringLiteral("commentNoteIcon"));
+    static const char* const kIconTitles[] = {QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Комментарий"),
+                                              QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Ключ"),
+                                              QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Записка"),
+                                              QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Справка"),
+                                              QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Новый абзац"),
+                                              QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Абзац"),
+                                              QT_TRANSLATE_NOOP("ot::ui::CommentTool", "Вставка")};
+    for (std::size_t i = 0; i < std::size(annot::kNoteIcons); ++i) {
+        icon_->addItem(tr(kIconTitles[i]), QLatin1String(annot::kNoteIcons[i]));
+    }
+    form->addRow(tr("Значок записки:"), icon_);
+    column->addLayout(form);
+    pin_ = addRow(column, QStringLiteral("pin"), tr("Оставлять инструмент выбранным"));
+    pin_->setObjectName(QStringLiteral("commentPin"));
+    pin_->setCheckable(true);
+    pin_->setToolTip(tr("После записки, вставки или замены текста инструмент не сменяется на «Выделение»"));
+    connect(pin_, &ToolButton::toggled, this, [this](bool on) {
+        Settings().set(settings::kCommentKeepTool, on);
+        setPinned(on);
+    });
+    connect(color_, &ColorSwatch::colorChanged, this, [this] { saveStyle(); });
+    connect(width_, &NumberField::valueChanged, this, [this] { saveStyle(); });
+    connect(opacity_, &NumberField::valueChanged, this, [this] { saveStyle(); });
+    connect(icon_, &QComboBox::currentIndexChanged, this, [this] { saveStyle(); });
+    pin_->setChecked(Settings().get(settings::kCommentKeepTool));
+    loadStyle();
 }
 
 // ---------------------------------------------------------------- команды

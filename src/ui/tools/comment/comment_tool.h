@@ -14,15 +14,20 @@
 #include <map>
 #include <vector>
 
+#include <QComboBox>
+
 #include "ui/tools/comment/comment_mode.h"
 #include "ui/tools/tool.h"
+#include "ui/widgets/color_swatch.h"
+#include "ui/widgets/number_field.h"
+#include "ui/widgets/tool_button.h"
 
 class QVBoxLayout;
 
 namespace ot::ui {
 
 class PageView;
-class ToolButton;
+
 class ToolRegistry;
 
 class CommentTool : public QObject, public Tool {
@@ -51,6 +56,14 @@ public:
     void start(CommentAction action);
     ToolButton* actionButton(CommentAction action) const;
     QLabel* lockLabel() const { return lockLabel_; }
+    // Стиль нового комментария текущего действия (comment-08, умолчания): цвет, толщина (карандаш),
+    // непрозрачность, значок записки; «Закрепить» (comment-42) — инструмент остаётся после действия
+    // (commenting/keepToolSelected).
+    ColorSwatch* styleColor() const { return color_; }
+    NumberField* styleWidth() const { return width_; }
+    NumberField* styleOpacity() const { return opacity_; }
+    QComboBox* noteIcon() const { return icon_; }
+    ToolButton* pinButton() const { return pin_; }
 
 signals:
     void lockChanged(const QString& reason);
@@ -61,6 +74,10 @@ private:
     void syncButtons();
     ToolButton* addRow(QVBoxLayout* column, const QString& icon, const QString& label);
     void addCaption(QVBoxLayout* column, const QString& text);
+    void buildStyle(QVBoxLayout* column);
+    void loadStyle();
+    void saveStyle();
+    void setPinned(bool pinned);
 
     ToolRegistry& registry_;
     QPointer<DocumentView> view_;
@@ -68,6 +85,12 @@ private:
     std::map<CommentAction, QPointer<ToolButton>> buttons_;
     QPointer<QLabel> lockLabel_;
     QString lock_;
+    QPointer<ColorSwatch> color_;
+    QPointer<NumberField> width_;
+    QPointer<NumberField> opacity_;
+    QPointer<QComboBox> icon_;
+    QPointer<ToolButton> pin_;
+    bool loadingStyle_ = false;
     std::vector<QMetaObject::Connection> connections_;
 };
 
