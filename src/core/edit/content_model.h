@@ -88,6 +88,7 @@ enum class OpKind : std::uint8_t {
     FillColor,           // g, rg, k, cs, sc, scn
     StrokeColor,         // G, RG, K, CS, SC, SCN
     Garbage,             // байты, которые не разобрались (ошибка лексера или операнды без оператора)
+    LineWidth,           // w
 };
 
 bool isShowOp(OpKind kind) noexcept;
@@ -139,6 +140,24 @@ struct Glyph {
     bool wordSpace() const noexcept { return codeBytes == 1 && code == 32; }
 };
 
+// Операции, которые задали текущее состояние (−1 — начальное значение страницы: Tc 0, Tw 0, Tz 100, TL 0,
+// Ts 0, Tr 0, цвет — чёрный DeviceGray, w 1). Q возвращает и их. По ним Rewriter восстанавливает состояние
+// после своего текста теми же байтами и берёт исходный цвет пробега (цветовое пространство сохраняется).
+struct StateRefs {
+    int font = -1;         // Tf или gs с /Font
+    int charSpace = -1;    // Tc или "
+    int wordSpace = -1;    // Tw или "
+    int scale = -1;        // Tz
+    int leading = -1;      // TL или TD
+    int rise = -1;         // Ts
+    int render = -1;       // Tr
+    int fillSpace = -1;    // cs (−1 — пространство задал g/rg/k или оно начальное)
+    int fill = -1;         // g, rg, k, sc, scn (−1 — начальный цвет пространства)
+    int strokeSpace = -1;  // CS
+    int stroke = -1;       // G, RG, K, SC, SCN
+    int lineWidth = -1;    // w или gs с /LW
+};
+
 // Спан — глифы одного оператора показа (Tj, TJ, ', ") в одном состоянии.
 struct TextSpan {
     int op = -1;
@@ -166,6 +185,7 @@ struct TextSpan {
     int stream = 0;
     bool form = false;
     int mcid = -1;        // ближайший BDC с /MCID (−1 — нет)
+    StateRefs refs;       // операции текущего состояния (после T* и Tw/Tc у ' и ")
     bool hidden = false;  // в выключенном слое (BDC /OC, форма с /OC) — как proc->hidden интерпретатора
     ReadOnly reason = ReadOnly::None;
     bool editable() const noexcept { return reason == ReadOnly::None; }
@@ -208,6 +228,12 @@ public:
 
     // Исходные байты операции (с пробелами перед ней).
     std::string_view raw(int op) const;
+    // Операция без пробелов и комментариев перед ней — исходные байты от первого токена (у операции с
+    // операндами из прошлого потока /Contents — заново из операндов).
+    std::string opText(int op) const;
+    // Операторы, которые ставят цвет заливки (stroke — обводки) состояния refs: «/CS0 cs 0.2 0.4 scn»,
+    // «1 0 0 rg»; начальный — «0 g» («0 G»).
+    std::string colorOps(const StateRefs& refs, bool stroke = false) const;
     // Декодированный поток stream заново: байты операций по порядку и хвост. Без правок — байт в байт как
     // ContentStream::bytes (массив /Contents — по элементу, inline image и BX/EX — как были).
     std::string serialize(int stream) const;

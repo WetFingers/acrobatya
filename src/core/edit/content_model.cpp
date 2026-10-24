@@ -136,7 +136,7 @@ OpKind kindOf(std::string_view k) noexcept {
         {"rg", OpKind::FillColor},    {"k", OpKind::FillColor},     {"cs", OpKind::FillColor},
         {"sc", OpKind::FillColor},    {"scn", OpKind::FillColor},   {"G", OpKind::StrokeColor},
         {"RG", OpKind::StrokeColor},  {"K", OpKind::StrokeColor},   {"CS", OpKind::StrokeColor},
-        {"SC", OpKind::StrokeColor},  {"SCN", OpKind::StrokeColor},
+        {"SC", OpKind::StrokeColor},  {"SCN", OpKind::StrokeColor}, {"w", OpKind::LineWidth},
     };
     const auto it = kKinds.find(k);
     return it != kKinds.end() ? it->second : OpKind::Unknown;
@@ -178,6 +178,7 @@ struct GState {
     int font = -1;
     ColorState fill;
     ColorState stroke;
+    StateRefs refs;
 };
 
 // Лексер одного декодированного потока: pdf_lex поверх fz_open_memory, позиция — fz_tell.
@@ -266,6 +267,104 @@ std::string ContentModel::serialize(int stream) const {
     }
     out.append(cs.bytes, cs.tail, std::string::npos);
     return out;
+}
+
+namespace model_text {
+
+// Операнд заново (операция, разрезанная границей потоков): числа — кратчайшей записью float, имена — с #xx,
+// строки — шестнадцатеричные.
+void putOperand(std::string& out, const Operand& o) {
+    static const char kHex[] = "0123456789ABCDEF";
+    static constexpr std::string_view kDelimiters = "()<>[]{}/%";
+    switch (o.kind) {
+        case Operand::Kind::Number: {
+            const float v = static_cast<float>(o.number);
+            char buf[64];
+            const auto res = std::to_chars(buf, buf + sizeof buf, v);
+            out.append(buf, res.ptr);
+            break;
+        }
+        case Operand::Kind::Name:
+            out += '/';
+            for (unsigned char c : o.text) {
+                if (c <= 32 || c >= 127 || c == '#' ||
+                    kDelimiters.find(static_cast<char>(c)) != std::string_view::npos) {
+                    out += '#';
+                    out += kHex[c >> 4];
+                    out += kHex[c & 15];
+                } else {
+                    out += static_cast<char>(c);
+                }
+            }
+            break;
+        case Operand::Kind::String:
+            out += '<';
+            for (unsigned char c : o.text) {
+                out += kHex[c >> 4];
+                out += kHex[c & 15];
+            }
+            out += '>';
+            break;
+        case Operand::Kind::Array:
+            out += '[';
+            for (const Operand& item : o.items) {
+                putOperand(out, item);
+                out += ' ';
+            }
+            out += ']';
+            break;
+        case Operand::Kind::Dict:
+            out += "<<";
+            for (const Operand& item : o.items) {
+                putOperand(out, item);
+                out += ' ';
+            }
+            out += ">>";
+            break;
+        case Operand::Kind::Bool:
+            out += o.number != 0 ? "true" : "false";
+            break;
+        case Operand::Kind::Null:
+            out += "null";
+            break;
+        case Operand::Kind::Keyword:
+            out += o.text;
+            break;
+    }
+}
+
+}  // namespace model_text
+
+std::string ContentModel::opText(int op) const {
+    const Operation& o = ops_.at(static_cast<std::size_t>(op));
+    if (!o.split) {
+        return std::string(raw(op).substr(o.tokenOffset - o.offset));
+    }
+    std::string out;
+    for (const Operand& operand : o.operands) {
+        model_text::putOperand(out, operand);
+        out += ' ';
+    }
+    return out + o.name;
+}
+
+std::string ContentModel::colorOps(const StateRefs& refs, bool stroke) const {
+    const int space = stroke ? refs.strokeSpace : refs.fillSpace;
+    const int color = stroke ? refs.stroke : refs.fill;
+    std::string out;
+    if (color >= 0) {
+        const std::string& name = ops_[static_cast<std::size_t>(color)].name;
+        const bool device =
+            name == "g" || name == "rg" || name == "k" || name == "G" || name == "RG" || name == "K";
+        if (!device && space >= 0) {
+            out = opText(space) + ' ';
+        }
+        return out + opText(color);
+    }
+    if (space >= 0) {
+        return opText(space);
+    }
+    return stroke ? "0 G" : "0 g";
 }
 
 bool ContentModel::modified(int stream) const {
@@ -948,7 +1047,7 @@ private:
                 break;
             }
             case OpKind::ExtGState:
-                applyExtGState(op);
+                applyExtGState(index);
                 break;
             case OpKind::BeginText:
                 beginText(index);
@@ -968,6 +1067,7 @@ private:
                 mu::call(ctx_, [&] { isDict = pdf_is_dict(ctx_, dict); });
                 g.font = fontFor(isDict ? dict : nullptr, res);
                 g.size = num(op, 0);
+                g.refs.font = index;
                 break;
             }
             case OpKind::Move:
@@ -976,6 +1076,7 @@ private:
                 break;
             case OpKind::MoveLeading:
                 g.leading = -num(op, 1);
+                g.refs.leading = index;
                 tlm_ = preTranslate(tlm_, num(op, 0), num(op, 1));
                 tm_ = tlm_;
                 break;
@@ -988,21 +1089,30 @@ private:
                 break;
             case OpKind::Leading:
                 g.leading = num(op, 0);
+                g.refs.leading = index;
                 break;
             case OpKind::CharSpace:
                 g.charSpace = num(op, 0);
+                g.refs.charSpace = index;
                 break;
             case OpKind::WordSpace:
                 g.wordSpace = num(op, 0);
+                g.refs.wordSpace = index;
                 break;
             case OpKind::Scale:
                 g.scale = num(op, 0) / 100.0f;
+                g.refs.scale = index;
                 break;
             case OpKind::Rise:
                 g.rise = num(op, 0);
+                g.refs.rise = index;
                 break;
             case OpKind::Render:
                 g.render = static_cast<int>(num(op, 0));
+                g.refs.render = index;
+                break;
+            case OpKind::LineWidth:
+                g.refs.lineWidth = index;
                 break;
             case OpKind::ShowText:
             case OpKind::ShowArray:
@@ -1049,18 +1159,30 @@ private:
                 break;
             case OpKind::FillColor:
             case OpKind::StrokeColor: {
-                ColorState& c = op.kind == OpKind::FillColor ? g.fill : g.stroke;
+                const bool fill = op.kind == OpKind::FillColor;
+                ColorState& c = fill ? g.fill : g.stroke;
+                int& spaceRef = fill ? g.refs.fillSpace : g.refs.strokeSpace;
+                int& colorRef = fill ? g.refs.fill : g.refs.stroke;
                 const std::string& k = op.name;
                 if (k == "g" || k == "G") {
                     setColor(c, op, 1);
+                    spaceRef = -1;
+                    colorRef = index;
                 } else if (k == "rg" || k == "RG") {
                     setColor(c, op, 3);
+                    spaceRef = -1;
+                    colorRef = index;
                 } else if (k == "k" || k == "K") {
                     setColor(c, op, 4);
+                    spaceRef = -1;
+                    colorRef = index;
                 } else if (k == "cs" || k == "CS") {
                     setColorSpace(c, op);
+                    spaceRef = index;
+                    colorRef = -1;
                 } else {
                     setColor(c, op, 0);
+                    colorRef = index;
                 }
                 break;
             }
@@ -1111,7 +1233,8 @@ private:
         return false;
     }
 
-    void applyExtGState(const Operation& op) {
+    void applyExtGState(int index) {
+        const Operation& op = m_.ops_[static_cast<std::size_t>(index)];
         const Operand* name = first(op, Operand::Kind::Name);
         if (name == nullptr) {
             return;
@@ -1119,16 +1242,22 @@ private:
         pdf_obj* gsDict = lookupResource(PDF_NAME(ExtGState), name->text.c_str());
         pdf_obj* font = nullptr;
         float size = 0;
+        int lineWidth = 0;
         mu::call(ctx_, [&] {
             pdf_obj* f = pdf_dict_get(ctx_, gsDict, PDF_NAME(Font));
             if (pdf_is_array(ctx_, f)) {
                 font = pdf_array_get(ctx_, f, 0);
                 size = pdf_array_get_real(ctx_, f, 1);
             }
+            lineWidth = pdf_dict_get(ctx_, gsDict, PDF_NAME(LW)) != nullptr;
         });
         if (font != nullptr) {
             gs().font = fontFor(font, "gs:" + name->text);
             gs().size = size;
+            gs().refs.font = index;
+        }
+        if (lineWidth) {
+            gs().refs.lineWidth = index;
         }
     }
 
@@ -1211,6 +1340,7 @@ private:
         if (op.kind == OpKind::NextLineShowSpaced) {
             g.wordSpace = num(op, 0);
             g.charSpace = num(op, 1);
+            g.refs.wordSpace = g.refs.charSpace = index;
         }
         if (op.kind == OpKind::NextLineShow || op.kind == OpKind::NextLineShowSpaced) {
             tlm_ = preTranslate(tlm_, 0, -g.leading);
@@ -1256,6 +1386,7 @@ private:
         span.stream = op.stream;
         span.form = m_.streams_[static_cast<std::size_t>(op.stream)].form;
         span.mcid = mcids_.empty() ? -1 : mcids_.back();
+        span.refs = g.refs;
         span.hidden = hidden_ > 0;
         span.firstGlyph = static_cast<int>(m_.glyphs_.size());
         span.bbox = RectF::none();

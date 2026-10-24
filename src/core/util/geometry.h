@@ -130,4 +130,20 @@ inline Matrix concat(const Matrix& l, const Matrix& r) noexcept {
             l.c * r.b + l.d * r.d, l.e * r.a + l.f * r.c + r.e, l.e * r.b + l.f * r.d + r.f};
 }
 
+// Обратная матрица (как fz_invert_matrix: вырожденная — без изменений).
+inline Matrix invertMatrix(const Matrix& m) noexcept {
+    const float det = m.a * m.d - m.b * m.c;
+    if (det == 0) {
+        return m;
+    }
+    const float r = 1 / det;
+    const float a = m.d * r, b = -m.b * r, c = -m.c * r, d = m.a * r;
+    return {a, b, c, d, -m.e * a - m.f * c, -m.e * b - m.f * d};
+}
+
+// Точка p, преобразованная матрицей m.
+inline PointF mapPoint(PointF p, const Matrix& m) noexcept {
+    return {p.x * m.a + p.y * m.c + m.e, p.x * m.b + p.y * m.d + m.f};
+}
+
 }  // namespace ot

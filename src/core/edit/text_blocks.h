@@ -17,14 +17,10 @@
 #include <vector>
 
 #include "core/edit/content_model.h"
+#include "core/edit/edit_types.h"
 #include "core/util/geometry.h"
 
 namespace ot::edit {
-
-enum class Align : std::uint8_t { Left, Right, Center, Justify };
-
-// Код выравнивания для журнала, тестов и ожиданий JSON: "left", "right", "center", "justify".
-const char* alignCode(Align align) noexcept;
 
 // Пробег одного стиля: подряд идущие спаны блока с тем же шрифтом, кеглем, цветом, Tr и Ts.
 struct StyleRun {
