@@ -160,6 +160,11 @@ public:
     // Открыть документы с восстановленными правками (файл не сохранён, история отмены — из журнала).
     int recoverDocuments(const std::vector<AutosaveEntry>& entries);
 
+    // «Просмотреть подписанную версию» (4.6; sign-28): файл подписанной ревизии path (временный, удаляется
+    // при закрытии вкладки) — новой вкладкой «только чтение» с полосой о том, что это за версия; защищённый
+    // просмотр — как у исходной вкладки (файл — часть её документа). nullptr — не открылся.
+    DocumentView* openSignedVersion(DocumentView& source, const QString& path, const QString& label);
+
     // Сообщение «появится в версии 0.N» — тостом над окном (заглушки будущих этапов).
     void notifyLater(const QString& what, int stage);
 
@@ -283,6 +288,7 @@ private:
     QPointer<SearchWindow> search_;
     QPointer<PropertiesDialog> properties_;
     QPointer<PrintDialog> print_;
+    QHash<quint64, QString> temporary_;  // вкладка → её временный файл (подписанная версия), удаляется с ней
 
     struct Actions;
     std::unique_ptr<Actions> actions_;

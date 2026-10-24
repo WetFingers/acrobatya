@@ -356,6 +356,77 @@ QString SignTexts::documentStatus(sign::DocumentStatus status) {
     return {};
 }
 
+QString SignTexts::keyUsage(const std::string& code) {
+    static const std::pair<const char*, const char*> kNames[] = {
+        {"digitalSignature", QT_TR_NOOP("цифровая подпись")},
+        {"nonRepudiation", QT_TR_NOOP("неотрекаемость")},
+        {"keyEncipherment", QT_TR_NOOP("шифрование ключей")},
+        {"dataEncipherment", QT_TR_NOOP("шифрование данных")},
+        {"keyAgreement", QT_TR_NOOP("согласование ключей")},
+        {"keyCertSign", QT_TR_NOOP("подпись сертификатов")},
+        {"cRLSign", QT_TR_NOOP("подпись списков отзыва")},
+        {"encipherOnly", QT_TR_NOOP("только шифрование")},
+        {"decipherOnly", QT_TR_NOOP("только расшифрование")},
+    };
+    for (const auto& [key, name] : kNames) {
+        if (code == key) {
+            return tr(name);
+        }
+    }
+    return QString::fromStdString(code);
+}
+
+QString SignTexts::extendedKeyUsage(const std::string& code) {
+    static const std::pair<const char*, const char*> kNames[] = {
+        {"emailProtection", QT_TR_NOOP("защита эл. почты")},
+        {"1.3.6.1.5.5.7.3.36", QT_TR_NOOP("подпись документов")},
+        {"1.2.840.113583.1.1.5", QT_TR_NOOP("подлинные документы Adobe")},
+        {"timeStamping", QT_TR_NOOP("метки времени")},
+        {"OCSPSigning", QT_TR_NOOP("подпись ответов OCSP")},
+        {"codeSigning", QT_TR_NOOP("подпись программ")},
+        {"clientAuth", QT_TR_NOOP("проверка подлинности клиента")},
+        {"serverAuth", QT_TR_NOOP("проверка подлинности сервера")},
+        {"1.3.6.1.4.1.311.10.3.12", QT_TR_NOOP("подпись документов Microsoft")},
+    };
+    for (const auto& [key, name] : kNames) {
+        if (code == key) {
+            return tr(name);
+        }
+    }
+    return QString::fromStdString(code);
+}
+
+QString SignTexts::trustFlags(unsigned flags) {
+    QStringList parts;
+    if ((flags & sign::kTrustSignatures) != 0) {
+        parts << tr("подписи");
+    }
+    if ((flags & sign::kTrustCertification) != 0) {
+        parts << tr("сертифицированные документы");
+    }
+    if ((flags & sign::kTrustDynamicContent) != 0) {
+        parts << tr("динамическое содержимое");
+    }
+    if ((flags & sign::kTrustJavaScript) != 0) {
+        parts << tr("JavaScript");
+    }
+    return parts.isEmpty() ? tr("ни для чего") : parts.join(QStringLiteral(", "));
+}
+
+QString SignTexts::trustSource(sign::TrustSource source) {
+    switch (source) {
+        case sign::TrustSource::Eutl:
+            return tr("Список доверия ЕС");
+        case sign::TrustSource::Aatl:
+            return tr("Список Adobe (AATL)");
+        case sign::TrustSource::Windows:
+            return tr("Хранилище Windows");
+        case sign::TrustSource::User:
+            break;
+    }
+    return tr("Добавлен вручную");
+}
+
 sign::AppearanceLabels SignTexts::appearanceLabels() {
     sign::AppearanceLabels l;
     l.signedBy = tr("Подписано:").toStdString();

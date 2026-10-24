@@ -2,24 +2,46 @@
 // диалоги поверх документа — sign-dialog («Подписать как» над формой demo/form.pdf с удостоверением тестовой
 // PKI: пароль запомнен, внешний вид и предпросмотр, итог «Проверить документ»), certify-dialog
 // («Сертифицировать» над отчётом), sign-appearance-dialog (конструктор внешнего вида), sign-warnings
-// (предупреждения документа sig/warnings.pdf). Удостоверение — tests/fixtures/pki/signer-rsa.pfx в каталоге
-// данных снимков; диалоги встраиваются в окно (embedCentered).
+// (предупреждения документа sig/warnings.pdf); проверка подписей — sig-bar-valid (отчёт, подписанный при
+// снимке тестовой PKI через DocumentSession::sign, корень PKI — доверенный в каталоге данных снимков: синяя
+// полоса и значок на поле), sig-bar-problems (sig/signed-bb.pdf — самоподписанный подписант не доверен:
+// жёлтая полоса с «Доверять подписанту…»), pane-signatures (панель «Подписи» с раскрытой подписью),
+// certificate-viewer (цепочка из трёх сертификатов). Удостоверение — tests/fixtures/pki/signer-rsa.pfx в
+// каталоге данных снимков; диалоги встраиваются в окно (embedCentered).
+#include <QDir>
+#include <QFile>
+#include <QPushButton>
 #include <QTimer>
+#include <QTreeWidget>
 
+#include <algorithm>
 #include <exception>
+#include <memory>
 #include <vector>
 
+#include "core/sign/pkcs12.h"
+#include "core/sign/signer.h"
+#include "services/app_info.h"
+#include "services/document_session.h"
 #include "services/identities.h"
+#include "services/trust_service.h"
+#include "ui/dialogs/certificate_viewer.h"
+#include "ui/panes/signatures_pane.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
+#include "ui/shell/message_bar.h"
+#include "ui/shell/nav_pane.h"
+#include "ui/shell/signature_status.h"
 #include "ui/shots/scenes.h"
 #include "ui/tools/certificate/appearance_dialog.h"
 #include "ui/tools/certificate/certificate_tool.h"
 #include "ui/tools/certificate/sign_dialog.h"
 #include "ui/tools/certificate/sign_placement.h"
+#include "ui/tools/certificate/sign_texts.h"
 #include "ui/tools/certificate/warnings_dialog.h"
 #include "ui/tools/tool_registry.h"
 #include "ui/view/page_view.h"
+#include "ui/widgets/message_bar.h"
 
 namespace ot::ui {
 
@@ -68,6 +90,78 @@ void startSigning(MainWindow& w, const QString& fixture, bool certify) {
 }
 
 SignDialog* dialogOf(QWidget* w) { return w->findChild<SignDialog*>(); }
+
+QByteArray readAll(const QString& path) {
+    QFile f(path);
+    return f.open(QIODevice::ReadOnly) ? f.readAll() : QByteArray();
+}
+
+// Корень тестовой PKI — доверенный в каталоге данных снимков.
+void trustRoot() {
+    const QByteArray root = readAll(sceneFixture(QStringLiteral("pki/root.cer")));
+    if (root.isEmpty()) {
+        return;
+    }
+    try {
+        TrustService::shared().edit([&](sign::TrustStore& s) {
+            s.add(std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(root.constData()),
+                                                static_cast<std::size_t>(root.size())),
+                  sign::kTrustSignatures | sign::kTrustCertification);
+        });
+    } catch (const std::exception&) {  // NOLINT(bugprone-empty-catch): без якоря — полоса жёлтая
+    }
+}
+
+// Копия фикстуры в каталоге данных снимков (ASCII-имя).
+QString sceneCopy(const QString& fixture, const QString& name) {
+    const QString dir = QDir(app::dataDir()).filePath(QStringLiteral("scene-docs"));
+    QDir().mkpath(dir);
+    const QString to = QDir(dir).filePath(name);
+    QFile::remove(to);
+    QFile::copy(sceneFixture(fixture), to);
+    QFile(to).setPermissions(QFile::ReadOwner | QFile::WriteOwner);
+    return to;
+}
+
+// Открыть отчёт и подписать его удостоверением PKI (видимая подпись вверху первой страницы) — по-настоящему,
+// через DocumentSession::sign; проверку и полосу делает вкладка.
+void openSigned(MainWindow& w, const QString& name) {
+    trustRoot();
+    w.openFile(sceneCopy(QStringLiteral("demo/report.pdf"), name));
+    DocumentView* doc = w.currentDocument();
+    const QByteArray pfx = readAll(sceneFixture(QStringLiteral("pki/signer-rsa.pfx")));
+    if (doc == nullptr || pfx.isEmpty()) {
+        return;
+    }
+    sign::SignRequest r;
+    try {
+        r.identity = std::make_shared<const sign::SigningKey>(sign::loadPkcs12(
+            std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(pfx.constData()),
+                                          static_cast<std::size_t>(pfx.size())),
+            "acrobatya"));
+    } catch (const std::exception&) {
+        return;
+    }
+    r.level = sign::SignLevel::B;
+    r.reason = MainWindow::tr("Я утверждаю этот документ").toStdString();
+    r.location = MainWindow::tr("Москва").toStdString();
+    r.placement.page = 0;
+    r.placement.rect = {340, 36, 556, 96};
+    r.appearance.labels = SignTexts::appearanceLabels();
+    (void)doc->session().sign(std::move(r));
+}
+
+bool signedReady(QWidget* w) {
+    auto* window = static_cast<MainWindow*>(w);
+    DocumentView* doc = window->currentDocument();
+    if (!sceneDocumentReady(w) || doc == nullptr || !doc->signatures().hasResult() ||
+        doc->signatures().isVerifying() || doc->signatures().bar() == nullptr) {
+        return false;
+    }
+    // Кнопки полосы показываются отложенно (QLayout) — кадр после них.
+    const QList<QPushButton*> buttons = doc->signatures().bar()->findChildren<QPushButton*>();
+    return std::any_of(buttons.begin(), buttons.end(), [](const QPushButton* b) { return b->isVisible(); });
+}
 
 }  // namespace sign_scenes
 
@@ -133,6 +227,70 @@ std::vector<Scene> signScenes() {
         return true;
     };
     scenes.push_back(warnings);
+
+    Scene valid;
+    valid.name = QStringLiteral("sig-bar-valid");
+    valid.make = withMainWindow([](MainWindow& w) {
+        w.navPane().closePanel();
+        sign_scenes::openSigned(w, QStringLiteral("signed-valid.pdf"));
+    });
+    valid.ready = sign_scenes::signedReady;
+    scenes.push_back(valid);
+
+    Scene problems;
+    problems.name = QStringLiteral("sig-bar-problems");
+    problems.make = withMainWindow([](MainWindow& w) {
+        w.navPane().closePanel();
+        w.openFile(
+            sign_scenes::sceneCopy(QStringLiteral("sig/signed-bb.pdf"), QStringLiteral("signed-bb.pdf")));
+    });
+    problems.ready = sign_scenes::signedReady;
+    scenes.push_back(problems);
+
+    Scene pane;
+    pane.name = QStringLiteral("pane-signatures");
+    pane.make = withMainWindow([](MainWindow& w) {
+        sign_scenes::openSigned(w, QStringLiteral("signed-pane.pdf"));
+        w.navPane().showPane(QStringLiteral("signatures"));
+    });
+    pane.ready = [](QWidget* w) {
+        if (!sign_scenes::signedReady(w)) {
+            return false;
+        }
+        auto* window = static_cast<MainWindow*>(w);
+        auto* p = qobject_cast<SignaturesPane*>(window->navPane().page(QStringLiteral("signatures")));
+        QTreeWidgetItem* item = p != nullptr ? p->itemFor(QStringLiteral("Signature1")) : nullptr;
+        if (item == nullptr) {
+            return false;
+        }
+        item->setExpanded(true);
+        return true;
+    };
+    scenes.push_back(pane);
+
+    Scene viewer;
+    viewer.name = QStringLiteral("certificate-viewer");
+    viewer.make = withMainWindow(
+        [](MainWindow& w) { sign_scenes::openSigned(w, QStringLiteral("signed-viewer.pdf")); });
+    // Когда подпись проверена — просмотр сертификата поверх окна.
+    viewer.ready = [](QWidget* w) {
+        if (!sign_scenes::signedReady(w)) {
+            return false;
+        }
+        if (w->findChild<CertificateViewer*>() != nullptr) {
+            return true;
+        }
+        auto* window = static_cast<MainWindow*>(w);
+        window->navPane().showPane(QStringLiteral("signatures"));
+        auto* p = qobject_cast<SignaturesPane*>(window->navPane().page(QStringLiteral("signatures")));
+        if (p != nullptr) {
+            if (CertificateViewer* v = p->showCertificate(QStringLiteral("Signature1"))) {
+                embedCentered(*window, v);
+            }
+        }
+        return false;
+    };
+    scenes.push_back(viewer);
     return scenes;
 }
 

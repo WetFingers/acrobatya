@@ -13,9 +13,19 @@
 #include <vector>
 
 #include "core/doc/document.h"
+#include "core/doc/journal.h"
+#include "core/doc/saver.h"
+#include "core/mu/call.h"
+#include "core/mu/context.h"
 #include "core/sign/ossl.h"
+#include "core/sign/pkcs12.h"
+#include "core/sign/tsa.h"
 #include "core/util/paths.h"
 #include "services/trust_service.h"
+
+extern "C" {
+#include <mupdf/pdf.h>
+}
 
 namespace ot::test {
 
@@ -162,6 +172,55 @@ bool trustPkiRoot() {
             std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(root.data()), root.size()),
             ot::sign::kTrustSignatures | ot::sign::kTrustCertification);
     });
+}
+
+void signFile(const QString& path, const SignFileOptions& o) {
+    const std::string pfx = pkiFile("signer-rsa.pfx");
+    auto key = std::make_shared<const ot::sign::SigningKey>(ot::sign::loadPkcs12(
+        std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(pfx.data()), pfx.size()),
+        "acrobatya"));
+    auto doc = ot::Document::openOrThrow(std::filesystem::path(path.toStdWString()));
+    ot::sign::SignRequest r;
+    r.identity = key;
+    r.level = o.level;
+    r.certify = o.certify;
+    r.lock = o.lock;
+    r.reason = o.reason;
+    r.placement.page = 0;
+    r.placement.rect = o.rect;
+    const ot::sign::TrustStore trust = pkiTrust();
+    if (o.network != nullptr && o.level != ot::sign::SignLevel::B) {
+        ot::sign::TsaConfig config;
+        config.url = "http://tsa.acrobatya.test/tsr";
+        r.timestamp = std::make_shared<ot::sign::TsaClient>(o.network->fetcher(), config);
+        r.trust = &trust;
+        r.revocationFetcher = &o.network->fetcher();
+    }
+    (void)ot::sign::signDocument(*doc, r);
+}
+
+void tamperFile(const QString& path) {
+    auto doc = ot::Document::openOrThrow(std::filesystem::path(path.toStdWString()));
+    fz_context* ctx = doc->context().get();
+    pdf_document* pdf = doc->pdf();
+    {
+        ot::Journal::Operation op(*doc, "Tamper");
+        ot::mu::call(ctx, [&] {
+            pdf_obj* root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf), PDF_NAME(Root));
+            pdf_dict_put_name(ctx, root, PDF_NAME(PageMode), "UseOutlines");
+        });
+        op.commit();
+    }
+    const ot::SaveReport report = ot::Saver::save(*doc);
+    if (!report.ok()) {
+        throw std::runtime_error("tamper: " + report.message);
+    }
+}
+
+bool untrustPkiRoot() {
+    const ot::sign::TrustStore pki = pkiTrust();
+    const std::string sha = pki.anchors().front().sha256;
+    return ot::TrustService::shared().edit([&](ot::sign::TrustStore& s) { return s.remove(sha); });
 }
 
 ot::sign::DocumentVerification verifyFile(const QString& path, const ot::sign::TrustStore* trust) {

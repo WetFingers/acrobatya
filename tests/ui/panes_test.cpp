@@ -458,7 +458,8 @@ private slots:
         MainWindow w;
         showActive(w);
         QVERIFY(w.openFile(fixture("view/nav.pdf")));
-        for (const auto& [id, stage] : {std::pair{"comments", 5}, std::pair{"signatures", 4}}) {
+        // «Подписи» живые с 4.6 (ui/panes/signatures_pane.h); заглушка — «Комментарии».
+        for (const auto& [id, stage] : {std::pair{"comments", 5}}) {
             w.navPane().showPane(QLatin1String(id));
             auto* page = w.navPane().page(QLatin1String(id));
             bool found = false;

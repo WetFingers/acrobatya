@@ -13,6 +13,7 @@
 #include "services/settings.h"
 #include "ui/panes/find_bar.h"
 #include "ui/shell/message_bar.h"
+#include "ui/shell/signature_status.h"
 #include "ui/theme/theme.h"
 #include "ui/view/boxes_overlay.h"
 #include "ui/view/page_view.h"
@@ -75,6 +76,7 @@ DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool*
         Qt::QueuedConnection);
     updateModified();
 
+    signatures_ = std::make_unique<SignatureStatus>(*this);
     if (isViewOnly()) {
         MessageBar* bar = stack_->showMessage(
             MessageKind::ViewOnly,
@@ -90,7 +92,10 @@ DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool*
 }
 
 // Вид отпускает документ раньше сессии: задачи тайлов отменяются, кеш документа чистится (TilePainter).
-DocumentView::~DocumentView() { view_->setDocument(nullptr); }
+DocumentView::~DocumentView() {
+    signatures_.reset();
+    view_->setDocument(nullptr);
+}
 
 QString DocumentView::path() const { return session_->path(); }
 

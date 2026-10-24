@@ -14,6 +14,7 @@
 #include "core/sign/identity.h"
 #include "core/sign/revocation.h"
 #include "core/sign/signer.h"
+#include "core/sign/trust_store.h"
 #include "core/sign/tsa.h"
 #include "core/sign/verifier.h"
 #include "core/sign/warnings_scan.h"
@@ -53,6 +54,14 @@ public:
     static QString kind(sign::SignatureKind kind);
     // Полоса над документом.
     static QString documentStatus(sign::DocumentStatus status);
+
+    // Назначение ключа (коды CertDetails::keyUsage) и расширенное назначение (имена OpenSSL или OID).
+    static QString keyUsage(const std::string& code);
+    static QString extendedKeyUsage(const std::string& code);
+    // Для чего доверять якорю (биты kTrust*): «подписи, сертифицированные документы»; 0 — «ни для чего».
+    static QString trustFlags(unsigned flags);
+    // Источник якоря: свой, EUTL, AATL, Windows.
+    static QString trustSource(sign::TrustSource source);
 
     // Ярлыки строк внешнего вида подписи по-русски («Подписано:», «Причина:»…).
     static sign::AppearanceLabels appearanceLabels();

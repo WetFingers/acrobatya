@@ -6,6 +6,7 @@
 #include <QDir>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFuture>
@@ -46,11 +47,13 @@
 #include "services/shell_launcher.h"
 #include "services/thumbnails.h"
 #include "services/tile_cache.h"
+#include "ui/dialogs/certificate_viewer.h"
 #include "ui/dialogs/password_dialog.h"
 #include "ui/dialogs/properties_dialog.h"
 #include "ui/dialogs/recover_dialog.h"
 #include "ui/dialogs/search_window.h"
 #include "ui/panes/find_bar.h"
+#include "ui/panes/signatures_pane.h"
 #include "ui/shell/command_palette.h"
 #include "ui/shell/document_tabs.h"
 #include "ui/shell/document_view.h"
@@ -64,6 +67,7 @@
 #include "ui/shell/quick_bar.h"
 #include "ui/shell/read_mode.h"
 #include "ui/shell/save_flow.h"
+#include "ui/shell/signature_status.h"
 #include "ui/shell/status_bar.h"
 #include "ui/shell/tool_panel.h"
 #include "ui/theme/theme.h"
@@ -146,6 +150,7 @@ MainWindow::MainWindow(QWidget* parent)
     body_->setStretchFactor(body_->indexOf(center_), 1);
     // Правая навигация: панель 280 — в сплиттере (тянется 220–480), полоса 44 — у правого края.
     navPane_ = new NavPane(row);
+    navPane_->replacePage(new SignaturesPane(navPane_->panel()->pages()));  // 4.6 — вместо заглушки
     body_->addWidget(navPane_->panel());
     body_->setStretchFactor(body_->indexOf(navPane_->panel()), 0);
     body_->setCollapsible(body_->indexOf(navPane_->panel()), false);
@@ -239,6 +244,9 @@ MainWindow::~MainWindow() {
         delete view;
         tabs().removeTab(0);
         registry_->close(id);
+    }
+    for (const QString& temp : std::as_const(temporary_)) {
+        QFile::remove(temp);
     }
 }
 
@@ -336,6 +344,18 @@ DocumentView* MainWindow::addDocumentView(const DocumentRegistry::Opened& opened
             retranslateTitle();
         },
         Qt::QueuedConnection);
+    // Подписи (4.6): «Панель подписей» и «Доверять подписанту…» на полосе.
+    connect(&view->signatures(), &SignatureStatus::paneRequested, this,
+            [this] { navPane_->showPane(QStringLiteral("signatures")); });
+    connect(&view->signatures(), &SignatureStatus::trustRequested, this, [this](const QString& field) {
+        navPane_->showPane(QStringLiteral("signatures"));
+        if (auto* pane = qobject_cast<SignaturesPane*>(navPane_->page(QStringLiteral("signatures")))) {
+            if (CertificateViewer* viewer = pane->showCertificate(field)) {
+                viewer->select(viewer->chainLength() - 1);  // корень цепочки
+                viewer->showTab(CertificateViewer::Trust);
+            }
+        }
+    });
     auto* quick = new QuickBar();
     quick->attach(&view->view());
     quick->setSingleKeyHints(commands_->singleKeysEnabled());
@@ -499,6 +519,9 @@ bool MainWindow::closeDocument(int index) {
     delete view;
     tabs().removeTab(tabs().indexOf(id));
     registry_->close(id);
+    if (const QString temp = temporary_.take(id); !temp.isEmpty()) {
+        QFile::remove(temp);  // подписанная версия — временный файл вкладки
+    }
     if (tabs().count() == 0 || wasHome) {
         showHome();
     } else {
@@ -1015,6 +1038,39 @@ void MainWindow::showInExplorer() {
             Toast::notify(this, tr("Не удалось открыть Проводник."), Tone::Danger);
         }
     }
+}
+
+DocumentView* MainWindow::openSignedVersion(DocumentView& source, const QString& path, const QString& label) {
+    const protected_view::Origin origin = source.protectedOrigin();
+    const QString sourceTitle = source.title();
+    if (!openFile(path)) {
+        return nullptr;
+    }
+    DocumentView* view = currentDocument();
+    if (view == nullptr || QFileInfo(view->path()) != QFileInfo(path)) {
+        return nullptr;
+    }
+    temporary_.insert(view->id(), path);
+    // Временная папка — не «чужой» файл: защищённый просмотр — как у исходной вкладки.
+    if (origin == protected_view::Origin::None) {
+        view->setProtectedView(protected_view::Origin::None);
+        view->messageStack().remove(MessageKind::ProtectedView);
+    } else {
+        applyProtectedView(view, origin);
+    }
+    view->setReadOnly(true);
+    MessageBar* bar = view->messageStack().add(
+        Tone::Info, tr("Подписанная версия «%1» (%2): документ в том виде, в каком его подписали. Только для "
+                       "чтения.")
+                        .arg(sourceTitle, label));
+    bar->setObjectName(QStringLiteral("signedVersionBar"));
+    const int index = tabs().indexOf(view->id());
+    if (index >= 0) {
+        tabs().setTabText(index,
+                          tr("%1 — подписанная версия").arg(QFileInfo(sourceTitle).completeBaseName()));
+    }
+    updateActions();
+    return view;
 }
 
 void MainWindow::notifyLater(const QString& what, int stage) {

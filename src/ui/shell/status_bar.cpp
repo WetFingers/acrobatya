@@ -14,6 +14,7 @@
 #include "services/document_session.h"
 #include "services/settings.h"
 #include "ui/shell/document_view.h"
+#include "ui/shell/signature_status.h"
 #include "ui/theme/theme.h"
 #include "ui/view/page_view.h"
 #include "ui/widgets/chip.h"
@@ -185,6 +186,7 @@ void StatusBar::setDocument(DocumentView* view) {
         disconnect(&view_->session(), nullptr, this, nullptr);
         disconnect(view_, &DocumentView::readOnlyChanged, this, nullptr);
         disconnect(view_, &DocumentView::protectedViewChanged, this, nullptr);
+        disconnect(&view_->signatures(), nullptr, this, nullptr);
     }
     view_ = view;
     docGroup_->setVisible(view_ != nullptr);
@@ -203,6 +205,8 @@ void StatusBar::setDocument(DocumentView* view) {
                 Qt::QueuedConnection);
         connect(view_, &DocumentView::readOnlyChanged, this, &StatusBar::refreshIndicators);
         connect(view_, &DocumentView::protectedViewChanged, this, &StatusBar::refreshIndicators);
+        // Итог проверки подписей (4.6): «Подписано» — тоном статуса.
+        connect(&view_->signatures(), &SignatureStatus::verified, this, &StatusBar::refreshIndicators);
     }
     refreshAll();
 }
@@ -260,6 +264,31 @@ void StatusBar::refreshLayout() {
 void StatusBar::refreshIndicators() {
     const OpenSummary s = view_ != nullptr ? view_->session().summary() : OpenSummary{};
     signed_->setVisible(view_ != nullptr && s.isSigned);
+    // После проверки подписей (4.6) — её итог: действительны, проблемы, недействительна.
+    Tone tone = Tone::Ok;
+    QString icon = QStringLiteral("badge-check");
+    QString text = tr("Подписано");
+    if (view_ != nullptr && view_->signatures().hasResult()) {
+        switch (view_->signatures().verification().status) {
+            case sign::DocumentStatus::Problems:
+                tone = Tone::Warn;
+                icon = QStringLiteral("shield-alert");
+                text = tr("Подпись: проблемы");
+                break;
+            case sign::DocumentStatus::Invalid:
+                tone = Tone::Danger;
+                icon = QStringLiteral("shield-x");
+                text = tr("Подпись недействительна");
+                break;
+            case sign::DocumentStatus::NotSigned:
+            case sign::DocumentStatus::Valid:
+            case sign::DocumentStatus::Certified:
+                break;
+        }
+    }
+    signed_->setTone(tone);
+    signed_->setIconName(icon);
+    signed_->setText(text);
     pdfa_->setVisible(view_ != nullptr && s.pdfa);
     readOnly_->setVisible(view_ != nullptr &&
                           (view_->isViewOnly() || view_->isReadOnly() || view_->isProtectedView()));
@@ -342,12 +371,12 @@ void StatusBar::retranslate() {
     layout_->segment(2)->setAccessibleName(tr("Разворот"));
     rotateCcw_->setLabel(tr("Повернуть вид против часовой стрелки"));
     rotateCw_->setLabel(tr("Повернуть вид по часовой стрелке"));
-    signed_->setText(tr("Подписано"));
     pdfa_->setText(tr("PDF/A"));
     readOnly_->setText(tr("Только чтение"));
     taskCancel_->setLabel(tr("Отменить"));
     refreshPage();
     refreshTasks();
+    refreshIndicators();  // «Подписано» — по итогу проверки подписей
 }
 
 void StatusBar::applyMetrics() {

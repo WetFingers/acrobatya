@@ -1,9 +1,16 @@
 #include "core/sign/sig_fields.h"
 
+#include <algorithm>
+#include <cstdint>
 #include <cstring>
+#include <stdexcept>
 
 #include "core/doc/document.h"
+#include "core/doc/journal.h"
+#include "core/doc/revisions.h"
 #include "core/mu/call.h"
+#include "core/mu/handles.h"
+#include "core/sign/sign_field.h"
 
 extern "C" {
 #include <mupdf/pdf.h>
@@ -131,6 +138,121 @@ const SignatureField* emptyFieldAt(const std::vector<SignatureField>& fields, in
         }
     }
     return nullptr;
+}
+
+ClearBlock clearBlock(Document& doc, std::string_view field) {
+    const std::vector<SignatureField> fields = signatureFields(doc);
+    const auto it =
+        std::find_if(fields.begin(), fields.end(), [&](const SignatureField& f) { return f.name == field; });
+    if (it == fields.end()) {
+        return ClearBlock::NotFound;
+    }
+    if (!it->isSigned) {
+        return ClearBlock::NotSigned;
+    }
+    const std::vector<revisions::SignatureInfo> signedFields = revisions::signatures(doc);
+    std::int64_t end = -1;
+    for (const revisions::SignatureInfo& s : signedFields) {
+        if (s.field == field) {
+            end = s.rangeEnd;
+        }
+    }
+    for (const revisions::SignatureInfo& s : signedFields) {
+        if (s.field != field && s.rangeEnd > end) {
+            return ClearBlock::LaterSignatures;
+        }
+    }
+    if (it->readOnly) {
+        return ClearBlock::ReadOnly;
+    }
+    return ClearBlock::None;
+}
+
+void clearSignature(Document& doc, std::string_view name) {
+    const ClearBlock block = clearBlock(doc, name);
+    if (block != ClearBlock::None) {
+        throw std::runtime_error("signature " + std::string(name) + " cannot be cleared (" +
+                                 std::to_string(static_cast<int>(block)) + ")");
+    }
+    int pageNumber = -1;
+    for (const SignatureField& f : signatureFields(doc)) {
+        if (f.name == name) {
+            pageNumber = f.page;
+        }
+    }
+    if (pageNumber < 0) {
+        throw std::runtime_error("signature " + std::string(name) + " has no widget on a page");
+    }
+    fz_context* ctx = doc.context().get();
+    pdf_document* pdf = doc.pdf();
+    pdf_obj* field = detail::lookupField(ctx, pdf, std::string(name));
+    int widgetNum = 0;
+    int valueNum = 0;
+    mu::call(ctx, [&] {
+        pdf_obj* widget = field;
+        if (!pdf_name_eq(ctx, pdf_dict_get(ctx, field, PDF_NAME(Subtype)), PDF_NAME(Widget))) {
+            widget = pdf_array_get(ctx, pdf_dict_get(ctx, field, PDF_NAME(Kids)), 0);
+        }
+        widgetNum = pdf_to_num(ctx, widget);
+        valueNum = pdf_to_num(ctx, pdf_dict_get(ctx, field, PDF_NAME(V)));
+    });
+    Journal::Operation op(doc, "Clear signature");
+    mu::PageHandle page(ctx);
+    mu::call(ctx, [&] { page.reset(fz_load_page(ctx, &pdf->super, pageNumber)); });
+    pdf_annot* widget = nullptr;
+    mu::call(ctx, [&] {
+        for (pdf_annot* w = pdf_first_widget(ctx, pdf_page_from_fz_page(ctx, page)); w != nullptr;
+             w = pdf_next_widget(ctx, w)) {
+            if (pdf_to_num(ctx, pdf_annot_obj(ctx, w)) == widgetNum) {
+                widget = w;
+            }
+        }
+    });
+    if (widget == nullptr) {
+        throw std::runtime_error("signature widget is not on its page");
+    }
+    // То же, что pdf_clear_signature, но внутри нашей операции: MuPDF 1.28 открывает в ней две операции
+    // журнала (begin_widget_op и pdf_begin_operation), а закрывает одну — Journal::Operation откатил бы
+    // правку.
+    fz_rect rect = fz_empty_rect;
+    fz_text_language lang = FZ_LANG_UNSET;
+    mu::call(ctx, [&] {
+        rect = pdf_annot_rect(ctx, widget);
+        lang = pdf_annot_language(ctx, widget);
+    });
+    mu::DisplayListHandle unsignedLook(ctx);
+    if (!fz_is_empty_rect(rect)) {
+        mu::call(ctx, [&] { unsignedLook.reset(pdf_signature_appearance_unsigned(ctx, rect, lang)); });
+    }
+    mu::call(ctx, [&] {
+        pdf_obj* wobj = pdf_annot_obj(ctx, widget);
+        pdf_dirty_annot(ctx, widget);
+        const int flags = pdf_dict_get_int(ctx, wobj, PDF_NAME(F)) & ~PDF_ANNOT_IS_LOCKED;
+        if (flags != 0) {
+            pdf_dict_put_int(ctx, wobj, PDF_NAME(F), flags);
+        } else {
+            pdf_dict_del(ctx, wobj, PDF_NAME(F));
+        }
+        pdf_dict_del(ctx, field, PDF_NAME(V));
+        pdf_dict_del(ctx, wobj, PDF_NAME(V));
+        if (unsignedLook) {
+            pdf_set_annot_appearance_from_display_list(ctx, widget, "N", nullptr, fz_identity, unsignedLook);
+        } else {
+            pdf_dict_del(ctx, wobj, PDF_NAME(AP));
+        }
+        // Сертифицирующая: /Perms /DocMDP указывал на снятое значение — права документа снимаются тоже.
+        pdf_obj* root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf), PDF_NAME(Root));
+        pdf_obj* perms = pdf_dict_get(ctx, root, PDF_NAME(Perms));
+        pdf_obj* docMdp = pdf_dict_get(ctx, perms, PDF_NAME(DocMDP));
+        if (docMdp != nullptr && valueNum != 0 && pdf_to_num(ctx, docMdp) == valueNum) {
+            pdf_dict_del(ctx, perms, PDF_NAME(DocMDP));
+            if (pdf_dict_len(ctx, perms) == 0) {
+                pdf_dict_del(ctx, root, PDF_NAME(Perms));
+            }
+        }
+    });
+    op.invalidate(pageNumber);
+    op.commit();
 }
 
 }  // namespace ot::sign

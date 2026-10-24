@@ -118,3 +118,6 @@ id-card
 file-key
 key-round
 scan-search
+history
+eraser
+file-check

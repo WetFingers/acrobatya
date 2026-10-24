@@ -129,6 +129,15 @@ inline constexpr ListKey kSignReasons{"signatures/reasons"};
 inline constexpr StringKey kSignAppearances{"signatures/appearances", ""};
 inline constexpr StringKey kSignAppearance{"signatures/appearance", ""};
 inline constexpr StringKey kSignReviewWarnings{"signatures/reviewWarnings", "always", "never|certify|always"};
+// «Проверка» (4.6; sign-25, sign-32; services/crypto_worker.h): проверять подписи при открытии документа (как
+// Acrobat — да), проверка отзыва — обязательно / по возможности (по умолчанию) / никогда, просроченные метки
+// времени — принимать (Acrobat «Использовать просроченные метки времени»), «Предлагать доверять подписанту»
+// — кнопка на жёлтой полосе, когда подпись цела, а подписант не доверен.
+inline constexpr BoolKey kVerifyOnOpen{"signatures/verifyOnOpen", true};
+inline constexpr StringKey kVerifyRevocation{"signatures/revocation", "bestEffort",
+                                             "required|bestEffort|never"};
+inline constexpr BoolKey kVerifyExpiredTimestamps{"signatures/acceptExpiredTimestamps", true};
+inline constexpr BoolKey kVerifyPromptTrust{"signatures/promptTrust", true};
 
 // --- Печать (print/; эталон 3.3, 3.18 «Печать»; view-37, create-16; сессия 2.6) ---
 // Принтер по умолчанию диалога «Печать» (пусто — системный).

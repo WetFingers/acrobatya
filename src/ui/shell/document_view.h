@@ -34,6 +34,7 @@ class FindBar;
 class MessageBar;
 class MessageStack;
 class PageView;
+class SignatureStatus;
 
 class DocumentView : public QWidget {
     Q_OBJECT
@@ -87,6 +88,8 @@ public:
 
     // Панель «Найти» (Ctrl+F, 2.5) — плавающая в правом верхнем углу вида; у вкладки своя.
     FindBar& findBar() const { return *find_; }
+    // Подписи вкладки (4.6, ui/shell/signature_status.h): проверка, полоса, значки на полях.
+    SignatureStatus& signatures() const { return *signatures_; }
 
     // Плавающая панель (QuickBar) — поверх вида, по центру у нижнего края.
     void setFloatingBar(QWidget* bar);
@@ -144,6 +147,7 @@ private:
     bool pdfx_ = false;
     ViewStyle viewStyle_;
     QList<int> selectedPages_;
+    std::unique_ptr<SignatureStatus> signatures_;  // до дочерних виджетов: снимает свой слой с PageView
 };
 
 }  // namespace ot::ui
