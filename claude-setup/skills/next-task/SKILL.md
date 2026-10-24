@@ -196,6 +196,10 @@ disable-model-invocation: true
 Рубеж проверяет один или несколько этапов сразу. Его задача — не переделывать работу сессий,
 а поймать расхождения с эталоном и стыки между этапами (эталон 9.6).
 
+**Тяжёлое — по одному:** ASan-прогон, фаззер, `tools\lint.ps1 -All` и `msvc-analyze` не запускать одновременно друг с
+другом (машина — 16 ГБ ОЗУ): 24.10.2026 на Р2 clang-tidy в 10 потоков рядом с фаззером оставил 0,9 ГБ свободной
+выделяемой памяти — за шаг до падения Windows, как 23.10 с корпусом фаззов.
+
 1. `py -3.14 tools\verify.py --full` (Debug целиком); Release — `py -3.14 tools\verify.py --preset msvc-release --labels "render|bench"`
    (цели `AcroBatya render_refs render_tests bench`; LTCG-линковка долгая — в фоне с логом и блокирующим ожиданием).
 2. ASan: пресет `msvc-asan`, `unit|engine` под ASan. Фаззер 10 минут: пресет `msvc-fuzz`,

@@ -21,8 +21,10 @@
     constexpr, и qplugin.h Qt 6.12 иначе даёт clang-diagnostic-error. Заголовок проверяется через
     одноимённый .cpp из базы, если он есть, иначе сам (флаги clang-tidy подбирает по соседнему файлу).
     Запуск через tools\vcenv.cmd (clang-tidy 19 из VC\Tools\Llvm и заголовки MSVC), пачками по 25 файлов;
-    -Jobs N — столько пачек сразу (по умолчанию половина логических процессоров: файл — 10–20 с, и -All
-    одной очередью шёл бы около двух часов); вывод пачки — %TEMP%\ottisk-lint\<пресет>\out\batch-N.txt.
+    -Jobs N — столько пачек сразу (по умолчанию половина логических процессоров, но не больше ОЗУ в ГБ / 3: файл —
+    10–20 с, и -All одной очередью шёл бы около двух часов); новая пачка ждёт, пока свободной выделяемой памяти
+    больше -MinFreeGB (по умолчанию 10; одна пачка идёт всегда) — 24.10.2026 рубеж Р2 в 10 потоков рядом с
+    фаззером оставил 0,9 ГБ; вывод пачки — %TEMP%\ottisk-lint\<пресет>\out\batch-N.txt.
     Печатает только предупреждения и ошибки («файл:строка:столбец: warning|error: …») и итог.
     Код выхода: 0 — замечаний нет, 1 — есть замечания, файл не разобрался или clang-tidy не запустился.
     Файл в UTF-8 с BOM: Windows PowerShell 5.1 иначе читает кириллицу неверно.
@@ -32,8 +34,13 @@ param(
     [switch]$Changed,
     [switch]$All,
     [string]$Preset = 'msvc-debug',
-    [int]$Jobs = [Math]::Max(1, [int]([Environment]::ProcessorCount / 2))
+    [int]$Jobs = 0,
+    [double]$MinFreeGB = 10
 )
+if ($Jobs -le 0) {
+    $ramGB = (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB
+    $Jobs = [Math]::Max(1, [Math]::Min([int]([Environment]::ProcessorCount / 2), [int][Math]::Floor($ramGB / 3)))
+}
 
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
@@ -160,6 +167,11 @@ try {
     $next = 0
     while ($next -lt $batches.Count -or $running.Count -gt 0) {
         while ($running.Count -lt $Jobs -and $next -lt $batches.Count) {
+            if ($running.Count -gt 0) {
+                # clang-tidy по Qt/MuPDF — 1–3 ГБ на пачку: новую — только при запасе выделяемой памяти
+                $freeGB = (Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory / 1MB
+                if ($freeGB -lt $MinFreeGB) { break }
+            }
             $quoted = ($batches[$next] | ForEach-Object { '"' + $_ + '"' }) -join ' '
             $out = Join-Path $outDir "batch-$next.txt"
             $command = "call tools\vcenv.cmd >nul && clang-tidy -p ""$lintDbDir"" $configArg --quiet --extra-arg=-D_CRT_USE_BUILTIN_OFFSETOF $quoted > ""$out"" 2>&1"
