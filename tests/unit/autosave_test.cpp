@@ -13,6 +13,7 @@
 #include <nlohmann/json.hpp>
 
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <memory>
@@ -395,6 +396,33 @@ TEST(autosave_child, DISABLED_edit_autosave_and_wait_to_be_killed) {
     rotate(*doc, 2, 270);  // ещё правка, не автосохранённая
     ot::paths::writeFile(dir / L"child.ready", "1");
     std::this_thread::sleep_for(std::chrono::seconds(60));
+}
+
+// Рубеж Р1 (tools/verify_r1.py, M1 «автосохранение переживает taskkill»): AcroBatya.exe --script правит
+// свойства, AutosaveRunner окна пишет журнал, скрипт рубежа снимает процесс taskkill /F, а этот помощник
+// восстанавливает документ из каталога автосохранения программы (OTTISK_AUTOSAVE_CHILD_DIR,
+// OTTISK_AUTOSAVE_CHILD_FILE) и печатает строку «recovered: steps=… position=… title=…» — заголовок сверяет
+// скрипт; отмена шагов возвращает исходный.
+TEST(autosave_child, DISABLED_recover_from_store) {
+    const wchar_t* dirEnv = _wgetenv(L"OTTISK_AUTOSAVE_CHILD_DIR");
+    const wchar_t* fileEnv = _wgetenv(L"OTTISK_AUTOSAVE_CHILD_FILE");
+    ASSERT_NE(dirEnv, nullptr);
+    ASSERT_NE(fileEnv, nullptr);
+    const fs::path file(fileEnv);
+    Autosave store{fs::path(dirEnv)};
+    const auto entry = store.find(file);
+    ASSERT_TRUE(entry.has_value()) << "no autosave entry";
+    const std::string original = Document::openOrThrow(file)->properties().title;
+    ot::RecoverResult r = store.recover(*entry);
+    ASSERT_TRUE(r.ok()) << r.message;
+    Document& doc = *r.document;
+    EXPECT_TRUE(hasUnsaved(doc));
+    const std::string title = doc.properties().title;
+    std::printf("recovered: steps=%d position=%d title=%s\n", entry->steps, entry->position, title.c_str());
+    while (doc.undoStack().canUndo()) {
+        (void)doc.undoStack().undo();
+    }
+    EXPECT_EQ(doc.properties().title, original);
 }
 
 // ---------------------------------------------------------------- AutosaveRunner

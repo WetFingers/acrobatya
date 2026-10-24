@@ -14,6 +14,7 @@
 #include <QPrinterInfo>
 #include <QString>
 
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -394,4 +395,41 @@ TEST(print_compat, DISABLED_gdi_to_file) {
     ASSERT_EQ(job.run(*device), PrintStatus::Done) << job.errorString().toStdString();
     ASSERT_TRUE(std::filesystem::exists(file));
     EXPECT_EQ(pdfPages(file).size(), 2u);
+}
+
+// Рубеж Р1 (tools/verify_r1.py, M1 «печать n-up/буклет/постер в PdfFormat по эталонам раскладки, qpdf --check
+// = 0»): листы в PDF через QPdfWriter (PdfFormat) в OTTISK_COMPAT_OUT/print/layouts — demo/report.pdf (12
+// страниц A4) «Несколько» 2 × 2 и «Буклет» обе стороны, плакат A1 (стр. 4 pages/mixed-sizes.pdf) «Постер» на
+// A4 при 100 % с перекрытием 10 мм и метками реза. Какая страница на каком месте листа и qpdf --check сверяет
+// скрипт рубежа.
+TEST(print_compat, DISABLED_layouts_to_pdf) {
+    const char* out = std::getenv("OTTISK_COMPAT_OUT");
+    ASSERT_NE(out, nullptr);
+    const std::filesystem::path dir = ot::paths::fromUtf8(out) / "print" / "layouts";
+    std::filesystem::create_directories(dir);
+    const auto printTo = [&](const char* source, const char* name, const PrintSettings& s) {
+        auto session = openSession(fixture(source));
+        const auto file = dir / name;
+        std::filesystem::remove(file);
+        auto device = ot::makePdfDevice(qpath(file), {595.2756f, 841.8898f}, 100);
+        PrintJob job(*session, s);
+        ASSERT_EQ(job.run(*device), PrintStatus::Done) << name << ": " << job.errorString().toStdString();
+        std::printf("printed: %s %zu sheets\n", name, pdfPages(file).size());
+    };
+    PrintSettings nup;
+    nup.title = QStringLiteral("report.pdf");
+    nup.layout.layout = print::Layout::Multiple;
+    printTo("demo/report.pdf", "nup4.pdf", nup);
+    PrintSettings booklet;
+    booklet.title = QStringLiteral("report.pdf");
+    booklet.layout.layout = print::Layout::Booklet;
+    printTo("demo/report.pdf", "booklet.pdf", booklet);
+    PrintSettings poster;
+    poster.title = QStringLiteral("mixed-sizes.pdf");
+    poster.layout.layout = print::Layout::Poster;
+    poster.layout.overlap = 10 * print::kPointsPerMm;
+    poster.layout.cutMarks = true;
+    poster.pages.range = print::PageRange::Custom;
+    poster.pages.custom = "4";
+    printTo("pages/mixed-sizes.pdf", "poster.pdf", poster);
 }
