@@ -13,6 +13,7 @@
 
 #include "services/settings.h"
 #include "ui/shell/preferences/documents_page.h"
+#include "ui/shell/preferences/editing_page.h"
 #include "ui/shell/preferences/general_page.h"
 #include "ui/shell/preferences/page_display_page.h"
 #include "ui/shell/preferences/preferences_page.h"
@@ -129,7 +130,7 @@ PreferencesDialog::PreferencesDialog(QWidget* parent) : QDialog(parent) {
     addPage(new DocumentsPage());
     addPage(new StubPreferencesPage(QStringLiteral("commenting"), 5));
     addPage(new StubPreferencesPage(QStringLiteral("forms"), 6));
-    addPage(new StubPreferencesPage(QStringLiteral("editing"), 3));
+    addPage(new EditingPage());
     addPage(new StubPreferencesPage(QStringLiteral("signatures"), 4));
     addPage(new StubPreferencesPage(QStringLiteral("trust"), 7));
     addPage(new StubPreferencesPage(QStringLiteral("search"), 9));

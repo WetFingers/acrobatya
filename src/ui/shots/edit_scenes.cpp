@@ -1,7 +1,10 @@
 ﻿// Сцены редактора (план 3.4; эталон 3.9 «Инструмент», 6.2 п. 1, 6.10): edit-mode — «Редактировать PDF» на
 // абзацах Word (word-paragraphs.pdf): панель инструмента слева, рамки всех блоков; edit-caret — каретка в
 // абзаце и выделенное слово; edit-readonly-block — rotated.pdf: два блока «только чтение» с замком. Кадр —
-// когда блоки страницы пришли и видимые тайлы готовы.
+// когда блоки страницы пришли и видимые тайлы готовы. 3.4 п. 2: edit-format-panel — выделенное слово
+// полужирным, панель FORMAT TEXT показывает его стиль; edit-add-text — новый блок «Добавить текст» с
+// набранной строкой (локальная копия до записи) и маркерами ширины.
+#include <QCoreApplication>
 #include <QTimer>
 
 #include <vector>
@@ -87,6 +90,45 @@ std::vector<Scene> editScenes() {
     });
     caret.ready = [](QWidget* w) { return editReady(w, true); };
     scenes.push_back(caret);
+
+    Scene format;
+    format.name = QStringLiteral("edit-format-panel");
+    format.make = editScene(QStringLiteral("edit/word-paragraphs.pdf"), [](EditMode& m) {
+        const std::vector<EditMode::Frame> frames = m.frames();
+        if (frames.size() < 2 || !m.enterBlock(frames[1].page, frames[1].block, 0)) {
+            return;
+        }
+        const edit::TextRange w = m.editor()->wordAt(4);  // «editor»
+        m.setSelection(w.begin, w.end);
+        m.toggleBold();
+    });
+    format.ready = [](QWidget* w) { return editReady(w, true); };
+    scenes.push_back(format);
+
+    Scene add;
+    add.name = QStringLiteral("edit-add-text");
+    add.make = editScene(QStringLiteral("edit/word-paragraphs.pdf"), [](EditMode& m) {
+        QObject::connect(
+            &m, &EditMode::editingChanged, &m,
+            [&m](bool editing) {
+                if (editing) {
+                    m.insertText(
+                        QCoreApplication::translate("ot::ui::EditScenes", "Новый блок текста — Arial 12"));
+                }
+            },
+            Qt::SingleShotConnection);
+        m.addTextAt(0, QPointF(72, 420));
+    });
+    add.ready = [](QWidget* w) {
+        auto* window = static_cast<MainWindow*>(w);
+        DocumentView* doc = window->currentDocument();
+        if (doc == nullptr || !editReady(w, true)) {
+            return false;
+        }
+        const EditMode& m = EditTool::modeOf(doc->view());
+        return m.editor() != nullptr && !m.editor()->empty() && m.editor()->layoutValid();
+    };
+    scenes.push_back(add);
 
     Scene readOnly;
     readOnly.name = QStringLiteral("edit-readonly-block");

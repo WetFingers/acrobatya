@@ -6,15 +6,16 @@
 // — правка отключена: кнопки серые, причина — строкой панели и подсказкой.
 #pragma once
 
+#include <QLabel>
 #include <QObject>
 #include <QPointer>
 #include <QString>
 
 #include <vector>
 
+#include "ui/tools/edit/format_panel.h"
 #include "ui/tools/tool.h"
 
-class QLabel;
 class QVBoxLayout;
 
 namespace ot::ui {
@@ -38,6 +39,8 @@ public:
     void deactivate() override;
     QWidget* panel() override;
     std::vector<ot::Command> commands() const override;
+    // Шрифт нового текста, запасной шрифт, системные шрифты в списке — из «Установки → Редактирование».
+    void settingsChanged() override;
 
     // Режим «Редактировать» вида (ставится в слот при первом обращении).
     static EditMode& modeOf(PageView& view);
@@ -49,6 +52,8 @@ public:
 
     // Панель: кнопки и строка причины (тесты, сцены).
     ToolButton* textButton() const { return text_; }
+    ToolButton* addTextButton() const { return addText_; }
+    FormatPanel* formatPanel() const { return format_; }
     QLabel* lockLabel() const { return lockLabel_; }
 
     // «Текст» — войти в режим правки текста вкладки.
@@ -62,6 +67,7 @@ private:
     void updateLock();
     void applyLock();
     void syncButtons();
+    void updateDocumentFonts();
     ToolButton* addRow(QVBoxLayout* column, const QString& icon, const QString& label);
     void addCaption(QVBoxLayout* column, const QString& text);
 
@@ -69,6 +75,8 @@ private:
     QPointer<DocumentView> view_;
     QPointer<QWidget> panel_;
     QPointer<ToolButton> text_;
+    QPointer<ToolButton> addText_;
+    QPointer<FormatPanel> format_;
     QPointer<QLabel> lockLabel_;
     QString lock_;
     QString docLock_;  // подпись или /Perms (ответ задачи)

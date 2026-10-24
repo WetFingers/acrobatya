@@ -7,11 +7,14 @@
 #include <memory>
 
 #include "services/edit_ops.h"
+#include "services/settings.h"
+#include "services/system_fonts_dwrite.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
 #include "ui/theme/icons.h"
 #include "ui/theme/theme.h"
 #include "ui/tools/edit/edit_mode.h"
+#include "ui/tools/edit/format_panel.h"
 #include "ui/tools/tool_registry.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
@@ -86,7 +89,15 @@ void EditTool::activate(DocumentView& view) {
     }));
     connections_.push_back(
         connect(&view.view().tools(), &ToolController::toolChanged, this, [this] { syncButtons(); }));
+    connections_.push_back(connect(&mode, &EditMode::addTextChanged, this, [this] { syncButtons(); }));
+    connections_.push_back(connect(&mode, &EditMode::contentLoaded, this, [this] { updateDocumentFonts(); }));
+    connections_.push_back(
+        connect(&view.view(), &PageView::currentPageChanged, this, [this] { updateDocumentFonts(); }));
     docLock_.clear();
+    settingsChanged();
+    if (format_ != nullptr) {
+        format_->setMode(&mode);
+    }
     updateLock();
     editText();
 }
@@ -96,14 +107,59 @@ void EditTool::deactivate() {
         QObject::disconnect(c);
     }
     connections_.clear();
+    if (QCoreApplication::instance() == nullptr) {
+        return;  // реестр — статический: после QApplication виджетов уже не трогать
+    }
     if (view_ != nullptr) {
         ToolController& tools = view_->view().tools();
         if (tools.tool() == ViewToolId::Edit) {
             tools.setTool(ToolController::defaultTool());
         }
     }
+    if (format_ != nullptr) {
+        format_->setMode(nullptr);
+    }
     view_ = nullptr;
     syncButtons();
+}
+
+void EditTool::settingsChanged() {
+    const Settings settings;
+    if (view_ != nullptr) {
+        view_->session().setEditFallback(editFallbackFonts(settings));
+        edit::CharStyle style = modeOf(view_->view()).newTextStyle();
+        style.family = settings.get(settings::kEditDefaultFont).toStdString();
+        style.size = static_cast<float>(settings.get(settings::kEditDefaultFontSize));
+        modeOf(view_->view()).setNewTextStyle(style);
+    }
+    if (format_ != nullptr) {
+        format_->setShowSystemFonts(settings.get(settings::kEditSystemFonts));
+        format_->refresh();
+    }
+}
+
+// Раздел «В документе» списка шрифтов — семейства блоков текущей страницы.
+void EditTool::updateDocumentFonts() {
+    EditMode* m = mode();
+    if (format_ == nullptr || m == nullptr || view_ == nullptr) {
+        return;
+    }
+    QStringList families;
+    if (const editing::PageContent* content = m->content(view_->view().currentPage())) {
+        for (const editing::Block& b : content->blocks) {
+            if (!b.editor) {
+                continue;
+            }
+            for (const edit::CharStyle& s : b.editor->styles()) {
+                const QString f = EditMode::familyOf(s);
+                if (!f.isEmpty() && !families.contains(f, Qt::CaseInsensitive)) {
+                    families << f;
+                }
+            }
+        }
+    }
+    families.sort(Qt::CaseInsensitive);
+    format_->setDocumentFonts(families);
 }
 
 void EditTool::editText() {
@@ -190,6 +246,15 @@ void EditTool::syncButtons() {
         text_->setChecked(editable && view_->view().tools().tool() == ViewToolId::Edit);
         text_->setToolTip(editable ? tr("Щёлкните в абзаце, чтобы править текст (E)") : lock_);
     }
+    if (addText_ != nullptr) {
+        EditMode* m = mode();
+        addText_->setEnabled(editable);
+        addText_->setChecked(editable && m != nullptr && m->addTextArmed());
+        addText_->setToolTip(editable ? tr("Щёлкните на странице, чтобы добавить блок текста") : lock_);
+    }
+    if (format_ != nullptr) {
+        format_->refresh();
+    }
     if (lockLabel_ != nullptr) {
         lockLabel_->setText(lock_);
         lockLabel_->setVisible(!lock_.isEmpty());
@@ -240,6 +305,24 @@ void EditTool::buildPanel() {
     text_->setObjectName(QStringLiteral("editText"));
     text_->setCheckable(true);
     connect(text_, &ToolButton::clicked, this, [this] { editText(); });
+    addText_ = addRow(column, QStringLiteral("type"), tr("Добавить текст"));
+    addText_->setObjectName(QStringLiteral("editAddText"));
+    addText_->setCheckable(true);
+    connect(addText_, &ToolButton::clicked, this, [this](bool on) {
+        editText();
+        if (EditMode* m = mode()) {
+            m->setAddText(on);
+        }
+        syncButtons();
+    });
+
+    addCaption(column, tr("Формат текста"));
+    format_ = new FormatPanel(panel_);
+    column->addWidget(format_);
+    if (EditMode* m = mode()) {
+        format_->setMode(m);
+    }
+    format_->setShowSystemFonts(Settings().get(settings::kEditSystemFonts));
 
     addCaption(column, tr("Ещё"));
     for (const LaterItem& item : kLaterItems) {

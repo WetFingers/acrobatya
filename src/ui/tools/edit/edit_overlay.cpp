@@ -74,6 +74,8 @@ QTransform qtMatrix(const Matrix& m) { return QTransform(m.a, m.b, m.c, m.d, m.e
 
 }  // namespace
 
+QString EditMode::familyOf(const edit::CharStyle& style) { return qtFamily(style); }
+
 void EditMode::paintOverlay(QPainter& painter) {
     // Растр после записи готов — копия больше не нужна (первый кадр после ответа считается без проверки:
     // готовность тайлов в нём — ещё старой правки).
@@ -94,6 +96,7 @@ void EditMode::paintOverlay(QPainter& painter) {
         paintLocalCopy(painter, active_->editor, active_->page, active_->original);
     }
     paintFrames(painter);
+    paintHandles(painter);
     paintCaret(painter);
     painter.restore();
 }
@@ -189,9 +192,9 @@ void EditMode::paintCaret(QPainter& painter) const {
             painter.drawPolygon(poly);
         }
     }
-    const edit::Caret c = active_->editor.caret(active_->caret);
-    const QPointF top = t.map(QPointF(c.top.x, c.top.y));
-    const QPointF bottom = t.map(QPointF(c.bottom.x, c.bottom.y));
+    const auto [ct, cb] = caretSegment(active_->caret);
+    const QPointF top = t.map(QPointF(ct.x, ct.y));
+    const QPointF bottom = t.map(QPointF(cb.x, cb.y));
     if (!active_->preedit.isEmpty()) {
         // Строка IME — подчёркнутой подписью у каретки (ещё не в абзаце).
         QFont f = uiFont(Theme::sizes());

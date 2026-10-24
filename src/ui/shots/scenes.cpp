@@ -1,4 +1,5 @@
 #include "ui/shots/scenes.h"
+#include "ui/tools/tool_registry.h"
 
 #include <QApplication>
 #include <QDir>
@@ -57,6 +58,7 @@ std::function<QWidget*()> withMainWindow(std::function<void(MainWindow&)> setup)
             ini.reset(settings::kToolPanelCollapsed.name);
             ini.reset(settings::kNavPaneGroup);
         }
+        ToolRegistry::instance().deactivate();  // инструмент прошлой сцены (реестр — один на процесс)
         auto* w = new MainWindow();
         // Сцена не спрашивает «Сохранить изменения?» при закрытии (модальный вопрос без экрана не закрыть).
         w->setCloseConfirm([](DocumentView&) { return MainWindow::CloseAnswer::Discard; });

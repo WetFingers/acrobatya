@@ -39,6 +39,11 @@ struct PageContent {
 // Блоки страницы page по модели контент-потока (ContentModel::build → blocksForPage → fromBlock).
 QFuture<PageContent> pageContent(DocumentSession& session, int page,
                                  TaskPriority priority = TaskPriority::High);
+// «Добавить текст» (edit-02): пустой абзац страницы page — левый верхний угол topLeft (координаты страницы),
+// ширина набора width пт, стиль набора style (семейство и кегль — из настроек «Редактирование»). Запись —
+// DocumentSession::editText (абзац без источника пишется новым потоком в конце /Contents).
+QFuture<edit::ParagraphEditor> newParagraph(DocumentSession& session, int page, PointF topLeft, float width,
+                                            edit::CharStyle style);
 // Можно ли править документ: подписан, /Perms или нет.
 QFuture<edit::EditLock> lock(DocumentSession& session, TaskPriority priority = TaskPriority::High);
 

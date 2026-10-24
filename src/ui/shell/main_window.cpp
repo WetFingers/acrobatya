@@ -711,6 +711,9 @@ void MainWindow::applyPreferences() {
     applyAutosaveSettings();
     applyViewStyle();
     status_->reloadSettings();
+    for (Tool* tool : ToolRegistry::instance().tools()) {
+        tool->settingsChanged();  // 3.4: «Редактирование» — шрифт нового текста, запасной, системные
+    }
     updateActions();
 }
 

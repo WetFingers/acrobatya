@@ -35,9 +35,10 @@ namespace ot::ui {
 class EditMode : public QObject, public ViewTool {
     Q_OBJECT
 public:
-    static constexpr int kCommitDelayMs = 1500;  // запись после паузы в наборе
-    static constexpr int kBlinkMs = 530;         // мигание каретки
-    static constexpr int kRenderWaitMs = 3000;   // локальная копия после записи — пока растр не готов
+    static constexpr int kCommitDelayMs = 1500;   // запись после паузы в наборе
+    static constexpr int kBlinkMs = 530;          // мигание каретки
+    static constexpr int kRenderWaitMs = 3000;    // локальная копия после записи — пока растр не готов
+    static constexpr float kNewBlockWidth = 200;  // «Добавить текст»: ширина нового блока, пт
 
     // Рамка блока на экране (вьюпорт).
     struct Frame {
@@ -89,6 +90,8 @@ public:
     // Подсказка «только чтение» над точкой (пусто — не над таким блоком).
     QString readOnlyTip(QPointF viewportPoint) const;
     static QString reasonText(const QString& code);
+    // Семейство Qt стиля: выбранное человеком или из /BaseFont («Arial-BoldMT» → «Arial»).
+    static QString familyOf(const edit::CharStyle& style);
 
     // Каретка в блоке.
     bool editing() const noexcept { return active_.has_value(); }
@@ -125,6 +128,27 @@ public:
     // Ctrl+Z до записи: бросить незаписанную правку блока; false — бросать нечего.
     bool revertPending();
 
+    // Абзац целиком (панель FORMAT TEXT): выравнивание, межстрочный интервал (доля кегля), индекс.
+    void setAlignment(edit::Align align);
+    void setLineSpacing(float factor);
+    void setScript(edit::Script script);
+
+    // «Добавить текст» (edit-02; add_text.cpp): взведён — щелчок на странице вне блоков создаёт пустой блок
+    // шириной kNewBlockWidth стилем newTextStyle (шрифт по умолчанию из «Установки → Редактирование»); блок
+    // растёт вниз при наборе; после создания режим снимается сам.
+    void setAddText(bool armed);
+    bool addTextArmed() const noexcept { return addText_; }
+    void setNewTextStyle(const edit::CharStyle& style) { newStyle_ = style; }
+    const edit::CharStyle& newTextStyle() const noexcept { return newStyle_; }
+    // Создать блок в точке страницы (левый верхний угол; задачей — каретка в нём, когда придёт ответ).
+    void addTextAt(int page, QPointF pagePoint);
+    // Рамка активного блока на экране (с маркерами ширины) и перемещение/ширина ручками.
+    std::optional<QRectF> activeFrame() const;
+    enum class Handle { None, Move, Left, Right };
+    Handle handleAt(QPointF viewportPoint) const;
+    void moveActive(QPointF pageDelta);
+    void setActiveWidth(float width);
+
 signals:
     void editingChanged(bool editing);
     // Каретка, выделение или стиль под кареткой сменились (панель FORMAT TEXT).
@@ -133,6 +157,7 @@ signals:
     // Абзац записан (отчёт Rewriter) или запись не удалась (текст по-русски).
     void committed(const ot::edit::RewriteReport& report);
     void editFailed(const QString& message);
+    void addTextChanged(bool armed);
 
 private:
     struct Active {
@@ -147,6 +172,8 @@ private:
         bool dirty = false;
         quint64 change = 0;                     // номер правки копии (раскладка, запись)
         std::optional<edit::CharStyle> typing;  // стиль набора у каретки (Ctrl+B без выделения)
+        std::optional<edit::CharStyle> base;    // стиль пустого абзаца («Добавить текст»)
+        bool fresh = false;                     // новый блок: в документе его ещё нет
         QString preedit;                        // строка IME, ещё не набранная
     };
 
@@ -164,6 +191,15 @@ private:
     void dropActive();
     void startRenderWait();
     PointF pagePoint(int page, QPointF viewportPoint) const;
+    // Каретка (верх и низ, координаты страницы): у пустого абзаца — по геометрии набора.
+    std::pair<PointF, PointF> caretSegment(int pos) const;
+    // Рамка активного блока (координаты страницы).
+    RectF activeRect() const;
+
+    // add_text.cpp — новый блок, ручки рамки.
+    bool pressHandle(QMouseEvent* event);
+    bool dragHandle(QPointF viewportPoint);
+    void paintHandles(QPainter& painter) const;
 
     // caret.cpp — клавиши, курсор, буфер обмена.
     bool editKey(QKeyEvent* event);
@@ -196,6 +232,13 @@ private:
     quint64 nextId_ = 0;
     QString locked_;
     bool pressing_ = false;
+    bool addText_ = false;
+    edit::CharStyle newStyle_;
+    Handle drag_ = Handle::None;
+    QPointF dragLast_;      // точка страницы прошлого шага перетаскивания
+    float dragWidth0_ = 0;  // ширина набора в начале
+    QPointF dragStart_;     // точка страницы в начале
+    quint64 addRequest_ = 0;
     bool committing_ = false;
     bool commitAgain_ = false;  // во время записи набрали ещё — записать снова
     bool layoutBusy_ = false;

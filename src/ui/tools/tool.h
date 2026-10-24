@@ -41,6 +41,8 @@ public:
     virtual void deactivate() {}
     virtual QWidget* panel() { return nullptr; }
     virtual std::vector<ot::Command> commands() const { return {}; }
+    // Установки применены (диалог «Установки», ОК): инструмент перечитывает свои ключи.
+    virtual void settingsChanged() {}
     virtual std::optional<QCursor> cursorFor(const DocumentView& view, QPointF viewportPoint) const {
         (void)view;
         (void)viewportPoint;

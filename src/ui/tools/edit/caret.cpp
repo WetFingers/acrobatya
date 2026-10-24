@@ -320,10 +320,10 @@ QVariant EditMode::inputMethodQuery(Qt::InputMethodQuery query) const {
         case Qt::ImCursorRectangle:
         case Qt::ImAnchorRectangle: {
             const int at = query == Qt::ImCursorRectangle ? active_->caret : active_->anchor;
-            const edit::Caret c = active_->editor.caret(at);
+            const auto [ct, cb] = caretSegment(at);
             const QTransform t = view_.pageTransform(active_->page);
-            const QPointF top = t.map(QPointF(c.top.x, c.top.y));
-            const QPointF bottom = t.map(QPointF(c.bottom.x, c.bottom.y));
+            const QPointF top = t.map(QPointF(ct.x, ct.y));
+            const QPointF bottom = t.map(QPointF(cb.x, cb.y));
             return QRectF(top, bottom).normalized().adjusted(0, 0, 1, 0);
         }
         case Qt::ImCursorPosition:

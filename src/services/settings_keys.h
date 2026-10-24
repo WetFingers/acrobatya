@@ -135,5 +135,10 @@ inline constexpr StringKey kFullScreenBackground{"fullScreen/background", "#0000
 // Шрифт подстановки, когда шрифта документа нет в системе (эталон 3.9, правило 3 FontResolver): семейство;
 // пусто — «Выбрать автоматически» (Segoe UI или Times New Roman по засечкам).
 inline constexpr StringKey kEditFallbackFont{"editing/fallbackFont", ""};
+// Шрифт нового текста («Добавить текст», edit-02; эталон 3.9): семейство и кегль, пт.
+inline constexpr StringKey kEditDefaultFont{"editing/defaultFont", "Arial"};
+inline constexpr IntKey kEditDefaultFontSize{"editing/defaultFontSize", 12, 4, 144};
+// Системные шрифты в списке FORMAT TEXT (кроме шрифтов документа).
+inline constexpr BoolKey kEditSystemFonts{"editing/showSystemFonts", true};
 
 }  // namespace ot::settings

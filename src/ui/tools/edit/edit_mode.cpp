@@ -224,28 +224,72 @@ std::vector<EditMode::Frame> EditMode::frames() const {
         const QTransform t = view_.pageTransform(page);
         for (std::size_t i = 0; i < it->blocks.size(); ++i) {
             const editing::Block& b = it->blocks[i];
+            if (active_ && active_->page == page && active_->block == static_cast<int>(i)) {
+                continue;  // активный — своей рамкой ниже (вырос при наборе, сдвинут ручками)
+            }
             Frame f;
             f.page = page;
             f.block = static_cast<int>(i);
             f.editable = b.editable();
             f.reason = b.reason;
-            f.active = active_ && active_->page == page && active_->block == f.block;
-            RectF r = b.bbox;
-            if (f.active) {
-                const RectF now = active_->editor.layout().empty() ? r : [&] {
-                    RectF u = RectF::none();
-                    for (const QuadF& q : active_->editor.selectionQuads({0, active_->editor.size()})) {
-                        u = rectUnion(u, q.bounds());
-                    }
-                    return u.valid() ? u : r;
-                }();
-                r = now;
-            }
-            f.rect = t.mapRect(QRectF(QPointF(r.x0, r.y0), QPointF(r.x1, r.y1)));
+            f.rect = t.mapRect(QRectF(QPointF(b.bbox.x0, b.bbox.y0), QPointF(b.bbox.x1, b.bbox.y1)));
             out.push_back(f);
         }
     }
+    if (const std::optional<QRectF> r = activeFrame()) {
+        Frame f;
+        f.page = active_->page;
+        f.block = active_->block;
+        f.editable = true;
+        f.active = true;
+        f.rect = *r;
+        out.push_back(f);
+    }
     return out;
+}
+
+RectF EditMode::activeRect() const {
+    if (!active_) {
+        return RectF::none();
+    }
+    const edit::ParagraphEditor& e = active_->editor;
+    RectF r = RectF::none();
+    for (const QuadF& q : e.selectionQuads({0, e.size()})) {
+        r = rectUnion(r, q.bounds());
+    }
+    if (active_->fresh || !r.valid()) {
+        // Новый блок — во всю ширину набора и не ниже строки.
+        const edit::ParagraphGeometry& g = e.geometry();
+        const float size = active_->base ? active_->base->size : std::max(1.0f, g.fontSize);
+        const float top = g.firstBaseline - size * 0.9f;
+        for (const PointF p :
+             {PointF{g.left, top}, PointF{g.left + g.width, top}, PointF{g.left, top + size * 1.2f},
+              PointF{g.left + g.width, top + size * 1.2f}}) {
+            const PointF q = mapPoint(p, g.toPage);
+            r = rectUnion(r, RectF{q.x, q.y, q.x, q.y});
+        }
+    }
+    return r.valid() ? r : active_->original;
+}
+
+std::optional<QRectF> EditMode::activeFrame() const {
+    if (!active_ || view_.pageViewportRect(active_->page).isEmpty()) {
+        return std::nullopt;
+    }
+    const RectF r = activeRect();
+    return view_.pageTransform(active_->page).mapRect(QRectF(QPointF(r.x0, r.y0), QPointF(r.x1, r.y1)));
+}
+
+std::pair<PointF, PointF> EditMode::caretSegment(int pos) const {
+    const edit::ParagraphEditor& e = active_->editor;
+    if (!e.layout().empty()) {
+        const edit::Caret c = e.caret(pos);
+        return {c.top, c.bottom};
+    }
+    const edit::ParagraphGeometry& g = e.geometry();
+    const float size = active_->base ? active_->base->size : std::max(1.0f, g.fontSize);
+    return {mapPoint(PointF{g.left, g.firstBaseline - size * 0.9f}, g.toPage),
+            mapPoint(PointF{g.left, g.firstBaseline + size * 0.25f}, g.toPage)};
 }
 
 PointF EditMode::pagePoint(int page, QPointF viewportPoint) const {
@@ -296,7 +340,29 @@ bool EditMode::mousePress(QMouseEvent* event) {
         return false;
     }
     const QPointF pos = event->position();
+    if (pressHandle(event)) {
+        return true;
+    }
+    if (addText_ && !locked()) {
+        const int target = view_.pageAtViewport(pos);
+        if (target >= 0) {
+            leaveBlock();
+            addTextAt(target, view_.viewportToPage(target, pos));
+        }
+        return true;
+    }
     const auto [page, block] = blockAt(pos);
+    if (active_ && active_->block < 0 && active_->page == page) {
+        // Новый блок (ещё не в блоках страницы): щелчок по нему — каретка.
+        const RectF r = activeRect();
+        const PointF p = pagePoint(page, pos);
+        if (blockContains(r, p, 2.0f / std::max(0.01f, view_.zoom()))) {
+            moveCaret(active_->editor.positionAt(p), (event->modifiers() & Qt::ShiftModifier) != 0);
+            pressing_ = true;
+            view_.setFocus();
+            return true;
+        }
+    }
     if (page < 0 || block < 0) {
         leaveBlock();
         return true;
@@ -332,6 +398,9 @@ bool EditMode::mousePress(QMouseEvent* event) {
 
 bool EditMode::mouseMove(QMouseEvent* event) {
     const QPointF pos = event->position();
+    if (drag_ != Handle::None && (event->buttons() & Qt::LeftButton) != 0) {
+        return dragHandle(pos);
+    }
     if (pressing_ && active_ && (event->buttons() & Qt::LeftButton) != 0) {
         moveCaret(active_->editor.positionAt(pagePoint(active_->page, pos)), true);
         return true;
@@ -355,6 +424,7 @@ bool EditMode::mouseRelease(QMouseEvent* event) {
         return false;
     }
     pressing_ = false;
+    drag_ = Handle::None;
     return true;
 }
 
@@ -377,6 +447,21 @@ bool EditMode::mouseDoubleClick(QMouseEvent* event) {
 }
 
 QCursor EditMode::cursor(QPointF point, Qt::KeyboardModifiers /*modifiers*/) const {
+    switch (handleAt(point)) {
+        case Handle::Move:
+            return QCursor(Qt::SizeAllCursor);
+        case Handle::Left:
+        case Handle::Right:
+            return QCursor(Qt::SizeHorCursor);
+        case Handle::None:
+            break;
+    }
+    if (addText_ && !locked() && view_.pageAtViewport(point) >= 0) {
+        return QCursor(Qt::CrossCursor);
+    }
+    if (active_ && active_->block < 0 && activeFrame() && activeFrame()->contains(point)) {
+        return QCursor(Qt::IBeamCursor);
+    }
     const auto [page, block] = blockAt(point);
     if (block < 0) {
         return QCursor(Qt::ArrowCursor);
@@ -456,7 +541,9 @@ void EditMode::insertText(const QString& text) {
     edit::ParagraphEditor& e = active_->editor;
     const edit::TextRange sel = selection();
     int caret = 0;
-    if (active_->typing) {
+    if (e.empty() && active_->base && !active_->typing) {
+        caret = e.insert(0, u, *active_->base);
+    } else if (active_->typing) {
         const int at = !sel.empty() ? e.erase(sel) : active_->caret;
         caret = e.insert(at, u, *active_->typing);
     } else if (!sel.empty()) {
@@ -616,6 +703,10 @@ void EditMode::commitCopy(Active& copy) {
     if (!copy.dirty || session == nullptr) {
         return;
     }
+    if (copy.fresh && copy.editor.empty()) {
+        copy.dirty = false;  // новый блок без текста — писать нечего
+        return;
+    }
     if (committing_) {
         commitAgain_ = true;
         return;
@@ -676,6 +767,7 @@ void EditMode::finishCommit(quint64 id, quint64 change, const EditTextResult& re
             a->editor.markWritten(result.editor.source());
         }
         a->clean = result.editor;
+        a->fresh = false;
         if (report.bbox.valid()) {
             a->original = rectUnion(a->original, report.bbox);
         }
@@ -764,6 +856,10 @@ void EditMode::leaveBlock() {
         return;
     }
     commitTimer_.stop();
+    if (active_->fresh && active_->editor.empty()) {
+        dropActive();  // пустой новый блок исчезает
+        return;
+    }
     if (active_->dirty || (committing_ && copyById(active_->id) != nullptr)) {
         Active copy = std::move(*active_);
         copy.typing.reset();
@@ -775,6 +871,30 @@ void EditMode::leaveBlock() {
         }
     }
     dropActive();
+}
+
+void EditMode::setAlignment(edit::Align align) {
+    if (!active_ || active_->editor.alignment() == align) {
+        return;
+    }
+    active_->editor.setAlignment(align);
+    changed();
+}
+
+void EditMode::setLineSpacing(float factor) {
+    if (!active_ || factor <= 0 || std::abs(active_->editor.lineSpacing() - factor) < 1e-4f) {
+        return;
+    }
+    active_->editor.setLineSpacing(factor);
+    changed();
+}
+
+void EditMode::setScript(edit::Script script) {
+    if (const auto st = currentStyle()) {
+        if (edit::scriptOf(*st) != script) {
+            applyStyle(edit::scriptChange(*st, script));
+        }
+    }
 }
 
 bool EditMode::revertPending() {
