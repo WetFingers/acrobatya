@@ -155,6 +155,10 @@ endif()
 
 # --- тесты (эталон 9.1)
 enable_testing()
+# Вывод прошедших тестов в ctest.xml — целиком: по умолчанию ctest режет его до 1 КБ, и строки OT_FEATURE поздних
+# функций QTest-наборов не доходили до tools/scope_report.py (2.6). ctest читает CTestCustom.cmake из каталога сборки.
+file(WRITE "${CMAKE_BINARY_DIR}/CTestCustom.cmake"
+  "set(CTEST_CUSTOM_MAXIMUM_PASSED_TEST_OUTPUT_SIZE 1048576)\nset(CTEST_CUSTOM_MAXIMUM_FAILED_TEST_OUTPUT_SIZE 1048576)\n")
 include(cmake/tests.cmake)
 ottisk_gtest_exe(unit_tests tests/unit unit "unit" 60 ottisk_services)
 # Корпус и мутанты (план 1.1): фикстура corpus — сверка скачанного без записи индекса (нет корпуса — код 77,

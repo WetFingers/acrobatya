@@ -342,7 +342,7 @@ TEST(print_job, device_override_and_fake_dir) {
         ASSERT_NE(dev, nullptr);
         EXPECT_EQ(dev->name(), QStringLiteral("Office"));
     }
-    EXPECT_EQ(opened, 1);
+    EXPECT_EQ(opened, 2);  // supportsDuplex спрашивает устройство подмены, open — второе
     // OTTISK_FAKE_PRINTER — печать без окна в PDF каталога и строка jobs.jsonl.
     ot::test::TempDir tmp;
     // Путь с кириллицей: qputenv пишет узкой кодовой страницей — только широкий _wputenv_s.

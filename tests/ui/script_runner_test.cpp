@@ -132,10 +132,11 @@ private slots:
             runner.run(QJsonDocument::fromJson(R"([{"cmd": "view.page", "args": {"page": 999}}])"), ctx);
         QVERIFY(!bad.ok);
         QVERIFY2(bad.message.startsWith(QStringLiteral("page 999 of ")), qPrintable(bad.message));
-        bad = runner.run(QJsonDocument::fromJson(R"([{"cmd": "command.run", "args": {"id": "doc.print"}}])"),
+        // Команда будущего этапа («Печать» — с 2.6 настоящая, поэтому «Редактировать PDF», этап 3).
+        bad = runner.run(QJsonDocument::fromJson(R"([{"cmd": "command.run", "args": {"id": "tools.edit"}}])"),
                          ctx);
         QVERIFY(!bad.ok);
-        QVERIFY2(bad.message.contains(QStringLiteral("arrives in version 0.2")), qPrintable(bad.message));
+        QVERIFY2(bad.message.contains(QStringLiteral("arrives in version 0.3")), qPrintable(bad.message));
         w.closeAllDocuments();
         bad = runner.run(QJsonDocument::fromJson(R"([{"cmd": "view.zoomIn"}])"), ctx);
         QVERIFY(!bad.ok);
