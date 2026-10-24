@@ -101,12 +101,12 @@ PrintDialog::PrintDialog(DocumentView& view, QList<int> pages, QWidget* parent)
     if (preselect) {
         // Те же страницы и в поле «Страницы» («1-3, 7»; логическими номерами, если они включены — поле так и
         // разбирается) — удобно поправить диапазон.
-        const std::vector<int> pages(pages_.begin(), pages_.end());
+        const std::vector<int> chosen(pages_.begin(), pages_.end());
         std::vector<std::string> labels;
         for (const QString& l : session_->summary().pageLabels) {
             labels.push_back(l.toStdString());
         }
-        rangeEdit_->setText(QString::fromStdString(print::formatPageRange(pages, labels, useLabels_)));
+        rangeEdit_->setText(QString::fromStdString(print::formatPageRange(chosen, labels, useLabels_)));
         selected_->setChecked(true);
     }
     retranslate();
