@@ -1,5 +1,6 @@
 #include "services/thumbnails.h"
 
+#include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFileInfo>
@@ -44,6 +45,14 @@ QImage renderFirstPage(const QString& path, int width) {
 
 ThumbnailCache& ThumbnailCache::shared() {
     static ThumbnailCache cache(QDir(app::dataDir()).filePath(QStringLiteral("thumbs")));
+    // Главная ставит миниатюру и перед самым выходом (закрыли последнюю вкладку): пул останавливается из
+    // деструктора QCoreApplication, пока Qt и MuPDF живы, а не деструктором статика после main — там
+    // рендер шёл во время разрушения статиков: зависание или падение на выходе (рубеж Р2).
+    static const bool drained = [] {
+        qAddPostRoutine([] { shared().stop(); });
+        return true;
+    }();
+    (void)drained;
     return cache;
 }
 
@@ -72,7 +81,7 @@ QImage ThumbnailCache::get(const QString& path) {
     if (const auto it = memory_.constFind(path); it != memory_.constEnd()) {
         return *it;
     }
-    if (failed_.contains(path) || pending_.contains(path) || path.isEmpty()) {
+    if (stopped_ || failed_.contains(path) || pending_.contains(path) || path.isEmpty()) {
         return {};
     }
     const QString file = cacheFile(path);
@@ -116,6 +125,12 @@ void ThumbnailCache::finished(const QString& path, const QImage& image) {
 }
 
 void ThumbnailCache::waitForDone() { pool_.waitForDone(); }
+
+void ThumbnailCache::stop() {
+    stopped_ = true;
+    pool_.clear();
+    pool_.waitForDone();
+}
 
 void ThumbnailCache::clearMemory() {
     memory_.clear();

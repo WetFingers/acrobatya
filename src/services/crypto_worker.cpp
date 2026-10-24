@@ -1,5 +1,6 @@
 #include "services/crypto_worker.h"
 
+#include <QCoreApplication>
 #include <QPointer>
 #include <QtConcurrent/QtConcurrentRun>
 
@@ -62,6 +63,17 @@ sign::VerifyOptions VerifyRequest::options() const {
 
 CryptoWorker& CryptoWorker::shared() {
     static CryptoWorker worker;
+    // Проверка, идущая при выходе, дожидается из деструктора QCoreApplication, пока Qt и MuPDF живы: иначе
+    // её дожидается деструктор статика уже после main — зависание или падение на выходе (рубеж Р2).
+    static const bool drained = [] {
+        qAddPostRoutine([] {
+            CryptoWorker& w = shared();
+            w.pool_.clear();
+            w.pool_.waitForDone();
+        });
+        return true;
+    }();
+    (void)drained;
     return worker;
 }
 

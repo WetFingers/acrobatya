@@ -33,6 +33,8 @@ public:
     QString cacheFile(const QString& path) const;
     QString dir() const { return dir_; }
     void waitForDone();
+    // Выход: очередь очищается, идущий рендер дожидается, новые get() рендер не ставят.
+    void stop();
     void clearMemory();
 
 signals:
@@ -48,6 +50,7 @@ private:
     QSet<QString> pending_;
     QSet<QString> failed_;
     std::atomic<int> renders_{0};
+    bool stopped_ = false;
 };
 
 }  // namespace ot

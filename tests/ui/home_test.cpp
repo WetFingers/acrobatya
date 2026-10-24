@@ -183,6 +183,11 @@ private slots:
         ThumbnailCache again(dir.filePath(QStringLiteral("thumbs")));
         QVERIFY(!again.get(home.pathAt(0)).isNull());
         QCOMPARE(again.renders(), 0);
+        // Выход (рубеж Р2: рендер миниатюры шёл во время разрушения статиков после main): после stop()
+        // новых рендеров нет.
+        again.stop();
+        QVERIFY(again.get(home.pathAt(39)).isNull());
+        QCOMPARE(again.renders(), 0);
     }
 
     void filesShowOnlyPdf() {
