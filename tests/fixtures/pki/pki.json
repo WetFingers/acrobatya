@@ -1,0 +1,154 @@
+{
+    "generator":  "tools/pki/make_test_pki.ps1",
+    "openssl":  "OpenSSL 3.5.6 7 Apr 2026 (Library: OpenSSL 3.5.6 7 Apr 2026)",
+    "not_before":  "2026-01-01T00:00:00Z",
+    "not_after":  "2036-01-01T00:00:00Z",
+    "certs":  {
+                  "root":  {
+                               "file":  "root.pem",
+                               "key":  "root.key",
+                               "role":  "root",
+                               "key_type":  "rsa-4096",
+                               "serial":  "0A01",
+                               "subject_cn":  "АкроБатя тест — корневой ЦС"
+                           },
+                  "inter":  {
+                                "file":  "inter.pem",
+                                "key":  "inter.key",
+                                "role":  "inter",
+                                "key_type":  "rsa-3072",
+                                "serial":  "1000",
+                                "subject_cn":  "АкроБатя тест — выпускающий ЦС"
+                            },
+                  "signer-rsa":  {
+                                     "file":  "signer-rsa.pem",
+                                     "key":  "signer-rsa.key",
+                                     "role":  "signer",
+                                     "key_type":  "rsa-2048",
+                                     "serial":  "2000",
+                                     "subject_cn":  "АкроБатя тест"
+                                 },
+                  "signer-ec":  {
+                                    "file":  "signer-ec.pem",
+                                    "key":  "signer-ec.key",
+                                    "role":  "signer",
+                                    "key_type":  "ec-p256",
+                                    "serial":  "2001",
+                                    "subject_cn":  "АкроБатя тест"
+                                },
+                  "revoked":  {
+                                  "file":  "revoked.pem",
+                                  "key":  "revoked.key",
+                                  "role":  "signer",
+                                  "key_type":  "rsa-2048",
+                                  "serial":  "2002",
+                                  "subject_cn":  "АкроБатя тест"
+                              },
+                  "tsa":  {
+                              "file":  "tsa.pem",
+                              "key":  "tsa.key",
+                              "role":  "tsa",
+                              "key_type":  "rsa-2048",
+                              "serial":  "2003",
+                              "subject_cn":  "АкроБатя тест — служба времени"
+                          },
+                  "ocsp":  {
+                               "file":  "ocsp.pem",
+                               "key":  "ocsp.key",
+                               "role":  "ocsp",
+                               "key_type":  "rsa-2048",
+                               "serial":  "2004",
+                               "subject_cn":  "АкроБатя тест — OCSP"
+                           }
+              },
+    "chain":  "chain.pem",
+    "der":  {
+                "root":  "root.cer",
+                "inter":  "inter.cer"
+            },
+    "pfx":  {
+                "signer-rsa.pfx":  {
+                                       "cert":  "signer-rsa",
+                                       "password":  "acrobatya",
+                                       "pbe":  "AES-256-CBC",
+                                       "mac":  "sha256"
+                                   },
+                "signer-ec.pfx":  {
+                                      "cert":  "signer-ec",
+                                      "password":  "acrobatya",
+                                      "pbe":  "AES-256-CBC",
+                                      "mac":  "sha256"
+                                  },
+                "signer-rsa-legacy.pfx":  {
+                                              "cert":  "signer-rsa",
+                                              "password":  "acrobatya",
+                                              "pbe":  "RC2-40/3DES",
+                                              "mac":  "sha1"
+                                          },
+                "signer-rsa-cyr.pfx":  {
+                                           "cert":  "signer-rsa",
+                                           "password":  "пароль",
+                                           "pbe":  "AES-256-CBC",
+                                           "mac":  "sha256"
+                                       }
+            },
+    "crl":  {
+                "root.crl":  {
+                                 "issuer":  "root",
+                                 "this_update":  "2026-01-01T00:00:00Z",
+                                 "revoked":  [
+
+                                             ]
+                             },
+                "inter-empty.crl":  {
+                                        "issuer":  "inter",
+                                        "this_update":  "2026-01-01T00:00:00Z",
+                                        "revoked":  [
+
+                                                    ]
+                                    },
+                "inter-revoked.crl":  {
+                                          "issuer":  "inter",
+                                          "this_update":  "2026-07-01T00:00:00Z",
+                                          "revoked":  [
+                                                          "revoked"
+                                                      ]
+                                      }
+            },
+    "revoked":  {
+                    "cert":  "revoked",
+                    "date":  "2026-06-01T00:00:00Z",
+                    "reason":  "keyCompromise"
+                },
+    "ocsp":  {
+                 "ocsp-good.der":  {
+                                       "cert":  "signer-rsa",
+                                       "status":  "good"
+                                   },
+                 "ocsp-ec-good.der":  {
+                                          "cert":  "signer-ec",
+                                          "status":  "good"
+                                      },
+                 "ocsp-revoked.der":  {
+                                          "cert":  "revoked",
+                                          "status":  "revoked"
+                                      },
+                 "ocsp-unknown.der":  {
+                                          "serial":  "0BAD",
+                                          "status":  "unknown"
+                                      }
+             },
+    "urls":  {
+                 "http://pki.acrobatya.test/root.crl":  "root.crl",
+                 "http://pki.acrobatya.test/inter.crl":  "inter-revoked.crl",
+                 "http://pki.acrobatya.test/root.cer":  "root.cer",
+                 "http://pki.acrobatya.test/inter.cer":  "inter.cer",
+                 "http://pki.acrobatya.test/ocsp":  "OCSP responder (ocsp.pem/ocsp.key, ca/inter/index.txt)"
+             },
+    "tsa":  {
+                "cert":  "tsa",
+                "config":  "tools/pki/tsa.cnf",
+                "server":  "tools/pki/tsa_serve.py",
+                "policy":  "1.2.3.4.1"
+            }
+}

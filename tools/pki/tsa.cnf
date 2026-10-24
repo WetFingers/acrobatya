@@ -1,0 +1,23 @@
+# Local RFC 3161 time-stamping authority for tests (plan 4.1): `openssl ts -reply -config tsa.cnf`, started by
+# tools/pki/tsa_serve.py. UTF-8 without BOM. Environment: OTTISK_TSA_PKI - tests/fixtures/pki (tsa.pem, tsa.key,
+# chain.pem), OTTISK_TSA_SERIAL - writable serial file (tsa_serve.py keeps it in a temporary directory).
+
+[ tsa ]
+default_tsa = tsa_test
+
+[ tsa_test ]
+dir                    = $ENV::OTTISK_TSA_PKI
+serial                 = $ENV::OTTISK_TSA_SERIAL
+signer_cert            = $dir/tsa.pem
+certs                  = $dir/chain.pem
+signer_key             = $dir/tsa.key
+signer_digest          = sha256
+default_policy         = 1.2.3.4.1
+other_policies         = 1.2.3.4.5.6, 1.2.3.4.5.7
+digests                = sha1, sha256, sha384, sha512
+accuracy               = secs:1, millisecs:500, microsecs:100
+clock_precision_digits = 0
+ordering               = yes
+tsa_name               = yes
+ess_cert_id_chain      = no
+ess_cert_id_alg        = sha256

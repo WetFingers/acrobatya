@@ -1,0 +1,126 @@
+# Test PKI of AcroBatya (plan 4.1, design 9.2): root CA -> issuing CA -> signers, TSA, OCSP responder.
+# Used by tools/pki/make_test_pki.ps1 (openssl req/ca) and make_ocsp_fixtures.ps1; UTF-8 without BOM.
+# Values come from the environment (all three must be set for any command using this file): PKI_DN - section of
+# the subject for openssl req (dn_*), PKI_CA_DIR - database of the CA being used (ca/root or ca/inter),
+# PKI_NEWCERTS - scratch directory for copies of issued certificates.
+# Revocation URLs use the reserved .test domain: tests serve them through FakeHttpFetcher, never the network.
+
+[ req ]
+prompt             = no
+utf8               = yes
+string_mask        = utf8only
+distinguished_name = $ENV::PKI_DN
+
+[ ca ]
+default_ca = ca_default
+
+[ ca_default ]
+dir              = $ENV::PKI_CA_DIR
+database         = $dir/index.txt
+serial           = $dir/serial
+crlnumber        = $dir/crlnumber
+new_certs_dir    = $ENV::PKI_NEWCERTS
+default_md       = sha256
+default_crl_days = 3650
+policy           = policy_any
+unique_subject   = no
+copy_extensions  = none
+preserve         = yes
+utf8             = yes
+string_mask      = utf8only
+email_in_dn      = no
+name_opt         = utf8,sep_comma_plus
+cert_opt         = ca_default
+
+[ policy_any ]
+countryName            = optional
+organizationName       = optional
+organizationalUnitName = optional
+commonName             = supplied
+
+# --- distinguished names ---------------------------------------------------------------------------------------
+
+[ dn_root ]
+C  = RU
+O  = АкроБатя
+CN = АкроБатя тест — корневой ЦС
+
+[ dn_inter ]
+C  = RU
+O  = АкроБатя
+CN = АкроБатя тест — выпускающий ЦС
+
+[ dn_signer_rsa ]
+C  = RU
+O  = АкроБатя
+OU = RSA
+CN = АкроБатя тест
+
+[ dn_signer_ec ]
+C  = RU
+O  = АкроБатя
+OU = ECDSA
+CN = АкроБатя тест
+
+[ dn_revoked ]
+C  = RU
+O  = АкроБатя
+OU = Отозван
+CN = АкроБатя тест
+
+[ dn_tsa ]
+C  = RU
+O  = АкроБатя
+CN = АкроБатя тест — служба времени
+
+[ dn_ocsp ]
+C  = RU
+O  = АкроБатя
+CN = АкроБатя тест — OCSP
+
+# --- extensions ------------------------------------------------------------------------------------------------
+
+[ ext_root ]
+basicConstraints     = critical, CA:true
+keyUsage             = critical, keyCertSign, cRLSign
+subjectKeyIdentifier = hash
+
+[ ext_inter ]
+basicConstraints       = critical, CA:true, pathlen:0
+keyUsage               = critical, keyCertSign, cRLSign
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always
+crlDistributionPoints  = URI:http://pki.acrobatya.test/root.crl
+authorityInfoAccess    = caIssuers;URI:http://pki.acrobatya.test/root.cer
+
+# Signers: emailProtection (purpose smimesign of openssl cms -verify), id-kp-documentSigning (RFC 9336),
+# Adobe Authentic Documents Trust.
+[ ext_signer ]
+basicConstraints       = critical, CA:false
+keyUsage               = critical, digitalSignature, nonRepudiation
+extendedKeyUsage       = emailProtection, 1.3.6.1.5.5.7.3.36, 1.2.840.113583.1.1.5
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always
+crlDistributionPoints  = URI:http://pki.acrobatya.test/inter.crl
+authorityInfoAccess    = OCSP;URI:http://pki.acrobatya.test/ocsp, caIssuers;URI:http://pki.acrobatya.test/inter.cer
+
+# RFC 3161 2.3: the only EKU is id-kp-timeStamping and it MUST be critical.
+[ ext_tsa ]
+basicConstraints       = critical, CA:false
+keyUsage               = critical, digitalSignature, nonRepudiation
+extendedKeyUsage       = critical, timeStamping
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always
+crlDistributionPoints  = URI:http://pki.acrobatya.test/inter.crl
+
+# RFC 6960 4.2.2.2: delegated responder - id-kp-OCSPSigning; id-pkix-ocsp-nocheck - no status check of itself.
+[ ext_ocsp ]
+basicConstraints       = critical, CA:false
+keyUsage               = critical, digitalSignature
+extendedKeyUsage       = OCSPSigning
+noCheck                = ignored
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always
+
+[ ext_crl ]
+authorityKeyIdentifier = keyid:always

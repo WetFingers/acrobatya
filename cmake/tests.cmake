@@ -35,7 +35,8 @@ function(ottisk_gtest_exe target dir prefix labels timeout)
     PROPERTIES LABELS "${_labels}" TIMEOUT ${timeout} ${_o_PROPERTIES})
 endfunction()
 
-# Окружение ctest для всех тестов каталога сборки.
+# Окружение ctest для всех тестов каталога сборки. OTTISK_PYTHON — venv тестов для скриптов, которые тесты
+# запускают сами (локальный TSA tools/pki/tsa_serve.py, план 4.1): не py -3.14 (правило «Кодировки и каталоги»).
 function(ottisk_finalize_tests)
   set(_inc "${CMAKE_BINARY_DIR}/ottisk_test_env.cmake")
   # Пути — с прямыми слэшами (в строке CMake обратный слэш — экранирование); PATH дополняется
@@ -52,6 +53,7 @@ set(ENV{QT_FORCE_STDERR_LOGGING} \"1\")
 set(ENV{OTTISK_DATA_DIR} \"${OTTISK_TEST_DATA_DIR}\")
 set(ENV{OTTISK_INSTANCE} \"test\")
 set(ENV{OTTISK_SOURCE_DIR} \"${CMAKE_SOURCE_DIR}\")
+set(ENV{OTTISK_PYTHON} \"${OTTISK_PYTHON}\")
 set(ENV{PATH} \"${_path};\$ENV{PATH}\")
 ")
   string(REPLACE "\\" "/" _inc_fwd "${_inc}")

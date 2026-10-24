@@ -176,6 +176,23 @@ O=Оттиск, C=RU, 2026-01-01 + 3650 дней, KeyUsage digitalSignature+nonR
 `INTACT:TRUSTED,UNTOUCHED` (запуск pyhanko.exe — с `PYTHONUTF8=1`, иначе «Generic processing error» на кириллице).
 Полная PKI (ЦС, TSA, OCSP/CRL, `.pfx`) — `tests/fixtures/pki/`, сессия 4.1.
 
+### `tests/fixtures/pki/` — `tools/pki/make_test_pki.ps1` + `make_ocsp_fixtures.ps1` (состав и ожидания — `pki.json`)
+
+Не из `tools/gen`: openssl 3.5 из Git for Windows, ключи случайные (файлы не детерминированы, коммитятся как есть);
+даты, серийные номера и имена фиксированы. Все сертификаты — 2026-01-01 … 2036-01-01, SHA-256, имена UTF8String:
+`root` (RSA-4096, «АкроБатя тест — корневой ЦС») → `inter` (RSA-3072, pathlen 0, «… — выпускающий ЦС») →
+`signer-rsa` (RSA-2048), `signer-ec` (ECDSA P-256), `revoked` (RSA-2048, отозван 2026-06-01, keyCompromise) — CN
+«АкроБатя тест», KU digitalSignature + nonRepudiation, EKU emailProtection + documentSigning + Adobe Authentic Documents;
+`tsa` (единственный EKU timeStamping, критический), `ocsp` (OCSPSigning, `id-pkix-ocsp-nocheck`). Ключи `*.key`
+(PEM без пароля — тестовые, не секрет), `chain.pem` (inter + root), `root.cer`/`inter.cer` (DER, для caIssuers).
+CRL (DER): `root.crl` и `inter-empty.crl` — пустые с 2026-01-01, `inter-revoked.crl` — с `revoked`, с 2026-07-01.
+`.pfx`: `signer-rsa.pfx`, `signer-ec.pfx` (AES-256-CBC + MAC SHA-256 — импортируются в Windows), `signer-rsa-legacy.pfx`
+(`-legacy`: RC2-40/3DES, MAC SHA-1) — пароль `acrobatya`; `signer-rsa-cyr.pfx` — пароль «пароль» (UTF-8).
+OCSP (DER, `openssl ocsp` по `ca/inter/index.txt`, thisUpdate — момент генерации, nextUpdate +3650 дней):
+`ocsp-good.der`, `ocsp-ec-good.der`, `ocsp-revoked.der`, `ocsp-unknown.der` (серийный 0x0BAD). Адреса отзыва —
+`http://pki.acrobatya.test/…` (тесты отдают их `FakeHttpFetcher`). Локальная служба времени —
+`tools/pki/tsa_serve.py` + `tools/pki/tsa.cnf` (политика 1.2.3.4.1), из тестов — `tests/unit/support/tsa_server.h`.
+
 ### `tests/fixtures/scans/` — `make_scans.py` (параметры — `scans.json`; каждый ≤ 1,5 МБ)
 
 `scan-01…10.pdf` — A4 300 dpi, растр на всю страницу, и эталоны `scan-NN.txt` (UTF-8, LF, строки как на

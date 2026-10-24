@@ -1,0 +1,2 @@
+# Тестовая PKI (tools/pki/make_test_pki.ps1): байты как есть, без CRLF-преобразований
+* -text
