@@ -1,0 +1,32 @@
+{
+  "about": "images.pdf — две картинки: Im1 JPEG в группе q cm Do Q, Im2 Flate без q/Q",
+  "pageHeight": 792,
+  "images": [
+    {
+      "name": "Im1",
+      "filter": "DCTDecode",
+      "width": 64,
+      "height": 48,
+      "bbox": [
+        72,
+        168,
+        264,
+        312
+      ],
+      "group": true
+    },
+    {
+      "name": "Im2",
+      "filter": "FlateDecode",
+      "width": 32,
+      "height": 32,
+      "bbox": [
+        320,
+        192,
+        520,
+        292
+      ],
+      "group": false
+    }
+  ]
+}

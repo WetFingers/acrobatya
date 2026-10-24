@@ -14,7 +14,9 @@
 // рамки видны, каретка не ставится (setLocked: причина — в подсказке).
 #pragma once
 
+#include <QByteArray>
 #include <QElapsedTimer>
+#include <QFileSystemWatcher>
 #include <QHash>
 #include <QObject>
 #include <QPointer>
@@ -22,6 +24,7 @@
 #include <QString>
 #include <QTimer>
 
+#include <functional>
 #include <optional>
 #include <vector>
 
@@ -149,6 +152,52 @@ public:
     void moveActive(QPointF pageDelta);
     void setActiveWidth(float width);
 
+    // Картинки (план 3.4, п. 3; edit-06, edit-07, create-32; image_tool.cpp): щелчок вне текста — выбор
+    // картинки (рамка accent, восемь маркеров: перетаскивание — перемещение, маркер — масштаб), правая кнопка
+    // — меню (повернуть, отразить, обрезать, заменить, «Редактировать в…», вырезать/копировать/вставить,
+    // удалить, экспорт), Del, Ctrl+C/X/V. Обрезка — рамкой с маркерами, Enter или щелчок вне — применить, Esc
+    // — бросить.
+    struct ImageRef {
+        int page = -1;
+        int index = -1;
+        bool valid() const noexcept { return page >= 0 && index >= 0; }
+        bool operator==(const ImageRef&) const = default;
+    };
+    enum class Grip { None, Inside, TopLeft, Top, TopRight, Right, BottomRight, Bottom, BottomLeft, Left };
+    // Выбор файла (заменить, добавить — открыть; экспорт — сохранить): тесты подставляют свой.
+    using FileChooser = std::function<QString(QWidget* parent, bool save, const QString& suggested)>;
+    static void setFileChooser(FileChooser chooser);
+
+    const edit::PageImage* image(ImageRef ref) const;
+    ImageRef imageAt(QPointF viewportPoint) const;
+    ImageRef selectedImage() const noexcept { return selected_; }
+    void selectImage(ImageRef ref);
+    void clearImageSelection();
+    // Рамка выбранной на экране (с предпросмотром перетаскивания и обрезки) и маркер под точкой.
+    std::optional<QRectF> imageFrame() const;
+    Grip gripAt(QPointF viewportPoint) const;
+    void rotateImage(float degrees);
+    void flipImage(bool horizontal);
+    void deleteImage();
+    void startCrop();
+    void applyCrop();
+    void cancelCrop();
+    bool cropping() const noexcept { return crop_.has_value(); }
+    void setCropRect(const RectF& pageRect);
+    void replaceImage(const QByteArray& bytes);
+    void replaceImageFromFile();
+    void addImage(const QByteArray& bytes, int page, std::optional<RectF> rect = std::nullopt);
+    void addImageFromFile();
+    void copyImage(bool cut);
+    bool pasteImage();
+    void exportImage();
+    // «Редактировать в…»: картинка во временный файл, программа по расширению (ShellLauncher::openFile);
+    // сохранение файла — замена картинки.
+    void editImageExternally();
+    QString externalFile() const { return externalPath_; }
+    // Контекстное меню выбранной (вызывающий владеет; тесты зовут действия по objectName).
+    QMenu* imageMenu(QWidget* parent);
+
 signals:
     void editingChanged(bool editing);
     // Каретка, выделение или стиль под кареткой сменились (панель FORMAT TEXT).
@@ -158,6 +207,7 @@ signals:
     void committed(const ot::edit::RewriteReport& report);
     void editFailed(const QString& message);
     void addTextChanged(bool armed);
+    void imageSelectionChanged();
 
 private:
     struct Active {
@@ -195,6 +245,16 @@ private:
     std::pair<PointF, PointF> caretSegment(int pos) const;
     // Рамка активного блока (координаты страницы).
     RectF activeRect() const;
+
+    // image_tool.cpp — картинки.
+    bool imagePress(QMouseEvent* event);
+    bool imageMove(QMouseEvent* event);
+    bool imageRelease(QMouseEvent* event);
+    bool imageKey(QKeyEvent* event);
+    void paintImages(QPainter& painter) const;
+    RectF draggedImageRect() const;
+    void imageEdited(QFuture<void> future, const QString& failure);
+    void externalChanged(const QString& path);
 
     // add_text.cpp — новый блок, ручки рамки.
     bool pressHandle(QMouseEvent* event);
@@ -239,6 +299,14 @@ private:
     float dragWidth0_ = 0;  // ширина набора в начале
     QPointF dragStart_;     // точка страницы в начале
     quint64 addRequest_ = 0;
+    ImageRef selected_;
+    Grip imageDrag_ = Grip::None;
+    QPointF imagePress_;         // точка страницы нажатия
+    QPointF imageNow_;           // точка страницы сейчас
+    std::optional<RectF> crop_;  // рамка обрезки (координаты страницы)
+    QFileSystemWatcher watcher_;
+    QString externalPath_;
+    ImageRef externalImage_;
     bool committing_ = false;
     bool commitAgain_ = false;  // во время записи набрали ещё — записать снова
     bool layoutBusy_ = false;

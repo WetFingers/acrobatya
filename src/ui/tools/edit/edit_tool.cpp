@@ -1,6 +1,7 @@
 #include "ui/tools/edit/edit_tool.h"
 
 #include <QCoreApplication>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QVBoxLayout>
 
@@ -90,6 +91,7 @@ void EditTool::activate(DocumentView& view) {
     connections_.push_back(
         connect(&view.view().tools(), &ToolController::toolChanged, this, [this] { syncButtons(); }));
     connections_.push_back(connect(&mode, &EditMode::addTextChanged, this, [this] { syncButtons(); }));
+    connections_.push_back(connect(&mode, &EditMode::imageSelectionChanged, this, [this] { syncButtons(); }));
     connections_.push_back(connect(&mode, &EditMode::contentLoaded, this, [this] { updateDocumentFonts(); }));
     connections_.push_back(
         connect(&view.view(), &PageView::currentPageChanged, this, [this] { updateDocumentFonts(); }));
@@ -252,6 +254,22 @@ void EditTool::syncButtons() {
         addText_->setChecked(editable && m != nullptr && m->addTextArmed());
         addText_->setToolTip(editable ? tr("Щёлкните на странице, чтобы добавить блок текста") : lock_);
     }
+    if (addImage_ != nullptr) {
+        addImage_->setEnabled(editable);
+        addImage_->setToolTip(editable ? tr("Вставить изображение из файла на текущую страницу") : lock_);
+    }
+    {
+        EditMode* m = mode();
+        const bool image = editable && m != nullptr && m->selectedImage().valid();
+        for (const QPointer<ToolButton>& b : objects_) {
+            if (b != nullptr) {
+                b->setEnabled(image);
+                if (b->objectName() == QLatin1String("imageCrop")) {
+                    b->setChecked(image && m->cropping());
+                }
+            }
+        }
+    }
     if (format_ != nullptr) {
         format_->refresh();
     }
@@ -316,6 +334,15 @@ void EditTool::buildPanel() {
         syncButtons();
     });
 
+    addImage_ = addRow(column, QStringLiteral("image-plus"), tr("Добавить изображение"));
+    addImage_->setObjectName(QStringLiteral("editAddImage"));
+    connect(addImage_, &ToolButton::clicked, this, [this] {
+        editText();
+        if (EditMode* m = mode()) {
+            m->addImageFromFile();
+        }
+    });
+
     addCaption(column, tr("Формат текста"));
     format_ = new FormatPanel(panel_);
     column->addWidget(format_);
@@ -324,6 +351,54 @@ void EditTool::buildPanel() {
     }
     format_->setShowSystemFonts(Settings().get(settings::kEditSystemFonts));
 
+    addCaption(column, tr("Объекты"));
+    auto* objects = new QHBoxLayout();
+    objects->setSpacing(Theme::sizes().grid);
+    struct ObjectAction {
+        const char* name;
+        const char* icon;
+        const char* label;
+        void (*run)(EditMode&);
+        bool checkable;
+    };
+    static const ObjectAction actions[] = {
+        {"imageRotateCcw", "rotate-ccw",
+         QT_TRANSLATE_NOOP("ot::ui::EditTool", "Повернуть против часовой стрелки"),
+         [](EditMode& m) { m.rotateImage(-90); }, false},
+        {"imageRotateCw", "rotate-cw", QT_TRANSLATE_NOOP("ot::ui::EditTool", "Повернуть по часовой стрелке"),
+         [](EditMode& m) { m.rotateImage(90); }, false},
+        {"imageFlipH", "flip-horizontal-2", QT_TRANSLATE_NOOP("ot::ui::EditTool", "Отразить по горизонтали"),
+         [](EditMode& m) { m.flipImage(true); }, false},
+        {"imageFlipV", "flip-vertical-2", QT_TRANSLATE_NOOP("ot::ui::EditTool", "Отразить по вертикали"),
+         [](EditMode& m) { m.flipImage(false); }, false},
+        {"imageCrop", "crop",
+         QT_TRANSLATE_NOOP("ot::ui::EditTool", "Обрезать изображение (Enter — применить)"),
+         [](EditMode& m) { m.cropping() ? m.applyCrop() : m.startCrop(); }, true},
+        {"imageReplace", "image", QT_TRANSLATE_NOOP("ot::ui::EditTool", "Заменить изображение…"),
+         [](EditMode& m) { m.replaceImageFromFile(); }, false},
+        {"imageEditIn", "square-pen", QT_TRANSLATE_NOOP("ot::ui::EditTool", "Редактировать в…"),
+         [](EditMode& m) { m.editImageExternally(); }, false},
+        {"imageDelete", "trash-2", QT_TRANSLATE_NOOP("ot::ui::EditTool", "Удалить изображение (Del)"),
+         [](EditMode& m) { m.deleteImage(); }, false},
+    };
+    for (const ObjectAction& a : actions) {
+        auto* b = new ToolButton(QLatin1String(a.icon), tr(a.label), panel_);
+        b->setObjectName(QLatin1String(a.name));
+        b->setCheckable(a.checkable);
+        b->setEnabled(false);
+        objects->addWidget(b);
+        objects_ << b;
+        auto run = a.run;
+        connect(b, &ToolButton::clicked, this, [this, run] {
+            if (EditMode* m = mode()) {
+                run(*m);
+            }
+            syncButtons();
+        });
+    }
+    objects->addStretch(1);
+    column->addLayout(objects);
+
     addCaption(column, tr("Ещё"));
     for (const LaterItem& item : kLaterItems) {
         ToolButton* b = addRow(column, QLatin1String(item.icon), tr(item.label));
@@ -331,6 +406,15 @@ void EditTool::buildPanel() {
         b->setToolTip(tr("«%1» появится в версии 0.%2").arg(tr(item.label)).arg(item.stage));
     }
     column->addStretch(1);
+}
+
+ToolButton* EditTool::objectButton(const QString& name) const {
+    for (const QPointer<ToolButton>& b : objects_) {
+        if (b != nullptr && b->objectName() == name) {
+            return b;
+        }
+    }
+    return nullptr;
 }
 
 // ---------------------------------------------------------------- команды

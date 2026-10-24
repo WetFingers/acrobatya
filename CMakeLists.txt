@@ -240,6 +240,19 @@ if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   set_tests_properties(compat.edit PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_edit
     SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endif()
+# Совместимость правки картинок (план 3.4, п. 3): image_compat.DISABLED_write пишет <сборка>/compat/images/*.pdf
+# (перемещение, масштаб, поворот, отражение, обрезка, замена, добавление, удаление — полная запись);
+# tools/compat_check.py — qpdf --check, pdfcpu strict, mutool clean, pypdfium2 рендер.
+if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_test(NAME compat.images.generate
+    COMMAND unit_tests --gtest_also_run_disabled_tests --gtest_filter=image_compat.* --gtest_brief=1)
+  set_tests_properties(compat.images.generate PROPERTIES LABELS "compat;slow" FIXTURES_SETUP compat_images
+    ENVIRONMENT "OTTISK_COMPAT_OUT=${CMAKE_BINARY_DIR}/compat" TIMEOUT 120)
+  add_test(NAME compat.images COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/compat_check.py" --quiet
+    "${CMAKE_BINARY_DIR}/compat/images")
+  set_tests_properties(compat.images PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_images
+    SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+endif()
 # Печать в файл через GDI (план 2.6): print_compat.DISABLED_gdi_to_file — «Microsoft Print to PDF» без окна драйвера
 # в <сборка>/compat/print/gdi.pdf, MuPDF читает страницы; нет такого принтера — пропуск (GTEST_SKIP).
 if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")

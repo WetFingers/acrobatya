@@ -27,9 +27,80 @@ QFuture<PageContent> pageContent(DocumentSession& session, int page, TaskPriorit
                 }
                 out.blocks.push_back(std::move(block));
             }
+            out.images = edit::pageImages(tc.document(), model);
             return out;
         },
         priority, QStringLiteral("Edit blocks"));
+}
+
+namespace {
+
+std::string_view view(const QByteArray& bytes) {
+    return {bytes.constData(), static_cast<std::size_t>(bytes.size())};
+}
+
+template <class F>
+QFuture<void> imageEdit(DocumentSession& session, const char* step, int page, F fn) {
+    return session.edit(QString::fromLatin1(step), [page, step, fn = std::move(fn)](TaskContext& tc) {
+        edit::ImageOps ops(tc.document());
+        fn(ops, std::string(step));
+        tc.touchPage(page);
+        tc.markHeavyEdit();
+    });
+}
+
+}  // namespace
+
+QFuture<void> moveImage(DocumentSession& session, int page, int index, PointF delta) {
+    return imageEdit(session, kMoveImageStep, page,
+                     [=](edit::ImageOps& o, const std::string& op) { o.move(page, index, delta, op); });
+}
+
+QFuture<void> setImageRect(DocumentSession& session, int page, int index, RectF rect) {
+    return imageEdit(session, kResizeImageStep, page,
+                     [=](edit::ImageOps& o, const std::string& op) { o.setRect(page, index, rect, op); });
+}
+
+QFuture<void> rotateImage(DocumentSession& session, int page, int index, float degrees) {
+    return imageEdit(session, kRotateImageStep, page,
+                     [=](edit::ImageOps& o, const std::string& op) { o.rotate(page, index, degrees, op); });
+}
+
+QFuture<void> flipImage(DocumentSession& session, int page, int index, bool horizontal) {
+    return imageEdit(session, kFlipImageStep, page,
+                     [=](edit::ImageOps& o, const std::string& op) { o.flip(page, index, horizontal, op); });
+}
+
+QFuture<void> cropImage(DocumentSession& session, int page, int index, RectF rect) {
+    return imageEdit(session, kCropImageStep, page,
+                     [=](edit::ImageOps& o, const std::string& op) { o.crop(page, index, rect, op); });
+}
+
+QFuture<void> replaceImage(DocumentSession& session, int page, int index, QByteArray bytes) {
+    return imageEdit(session, kReplaceImageStep, page, [=](edit::ImageOps& o, const std::string& op) {
+        o.replace(page, index, view(bytes), op);
+    });
+}
+
+QFuture<int> addImage(DocumentSession& session, int page, QByteArray bytes, RectF rect) {
+    return session.edit(QString::fromLatin1(kAddImageStep), [=](TaskContext& tc) {
+        edit::ImageOps ops(tc.document());
+        const int index = ops.add(page, view(bytes), rect, kAddImageStep);
+        tc.touchPage(page);
+        tc.markHeavyEdit();
+        return index;
+    });
+}
+
+QFuture<void> removeImage(DocumentSession& session, int page, int index) {
+    return imageEdit(session, kDeleteImageStep, page,
+                     [=](edit::ImageOps& o, const std::string& op) { o.remove(page, index, op); });
+}
+
+QFuture<edit::ImageData> exportImage(DocumentSession& session, int page, int index) {
+    return session.post(
+        [=](TaskContext& tc) { return edit::ImageOps(tc.document()).exportImage(page, index); },
+        TaskPriority::High, QStringLiteral("Export image"));
 }
 
 QFuture<edit::ParagraphEditor> newParagraph(DocumentSession& session, int page, PointF topLeft, float width,

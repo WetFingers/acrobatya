@@ -95,6 +95,7 @@ void EditMode::paintOverlay(QPainter& painter) {
     if (showsLocalCopy()) {
         paintLocalCopy(painter, active_->editor, active_->page, active_->original);
     }
+    paintImages(painter);
     paintFrames(painter);
     paintHandles(painter);
     paintCaret(painter);

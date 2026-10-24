@@ -53,6 +53,9 @@ public:
     // Панель: кнопки и строка причины (тесты, сцены).
     ToolButton* textButton() const { return text_; }
     ToolButton* addTextButton() const { return addText_; }
+    ToolButton* addImageButton() const { return addImage_; }
+    // ADJUST OBJECTS: кнопки выбранной картинки по objectName (imageRotateCw, imageCrop…).
+    ToolButton* objectButton(const QString& name) const;
     FormatPanel* formatPanel() const { return format_; }
     QLabel* lockLabel() const { return lockLabel_; }
 
@@ -76,6 +79,8 @@ private:
     QPointer<QWidget> panel_;
     QPointer<ToolButton> text_;
     QPointer<ToolButton> addText_;
+    QPointer<ToolButton> addImage_;
+    QList<QPointer<ToolButton>> objects_;
     QPointer<FormatPanel> format_;
     QPointer<QLabel> lockLabel_;
     QString lock_;

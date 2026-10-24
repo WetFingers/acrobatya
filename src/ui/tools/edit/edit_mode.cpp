@@ -100,6 +100,14 @@ bool EditMode::cancel() {
 }
 
 bool EditMode::escape(bool /*cancelled*/) {
+    if (crop_) {
+        cancelCrop();
+        return true;
+    }
+    if (selected_.valid()) {
+        clearImageSelection();
+        return true;
+    }
     if (active_) {
         leaveBlock();
         return true;
@@ -131,6 +139,12 @@ void EditMode::documentChanged() {
     renderWait_ = false;
     detached_.clear();
     afterglow_.clear();
+    crop_.reset();
+    imageDrag_ = Grip::None;
+    if (selected_.valid()) {
+        selected_ = {};
+        emit imageSelectionChanged();
+    }
     dropActive();
 }
 
@@ -189,6 +203,9 @@ void EditMode::contentArrived(int page, quint64 generation, editing::PageContent
     pages_.insert(page, std::move(content));
     matchActive(page);
     rebaseActive(page);
+    if (selected_.page == page && image(selected_) == nullptr) {
+        clearImageSelection();
+    }
     emit contentLoaded(page);
     view_.viewport()->update();
 }
@@ -336,6 +353,9 @@ QString EditMode::readOnlyTip(QPointF viewportPoint) const {
 // ---------------------------------------------------------------- мышь
 
 bool EditMode::mousePress(QMouseEvent* event) {
+    if (imagePress(event)) {
+        return true;
+    }
     if (event->button() != Qt::LeftButton) {
         return false;
     }
@@ -365,8 +385,19 @@ bool EditMode::mousePress(QMouseEvent* event) {
     }
     if (page < 0 || block < 0) {
         leaveBlock();
+        // Вне текста — картинка под щелчком.
+        const ImageRef hit = imageAt(pos);
+        if (hit.valid() && !locked()) {
+            selectImage(hit);
+            imageDrag_ = Grip::Inside;
+            imagePress_ = view_.viewportToPage(hit.page, pos);
+            imageNow_ = imagePress_;
+        } else {
+            clearImageSelection();
+        }
         return true;
     }
+    clearImageSelection();
     const editing::Block& b = pages_[page].blocks[static_cast<std::size_t>(block)];
     if (!b.editable() || locked()) {
         leaveBlock();
@@ -398,6 +429,9 @@ bool EditMode::mousePress(QMouseEvent* event) {
 
 bool EditMode::mouseMove(QMouseEvent* event) {
     const QPointF pos = event->position();
+    if (imageMove(event)) {
+        return true;
+    }
     if (drag_ != Handle::None && (event->buttons() & Qt::LeftButton) != 0) {
         return dragHandle(pos);
     }
@@ -420,6 +454,9 @@ bool EditMode::mouseMove(QMouseEvent* event) {
 }
 
 bool EditMode::mouseRelease(QMouseEvent* event) {
+    if (imageRelease(event)) {
+        return true;
+    }
     if (event->button() != Qt::LeftButton) {
         return false;
     }
@@ -447,6 +484,24 @@ bool EditMode::mouseDoubleClick(QMouseEvent* event) {
 }
 
 QCursor EditMode::cursor(QPointF point, Qt::KeyboardModifiers /*modifiers*/) const {
+    switch (gripAt(point)) {
+        case Grip::Inside:
+            return QCursor(crop_ ? Qt::ArrowCursor : Qt::SizeAllCursor);
+        case Grip::TopLeft:
+        case Grip::BottomRight:
+            return QCursor(Qt::SizeFDiagCursor);
+        case Grip::TopRight:
+        case Grip::BottomLeft:
+            return QCursor(Qt::SizeBDiagCursor);
+        case Grip::Top:
+        case Grip::Bottom:
+            return QCursor(Qt::SizeVerCursor);
+        case Grip::Left:
+        case Grip::Right:
+            return QCursor(Qt::SizeHorCursor);
+        case Grip::None:
+            break;
+    }
     switch (handleAt(point)) {
         case Handle::Move:
             return QCursor(Qt::SizeAllCursor);

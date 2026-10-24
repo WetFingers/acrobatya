@@ -130,6 +130,35 @@ std::vector<Scene> editScenes() {
     };
     scenes.push_back(add);
 
+    // 3.4 п. 3: картинки — выбранная с маркерами и раздел «Объекты» активен; обрезка — рамка с затемнением.
+    Scene image;
+    image.name = QStringLiteral("edit-image-selected");
+    image.make = editScene(QStringLiteral("edit/images.pdf"), [](EditMode& m) { m.selectImage({0, 0}); });
+    image.ready = [](QWidget* w) {
+        auto* window = static_cast<MainWindow*>(w);
+        DocumentView* doc = window->currentDocument();
+        return doc != nullptr && editReady(w, false) &&
+               EditTool::modeOf(doc->view()).imageFrame().has_value();
+    };
+    scenes.push_back(image);
+
+    Scene crop;
+    crop.name = QStringLiteral("edit-image-crop");
+    crop.make = editScene(QStringLiteral("edit/images.pdf"), [](EditMode& m) {
+        m.selectImage({0, 0});
+        m.startCrop();
+        if (const edit::PageImage* img = m.image({0, 0})) {
+            const RectF b = img->bbox;
+            m.setCropRect(RectF{b.x0 + 24, b.y0 + 16, b.x1 - 40, b.y1 - 30});
+        }
+    });
+    crop.ready = [](QWidget* w) {
+        auto* window = static_cast<MainWindow*>(w);
+        DocumentView* doc = window->currentDocument();
+        return doc != nullptr && editReady(w, false) && EditTool::modeOf(doc->view()).cropping();
+    };
+    scenes.push_back(crop);
+
     Scene readOnly;
     readOnly.name = QStringLiteral("edit-readonly-block");
     readOnly.make = editScene(QStringLiteral("edit/rotated.pdf"));

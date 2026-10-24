@@ -37,6 +37,19 @@ QString typedText(const QKeyEvent* event) {
 
 bool EditMode::wantsShortcut(const QKeyEvent* event) const {
     if (!active_) {
+        // Выбранная картинка: Del, Ctrl+C/X, Enter (обрезка); Ctrl+V — картинка из буфера.
+        const Qt::KeyboardModifiers m = event->modifiers() & ~Qt::KeypadModifier;
+        const int k = event->key();
+        if (selected_.valid() &&
+            ((m == Qt::NoModifier && (k == Qt::Key_Delete || k == Qt::Key_Return || k == Qt::Key_Enter)) ||
+             (m == Qt::ControlModifier && (k == Qt::Key_C || k == Qt::Key_X)))) {
+            return true;
+        }
+        if (m == Qt::ControlModifier && k == Qt::Key_V && !locked()) {
+            const QMimeData* data = QGuiApplication::clipboard()->mimeData();
+            return data != nullptr &&
+                   (data->hasImage() || data->hasFormat(QStringLiteral("application/x-acrobatya-image")));
+        }
         return false;
     }
     if (!typedText(event).isEmpty()) {
@@ -80,7 +93,7 @@ bool EditMode::wantsShortcut(const QKeyEvent* event) const {
 
 bool EditMode::keyPress(QKeyEvent* event) {
     if (!active_) {
-        return false;
+        return imageKey(event);
     }
     return editKey(event);
 }
