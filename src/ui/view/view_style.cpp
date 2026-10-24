@@ -13,6 +13,8 @@ namespace ot::ui {
 
 namespace {
 
+constexpr int kFullAa = 8;  // бит сглаживания MuPDF (fz_set_aa_level): 8 — как по умолчанию, 0 — без
+
 std::uint32_t pack(const Rgba& c) noexcept {
     return (static_cast<std::uint32_t>(c.r) << 16) | (static_cast<std::uint32_t>(c.g) << 8) | c.b;
 }
@@ -32,6 +34,11 @@ ViewStyle ViewStyle::fromSettings(const Settings& s) {
     ViewStyle v;
     v.overprint = overprintPreviewFromName(s.get(settings::kOverprintPreview).toStdString());
     v.base.recolor = recolorFor(s.get(settings::kRecolor), s);
+    v.base.textAa = s.get(settings::kSmoothText) ? kFullAa : 0;
+    v.base.graphicsAa = s.get(settings::kSmoothLineArt) ? kFullAa : 0;
+    v.base.smoothImages = s.get(settings::kSmoothImages);
+    v.base.thinLines = s.get(settings::kEnhanceThinLines);
+    v.showPageBoxes = s.get(settings::kShowPageBoxes);
     return v;
 }
 

@@ -36,3 +36,7 @@ full-screen
 
 # 2.4b — Установки
 preferences-general
+
+# 2.5b — защищённый просмотр и ночной режим
+protected-view
+view-night-dark

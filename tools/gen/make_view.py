@@ -25,7 +25,11 @@
   overprint.pdf     — 1 страница PDF/X (сессия 2.5b, pro-47): /OutputIntents /S /GTS_PDFX, голубой прямоугольник
                       и поверх — пурпурный с /OP true /OPM 1 (с предпросмотром наложения пересечение синее, без —
                       пурпурное), плашки серого и подписи — для ночного режима;
-  overprint.json    — что в overprint.pdf.
+  overprint.json    — что в overprint.pdf;
+  boxes.pdf         — 2 страницы A4 с рамками областей (сессия 2.5b, view-36): /BleedBox, /TrimBox, /ArtBox; на
+                      стр. 2 — ещё /CropBox меньше /MediaBox и /Rotate 90 (рамки поворачиваются вместе со
+                      страницей);
+  boxes.json        — рамки страниц (пункты PDF, y вверх).
 Ожидания раскладки (layout_expected.json рядом) посчитаны вручную по правилам ui/view/layout.h — не этим
 скриптом.
 Откуда: свои тексты; шрифт Arial из C:\\Windows\\Fonts (подмножество).
@@ -356,6 +360,37 @@ def overprint(out: Path) -> dict:
             "overlap_center_pdf": [290, 420]}
 
 
+BOXES = [
+    {"rotate": 0, "crop": None, "bleed": [20, 20, 575.28, 821.89], "trim": [29, 29, 566.28, 812.89],
+     "art": [60, 120, 535.28, 760]},
+    {"rotate": 90, "crop": [10, 10, 585.28, 831.89], "bleed": [25, 25, 570.28, 816.89],
+     "trim": [34, 34, 561.28, 807.89], "art": [90, 200, 505.28, 700]},
+]
+
+
+def boxes(out: Path) -> dict:
+    """2 страницы A4 с /BleedBox, /TrimBox, /ArtBox (сессия 2.5b): рамки в оверлее «Просмотра страницы»."""
+    doc = g.Doc("Рамки областей", "Рамки обрезки, подрезки и выпуска", creator="tools/gen/make_view.py")
+    pdf = doc.pdf
+    font = doc.font("arial")
+    w, h = A4
+    for i, spec in enumerate(BOXES):
+        cv = doc.canvas((w, h))
+        art = spec["art"]
+        cv.rect(art[0], art[1], art[2] - art[0], art[3] - art[1], fill=(0.93, 0.95, 0.98))
+        cv.text(art[0] + 16, art[3] - 40, "Страница %d: рамки областей" % (i + 1), font, 20)
+        cv.paragraph(art[0] + 16, art[3] - 80, art[2] - art[0] - 32,
+                     "Синяя рамка — выпуск (BleedBox), красная — обрезка (TrimBox), зелёная — "
+                     "иллюстрация (ArtBox). Они видны, если включить «Показывать рамки обрезки, подрезки и "
+                     "выпуска» в Установках → Просмотр страницы.", font, 11)
+        extra = {"/BleedBox": Array(spec["bleed"]), "/TrimBox": Array(spec["trim"]), "/ArtBox": Array(art)}
+        if spec["crop"]:
+            extra["/CropBox"] = Array(spec["crop"])
+        doc.add_page(cv, rotate=spec["rotate"], extra=extra)
+    doc.save(out)
+    return {"pages": BOXES, "media": [0, 0, round(w, 4), round(h, 4)]}
+
+
 def main():
     args = g.common_args(__doc__)
     dst = Path(args.out) / "tests" / "fixtures" / "view"
@@ -385,6 +420,10 @@ def main():
     g.write_json(dst / "overprint.json", {"generator": "tools/gen/make_view.py", "pdf": "overprint.pdf",
                                           **overprint_meta})
     g.say("view: overprint.pdf")
+    boxes_meta = boxes(dst / "boxes.pdf")
+    g.check_size(dst / "boxes.pdf", LIMIT)
+    g.write_json(dst / "boxes.json", {"generator": "tools/gen/make_view.py", "pdf": "boxes.pdf", **boxes_meta})
+    g.say("view: boxes.pdf")
 
 
 if __name__ == "__main__":

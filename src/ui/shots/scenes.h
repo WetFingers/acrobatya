@@ -73,7 +73,8 @@ std::vector<Scene> paneScenes();
 std::vector<Scene> statusScenes();
 // mode_scenes.cpp — read-mode, full-screen (2.4).
 std::vector<Scene> modeScenes();
-// prefs_scenes.cpp — preferences-general, preferences-page-display, palette (2.4b).
+// prefs_scenes.cpp — preferences-general, preferences-page-display, palette (2.4b),
+// preferences-page-display-full (2.5b).
 std::vector<Scene> prefsScenes();
 // search_scenes.cpp — find-bar, search-window (2.5).
 std::vector<Scene> searchScenes();
@@ -82,7 +83,7 @@ std::vector<Scene> searchScenes();
 std::vector<Scene> dialogScenes();
 // trust_scenes.cpp — protected-view, link-confirm (2.5b).
 std::vector<Scene> trustScenes();
-// render_scenes.cpp — view-night, view-high-contrast, view-overprint (2.5b).
+// render_scenes.cpp — view-night, view-high-contrast, view-overprint, view-boxes-overlay (2.5b).
 std::vector<Scene> renderScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.

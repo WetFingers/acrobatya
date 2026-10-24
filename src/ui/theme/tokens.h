@@ -145,6 +145,10 @@ inline constexpr ReadingColors kHighContrastReading[] = {
     {hex(0x000000), hex(0xFFFFFF)},
 };
 
+// Рамки областей в виде (2.5b; Установки → Просмотр страницы): выпуск (/BleedBox), обрезка (/TrimBox),
+// иллюстрация (/ArtBox) — данные документа, одни во всех палитрах.
+inline constexpr Rgba kPageBoxColors[] = {hex(0x2196F3), hex(0xF44336), hex(0x4CAF50)};
+
 // Размеры, px при k = 1 (эталон 6.4–6.5). motionMs — время, scaled() его не трогает.
 struct Metrics {
     int grid = 4;                 // сетка

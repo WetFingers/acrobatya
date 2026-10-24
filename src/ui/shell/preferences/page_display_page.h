@@ -1,7 +1,8 @@
-// «Установки → Просмотр страницы» (эталон 3.18, 3.1 «Сглаживание и качество»): раскладка и масштаб по
-// умолчанию, сглаживание текста, изображений и векторной графики, тонкие линии, логические номера страниц,
-// рамки областей. С 2.4b живы логические номера (строка состояния, миниатюры); действие остальных ключей —
-// сессия 2.5b («Настройки „Просмотр страницы“ целиком»), они уже пишутся в settings.ini.
+// «Установки → Просмотр страницы» (эталон 3.18, 3.1 «Сглаживание и качество»; view-36, pro-47): раскладка и
+// масштаб по умолчанию (новые вкладки: DocumentView), сглаживание текста, изображений и векторной графики,
+// «Утолщать тонкие линии», предпросмотр наложения «Всегда / Только для PDF/X / Никогда» (стиль рендера —
+// ui/view/view_style.h, все вкладки по «ОК»: MainWindow::applyViewStyle), логические номера страниц (строка
+// состояния, миниатюры), рамки обрезки, подрезки и выпуска (слой boxes_overlay.h).
 #pragma once
 
 #include <QList>
@@ -29,6 +30,11 @@ public:
     QComboBox* layoutBox() const { return layout_; }
     QComboBox* zoomBox() const { return zoom_; }
     QCheckBox* smoothTextBox() const { return smoothText_; }
+    QCheckBox* smoothImagesBox() const { return smoothImages_; }
+    QCheckBox* smoothLineArtBox() const { return smoothLineArt_; }
+    QCheckBox* thinLinesBox() const { return thinLines_; }
+    QCheckBox* pageBoxesBox() const { return boxes_; }
+    QComboBox* overprintBox() const { return overprint_; }
     QCheckBox* logicalNumbersBox() const { return logical_; }
 
 protected:
@@ -46,6 +52,7 @@ private:
     QCheckBox* smoothImages_ = nullptr;
     QCheckBox* smoothLineArt_ = nullptr;
     QCheckBox* thinLines_ = nullptr;
+    QComboBox* overprint_ = nullptr;
     QCheckBox* logical_ = nullptr;
     QCheckBox* boxes_ = nullptr;
 };

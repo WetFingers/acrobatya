@@ -14,6 +14,7 @@
 #include "core/render/tiles.h"
 #include "services/document_session.h"
 #include "ui/theme/theme.h"
+#include "ui/view/boxes_overlay.h"
 #include "ui/view/link_layer.h"
 #include "ui/view/tile_painter.h"
 #include "ui/view/tool_controller.h"
@@ -51,6 +52,7 @@ namespace {
 constexpr int kSearchZ = 10;
 constexpr int kSelectionZ = 20;
 constexpr int kAnnotFramesZ = 30;
+constexpr int kPageBoxesZ = 35;  // рамки областей (2.5b) — над рамками аннотаций
 constexpr int kLinkFocusZ = 40;
 constexpr int kToolZ = 100;
 constexpr double kEnsureMarginPx = 16;  // поле вокруг совпадения или ссылки, к которой прокручивается вид
@@ -68,6 +70,8 @@ PageView::PageView(QWidget* parent)
     overlays_.add(&selection_, kSelectionZ);
     overlays_.add(&annotFrames_, kAnnotFramesZ);
     links_ = std::make_unique<LinkLayer>(*this);
+    boxes_ = std::make_unique<BoxesOverlay>(*this);
+    overlays_.add(boxes_.get(), kPageBoxesZ);
     overlays_.add(links_.get(), kLinkFocusZ);
     controller_ = new ToolController(*this);
     overlays_.add(controller_, kToolZ);
@@ -92,7 +96,10 @@ PageView::PageView(QWidget* parent)
     });
 }
 
-PageView::~PageView() { overlays_.remove(links_.get()); }
+PageView::~PageView() {
+    overlays_.remove(links_.get());
+    overlays_.remove(boxes_.get());
+}
 
 void PageView::setDocument(DocumentSession* session, RenderPool* pool, TileCache* cache) {
     if (session_ != nullptr) {
@@ -106,6 +113,7 @@ void PageView::setDocument(DocumentSession* session, RenderPool* pool, TileCache
     clearSearchHits();
     annotFrames_.clear();
     links_->documentChanged();
+    boxes_->documentChanged();
     history_.clear();
     fit_.reset();
     currentPage_ = 0;
@@ -122,11 +130,14 @@ void PageView::setDocument(DocumentSession* session, RenderPool* pool, TileCache
         connect(session_, &DocumentSession::pageChanged, this, [this](int page) {
             tiles_->invalidatePage(page);
             links_->pageChanged(page);
+            boxes_->pageChanged(page);
             controller_->pageChanged(page);
         });
         connect(session_, &DocumentSession::structureChanged, this, [this] {
             tiles_->invalidateAll();
             links_->documentChanged();
+            boxes_->documentChanged();
+            boxes_->documentChanged();
             controller_->documentChanged();
         });
         connect(session_, &DocumentSession::closed, this, [this] { tiles_->invalidateAll(); });
@@ -177,6 +188,7 @@ void PageView::setPageSizes(const QVector<QSizeF>& pointSizes) {
     }
     tiles_->setDocument(nullptr, pool_, cache_);
     links_->documentChanged();
+    boxes_->documentChanged();
     clearSearchHits();
     sizes_ = pointSizes;
     history_.clear();

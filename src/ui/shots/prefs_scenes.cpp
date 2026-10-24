@@ -1,7 +1,11 @@
 // Сцены Установок и палитры команд (план 2.4b; эталон 3.18, 6.3, 6.10): диалог и палитра — отдельные окна,
 // поэтому для снимка они встраиваются в главное окно виджетами (как меню в menu-open) поверх открытого
 // документа. preferences-general — «Общие», preferences-page-display — «Просмотр страницы», palette — палитра
-// с фильтром «страниц». Кадр снимается, когда видимые тайлы документа готовы.
+// с фильтром «страниц»; 2.5b — preferences-page-display-full: «Просмотр страницы» целиком (предпросмотр
+// наложения «Всегда», рамки областей включены — поля, не settings.ini). Кадр снимается, когда видимые тайлы
+// документа готовы.
+#include <QCheckBox>
+#include <QComboBox>
 #include <QGraphicsDropShadowEffect>
 #include <QTimer>
 
@@ -10,6 +14,7 @@
 #include "ui/shell/command_palette.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
+#include "ui/shell/preferences/page_display_page.h"
 #include "ui/shell/preferences/preferences_dialog.h"
 #include "ui/shots/scenes.h"
 #include "ui/theme/theme.h"
@@ -66,6 +71,23 @@ std::vector<Scene> prefsScenes() {
     std::vector<Scene> scenes;
     scenes.push_back(preferencesScene("preferences-general", "general"));
     scenes.push_back(preferencesScene("preferences-page-display", "pageDisplay"));
+
+    Scene display;
+    display.name = QStringLiteral("preferences-page-display-full");
+    display.make = withMainWindow([](MainWindow& w) {
+        w.openFile(sceneFixture(QStringLiteral("demo/report.pdf")));
+        QTimer::singleShot(0, &w, [&w] {
+            PreferencesDialog* d = w.showPreferences(QStringLiteral("pageDisplay"));
+            embedCentered(w, d);  // показ читает settings.ini в поля — правки полей после него
+            if (auto* page = qobject_cast<PageDisplayPage*>(d->page(QStringLiteral("pageDisplay")))) {
+                page->overprintBox()->setCurrentIndex(0);  // «Всегда»
+                page->pageBoxesBox()->setChecked(true);
+                page->smoothImagesBox()->setChecked(false);
+            }
+        });
+    });
+    display.ready = sceneDocumentReady;
+    scenes.push_back(display);
 
     Scene palette;
     palette.name = QStringLiteral("palette");

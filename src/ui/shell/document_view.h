@@ -17,6 +17,7 @@
 #include "services/document_session.h"
 #include "services/protected_view.h"
 #include "services/recent.h"
+#include "ui/view/layout.h"
 #include "ui/view/view_style.h"
 #include "ui/widgets/tone.h"
 
@@ -113,6 +114,10 @@ protected:
 private:
     void updateModified();
     void placeFloatingBar();
+    // pageDisplay/defaultLayout → режим (auto и неизвестное — nullopt: как в документе).
+    static std::optional<PageMode> defaultLayoutMode(const QString& value);
+    // pageDisplay/defaultZoom: подгонка или проценты; auto — ничего.
+    void applyDefaultZoom(const QString& value);
     void placeFindBar();
 
     std::shared_ptr<DocumentSession> session_;
@@ -125,6 +130,7 @@ private:
     int initialPage_ = -1;
     LastView initialView_;
     std::optional<links::LinkAction> initialAction_;
+    QString defaultZoom_;  // pageDisplay/defaultZoom при открытии (auto — как решит вид)
     bool modified_ = false;
     bool readOnly_ = false;
     protected_view::Origin protected_ = protected_view::Origin::None;

@@ -10,9 +10,11 @@
 #include <algorithm>
 #include <exception>
 
+#include "services/settings.h"
 #include "ui/panes/find_bar.h"
 #include "ui/shell/message_bar.h"
 #include "ui/theme/theme.h"
+#include "ui/view/boxes_overlay.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
 #include "ui/widgets/message_bar.h"
@@ -31,7 +33,20 @@ DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool*
     view_ = new PageView(this);
     view_->setObjectName(QStringLiteral("pageView"));
     column->addWidget(view_, 1);
+    // Раскладка и масштаб по умолчанию (Установки → Просмотр страницы, view-36): «Автоматически» —
+    // /PageLayout документа, иначе — выбранная; масштаб — после показа (нужен размер окна), последний вид и
+    // /OpenAction файла — важнее.
+    const Settings settings;
+    const QString layout = settings.get(settings::kDefaultLayout);
+    const std::optional<PageMode> mode = defaultLayoutMode(layout);
+    if (mode) {
+        view_->setRespectDocumentLayout(false);
+    }
+    defaultZoom_ = settings.get(settings::kDefaultZoom);
     view_->setDocument(session_.get(), pool, cache);
+    if (mode) {
+        view_->setPageMode(*mode);
+    }
     setFocusProxy(view_);
     const OpenSummary summary = session_->summary();
     permissions_ = summary.permissions;
@@ -93,6 +108,38 @@ void DocumentView::setReadOnly(bool readOnly) {
 void DocumentView::setViewStyle(const ViewStyle& style) {
     viewStyle_ = style;
     view_->setRenderStyle(style.styleFor(pdfx_));
+    view_->boxesOverlay().setShown(style.showPageBoxes);
+}
+
+std::optional<PageMode> DocumentView::defaultLayoutMode(const QString& value) {
+    const std::pair<const char*, PageMode> modes[] = {{"single", PageMode::SinglePage},
+                                                      {"continuous", PageMode::Continuous},
+                                                      {"facing", PageMode::Facing},
+                                                      {"facingContinuous", PageMode::FacingContinuous}};
+    for (const auto& [name, mode] : modes) {
+        if (value == QLatin1String(name)) {
+            return mode;
+        }
+    }
+    return std::nullopt;
+}
+
+void DocumentView::applyDefaultZoom(const QString& value) {
+    const std::pair<const char*, FitMode> fits[] = {{"fitPage", FitMode::Page},
+                                                    {"fitWidth", FitMode::Width},
+                                                    {"fitVisible", FitMode::Visible},
+                                                    {"actual", FitMode::ActualSize}};
+    for (const auto& [name, fit] : fits) {
+        if (value == QLatin1String(name)) {
+            view_->fit(fit);
+            return;
+        }
+    }
+    bool ok = false;
+    const int percent = value.toInt(&ok);
+    if (ok && percent > 0) {
+        view_->setZoomPercent(static_cast<float>(percent));
+    }
 }
 
 void DocumentView::setProtectedView(protected_view::Origin origin) {
@@ -229,6 +276,12 @@ void DocumentView::resizeEvent(QResizeEvent* event) {
 void DocumentView::showEvent(QShowEvent* event) {
     QWidget::showEvent(event);
     placeFloatingBar();
+    if (!defaultZoom_.isEmpty()) {
+        // Масштаб по умолчанию — первым (размер вьюпорта известен после показа); начальный вид ниже его
+        // меняет.
+        QTimer::singleShot(0, this, [this, zoom = defaultZoom_] { applyDefaultZoom(zoom); });
+        defaultZoom_.clear();
+    }
     if (initialPage_ >= 0) {
         // После показа: размер вьюпорта известен — переход ставит страницу наверх.
         QTimer::singleShot(0, this, [this] {

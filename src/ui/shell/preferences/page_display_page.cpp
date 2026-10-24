@@ -18,7 +18,8 @@ namespace {
 const char* const kLayouts[] = {"auto", "single", "continuous", "facing", "facingContinuous"};
 const char* const kZooms[] = {"auto", "fitPage", "fitWidth", "fitVisible", "actual", "50",
                               "75",   "100",     "125",      "150",        "200",    "400"};
-constexpr int kNamedZooms = 5;  // дальше — проценты
+constexpr int kNamedZooms = 5;                                  // дальше — проценты
+const char* const kOverprints[] = {"always", "pdfx", "never"};  // pageDisplay/overprintPreview
 
 }  // namespace
 
@@ -36,6 +37,9 @@ PageDisplayPage::PageDisplayPage(QWidget* parent) : PreferencesPage(parent) {
     zoom_ = new QComboBox();
     zoom_->setObjectName(QStringLiteral("defaultZoomBox"));
     fillData(zoom_, kZooms);
+    overprint_ = new QComboBox();
+    overprint_->setObjectName(QStringLiteral("overprintBox"));
+    fillData(overprint_, kOverprints);
     auto check = [](const char* name) {
         auto* box = new QCheckBox();
         box->setObjectName(QLatin1String(name));
@@ -56,6 +60,7 @@ PageDisplayPage::PageDisplayPage(QWidget* parent) : PreferencesPage(parent) {
     sheet_->addWidget(smoothImages_);
     sheet_->addWidget(smoothLineArt_);
     sheet_->addWidget(thinLines_);
+    rows_ << sheet_->addRow(QString(), overprint_);
     sections_ << sheet_->addSection(QString());
     sheet_->addWidget(logical_);
     sheet_->addWidget(boxes_);
@@ -71,6 +76,7 @@ void PageDisplayPage::load(const Settings& settings) {
     smoothImages_->setChecked(settings.get(settings::kSmoothImages));
     smoothLineArt_->setChecked(settings.get(settings::kSmoothLineArt));
     thinLines_->setChecked(settings.get(settings::kEnhanceThinLines));
+    selectData(overprint_, settings.get(settings::kOverprintPreview));
     logical_->setChecked(settings.get(settings::kUseLogicalPageNumbers));
     boxes_->setChecked(settings.get(settings::kShowPageBoxes));
 }
@@ -82,6 +88,7 @@ void PageDisplayPage::apply(Settings& settings) {
     settings.set(settings::kSmoothImages, smoothImages_->isChecked());
     settings.set(settings::kSmoothLineArt, smoothLineArt_->isChecked());
     settings.set(settings::kEnhanceThinLines, thinLines_->isChecked());
+    settings.set(settings::kOverprintPreview, overprint_->currentData().toString());
     settings.set(settings::kUseLogicalPageNumbers, logical_->isChecked());
     settings.set(settings::kShowPageBoxes, boxes_->isChecked());
 }
@@ -99,8 +106,8 @@ void PageDisplayPage::retranslate() {
     for (int i = 0; i < sections_.size(); ++i) {
         sections_[i]->setText(sections.value(i));
     }
-    const QStringList rows = {tr("&Раскладка страниц:"), tr("&Масштаб:")};
-    const QList<QWidget*> editors = {layout_, zoom_};
+    const QStringList rows = {tr("&Раскладка страниц:"), tr("&Масштаб:"), tr("Предпросмотр &наложения:")};
+    const QList<QWidget*> editors = {layout_, zoom_, overprint_};
     for (int i = 0; i < rows_.size(); ++i) {
         rows_[i]->setText(rows.value(i));
         editors.value(i)->setAccessibleName(
@@ -119,6 +126,11 @@ void PageDisplayPage::retranslate() {
                                               : locale.toString(zoom_->itemData(i).toString().toInt()) +
                                                     QStringLiteral(" %"));
     }
+    const QStringList overprints = {tr("Всегда"), tr("Только для PDF/X"), tr("Никогда")};
+    for (int i = 0; i < overprint_->count(); ++i) {
+        overprint_->setItemText(i, overprints.value(i));
+    }
+    overprint_->setToolTip(tr("Показывать наложение красок (overprint), как при печати"));
     smoothText_->setText(tr("Сглаживание &текста"));
     smoothImages_->setText(tr("Сглаживание &изображений"));
     smoothLineArt_->setText(tr("Сглаживание &векторной графики"));

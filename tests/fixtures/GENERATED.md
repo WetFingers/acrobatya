@@ -104,6 +104,8 @@ openpyxl, python-pptx, odfpy), `mutool` из `C:\src\mupdf\platform\win32\x64\Re
 | `present.json` | что в `present.pdf` | |
 | `overprint.pdf` | 1 страница A4 PDF/X (сессия 2.5b): `/OutputIntents /S /GTS_PDFX`, голубой прямоугольник и поверх пурпурный с `/OP true /OPM 1` (с предпросмотром наложения пересечение синее), серая плашка и чёрный текст | `ui.view_style`, сцены `view-overprint`, `view-night`, `view-high-contrast` |
 | `overprint.json` | что в `overprint.pdf` | |
+| `boxes.pdf` | 2 страницы A4 (сессия 2.5b): `/BleedBox`, `/TrimBox`, `/ArtBox`; на стр. 2 — ещё `/CropBox` меньше `/MediaBox` и `/Rotate 90` | `ui.page_display_prefs`, сцена `view-boxes-overlay` |
+| `boxes.json` | рамки страниц `boxes.pdf` (пункты PDF, y вверх) | |
 
 ### `tests/fixtures/annots/` — `make_annots.py` (+ `tools/gen/annots.js`)
 
