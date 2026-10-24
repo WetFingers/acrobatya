@@ -6,8 +6,10 @@
 // снимке тестовой PKI через DocumentSession::sign, корень PKI — доверенный в каталоге данных снимков: синяя
 // полоса и значок на поле), sig-bar-problems (sig/signed-bb.pdf — самоподписанный подписант не доверен:
 // жёлтая полоса с «Доверять подписанту…»), pane-signatures (панель «Подписи» с раскрытой подписью),
-// certificate-viewer (цепочка из трёх сертификатов). Удостоверение — tests/fixtures/pki/signer-rsa.pfx в
-// каталоге данных снимков; диалоги встраиваются в окно (embedCentered).
+// certificate-viewer (цепочка из трёх сертификатов); Установки → Подписи по вкладкам —
+// preferences-identities, preferences-trusted, preferences-tsa, preferences-verification,
+// preferences-sign-creation. Удостоверение — tests/fixtures/pki/signer-rsa.pfx в каталоге данных снимков;
+// диалоги встраиваются в окно (embedCentered).
 #include <QDir>
 #include <QFile>
 #include <QPushButton>
@@ -31,6 +33,8 @@
 #include "ui/shell/main_window.h"
 #include "ui/shell/message_bar.h"
 #include "ui/shell/nav_pane.h"
+#include "ui/shell/preferences/preferences_dialog.h"
+#include "ui/shell/preferences/signatures_page.h"
 #include "ui/shell/signature_status.h"
 #include "ui/shots/scenes.h"
 #include "ui/tools/certificate/appearance_dialog.h"
@@ -291,6 +295,35 @@ std::vector<Scene> signScenes() {
         return false;
     };
     scenes.push_back(viewer);
+
+    // Установки → Подписи по вкладкам (4.6, п. 3): удостоверение PKI и корень PKI — в каталоге данных
+    // снимков.
+    const std::pair<const char*, const char*> prefs[] = {
+        {"preferences-identities", "identities"},
+        {"preferences-trusted", "trusted"},
+        {"preferences-tsa", "tsa"},
+        {"preferences-verification", "verification"},
+        {"preferences-sign-creation", "creation"},
+    };
+    for (const auto& [name, tab] : prefs) {
+        Scene s;
+        s.name = QLatin1String(name);
+        const QString id = QLatin1String(tab);
+        s.make = withMainWindow([id](MainWindow& w) {
+            sign_scenes::ensureIdentity();
+            sign_scenes::trustRoot();
+            w.openFile(sceneFixture(QStringLiteral("demo/report.pdf")));
+            QTimer::singleShot(0, &w, [&w, id] {
+                PreferencesDialog* d = w.showPreferences(QStringLiteral("signatures"));
+                if (auto* page = qobject_cast<SignaturesPage*>(d->page(QStringLiteral("signatures")))) {
+                    page->showTab(id);
+                }
+                embedCentered(w, d);
+            });
+        });
+        s.ready = sceneDocumentReady;
+        scenes.push_back(s);
+    }
     return scenes;
 }
 

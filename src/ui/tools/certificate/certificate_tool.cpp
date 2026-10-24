@@ -10,6 +10,7 @@
 #include <exception>
 
 #include "core/sign/doc_timestamp.h"
+#include "core/sign/ltv.h"
 #include "core/sign/verifier.h"
 #include "services/background_tasks.h"
 #include "services/http_fetcher.h"
@@ -22,6 +23,9 @@
 #include "ui/shell/main_window.h"
 #include "ui/shell/message_bar.h"
 #include "ui/shell/nav_pane.h"
+#include "ui/shell/preferences/preferences_dialog.h"
+#include "ui/shell/preferences/signatures_page.h"
+#include "ui/shell/signature_status.h"
 #include "ui/theme/icons.h"
 #include "ui/theme/theme.h"
 #include "ui/tools/certificate/certify_dialog.h"
@@ -435,29 +439,36 @@ void CertificateTool::signWith(SignDialog& dialog, const Pending& pending) {
     syncButtons();
     const quint64 task =
         BackgroundTasks::shared().start(tr("Подписание «%1»").arg(QFileInfo(target).fileName()));
-    v->session().sign(std::move(r), target).then(this, [this, target, task](QFuture<sign::SignResult> f) {
-        BackgroundTasks::shared().finish(task);
-        busy_ = false;
-        trust_.reset();
-        try {
-            const sign::SignResult res = f.result();
-            QString message = tr("Документ подписан и сохранён: %1.").arg(QFileInfo(target).fileName());
-            if (!res.timestampError.empty()) {
-                message += QLatin1Char(' ') + tr("Метки времени нет — служба времени не ответила.");
+    QPointer<DocumentView> signedView = v;
+    v->session()
+        .sign(std::move(r), target)
+        .then(this, [this, target, task, signedView](QFuture<sign::SignResult> f) {
+            BackgroundTasks::shared().finish(task);
+            busy_ = false;
+            trust_.reset();
+            try {
+                const sign::SignResult res = f.result();
+                QString message = tr("Документ подписан и сохранён: %1.").arg(QFileInfo(target).fileName());
+                if (!res.timestampError.empty()) {
+                    message += QLatin1Char(' ') + tr("Метки времени нет — служба времени не ответила.");
+                }
+                if (!res.ltvError.empty()) {
+                    message += QLatin1Char(' ') + tr("Сведения для проверки не добавлены.");
+                }
+                if (!res.archiveError.empty()) {
+                    message += QLatin1Char(' ') + tr("Метка времени документа не добавлена.");
+                }
+                done(true, message);
+                if (signedView != nullptr &&
+                    (res.level == sign::SignLevel::B || res.level == sign::SignLevel::T)) {
+                    offerLtv(*signedView);
+                }
+            } catch (const sign::SignError& e) {
+                done(false, SignTexts::signError(e));
+            } catch (const std::exception& e) {
+                done(false, tr("Подписать не удалось: %1").arg(QString::fromUtf8(e.what())));
             }
-            if (!res.ltvError.empty()) {
-                message += QLatin1Char(' ') + tr("Сведения для проверки не добавлены.");
-            }
-            if (!res.archiveError.empty()) {
-                message += QLatin1Char(' ') + tr("Метка времени документа не добавлена.");
-            }
-            done(true, message);
-        } catch (const sign::SignError& e) {
-            done(false, SignTexts::signError(e));
-        } catch (const std::exception& e) {
-            done(false, tr("Подписать не удалось: %1").arg(QString::fromUtf8(e.what())));
-        }
-    });
+        });
 }
 
 bool CertificateTool::startTimestamp() {
@@ -523,37 +534,89 @@ void CertificateTool::verifyAll() {
     if (MainWindow* w = certificate_tool::windowOf(v)) {
         w->navPane().showPane(QStringLiteral("signatures"));
     }
-    QPointer<DocumentView> target = v;
-    std::shared_ptr<const sign::TrustStore> trust = TrustService::shared().snapshot();
-    v->session()
-        .post(
-            [trust](TaskContext& tc) {
-                sign::VerifyOptions o;
-                o.trust = trust.get();
-                return sign::verifyDocument(tc.document(), o).status;
-            },
-            TaskPriority::Normal, QStringLiteral("Verify signatures"))
-        .then(this, [target](QFuture<sign::DocumentStatus> f) {
-            if (target == nullptr) {
-                return;
-            }
-            try {
-                const sign::DocumentStatus s = f.result();
-                const QString text = s == sign::DocumentStatus::NotSigned ? tr("В документе нет подписей.")
-                                                                          : SignTexts::documentStatus(s);
-                Toast::notify(target->window(), text,
-                              s == sign::DocumentStatus::Invalid    ? Tone::Danger
-                              : s == sign::DocumentStatus::Problems ? Tone::Warn
-                                                                    : Tone::Info);
-            } catch (const std::exception&) {  // NOLINT(bugprone-empty-catch): документ закрыт
-            }
-        });
+    v->signatures().verify();  // итог — полоса и панель «Подписи» (ui/shell/signature_status.h)
 }
 
 void CertificateTool::showIdentities() {
     if (MainWindow* w = certificate_tool::windowOf(view())) {
-        w->showPreferences(QStringLiteral("signatures"));
+        if (PreferencesDialog* d = w->showPreferences(QStringLiteral("signatures"))) {
+            if (auto* page = qobject_cast<SignaturesPage*>(d->page(QStringLiteral("signatures")))) {
+                page->showTab(QStringLiteral("identities"));
+            }
+        }
     }
+}
+
+// Сведения для долгосрочной проверки после подписи B-B/B-T (Установки → Подписи → Проверка,
+// signatures/autoAddLtv): «всегда» — сразу; «спрашивать» — молча, если данных немного, иначе полосой с
+// кнопкой (core decideAutoLtv); «не добавлять» — ничего.
+void CertificateTool::offerLtv(DocumentView& view) {
+    const QString mode = Settings().get(settings::kAutoAddLtv);
+    if (mode == QLatin1String("never")) {
+        return;
+    }
+    QPointer<DocumentView> target = &view;
+    const auto add = [this, target] {
+        if (target == nullptr) {
+            return;
+        }
+        target->session()
+            .addValidationInfo(TrustService::shared().snapshot(), Settings().get(settings::kLtvVri))
+            .then(this, [this, target](QFuture<sign::LtvResult> f) {
+                if (target == nullptr) {
+                    return;
+                }
+                try {
+                    const sign::LtvResult r = f.result();
+                    if (r.dss.written && r.save.ok()) {
+                        Toast::notify(target->window(), tr("Сведения для долгосрочной проверки добавлены."),
+                                      Tone::Ok);
+                    }
+                    emit ltvFinished(r.dss.written && r.save.ok());
+                } catch (const std::exception& e) {
+                    Toast::notify(
+                        target->window(),
+                        tr("Сведения для проверки не добавлены: %1").arg(QString::fromUtf8(e.what())),
+                        Tone::Danger);
+                    emit ltvFinished(false);
+                }
+            });
+    };
+    signing::ltvDecision(view.session(), TrustService::shared().snapshot(),
+                         sign::ltvAutoAddFromName(mode.toStdString()))
+        .then(this, [this, target, add](QFuture<sign::LtvDecision> f) {
+            sign::LtvDecision decision = sign::LtvDecision::Skip;
+            try {
+                decision = f.result();
+            } catch (const std::exception&) {  // NOLINT(bugprone-empty-catch): не собралось — не предлагать
+            }
+            if (target == nullptr) {
+                return;  // вкладку закрыли — не о чем сообщать
+            }
+            if (decision == sign::LtvDecision::Skip) {
+                emit ltvFinished(false);
+            } else if (decision == sign::LtvDecision::Add) {
+                add();
+            } else {
+                askLtv(*target, add);
+            }
+        });
+}
+
+void CertificateTool::askLtv(DocumentView& view, const std::function<void()>& add) {
+    QPointer<DocumentView> target = &view;
+    MessageBar* bar = view.messageStack().add(
+        Tone::Info,
+        tr("Добавить в документ сведения для долгосрочной проверки (LTV)? Подпись будет проверяться и "
+           "после того, как сертификаты истекут."));
+    bar->setObjectName(QStringLiteral("ltvOfferBar"));
+    bar->addAction(tr("Добавить"), QStringLiteral("add"), true);
+    connect(bar, &MessageBar::actionTriggered, this, [add, bar, target](const QString&) {
+        if (target != nullptr) {
+            target->messageStack().removeBar(bar);
+        }
+        add();
+    });
 }
 
 // ---------------------------------------------------------------- панель

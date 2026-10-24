@@ -8,9 +8,11 @@
 
 #include <QFuture>
 
+#include <memory>
 #include <vector>
 
 #include "core/sign/docmdp.h"
+#include "core/sign/ltv.h"
 #include "core/sign/sig_fields.h"
 #include "core/sign/warnings_scan.h"
 #include "services/document_session.h"
@@ -30,5 +32,10 @@ QFuture<void> clearSignature(DocumentSession& session, QString field);
 // «Просмотреть подписанную версию»: байты [0, конец /ByteRange) подписи field — во временный файл
 // %TEMP%\AcroBatya\<имя>.signed-<N>.pdf (удаляет вызывающий); нет такой подписи — пусто.
 QFuture<QString> signedVersion(DocumentSession& session, QString field);
+// Сведения LTV после подписи (Установки → Подписи → Проверка, signatures/autoAddLtv; вопрос 12.3): собрать
+// материал (сеть — httpFetcher()) и решить по core/sign/ltv.h decideAutoLtv — пропустить, спросить (данных
+// больше 10 % файла + 10 КБ) или добавить молча.
+QFuture<sign::LtvDecision> ltvDecision(DocumentSession& session,
+                                       std::shared_ptr<const sign::TrustStore> trust, sign::LtvAutoAdd mode);
 
 }  // namespace ot::signing

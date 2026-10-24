@@ -89,18 +89,19 @@ private slots:
         QCOMPARE(d->categoryList()->item(2)->text(), QStringLiteral("Документы"));
         QCOMPARE(d->categoryList()->item(6)->text(), QStringLiteral("Подписи"));
         QCOMPARE(d->currentCategory(), QStringLiteral("general"));
-        // Живые — без этапа (с 2.6 и «Печать», с 3.4 — «Редактирование содержимого»), остальные — заглушки
+        // Живые — без этапа (с 2.6 и «Печать», с 3.4 — «Редактирование содержимого», с 4.6 — «Подписи»),
+        // остальные — заглушки
         // «появится в версии 0.N».
         for (const QString& id : d->categoryIds()) {
             const bool live = id == QLatin1String("general") || id == QLatin1String("pageDisplay") ||
                               id == QLatin1String("documents") || id == QLatin1String("print") ||
-                              id == QLatin1String("editing");
+                              id == QLatin1String("editing") || id == QLatin1String("signatures");
             QCOMPARE(d->page(id)->stage() == 0, live);
         }
-        QVERIFY(d->showCategory(QStringLiteral("signatures")));
-        auto* empty = d->page(QStringLiteral("signatures"))->findChild<ot::ui::EmptyState*>();
+        QVERIFY(d->showCategory(QStringLiteral("trust")));
+        auto* empty = d->page(QStringLiteral("trust"))->findChild<ot::ui::EmptyState*>();
         QVERIFY(empty != nullptr);
-        QCOMPARE(empty->text(), QStringLiteral("Раздел «Подписи» появится в версии 0.4."));
+        QCOMPARE(empty->text(), QStringLiteral("Раздел «Диспетчер доверия» появится в версии 0.7."));
         QVERIFY(!d->showCategory(QStringLiteral("nope")));
         // Esc — закрыть без записи.
         QTest::keyClick(d, Qt::Key_Escape);

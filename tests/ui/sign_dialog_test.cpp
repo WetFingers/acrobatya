@@ -98,6 +98,8 @@ private slots:
         qputenv("OTTISK_DATA_DIR", data.path().toUtf8());
         QSettings(ot::app::settingsPath(), QSettings::IniFormat)
             .setValue(QLatin1String(MainWindow::kRestoreViewKey), false);
+        // Сведения LTV после подписи — отдельный тест (ui.sign_settings): здесь уровни ровно те, что выбраны.
+        ot::Settings().set(ot::settings::kAutoAddLtv, QStringLiteral("never"));
         QVERIFY(tmp_.isValid());
         network_ = std::make_unique<ot::test::PkiNetwork>();
         connect(&certTool(), &CertificateTool::finished, this, [this](bool ok, const QString& message) {

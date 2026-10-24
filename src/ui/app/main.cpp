@@ -225,6 +225,7 @@ int main(int argc, char** argv) {
     if (opts.smokeSeconds <= 0) {
         // Программа закрылась с несохранёнными правками — «Восстановить несохранённые изменения?» (2.5).
         QTimer::singleShot(0, &window, [&window] { window.offerRecovery(); });
+        window.checkTrustListsLater();  // списки доверия раз в 14 дней (4.6)
     }
     if (opts.smokeSeconds > 0) {
         QTimer::singleShot(opts.smokeSeconds * 1000, &app, &QApplication::quit);

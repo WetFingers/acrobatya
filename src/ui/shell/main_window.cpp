@@ -25,9 +25,11 @@
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
+#include <QtConcurrent/QtConcurrentRun>
 
 #include <algorithm>
 #include <exception>
+#include <memory>
 
 #include <spdlog/spdlog.h>
 
@@ -37,6 +39,7 @@
 #include "services/commands.h"
 #include "services/convert_ops.h"
 #include "services/document_registry.h"
+#include "services/http_fetcher.h"
 #include "services/i18n.h"
 #include "services/memory_guard.h"
 #include "services/ocr_ops.h"
@@ -47,6 +50,8 @@
 #include "services/shell_launcher.h"
 #include "services/thumbnails.h"
 #include "services/tile_cache.h"
+#include "services/trust_service.h"
+#include "services/trust_updater.h"
 #include "ui/dialogs/certificate_viewer.h"
 #include "ui/dialogs/password_dialog.h"
 #include "ui/dialogs/properties_dialog.h"
@@ -1071,6 +1076,53 @@ DocumentView* MainWindow::openSignedVersion(DocumentView& source, const QString&
     }
     updateActions();
     return view;
+}
+
+namespace main_window {
+
+// Проверка списков доверия в фоне: настройки и обновитель живут, пока идёт работа и ждёт ответа тост.
+struct TrustListsJob {
+    explicit TrustListsJob(const QString& dir) : updater(settings, httpFetcher(), dir) {}
+    Settings settings;
+    TrustUpdater updater;
+};
+
+}  // namespace main_window
+
+void MainWindow::checkTrustListsLater(int delayMs) {
+    QTimer::singleShot(delayMs, this, [this] {
+        if (networkAccess(Settings()) == NetworkAccess::Off) {
+            return;
+        }
+        auto job = std::make_shared<main_window::TrustListsJob>(TrustService::shared().dir());
+        if (!job->updater.due()) {
+            return;
+        }
+        QtConcurrent::run([job] {
+            return job->updater.check(false);
+        }).then(this, [this, job](QFuture<TrustUpdater::Outcome> f) {
+            TrustUpdater::Outcome outcome = TrustUpdater::Outcome::Failed;
+            try {
+                outcome = f.result();
+            } catch (const std::exception&) {  // NOLINT(bugprone-empty-catch): сбой — до следующей попытки
+            }
+            if (outcome == TrustUpdater::Outcome::Installed) {
+                TrustService::shared().reload();
+            } else if (outcome == TrustUpdater::Outcome::Pending) {
+                const TrustListUpdate& u = job->updater.pending();
+                Toast* toast =
+                    Toast::notify(this,
+                                  tr("Загружены новые списки доверия: ЕС — %1, Adobe — %2 сертификатов.")
+                                      .arg(u.eutlCount())
+                                      .arg(u.aatlCount()),
+                                  Tone::Info, tr("Установить"), 30000);
+                connect(toast, &Toast::actionTriggered, this, [job] {
+                    job->updater.install();
+                    TrustService::shared().reload();
+                });
+            }
+        });
+    });
 }
 
 void MainWindow::notifyLater(const QString& what, int stage) {

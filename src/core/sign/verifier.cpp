@@ -863,6 +863,12 @@ void SignatureCheck::trust(const VerifyOptions& options, const RevocationData& d
             }
         }
     }
+    // Установка «время проверки»: текущее — всегда «сейчас», безопасное — метка, иначе «сейчас».
+    if (options.time == VerificationTime::Current ||
+        (options.time == VerificationTime::SecureTime && sig_.timeSource != TimeSource::Timestamp)) {
+        at = now;
+        sig_.timeSource = TimeSource::Now;
+    }
     sig_.validationTime = timeToIsoUtc(at);
     if (!sig_.intact || !signer_) {
         return;

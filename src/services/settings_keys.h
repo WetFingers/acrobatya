@@ -138,6 +138,9 @@ inline constexpr StringKey kVerifyRevocation{"signatures/revocation", "bestEffor
                                              "required|bestEffort|never"};
 inline constexpr BoolKey kVerifyExpiredTimestamps{"signatures/acceptExpiredTimestamps", true};
 inline constexpr BoolKey kVerifyPromptTrust{"signatures/promptTrust", true};
+// «Проверять сертификаты на время» (sign-32; core/sign/verifier.h VerificationTime): время создания подписи
+// (метка, иначе /M) / безопасное время (метка, иначе текущее) / текущее время.
+inline constexpr StringKey kVerifyTime{"signatures/verifyTime", "signing", "signing|secure|current"};
 
 // --- Печать (print/; эталон 3.3, 3.18 «Печать»; view-37, create-16; сессия 2.6) ---
 // Принтер по умолчанию диалога «Печать» (пусто — системный).

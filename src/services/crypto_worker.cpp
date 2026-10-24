@@ -44,6 +44,10 @@ VerifyRequest VerifyRequest::fromSettings(const Settings& settings) {
     r.network = networkAccess(settings) != NetworkAccess::Off;
     r.revocation = crypto_worker::revocationPolicy(settings.get(settings::kVerifyRevocation));
     r.acceptExpiredTimestamps = settings.get(settings::kVerifyExpiredTimestamps);
+    const QString time = settings.get(settings::kVerifyTime);
+    r.time = time == QLatin1String("current")  ? sign::VerificationTime::Current
+             : time == QLatin1String("secure") ? sign::VerificationTime::SecureTime
+                                               : sign::VerificationTime::SigningTime;
     return r;
 }
 
@@ -52,6 +56,7 @@ sign::VerifyOptions VerifyRequest::options() const {
     o.trust = trust.get();
     o.revocation = revocation;
     o.acceptExpiredTimestamps = acceptExpiredTimestamps;
+    o.time = time;
     return o;
 }
 

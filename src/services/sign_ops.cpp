@@ -1,6 +1,8 @@
 #include "services/sign_ops.h"
 
+#include "core/doc/document.h"
 #include "core/doc/revisions.h"
+#include "services/http_fetcher.h"
 #include "services/task_context.h"
 
 namespace ot::signing {
@@ -58,6 +60,24 @@ QFuture<QString> signedVersion(DocumentSession& session, QString field) {
             return QString();
         },
         TaskPriority::High, QStringLiteral("Signed version"));
+}
+
+QFuture<sign::LtvDecision> ltvDecision(DocumentSession& session,
+                                       std::shared_ptr<const sign::TrustStore> trust, sign::LtvAutoAdd mode) {
+    return session.post(
+        [trust = std::move(trust), mode](TaskContext& tc) {
+            if (mode == sign::LtvAutoAdd::Never) {
+                return sign::LtvDecision::Skip;
+            }
+            sign::LtvOptions options;
+            options.trust = trust.get();
+            options.fetcher = &httpFetcher();
+            const sign::LtvCollection collected = sign::collectLtv(tc.document(), options);
+            std::error_code ec;
+            const std::uintmax_t size = std::filesystem::file_size(tc.document().filePath(), ec);
+            return sign::decideAutoLtv(mode, ec ? 0 : size, collected.added().bytes());
+        },
+        TaskPriority::Low, QStringLiteral("LTV decision"));
 }
 
 }  // namespace ot::signing

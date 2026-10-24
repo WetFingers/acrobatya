@@ -121,3 +121,5 @@ scan-search
 history
 eraser
 file-check
+upload
+refresh-cw

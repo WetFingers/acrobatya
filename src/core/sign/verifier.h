@@ -238,6 +238,12 @@ DocumentStatus documentStatus(const std::vector<SignatureInfo>& signatures);
 // Худший вердикт по находкам (без находок — Valid).
 Verdict verdictFromFindings(const std::vector<Finding>& findings);
 
+// На какой момент проверять сертификаты подписи (Установки → Подписи → Проверка, sign-32; Acrobat «Проверять
+// подписи с использованием»): время создания — метка времени подписи, иначе /M (по умолчанию); безопасное
+// время — метка времени, иначе текущее; текущее время. Метки времени документа проверяются на своё время
+// всегда.
+enum class VerificationTime { SigningTime, SecureTime, Current };
+
 struct VerifyOptions {
     const TrustStore* trust = nullptr;    // якоря; nullptr — нет (все подписанты не доверены)
     net::HttpFetcher* fetcher = nullptr;  // OCSP, CRL, AIA; nullptr — без сети
@@ -246,6 +252,7 @@ struct VerifyOptions {
     bool acceptExpiredTimestamps =
         true;                        // «просроченная метка» — время всё равно метки (Acrobat по умолчанию)
     std::optional<std::time_t> now;  // «сейчас» (тесты); nullopt — часы
+    VerificationTime time = VerificationTime::SigningTime;
 };
 
 // Права сертифицированного документа (sign-30 «Certified documents»: Dynamic content, Embedded high privilege

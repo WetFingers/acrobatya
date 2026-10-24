@@ -28,6 +28,7 @@ struct VerifyRequest {
     bool network = true;  // OCSP, CRL, AIA через httpFetcher(); false — только данные файла
     sign::RevocationPolicy revocation = sign::RevocationPolicy::BestEffort;
     bool acceptExpiredTimestamps = true;
+    sign::VerificationTime time = sign::VerificationTime::SigningTime;
 
     // Из Установок и хранилища доверия программы.
     static VerifyRequest fromSettings(const Settings& settings);

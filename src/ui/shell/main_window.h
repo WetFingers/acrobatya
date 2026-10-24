@@ -165,6 +165,11 @@ public:
     // просмотр — как у исходной вкладки (файл — часть её документа). nullptr — не открылся.
     DocumentView* openSignedVersion(DocumentView& source, const QString& path, const QString& label);
 
+    // Списки доверия EUTL/AATL раз в 14 дней (4.6; services/trust_updater.h): через delayMs после запуска — в
+    // фоне; загружено и ждёт согласия — тост «Установить». Сеть выключена — ничего. Зовёт main.cpp (не
+    // тесты).
+    void checkTrustListsLater(int delayMs = 5000);
+
     // Сообщение «появится в версии 0.N» — тостом над окном (заглушки будущих этапов).
     void notifyLater(const QString& what, int stage);
 

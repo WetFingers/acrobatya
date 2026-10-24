@@ -8,8 +8,9 @@
 // DocumentSession::sign: инкрементальная запись, метка B-T службой из «Серверов времени», B-LT/B-LTA —
 // сведения для проверки и метка документа; служба времени недоступна — по настройке спросить «подписать без
 // метки?» (вопрос из потока документа — в окне), подписать без метки или отменить. Итог — тост; проверку
-// записанного файла и полосу делает проверка подписей вкладки (4.6, п. 2). Метка времени документа —
-// TimestampDialog → «Сохранить как» → DocumentSession::timestampDocument.
+// записанного файла и полосу делает проверка подписей вкладки (4.6, п. 2); B-B/B-T — сведения LTV по
+// настройке (спросить полосой, добавить сразу, не добавлять). Метка времени документа — TimestampDialog →
+// «Сохранить как» → DocumentSession::timestampDocument.
 #pragma once
 
 #include <QLabel>
@@ -96,6 +97,8 @@ public:
 
 signals:
     void dialogOpened(QDialog* dialog);
+    // Сведения LTV после подписи добавлены (true) или нет.
+    void ltvFinished(bool added);
     // Подпись или метка записаны (ok) или нет (сообщение — по-русски).
     void finished(bool ok, const QString& message);
     void lockChanged();
@@ -119,6 +122,8 @@ private:
     void timestampWith(TimestampDialog& dialog);
     QString chooseTarget(DocumentView& view);
     bool askWithoutTimestamp(const QString& message);
+    void offerLtv(DocumentView& view);
+    void askLtv(DocumentView& view, const std::function<void()>& add);
     void done(bool ok, const QString& message);
     ToolButton* addRow(QVBoxLayout* column, const QString& icon, Action action);
     void addCaption(QVBoxLayout* column, const QString& text);

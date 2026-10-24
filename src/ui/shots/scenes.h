@@ -93,7 +93,8 @@ std::vector<Scene> printScenes();
 // scan-bar (3.4).
 std::vector<Scene> editScenes();
 // sign_scenes.cpp — sign-dialog, certify-dialog, sign-appearance-dialog, sign-warnings, sig-bar-valid,
-// sig-bar-problems, pane-signatures, certificate-viewer (4.6).
+// sig-bar-problems, pane-signatures, certificate-viewer, preferences-identities, preferences-trusted,
+// preferences-tsa, preferences-verification, preferences-sign-creation (4.6).
 std::vector<Scene> signScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.

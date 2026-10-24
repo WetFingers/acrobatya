@@ -18,6 +18,7 @@
 #include "ui/shell/preferences/page_display_page.h"
 #include "ui/shell/preferences/preferences_page.h"
 #include "ui/shell/preferences/print_page.h"
+#include "ui/shell/preferences/signatures_page.h"
 #include "ui/theme/theme.h"
 #include "ui/widgets/empty_state.h"
 #include "ui/widgets/row_delegate.h"
@@ -46,7 +47,6 @@ public:
             {"commenting", QT_TRANSLATE_NOOP("ot::ui::PreferencesDialog", "Комментирование")},
             {"forms", QT_TRANSLATE_NOOP("ot::ui::PreferencesDialog", "Формы")},
             {"editing", QT_TRANSLATE_NOOP("ot::ui::PreferencesDialog", "Редактирование содержимого")},
-            {"signatures", QT_TRANSLATE_NOOP("ot::ui::PreferencesDialog", "Подписи")},
             {"trust", QT_TRANSLATE_NOOP("ot::ui::PreferencesDialog", "Диспетчер доверия")},
             {"search", QT_TRANSLATE_NOOP("ot::ui::PreferencesDialog", "Поиск")},
             {"reading", QT_TRANSLATE_NOOP("ot::ui::PreferencesDialog", "Чтение")},
@@ -131,7 +131,7 @@ PreferencesDialog::PreferencesDialog(QWidget* parent) : QDialog(parent) {
     addPage(new StubPreferencesPage(QStringLiteral("commenting"), 5));
     addPage(new StubPreferencesPage(QStringLiteral("forms"), 6));
     addPage(new EditingPage());
-    addPage(new StubPreferencesPage(QStringLiteral("signatures"), 4));
+    addPage(new SignaturesPage());
     addPage(new StubPreferencesPage(QStringLiteral("trust"), 7));
     addPage(new StubPreferencesPage(QStringLiteral("search"), 9));
     addPage(new StubPreferencesPage(QStringLiteral("reading"), 8));
