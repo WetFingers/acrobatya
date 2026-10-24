@@ -253,6 +253,14 @@ if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   set_tests_properties(compat.images PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_images
     SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endif()
+# Публичные службы времени (план 4.1, п. 4): tsa_compat.DISABLED_public_servers — DigiCert, Sectigo, GlobalSign
+# живьём через QtHttpFetcher; сети в тестах очереди нет — только с OTTISK_LIVE_NET=1, иначе пропуск (GTEST_SKIP).
+if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_test(NAME compat.tsa.public
+    COMMAND unit_tests --gtest_also_run_disabled_tests --gtest_filter=tsa_compat.*)
+  set_tests_properties(compat.tsa.public PROPERTIES LABELS "compat;slow" SKIP_REGULAR_EXPRESSION "\\[  SKIPPED \\]"
+    TIMEOUT 180)
+endif()
 # Печать в файл через GDI (план 2.6): print_compat.DISABLED_gdi_to_file — «Microsoft Print to PDF» без окна драйвера
 # в <сборка>/compat/print/gdi.pdf, MuPDF читает страницы; нет такого принтера — пропуск (GTEST_SKIP).
 if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")

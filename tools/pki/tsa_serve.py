@@ -16,7 +16,8 @@
   POST /wrongtype    200, text/plain
   POST /http500      500
   POST /slow?ms=N    обычный ответ через N мс (по умолчанию 3000) — таймаут клиента
-  GET  /redirect?to=URL   302 на URL — проверка «без редиректов на другой хост»
+  GET|POST /redirect?to=URL[&code=307]   перенаправление на URL (307 сохраняет POST) — проверка «без
+                     редиректов на другой хост»
   GET  /             200, «AcroBatya test TSA»
 Код выхода 77 — нет openssl.exe или фикстур PKI (тест даёт SKIP), 2 — неверные аргументы.
 openssl — 3.5 из Git for Windows (mingw64) или --openssl / OTTISK_OPENSSL.
@@ -101,11 +102,14 @@ def make_handler(tsa: Tsa):
             self.end_headers()
             self.wfile.write(body)
 
+        def redirect(self, url: urllib.parse.SplitResult) -> None:
+            q = urllib.parse.parse_qs(url.query)
+            self.send(int(q.get("code", ["307"])[0]), b"", extra={"Location": q.get("to", ["http://example.invalid/"])[0]})
+
         def do_GET(self) -> None:  # noqa: N802 - имя из BaseHTTPRequestHandler
             url = urllib.parse.urlsplit(self.path)
             if url.path == "/redirect":
-                to = urllib.parse.parse_qs(url.query).get("to", ["http://example.invalid/"])[0]
-                self.send(302, b"", extra={"Location": to})
+                self.redirect(url)
             elif url.path == "/":
                 self.send(200, b"AcroBatya test TSA\n")
             else:
@@ -123,8 +127,7 @@ def make_handler(tsa: Tsa):
                 self.send(500, b"server error\n")
                 return
             if url.path == "/redirect":
-                to = urllib.parse.parse_qs(url.query).get("to", ["http://example.invalid/"])[0]
-                self.send(302, b"", extra={"Location": to})
+                self.redirect(url)
                 return
             if url.path == "/garbage":
                 self.send(200, b"this is not a time-stamp response", REPLY_TYPE)

@@ -2,10 +2,14 @@
 // openssl.exe — независимая проверка подписей (`openssl cms -verify -cades`) и TSA-ответов в тестах.
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
+
+#include "core/sign/ossl.h"
 
 namespace ot::test {
 
@@ -13,6 +17,16 @@ namespace ot::test {
 std::filesystem::path pkiDir();
 // Байты файла PKI (нет файла — std::runtime_error).
 std::string readPki(const char* name);
+
+// Сертификат и ключ PKI (PEM) — объекты OpenSSL.
+ot::sign::Ossl<X509> pkiCert(const char* name);
+ot::sign::Ossl<EVP_PKEY> pkiKey(const char* name);
+// Хранилище с корнем PKI (root.pem) — якорь цепочек подписантов, TSA и OCSP.
+ot::sign::Ossl<X509_STORE> pkiRootStore();
+
+// Ответ службы времени PKI (tsa.pem/tsa.key, политика 1.2.3.4.1, точность 1 с, ESS v2) на запрос query —
+// в процессе (TS_RESP_CTX), без Python: обработчик FakeHttpFetcher.
+std::vector<std::uint8_t> localTsaReply(std::span<const std::uint8_t> query);
 
 // openssl.exe для внешней проверки: OTTISK_OPENSSL, Git for Windows (mingw64, затем usr); нет — nullopt (тест
 // — SKIP).

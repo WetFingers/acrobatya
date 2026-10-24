@@ -8,7 +8,9 @@
                       и без заголовков ui/;
   * src/ui/**       — без MuPDF (<mupdf/…>, "mupdf/…") — только через типы-значения core;
   * оболочка Windows (ShellExecute*, QDesktopServices::openUrl) — только в src/services/shell_launcher.cpp
-    (план 2.4, эталон 7.3: иначе offscreen-прогоны откроют на машине человека Edge, Word, Параметры).
+    (план 2.4, эталон 7.3: иначе offscreen-прогоны откроют на машине человека Edge, Word, Параметры);
+  * сеть программы (QNetworkAccessManager, OSSL_HTTP_*, OCSP_sendreq_*, WinHTTP, WinINet, URLDownloadToFile) —
+    только в src/services/http_fetcher.cpp (план 4.1, эталон 7.4, security-36: единая точка сети с выключателем).
 Код 0 — зелёный, 1 — красный (строки «файл:строка: что»). Каталога src нет — зелёный.
 """
 
@@ -47,6 +49,10 @@ LAYER_HEADER_RE = re.compile(r"^(?:\.\./)*(?:src/)?(core|services|ui)/")
 # Вызовы оболочки Windows вне ShellLauncher (по коду без комментариев и строк).
 SHELL_RE = re.compile(r"\bShellExecute\w*\b|\bQDesktopServices\s*::\s*openUrl\b")
 SHELL_OWNER = "src/services/shell_launcher.cpp"
+# Сеть программы вне HttpFetcher (по коду без комментариев и строк).
+NET_RE = re.compile(r"\bQNetworkAccessManager\b|\bOSSL_HTTP_\w+|\bOCSP_sendreq_\w+|\bWinHttp\w+|"
+                    r"\bInternet(?:Open|Connect|ReadFile)\w*|\bURLDownloadTo\w+")
+NET_OWNER = "src/services/http_fetcher.cpp"
 
 # ---- лексер C++: комментарии, строки, символы (копия из i18n_guard.py — правьте все четыре) ----
 _IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -218,6 +224,11 @@ def main(argv: list[str]) -> int:
             for m in SHELL_RE.finditer(bare):
                 errors.append(f"{rel}:{lines.line(m.start())}: {m.group(0)} — оболочка Windows только через "
                               f"ShellLauncher ({SHELL_OWNER})")
+        if rel != NET_OWNER:
+            bare = mask(text, lex(text), {"comment", "string", "char"})
+            for m in NET_RE.finditer(bare):
+                errors.append(f"{rel}:{lines.line(m.start())}: {m.group(0)} — сеть только через HttpFetcher "
+                              f"({NET_OWNER})")
     if errors:
         print("\n".join(errors))
         print(f"boundaries: красный, нарушений {len(errors)} (файлов {count})")

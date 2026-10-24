@@ -92,6 +92,9 @@ inline constexpr ListKey kTrustedFolders{"trust/trustedFolders"};
 // Доступ PDF к сайтам (security-42; эталон 7.4): сайт не из списка — спросить / открывать все / запретить
 // все.
 inline constexpr StringKey kInternetAccess{"trust/internetAccess", "ask", "ask|allowAll|blockAll"};
+// Сеть самой программы (эталон 7.4; security-36; план 4.1): «разрешена» / «только подписи» (TSA, OCSP, CRL,
+// AIA, списки доверия) / «выключена» — services/http_fetcher.h, единая точка сети.
+inline constexpr StringKey kNetworkAccess{"trust/network", "allowed", "allowed|signaturesOnly|off"};
 
 // --- Печать (print/; эталон 3.3, 3.18 «Печать»; view-37, create-16; сессия 2.6) ---
 // Принтер по умолчанию диалога «Печать» (пусто — системный).
