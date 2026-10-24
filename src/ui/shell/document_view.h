@@ -75,6 +75,11 @@ public:
     bool canSave() const { return !isViewOnly() && !isProtectedView(); }
     bool canAnnotate() const { return canEdit() && permissions_.annotate; }
 
+    // Выделенные миниатюры (панель «Миниатюры», view-10; 2.6): страницы с нуля по возрастанию — «Выделенные
+    // страницы» диалога «Печать».
+    void setSelectedPages(QList<int> pages) { selectedPages_ = std::move(pages); }
+    const QList<int>& selectedPages() const { return selectedPages_; }
+
     // Полосы сообщений над документом: виды и порядок — MessageStack; addMessage — своя полоса (после видов).
     MessageStack& messageStack() const { return *stack_; }
     MessageBar* addMessage(Tone tone, const QString& text);
@@ -137,6 +142,7 @@ private:
     Permissions permissions_;
     bool pdfx_ = false;
     ViewStyle viewStyle_;
+    QList<int> selectedPages_;
 };
 
 }  // namespace ot::ui

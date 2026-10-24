@@ -62,6 +62,7 @@
 #include "ui/shell/status_bar.h"
 #include "ui/shell/tool_panel.h"
 #include "ui/theme/theme.h"
+#include "ui/tools/print/print_dialog.h"
 #include "ui/tools/tool_registry.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
@@ -738,6 +739,26 @@ PropertiesDialog* MainWindow::showProperties(int tab) {
 }
 
 PropertiesDialog* MainWindow::propertiesDialog() const { return properties_.data(); }
+
+PrintDialog* MainWindow::showPrintDialog(const QList<int>& pages, const QString& printer) {
+    DocumentView* view = currentDocument();
+    if (view == nullptr || !view->permissions().print) {
+        return nullptr;
+    }
+    if (print_ != nullptr) {
+        print_->close();
+    }
+    auto* dialog = new PrintDialog(*view, pages, this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    if (!printer.isEmpty()) {
+        dialog->setPrinter(printer);
+    }
+    print_ = dialog;
+    dialog->open();  // окно-модальный, без своего цикла событий
+    return dialog;
+}
+
+PrintDialog* MainWindow::printDialog() const { return print_.data(); }
 
 SearchWindow* MainWindow::showSearchWindow(const QString& text) {
     if (search_ == nullptr) {

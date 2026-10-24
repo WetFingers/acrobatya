@@ -11,6 +11,7 @@
 #include <memory>
 
 #include "services/i18n.h"
+#include "services/print_job.h"
 #include "services/settings.h"
 #include "services/shell_launcher.h"
 #include "ui/shell/document_view.h"
@@ -107,6 +108,9 @@ const std::vector<Scene>& sceneTable() {
         for (Scene& s : renderScenes()) {  // 2.5b: view-night, view-high-contrast, view-overprint
             table.push_back(std::move(s));
         }
+        for (Scene& s : printScenes()) {  // 2.6: print-dialog, print-dialog-booklet, print-dialog-poster…
+            table.push_back(std::move(s));
+        }
         return table;
     }();
     return SCENES;
@@ -182,6 +186,7 @@ int runShots(const QStringList& names, const ShotOptions& options) {
     // Оболочка Windows в сценах — только фейк (эталон 8.3): сцена ничего не открывает на машине человека.
     static FakeShellLauncher shell;
     ShellLauncher::setInstance(&shell);
+    static ScopedPrintDevices printers(demoPrinters(), demoPrinterFactory());  // принтеры человека не видны
     const bool variant = options.theme != ThemeChoice::Light || options.scale > 1.0;
     int failures = 0;
     for (const QString& name : wanted) {

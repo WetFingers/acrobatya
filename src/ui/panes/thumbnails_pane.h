@@ -57,6 +57,9 @@ public:
     QList<int> requestedPages() const { return requested_; }  // журнал запросов (тест «только видимые»)
     void clearRequestLog() { requested_.clear(); }
     int currentPage() const { return current_; }
+    // Выделенные миниатюры (Ctrl/Shift+щелчок) — страницы с нуля по возрастанию; их же получает вкладка
+    // (DocumentView::setSelectedPages) для «Печать → Выделенные страницы».
+    QList<int> selectedPages() const;
     // Видимая во виде часть страницы — доли страницы (0…1); пусто — страница не видна.
     QRectF visibleFrame(int page) const { return frames_.value(page); }
     QSizeF thumbSize(int page) const;  // логические px миниатюры

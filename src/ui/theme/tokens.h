@@ -190,6 +190,7 @@ struct Metrics {
     int dialogHeight = 600;      //   и его высота
     int dialogNav = 220;         //   список категорий
     int paletteWidth = 560;      // палитра команд (Ctrl+Shift+P, 2.4b)
+    int printPreview = 320;      // предпросмотр диалога «Печать» — не уже (2.6)
     int paletteRows = 10;        //   строк списка без прокрутки (не размер — scaled() не трогает)
     int pageBorder = 1;          // рамка страницы на холсте — волосяная: «Крупные элементы» её не меняют
     double fontPt = 9.0;         // Segoe UI 9 pt
@@ -238,6 +239,7 @@ inline constexpr int Metrics::* kMetricSizes[] = {
     &Metrics::dialogHeight,
     &Metrics::dialogNav,
     &Metrics::paletteWidth,
+    &Metrics::printPreview,
 };
 
 struct Tokens {

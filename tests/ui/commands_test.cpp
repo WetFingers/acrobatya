@@ -150,8 +150,7 @@ private slots:
         QVERIFY(!action(w, "tools.edit")->isEnabled());
         QCOMPARE(action(w, "tools.edit")->toolTip(),
                  QStringLiteral("«Редактировать PDF» появится в версии 0.3"));
-        QVERIFY(!action(w, "doc.print")->isEnabled());
-        QCOMPARE(action(w, "doc.print")->toolTip(), QStringLiteral("«Печать» появится в версии 0.2"));
+        QVERIFY(!action(w, "doc.print")->isEnabled());  // «Печать» (2.6) — на Главной документа нет
         QCOMPARE(action(w, "doc.open")->shortcut(), QKeySequence(QStringLiteral("Ctrl+O")));
         QVERIFY(!action(w, "doc.close")->isEnabled());  // на Главной документа нет
         // F9 — строка меню.

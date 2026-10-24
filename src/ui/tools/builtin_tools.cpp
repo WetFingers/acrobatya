@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "ui/theme/icons.h"
+#include "ui/tools/print/print_tool.h"
 #include "ui/tools/stub_tool.h"
 #include "ui/tools/tool_registry.h"
 
@@ -37,7 +38,7 @@ void registerBuiltinTools(ToolRegistry& registry) {
     registry.add(
         stub("certificate", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Использовать сертификат"), 4));
     registry.add(stub("scan", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Сканировать и OCR"), 8));
-    registry.add(stub("print", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Печать"), 2));
+    registry.add(std::make_unique<PrintTool>(registry));
     registry.add(stub("measure", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Измерить"), 5));
     registry.add(
         stub("accessibility", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Специальные возможности"), 8));

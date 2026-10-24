@@ -142,10 +142,14 @@ public:
     // Принтеры системы (QPrinterInfo) или подменённые; принтер по умолчанию.
     static QStringList printers();
     static QString defaultPrinter();
-    // Поддерживает ли принтер дуплекс (QPrinterInfo::supportedDuplexModes; подмена — нет).
+    // Поддерживает ли принтер дуплекс (QPrinterInfo::supportedDuplexModes; подмена — её устройство,
+    // OTTISK_FAKE_PRINTER — нет).
     static bool supportsDuplex(const QString& printer);
     // Подмена действует (тест или OTTISK_FAKE_PRINTER).
     static bool overridden();
+    // Бумага принтера для плана и предпросмотра (подмена — бумага её устройства, OTTISK_FAKE_PRINTER — A4 без
+    // полей, иначе — QPrinter этого принтера: размер по умолчанию и поля minimumMargins). GUI-поток.
+    static print::Paper paperFor(const QString& printer);
     // Устройство для печати на printer (вывод в output — «печать в файл»): подмена — фабрикой; иначе
     // «Microsoft Print to PDF» с output — GDI, прочее — nullptr (окно печатает своим QPrinter через
     // makePrinterDevice). Пустое имя — принтер по умолчанию.
@@ -164,6 +168,12 @@ public:
     ScopedPrintDevices(const ScopedPrintDevices&) = delete;
     ScopedPrintDevices& operator=(const ScopedPrintDevices&) = delete;
 };
+
+// Принтеры сцен --shots и ui-тестов (как FakeShellLauncher: живой принтер не перечисляется и не открывается):
+// «HP LaserJet Pro M404» (дуплекс, A4 с полями 12 pt) и «Microsoft Print to PDF» (без дуплекса, без полей) —
+// устройства FakePrintDevice в памяти.
+QStringList demoPrinters();
+PrintDevices::Factory demoPrinterFactory();
 
 // Что печатать и как.
 struct PrintSettings {
@@ -209,6 +219,10 @@ public:
     // Напечатать на device (блокирует поток; не поток документа). progress(лист, всего) — после каждого листа
     // (с копиями — всех листов задания), из этого же потока.
     PrintStatus run(PrintDevice& device, const std::function<void(int, int)>& progress = {});
+    // Предпросмотр листа sheet плана при dpi (диалог «Печать»): тот же растр, что у run(), в QImage листа
+    // (белая бумага); sheets — число листов плана (0 — печатать нечего). Нет такого листа — пустой QImage.
+    // Блокирует поток (не поток документа); ошибка задачи — исключение.
+    QImage preview(const print::Paper& paper, int sheet, int dpi, int* sheets = nullptr);
     // Отменить из любого потока.
     void cancel();
     bool cancelled() const noexcept;

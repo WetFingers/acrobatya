@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 
+#include "services/print_job.h"
 #include "services/protected_view.h"
 #include "services/shell_launcher.h"
 #include "support/ui_test.h"
@@ -28,6 +29,8 @@ int main(int argc, char** argv) {
     // Оболочка Windows в ui-тестах — только фейк (эталон 8.3): ни браузера, ни Word, ни Проводника.
     static ot::FakeShellLauncher shell;
     ot::ShellLauncher::setInstance(&shell);
+    // Принтеры — только демонстрационные в памяти (2.6): живой принтер в тестах не открывается.
+    static ot::ScopedPrintDevices printers(ot::demoPrinters(), ot::demoPrinterFactory());
     // Файлы тестов лежат в QTemporaryDir (%TEMP%) — для защищённого просмотра (2.5b) временные папки тестов
     // не «чужие»; набор protected_view проверяет это правило, подставляя свою папку.
     ot::protected_view::setTempFoldersForTesting(QStringList{});

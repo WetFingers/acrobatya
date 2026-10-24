@@ -93,10 +93,14 @@ private slots:
             QCOMPARE(t->id(), ToolRegistry::builtinOrder().at(i));
             QCOMPARE(t->title(), QString::fromUtf8(kTitles[i]));
             QCOMPARE(t->stage(), kStages[i]);
-            QVERIFY2(t->isStub(), qPrintable(t->id()));
+            // С 2.6 «Печать» — настоящий инструмент (tools/print/print_tool.h), прочие — заглушки.
+            const bool live = t->id() == QLatin1String("print");
+            QVERIFY2(t->isStub() != live, qPrintable(t->id()));
             QCOMPARE(t->icon(), QLatin1String(ot::ui::toolIconName(t->id().toStdString())));
             QVERIFY(ot::ui::Icons::exists(t->icon()));
-            QVERIFY(!r.activate(t->id(), nullptr));  // заглушку не включить
+            if (!live) {
+                QVERIFY(!r.activate(t->id(), nullptr));  // заглушку не включить
+            }
         }
         QCOMPARE(r.active(), nullptr);
     }
@@ -109,12 +113,12 @@ private slots:
         for (int i = 0; i < rows.size(); ++i) {
             QCOMPARE(rows[i]->property("toolId").toString(), ToolRegistry::builtinOrder().at(i));
             QCOMPARE(rows[i]->text(), QString::fromUtf8(kTitles[i]));
-            QVERIFY(!rows[i]->isEnabled());
+            QCOMPARE(rows[i]->isEnabled(), ToolRegistry::builtinOrder().at(i) == QLatin1String("print"));
         }
         QCOMPARE(panel.row(QStringLiteral("edit"))->toolTip(),
                  QStringLiteral("«Редактировать PDF» появится в версии 0.3"));
-        QCOMPARE(panel.row(QStringLiteral("print"))->toolTip(),
-                 QStringLiteral("«Печать» появится в версии 0.2"));
+        QCOMPARE(panel.row(QStringLiteral("measure"))->toolTip(),
+                 QStringLiteral("«Измерить» появится в версии 0.5"));
         QCOMPARE(panel.railButtons().size(), 16);
         std::printf("OT_FEATURE:view-30\n");
     }
@@ -150,14 +154,15 @@ private slots:
 
     void realToolReplacesStubInPlace() {
         ToolRegistry& r = ToolRegistry::instance();
-        r.add(std::make_unique<DummyTool>(QStringLiteral("print")));
+        r.add(std::make_unique<DummyTool>(QStringLiteral("measure")));
         QCOMPARE(static_cast<int>(r.tools().size()), 16);
-        QCOMPARE(r.tools()[12]->id(), QStringLiteral("print"));
-        QVERIFY(!r.tools()[12]->isStub());
-        QVERIFY(r.activate(QStringLiteral("print"), nullptr));
+        QCOMPARE(r.tools()[13]->id(), QStringLiteral("measure"));
+        QVERIFY(!r.tools()[13]->isStub());
+        QVERIFY(r.activate(QStringLiteral("measure"), nullptr));
         ot::ui::registerBuiltinTools(r);  // заглушки обратно (и выключение активного)
         QCOMPARE(r.active(), nullptr);
-        QVERIFY(r.find(QStringLiteral("print"))->isStub());
+        QVERIFY(r.find(QStringLiteral("measure"))->isStub());
+        QVERIFY(!r.find(QStringLiteral("print"))->isStub());  // «Печать» — настоящий (2.6)
     }
 
     void pinnedGoFirstAndPersist() {

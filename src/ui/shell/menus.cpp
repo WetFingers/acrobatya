@@ -129,10 +129,11 @@ void MainWindow::registerCommands() {
            .title = tr("&Печать…"),
            .shortcuts = {key(Qt::CTRL | Qt::Key_P)},
            .icon = QStringLiteral("printer"),
+           .run = [this] { showPrintDialog(); },
+           .enabled = hasDoc,
            .blocked = denied(Perm::Print, tr("Документ защищён: печать запрещена")),
            .menu = QStringLiteral("file"),
-           .separatorBefore = true,
-           .stage = 2});
+           .separatorBefore = true});
     r.add({.id = QStringLiteral("doc.properties"),
            .title = tr("Сво&йства документа…"),
            .shortcuts = {key(Qt::CTRL | Qt::Key_D)},

@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMarginsF>
@@ -349,8 +350,17 @@ void FakePrintDevice::drawFrame(const QRectF& rect, qreal width) {
     ++sheets.back().frames;
 }
 
-void FakePrintDevice::drawLabel(const QRectF& /*rect*/, const QString& text, qreal /*pixelSize*/) {
-    sheets.back().labels << text;  // без шрифта: тесты служб идут на QCoreApplication
+void FakePrintDevice::drawLabel(const QRectF& rect, const QString& text, qreal pixelSize) {
+    sheets.back().labels << text;
+    // Шрифт — только при QGuiApplication (предпросмотр окна); тесты служб идут на QCoreApplication.
+    if (qobject_cast<QGuiApplication*>(QCoreApplication::instance()) != nullptr) {
+        QPainter p(&sheets.back().image);
+        QFont font = p.font();
+        font.setPixelSize(std::max(1, static_cast<int>(std::lround(pixelSize))));
+        p.setFont(font);
+        p.setPen(Qt::black);
+        p.drawText(rect, Qt::AlignLeft | Qt::AlignVCenter, text);
+    }
 }
 
 bool FakePrintDevice::end() {
@@ -390,13 +400,34 @@ QString PrintDevices::defaultPrinter() {
 }
 
 bool PrintDevices::supportsDuplex(const QString& printer) {
-    if (overridden()) {
+    if (g_override != nullptr) {
+        const auto device = g_override->factory ? g_override->factory(printer, {}) : nullptr;
+        return device != nullptr && device->supportsDuplex();
+    }
+    if (!fakeDir().isEmpty()) {
         return false;
     }
     return QPrinterInfo::printerInfo(printer).supportedDuplexModes().contains(QPrinter::DuplexLongSide);
 }
 
 bool PrintDevices::overridden() { return g_override != nullptr || !fakeDir().isEmpty(); }
+
+print::Paper PrintDevices::paperFor(const QString& printer) {
+    const QString name = printer.isEmpty() ? defaultPrinter() : printer;
+    if (g_override != nullptr) {
+        const auto device = g_override->factory ? g_override->factory(name, {}) : nullptr;
+        return device != nullptr ? device->paper() : print::Paper::a4();
+    }
+    if (!fakeDir().isEmpty()) {
+        return print::Paper::a4();
+    }
+    const QPrinterInfo info = QPrinterInfo::printerInfo(name);
+    if (info.isNull()) {
+        return print::Paper::a4();
+    }
+    QPrinter qprinter(info, QPrinter::HighResolution);
+    return PrinterDevice(qprinter).paper();
+}
 
 std::unique_ptr<PrintDevice> PrintDevices::open(const QString& printer, const QString& output) {
     const QString name = printer.isEmpty() ? defaultPrinter() : printer;
@@ -424,6 +455,19 @@ std::unique_ptr<PrintDevice> PrintDevices::open(const QString& printer, const QS
         return makeGdiDevice(name, output);
     }
     return nullptr;
+}
+
+QStringList demoPrinters() { return {QStringLiteral("HP LaserJet Pro M404"), kMsPrintToPdf}; }
+
+PrintDevices::Factory demoPrinterFactory() {
+    return [](const QString& printer, const QString&) -> std::unique_ptr<PrintDevice> {
+        if (printer == kMsPrintToPdf) {
+            return std::make_unique<FakePrintDevice>(printer, 72, print::Paper::a4(0));
+        }
+        auto device = std::make_unique<FakePrintDevice>(printer, 72, print::Paper::a4(12));
+        device->setSupportsDuplex(true);
+        return device;
+    };
 }
 
 ScopedPrintDevices::ScopedPrintDevices(QStringList printers, PrintDevices::Factory factory) {
@@ -499,6 +543,99 @@ int printDpi(const PrintSettings& settings, int resolution, bool printHighRes) {
 // ---- Задание
 // ------------------------------------------------------------------------------------------------------
 
+namespace {
+
+// Рисует листы плана на устройство: display lists — задачами сессии (кеш задания), полосы — в точные
+// прямоугольники устройства, затем рамки, метки реза и подпись плитки.
+class SheetPainter {
+public:
+    SheetPainter(DocumentSession& session, const PrintSettings& settings, const PrintPlan& plan,
+                 const print::Paper& paper, int dpi, int deviceDpi, fz_cookie* cookie)
+        : session_(session),
+          content_(settings.content),
+          plan_(plan),
+          paper_(paper),
+          cookie_(cookie),
+          ctx_(MuContext::forThisThread().get()),
+          k_(static_cast<qreal>(deviceDpi) / dpi),
+          pt_(deviceDpi / 72.0) {
+        bands_.dpi = static_cast<float>(dpi);
+        bands_.grayscale = settings.grayscale;
+    }
+
+    void draw(PrintDevice& device, const print::Sheet& sheet) {
+        for (const print::Placement& planned : sheet.placements) {
+            if (planned.page < 0 || planned.clip.empty()) {
+                continue;
+            }
+            const auto list = listFor(planned.page);
+            print::Placement p = planned;
+            // План считал по размерам раскладки (OpenSummary: > 14 400 pt уменьшены) — масштаб к рамке
+            // страницы.
+            const float plannedWidth = plan_.sizes[static_cast<std::size_t>(p.page)].width;
+            if (list->bounds().width() > 0 && plannedWidth > 0) {
+                p.scale *= plannedWidth / list->bounds().width();
+            }
+            print::renderPlacement(ctx_, *list, p, bands_, cookie_, [&](const print::Band& b) {
+                const QImage image(
+                    b.pixels, b.area.width(), b.area.height(), b.stride,
+                    b.format == PixelFormat::Gray8 ? QImage::Format_Grayscale8 : QImage::Format_RGB888);
+                device.drawImage(
+                    QRectF(b.area.x0 * k_, b.area.y0 * k_, b.area.width() * k_, b.area.height() * k_), image);
+            });
+        }
+        for (const RectF& r : sheet.frames) {
+            device.drawFrame(QRectF(r.x0 * pt_, r.y0 * pt_, r.width() * pt_, r.height() * pt_),
+                             kFramePt * pt_);
+        }
+        for (const print::Line& m : sheet.marks) {
+            device.drawLine(QPointF(m.a.x * pt_, m.a.y * pt_), QPointF(m.b.x * pt_, m.b.y * pt_),
+                            kFramePt * pt_);
+        }
+        if (!sheet.label.empty()) {
+            const RectF area = paper_.printableFor(sheet.landscape);
+            device.drawLabel(
+                QRectF(area.x0 * pt_, (area.y1 - 2 * kLabelPt) * pt_, area.width() * pt_, 2 * kLabelPt * pt_),
+                QString::fromStdString(sheet.label), kLabelPt * pt_);
+        }
+    }
+
+private:
+    std::shared_ptr<const DisplayList> listFor(int page) {
+        if (const auto it = lists_.find(page); it != lists_.end()) {
+            return it->second;
+        }
+        const print::PrintContent content = content_;
+        auto future = session_.post(
+            [page, content](TaskContext& tc) {
+                return print::buildPrintList(tc.document(), page, content, tc.cookie());
+            },
+            TaskPriority::Normal, QStringLiteral("print"));
+        std::shared_ptr<const DisplayList> list = future.result();  // исключение задачи — здесь
+        lists_[page] = list;
+        order_.push_back(page);
+        if (static_cast<int>(order_.size()) > kListCache) {
+            lists_.erase(order_.front());
+            order_.erase(order_.begin());
+        }
+        return list;
+    }
+
+    DocumentSession& session_;
+    print::PrintContent content_;
+    const PrintPlan& plan_;
+    const print::Paper& paper_;
+    fz_cookie* cookie_;
+    fz_context* ctx_;
+    qreal k_;   // пиксель растра → пиксель устройства
+    qreal pt_;  // пункт листа → пиксель устройства
+    print::BandOptions bands_;
+    std::map<int, std::shared_ptr<const DisplayList>> lists_;
+    std::vector<int> order_;
+};
+
+}  // namespace
+
 struct PrintJob::Cancel {
     std::atomic<bool> flag{false};
     fz_cookie cookie{};
@@ -531,8 +668,6 @@ PrintStatus PrintJob::run(PrintDevice& device, const std::function<void(int, int
     }
     const int deviceDpi = std::max(1, device.resolution());
     const int dpi = printDpi(settings_, deviceDpi, summary.permissions.printHighRes);
-    const qreal k = static_cast<qreal>(deviceDpi) / dpi;  // пиксель растра → пиксель устройства
-    const qreal pt = deviceDpi / 72.0;                    // пункт листа → пиксель устройства
 
     PrintDeviceOptions options;
     options.title = settings_.title;
@@ -556,66 +691,7 @@ PrintStatus PrintJob::run(PrintDevice& device, const std::function<void(int, int
         return PrintStatus::Failed;
     }
 
-    std::map<int, std::shared_ptr<const DisplayList>> lists;
-    std::vector<int> listOrder;
-    const auto listFor = [&](int page) {
-        if (const auto it = lists.find(page); it != lists.end()) {
-            return it->second;
-        }
-        const print::PrintContent content = settings_.content;
-        auto future = session_.post(
-            [page, content](TaskContext& tc) {
-                return print::buildPrintList(tc.document(), page, content, tc.cookie());
-            },
-            TaskPriority::Normal, QStringLiteral("print"));
-        std::shared_ptr<const DisplayList> list = future.result();  // исключение задачи — здесь
-        lists[page] = list;
-        listOrder.push_back(page);
-        if (static_cast<int>(listOrder.size()) > kListCache) {
-            lists.erase(listOrder.front());
-            listOrder.erase(listOrder.begin());
-        }
-        return list;
-    };
-    fz_context* ctx = MuContext::forThisThread().get();
-    print::BandOptions bands;
-    bands.dpi = static_cast<float>(dpi);
-    bands.grayscale = settings_.grayscale;
-
-    const auto drawSheet = [&](const print::Sheet& sheet) {
-        for (const print::Placement& planned : sheet.placements) {
-            if (planned.page < 0 || planned.clip.empty()) {
-                continue;
-            }
-            const auto list = listFor(planned.page);
-            print::Placement p = planned;
-            // План считал по размерам раскладки (OpenSummary: > 14 400 pt уменьшены) — масштаб к рамке
-            // страницы.
-            const float plannedWidth = plan.sizes[static_cast<std::size_t>(p.page)].width;
-            if (list->bounds().width() > 0 && plannedWidth > 0) {
-                p.scale *= plannedWidth / list->bounds().width();
-            }
-            print::renderPlacement(ctx, *list, p, bands, &cancel_->cookie, [&](const print::Band& b) {
-                const QImage image(
-                    b.pixels, b.area.width(), b.area.height(), b.stride,
-                    b.format == PixelFormat::Gray8 ? QImage::Format_Grayscale8 : QImage::Format_RGB888);
-                device.drawImage(
-                    QRectF(b.area.x0 * k, b.area.y0 * k, b.area.width() * k, b.area.height() * k), image);
-            });
-        }
-        for (const RectF& r : sheet.frames) {
-            device.drawFrame(QRectF(r.x0 * pt, r.y0 * pt, r.width() * pt, r.height() * pt), kFramePt * pt);
-        }
-        for (const print::Line& m : sheet.marks) {
-            device.drawLine(QPointF(m.a.x * pt, m.a.y * pt), QPointF(m.b.x * pt, m.b.y * pt), kFramePt * pt);
-        }
-        if (!sheet.label.empty()) {
-            const RectF area = paper.printableFor(sheet.landscape);
-            device.drawLabel(
-                QRectF(area.x0 * pt, (area.y1 - 2 * kLabelPt) * pt, area.width() * pt, 2 * kLabelPt * pt),
-                QString::fromStdString(sheet.label), kLabelPt * pt);
-        }
-    };
+    SheetPainter painter(session_, settings_, plan, paper, dpi, deviceDpi, &cancel_->cookie);
 
     bool landscape = plan.sheets[static_cast<std::size_t>(order.front())].landscape;
     try {
@@ -633,7 +709,7 @@ PrintStatus PrintJob::run(PrintDevice& device, const std::function<void(int, int
                 return PrintStatus::Failed;
             }
             if (index >= 0) {
-                drawSheet(plan.sheets[static_cast<std::size_t>(index)]);
+                painter.draw(device, plan.sheets[static_cast<std::size_t>(index)]);
             }
             ++printed_;
             if (progress) {
@@ -666,6 +742,24 @@ PrintStatus PrintJob::run(PrintDevice& device, const std::function<void(int, int
         return PrintStatus::Failed;
     }
     return PrintStatus::Done;
+}
+
+QImage PrintJob::preview(const print::Paper& paper, int sheet, int dpi, int* sheets) {
+    const OpenSummary summary = session_.summary();
+    const PrintPlan plan = makePrintPlan(summary, settings_, paper);
+    const int count = plan.status == PrintStatus::Done ? static_cast<int>(plan.sheets.size()) : 0;
+    if (sheets != nullptr) {
+        *sheets = count;
+    }
+    if (sheet < 0 || sheet >= count) {
+        return {};
+    }
+    const print::Sheet& s = plan.sheets[static_cast<std::size_t>(sheet)];
+    FakePrintDevice device(QStringLiteral("Preview"), dpi, paper);
+    device.begin({}, s.landscape);
+    SheetPainter painter(session_, settings_, plan, paper, dpi, dpi, &cancel_->cookie);
+    painter.draw(device, s);
+    return device.sheets.front().image;
 }
 
 PrintStatus printFileSilently(const QString& path, const QString& printer, QString* error) {

@@ -48,6 +48,7 @@ class LinkFlow;
 class NavPane;
 class PasswordDialog;
 class PreferencesDialog;
+class PrintDialog;
 class PropertiesDialog;
 class ReadModeBar;
 class RecoverDialog;
@@ -180,6 +181,11 @@ public:
     // закрытие удаляет его); tab — вкладка (PropertiesDialog::Tab), −1 — «Описание». Нет документа — nullptr.
     PropertiesDialog* showProperties(int tab = -1);
     PropertiesDialog* propertiesDialog() const;
+    // «Печать» (Ctrl+P; tools/print/print_dialog.h, 2.6) текущей вкладки: новый диалог (open(), закрытие
+    // удаляет его); pages — заранее выбранные страницы («Выделенные»: миниатюры, страницы закладки), пусто —
+    // по выделению миниатюр; printer — сразу этот принтер. Нет документа или печать запрещена — nullptr.
+    PrintDialog* showPrintDialog(const QList<int>& pages = {}, const QString& printer = {});
+    PrintDialog* printDialog() const;
     // «Расширенный поиск» (Ctrl+Shift+F; dialogs/search_window.h): окно создаётся при первом вызове, не
     // модальное; text — строка поиска (пусто — прежняя).
     SearchWindow* showSearchWindow(const QString& text = {});
@@ -264,6 +270,7 @@ private:
     QPointer<CommandPalette> palette_;
     QPointer<SearchWindow> search_;
     QPointer<PropertiesDialog> properties_;
+    QPointer<PrintDialog> print_;
 
     struct Actions;
     std::unique_ptr<Actions> actions_;

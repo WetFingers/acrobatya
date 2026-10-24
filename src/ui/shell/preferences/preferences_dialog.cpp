@@ -16,6 +16,7 @@
 #include "ui/shell/preferences/general_page.h"
 #include "ui/shell/preferences/page_display_page.h"
 #include "ui/shell/preferences/preferences_page.h"
+#include "ui/shell/preferences/print_page.h"
 #include "ui/theme/theme.h"
 #include "ui/widgets/empty_state.h"
 #include "ui/widgets/row_delegate.h"
@@ -135,7 +136,7 @@ PreferencesDialog::PreferencesDialog(QWidget* parent) : QDialog(parent) {
     addPage(new StubPreferencesPage(QStringLiteral("reading"), 8));
     addPage(new StubPreferencesPage(QStringLiteral("ocr"), 8));
     addPage(new StubPreferencesPage(QStringLiteral("convert"), 7));
-    addPage(new StubPreferencesPage(QStringLiteral("print"), 9));
+    addPage(new PrintPage());
     addPage(new StubPreferencesPage(QStringLiteral("hotkeys"), 9));
     addPage(new StubPreferencesPage(QStringLiteral("quickbar"), 9));
     addPage(new StubPreferencesPage(QStringLiteral("about"), 9));

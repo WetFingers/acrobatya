@@ -40,3 +40,7 @@ preferences-general
 # 2.5b — защищённый просмотр и ночной режим
 protected-view
 view-night-dark
+
+# 2.6 — печать
+print-dialog
+print-dialog-dark

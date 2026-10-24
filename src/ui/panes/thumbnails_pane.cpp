@@ -203,6 +203,11 @@ ThumbnailsPane::ThumbnailsPane(QWidget* parent) : NavPage(parent) {
     list_->setItemDelegate(delegate_);
     list_->viewport()->installEventFilter(this);
     column->addWidget(list_);
+    connect(list_->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this] {
+        if (view_ != nullptr) {
+            view_->setSelectedPages(selectedPages());
+        }
+    });
 
     connect(list_, &QListView::clicked, this, [this](const QModelIndex& index) {
         if (view_ != nullptr && index.isValid()) {
@@ -253,6 +258,9 @@ void ThumbnailsPane::setDocument(DocumentView* view) {
     }
     resetAll();
     view_ = view;
+    if (view_ != nullptr) {
+        view_->setSelectedPages({});  // панель перечитывается без выделения
+    }
     labels_.clear();
     dirty_ = true;
     if (isVisible()) {
@@ -260,6 +268,15 @@ void ThumbnailsPane::setDocument(DocumentView* view) {
     } else {
         model_->reset(0);
     }
+}
+
+QList<int> ThumbnailsPane::selectedPages() const {
+    QList<int> pages;
+    for (const QModelIndex& index : list_->selectionModel()->selectedIndexes()) {
+        pages << index.row();
+    }
+    std::sort(pages.begin(), pages.end());
+    return pages;
 }
 
 void ThumbnailsPane::activated() {
