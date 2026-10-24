@@ -505,22 +505,12 @@ void MainWindow::registerCommands() {
            .menu = QStringLiteral("tools"),
            .separatorBefore = true});
 
-    // Подпись (этапы 4–5).
-    const std::tuple<const char*, QString, int, bool> sign[] = {
-        {"sign.fillSign", tr("&Заполнить и подписать"), 5, false},
-        {"sign.digital", tr("Поставить &цифровую подпись…"), 4, true},
-        {"sign.certify", tr("&Сертифицировать…"), 4, false},
-        {"sign.timestamp", tr("&Метка времени документа"), 4, false},
-        {"sign.validateAll", tr("&Проверить все подписи"), 4, true},
-        {"sign.identities", tr("&Удостоверения…"), 4, false},
-    };
-    for (const auto& [id, title, stage, sep] : sign) {
-        r.add({.id = QLatin1String(id),
-               .title = title,
-               .menu = QStringLiteral("sign"),
-               .separatorBefore = sep,
-               .stage = stage});
-    }
+    // Подпись: «Заполнить и подписать» — этап 5; цифровая подпись, сертификация, метка времени, проверка и
+    // удостоверения — команды инструмента «Использовать сертификат» (4.6, CertificateTool::commands).
+    r.add({.id = QStringLiteral("sign.fillSign"),
+           .title = tr("&Заполнить и подписать"),
+           .menu = QStringLiteral("sign"),
+           .stage = 5});
 
     // Окно
     r.add({.id = QStringLiteral("window.nextTab"),

@@ -220,6 +220,8 @@ void FormatPanel::setMode(EditMode* mode) {
     refresh();
 }
 
+EditMode* FormatPanel::mode() const { return mode_; }
+
 void FormatPanel::setDocumentFonts(const QStringList& families) {
     if (families == documentFonts_) {
         return;

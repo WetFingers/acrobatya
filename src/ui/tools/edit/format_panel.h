@@ -30,7 +30,7 @@ public:
 
     // Режим вкладки (nullptr — нет документа): поля — по его каретке.
     void setMode(EditMode* mode);
-    EditMode* mode() const { return mode_; }
+    EditMode* mode() const;  // вне класса: EditMode здесь не полон (unity-сборка)
     // Семейства шрифтов документа (раздел «В документе» списка).
     void setDocumentFonts(const QStringList& families);
     void setShowSystemFonts(bool on);

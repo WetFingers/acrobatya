@@ -94,8 +94,10 @@ private slots:
             QCOMPARE(t->title(), QString::fromUtf8(kTitles[i]));
             QCOMPARE(t->stage(), kStages[i]);
             // С 2.6 «Печать» — настоящий инструмент (tools/print/print_tool.h), с 3.4 — «Редактировать PDF»
-            // (tools/edit/edit_tool.h), прочие — заглушки.
-            const bool live = t->id() == QLatin1String("print") || t->id() == QLatin1String("edit");
+            // (tools/edit/edit_tool.h), с 4.6 — «Использовать сертификат» (tools/certificate), прочие —
+            // заглушки.
+            const bool live = t->id() == QLatin1String("print") || t->id() == QLatin1String("edit") ||
+                              t->id() == QLatin1String("certificate");
             QVERIFY2(t->isStub() != live, qPrintable(t->id()));
             QCOMPARE(t->icon(), QLatin1String(ot::ui::toolIconName(t->id().toStdString())));
             QVERIFY(ot::ui::Icons::exists(t->icon()));
@@ -115,7 +117,8 @@ private slots:
             QCOMPARE(rows[i]->property("toolId").toString(), ToolRegistry::builtinOrder().at(i));
             QCOMPARE(rows[i]->text(), QString::fromUtf8(kTitles[i]));
             const QString id = ToolRegistry::builtinOrder().at(i);
-            QCOMPARE(rows[i]->isEnabled(), id == QLatin1String("print") || id == QLatin1String("edit"));
+            QCOMPARE(rows[i]->isEnabled(), id == QLatin1String("print") || id == QLatin1String("edit") ||
+                                               id == QLatin1String("certificate"));
         }
         QCOMPARE(panel.row(QStringLiteral("organize"))->toolTip(),
                  QStringLiteral("«Упорядочить страницы» появится в версии 0.7"));

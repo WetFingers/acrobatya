@@ -45,9 +45,10 @@ namespace ot::ui {
 class PageView;
 class ToolController;
 
-// Edit — слот инструмента «Редактировать PDF» (3.4): экземпляр ставит EditTool (ToolController::install).
-enum class ViewToolId { Select, Hand, MarqueeZoom, Loupe, PanZoom, Snapshot, AnnotSelect, Edit };
-inline constexpr int kViewToolCount = 8;
+// Edit — слот инструмента «Редактировать PDF» (3.4): экземпляр ставит EditTool (ToolController::install);
+// Sign — рамка подписи «Использовать сертификат» (4.6: SignPlacementTool ставит CertificateTool).
+enum class ViewToolId { Select, Hand, MarqueeZoom, Loupe, PanZoom, Snapshot, AnnotSelect, Edit, Sign };
+inline constexpr int kViewToolCount = 9;
 
 class ViewTool {
 public:

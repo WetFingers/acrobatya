@@ -92,6 +92,8 @@ std::vector<Scene> printScenes();
 // edit-image-crop, edit-readonly-block, edit-mode-dark, edit-format-panel-dark, edit-image-selected-dark,
 // scan-bar (3.4).
 std::vector<Scene> editScenes();
+// sign_scenes.cpp — sign-dialog, certify-dialog, sign-appearance-dialog, sign-warnings (4.6).
+std::vector<Scene> signScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.
 bool waitSceneReady(const Scene& scene, QWidget* window, int timeoutMs = 30000);

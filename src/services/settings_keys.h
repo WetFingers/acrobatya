@@ -118,6 +118,17 @@ inline constexpr BoolKey kSignCompatibility{"signatures/pkcs7Compatibility", fal
 inline constexpr StringKey kAutoAddLtv{"signatures/autoAddLtv", "ask", "never|ask|always"};
 // /VRI в /DSS по хэшу подписи — для старых проверяющих (по умолчанию нет).
 inline constexpr BoolKey kLtvVri{"signatures/ltvVri", false};
+// «Создание и внешний вид» (4.6; sign-13, sign-14, sign-17): показывать причину и место с контактом в диалоге
+// подписания (как Acrobat: причина — да, место — нет), свои причины (пусто — шесть стандартных из
+// интерфейса), внешние виды — JSON services/sign_settings.h (пусто — только «Стандартный»), вид по умолчанию
+// (имя), «Проверять документ перед подписью»: никогда / при сертификации / всегда (по умолчанию — всегда:
+// план 4.6 даёт «Проверить документ» и диалогу подписи; у Acrobat — «при сертификации»).
+inline constexpr BoolKey kSignShowReason{"signatures/showReason", true};
+inline constexpr BoolKey kSignShowLocation{"signatures/showLocation", false};
+inline constexpr ListKey kSignReasons{"signatures/reasons"};
+inline constexpr StringKey kSignAppearances{"signatures/appearances", ""};
+inline constexpr StringKey kSignAppearance{"signatures/appearance", ""};
+inline constexpr StringKey kSignReviewWarnings{"signatures/reviewWarnings", "always", "never|certify|always"};
 
 // --- Печать (print/; эталон 3.3, 3.18 «Печать»; view-37, create-16; сессия 2.6) ---
 // Принтер по умолчанию диалога «Печать» (пусто — системный).

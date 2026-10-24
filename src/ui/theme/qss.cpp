@@ -555,8 +555,32 @@ std::vector<Rule> componentRules(const Palette& p, const Metrics& m) {
          {},
          QStringLiteral("border: 1px solid %1; border-radius: %2; padding: %3;")
              .arg(css(toneBorder(p, p.warn)), r, pxv(m.grid * 2))},
+        // «Использовать сертификат» (4.6): подписи разделов панели и причина запрета — как у «Редактировать
+        // PDF»; подписи разделов диалогов подписей и Установок — QLabel[caption="true"].
+        {QStringLiteral("#certificateToolPanel QLabel#certSectionCaption"),
+         QStringLiteral("CertificatePanel"),
+         QStringLiteral("caption"),
+         TM,
+         {},
+         S,
+         QStringLiteral("font-weight: 600;")},
+        {QStringLiteral("#certificateToolPanel QLabel#certLockNote"),
+         QStringLiteral("CertificatePanel"),
+         QStringLiteral("lock"),
+         T,
+         softBackground(p, p.warn),
+         {},
+         QStringLiteral("border: 1px solid %1; border-radius: %2; padding: %3;")
+             .arg(css(toneBorder(p, p.warn)), r, pxv(m.grid * 2))},
+        {QStringLiteral("QLabel[caption=\"true\"]"),
+         QStringLiteral("Caption"),
+         QStringLiteral("normal"),
+         TM,
+         {},
+         S,
+         QStringLiteral("font-weight: 600;")},
     };
-    // Тоны: полосы сообщений, тосты и чипы.
+    // Тоны: полосы сообщений, тосты, чипы и строки-заметки диалогов (QLabel[note="…"], 4.6).
     const std::pair<const char*, Rgba> tones[] = {
         {"info", p.info}, {"warn", p.warn}, {"danger", p.danger},
         {"ok", p.ok},     {"form", p.form}, {"accent", p.accent},
@@ -576,6 +600,13 @@ std::vector<Rule> componentRules(const Palette& p, const Metrics& m) {
                              soft,
                              {},
                              bar.arg(rl)});
+            rules.push_back({QStringLiteral("QLabel[note=\"%1\"]").arg(t),
+                             QStringLiteral("Note"),
+                             t,
+                             T,
+                             soft,
+                             {},
+                             bar.arg(r) + QStringLiteral(" padding: %1;").arg(pxv(m.grid * 2))});
         }
         rules.push_back({QStringLiteral("ot--ui--Chip[tone=\"%1\"]").arg(t),
                          QStringLiteral("Chip"),

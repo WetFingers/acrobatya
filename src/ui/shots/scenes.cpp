@@ -116,6 +116,9 @@ const std::vector<Scene>& sceneTable() {
         for (Scene& s : editScenes()) {  // 3.4: edit-mode, edit-caret, edit-readonly-block…
             table.push_back(std::move(s));
         }
+        for (Scene& s : signScenes()) {  // 4.6: sign-dialog, certify-dialog, панель «Подписи», полосы…
+            table.push_back(std::move(s));
+        }
         return table;
     }();
     return SCENES;

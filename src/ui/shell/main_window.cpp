@@ -324,6 +324,18 @@ DocumentView* MainWindow::addDocumentView(const DocumentRegistry::Opened& opened
             [this](const QString& text) { showSearchWindow(text); });
     connect(&view->session(), &DocumentSession::undoStateChanged, this, &MainWindow::updateActions,
             Qt::QueuedConnection);
+    // Записано мимо «Сохранить» (подпись, метка времени, сведения LTV — 4.6): вкладка — по новому файлу.
+    connect(
+        &view->session(), &DocumentSession::saved, view,
+        [this, view] {
+            const int index = tabs().indexOf(view->id());
+            if (index >= 0) {
+                tabs().setTabText(index, view->title());
+                tabs().setTabToolTip(index, QDir::toNativeSeparators(view->path()));
+            }
+            retranslateTitle();
+        },
+        Qt::QueuedConnection);
     auto* quick = new QuickBar();
     quick->attach(&view->view());
     quick->setSingleKeyHints(commands_->singleKeysEnabled());
