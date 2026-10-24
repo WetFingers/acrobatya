@@ -260,8 +260,9 @@ ParagraphEditor ParagraphEditor::fromBlock(const ContentModel& model, const Text
                 const std::size_t n = std::max<std::size_t>(gl.unicode.size(), 1);
                 for (std::size_t k = 0; k < n; ++k) {
                     Pending p;
-                    p.c.ch = k < gl.unicode.size() ? gl.unicode[k] : U'�';
+                    p.c.ch = k < gl.unicode.size() ? gl.unicode[k] : char32_t{0xFFFD};
                     p.c.style = style;
+                    p.c.glyph = g;
                     if (k == 0) {
                         for (int byte = gl.codeBytes - 1; byte >= 0; --byte) {
                             p.c.code.push_back(static_cast<char>((gl.code >> (8 * byte)) & 0xFF));
@@ -413,8 +414,8 @@ ParagraphEditor ParagraphEditor::fromBlock(const ContentModel& model, const Text
                         ? block.lines.front().x0 - left
                         : 0;
     if (block.lines.size() == 1) {
-        // Одна строка: набор — до края колонки (самый длинный блок, который с ней пересекается по X) или до
-        // поля страницы, зеркального левому; у правого и по центру — так же в свою сторону.
+        // Одна строка: набор растёт до ближайшего блока справа на высоте строки (ячейка таблицы — до соседней
+        // ячейки) или до поля страницы, зеркального левому; у правого и по центру — так же в свою сторону.
         RectF page = RectF::none();
         const RectF pb = model.pageBounds();
         for (const PointF corner :
@@ -422,28 +423,28 @@ ParagraphEditor ParagraphEditor::fromBlock(const ContentModel& model, const Text
             const PointF q = layoutOf(corner);
             page = rectUnion(page, RectF{q.x, q.y, q.x, q.y});
         }
-        float columnLeft = left;
-        float columnRight = right;
-        bool neighbours = false;
+        const BlockLine& line = block.lines.front();
+        const float top = line.y - 0.8f * line.size;
+        const float bottom = line.y + 0.2f * line.size;
+        const float gap = 0.5f * line.size;
+        float columnRight = std::max(right, page.x1 - (left - page.x0));
+        float columnLeft = std::min(left, page.x0 + (page.x1 - right));
         for (const TextBlock& other : pageBlocks) {
             if (!other.horizontal || other.lines.empty() || other.spans == block.spans) {
                 continue;
             }
-            float ol = other.lines.front().x0;
-            float orr = other.lines.front().x1;
             for (const BlockLine& bl : other.lines) {
-                ol = std::min(ol, bl.x0);
-                orr = std::max(orr, bl.x1);
+                const float otherTop = bl.y - 0.8f * bl.size;
+                const float otherBottom = bl.y + 0.2f * bl.size;
+                if (std::min(bottom, otherBottom) - std::max(top, otherTop) <= 0) {
+                    continue;  // не на высоте строки
+                }
+                if (bl.x0 >= right) {
+                    columnRight = std::min(columnRight, std::max(right, bl.x0 - gap));
+                } else if (bl.x1 <= left) {
+                    columnLeft = std::max(columnLeft, std::min(left, bl.x1 + gap));
+                }
             }
-            if (std::min(orr, right) - std::max(ol, left) > 0) {
-                columnLeft = std::min(columnLeft, ol);
-                columnRight = std::max(columnRight, orr);
-                neighbours = true;
-            }
-        }
-        if (!neighbours) {
-            columnRight = std::max(right, page.x1 - (left - page.x0));
-            columnLeft = std::min(left, page.x0 + (page.x1 - right));
         }
         if (block.align == Align::Right) {
             left = columnLeft;
@@ -615,6 +616,9 @@ void ParagraphEditor::setLineSpacing(float factor) {
 
 void ParagraphEditor::markWritten(ParagraphSource source) {
     source_ = std::move(source);
+    for (EditChar& c : chars_) {
+        c.glyph = -1;  // глифы прежней модели
+    }
     modified_ = false;
 }
 

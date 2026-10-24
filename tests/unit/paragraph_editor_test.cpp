@@ -199,13 +199,36 @@ TEST(paragraph_editor, geometry) {
         EXPECT_NEAR(e.geometry().left + e.geometry().width, right, 0.01);
     }
     {
-        // Абзац из одной строки: ширина набора — до правого края колонки (абзац выше шире).
+        // Абзац из одной строки: справа на её высоте никого — набор до поля, зеркального левому (595 − 72).
         const Page p = load("base14.pdf");
         const ParagraphEditor one = editorOf(p, 1);
         EXPECT_EQ(one.lineCount(), 1);
         EXPECT_NEAR(one.lineSpacing(), ParagraphEditor::kDefaultLineSpacing, 1e-6);
         EXPECT_NEAR(one.geometry().left, 72, 0.01);
-        EXPECT_NEAR(one.geometry().left + one.geometry().width, 488.244, 0.01);
+        EXPECT_NEAR(one.geometry().left + one.geometry().width, p.model.pageBounds().x1 - 72, 0.5);
+    }
+    {
+        // Ячейка таблицы Word: набор — до соседней ячейки справа (её левый край минус полкегля).
+        const Page p = load("word-table.pdf");
+        std::size_t cell = p.blocks.size();
+        for (std::size_t i = 0; i < p.blocks.size(); ++i) {
+            if (p.blocks[i].text == "Город") {
+                cell = i;
+            }
+        }
+        ASSERT_LT(cell, p.blocks.size());
+        const ParagraphEditor one = editorOf(p, cell);
+        const auto& line = p.blocks[cell].lines.front();
+        float next = 1e9f;
+        for (const auto& b : p.blocks) {
+            for (const auto& l : b.lines) {
+                if (std::fabs(l.y - line.y) < 2 && l.x0 >= line.x1) {
+                    next = std::min(next, l.x0);
+                }
+            }
+        }
+        ASSERT_LT(next, 1e9f);
+        EXPECT_NEAR(one.geometry().left + one.geometry().width, next - 0.5f * line.size, 0.01);
     }
     {
         // Одна строка без соседей: до поля страницы, зеркального левому (A4 595 × 842: 595 − 72).

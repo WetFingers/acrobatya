@@ -1,0 +1,24 @@
+[shell_environment_policy]
+inherit = "core"
+
+[shell_environment_policy.set]
+BASH_DEFAULT_TIMEOUT_MS = "1800000"
+BASH_MAX_TIMEOUT_MS = "7200000"
+CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS = "7200000"
+VCPKG_MAX_CONCURRENCY = "10"
+VCPKG_ROOT = 'C:\Tools\vcpkg'
+QT_ROOT = 'C:\Qt\6.12.0\msvc2022_64'
+MUPDF_ROOT = 'C:\src\mupdf'
+QT_QPA_PLATFORM = "offscreen"
+QT_QPA_FONTDIR = "C:/Windows/Fonts"
+QT_FORCE_STDERR_LOGGING = "1"
+PYTHONUTF8 = "1"
+PYTHONIOENCODING = "utf-8"
+TESSDATA_PREFIX = 'C:\Tools\tessdata'
+OTTISK_TOOLS = 'C:\Tools'
+OTTISK_CORPUS = 'C:\Tools\ottisk\corpus'
+OTTISK_PYTHON = 'C:\Tools\venv-test\Scripts\python.exe'
+OTTISK_INSTANCE = "test"
+OTTISK_SOFFICE = 'C:\Tools\libreoffice\program\soffice.com'
+OTTISK_VCPKG_ROOT = 'C:\Tools\vcpkg'
+VCPKG_DEFAULT_BINARY_CACHE = 'C:\Tools\vcpkg\archives'

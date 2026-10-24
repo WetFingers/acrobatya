@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& ([IO.Path]::Combine([string][Environment]::GetEnvironmentVariable('CLAUDE_PROJECT_DIR'), '.claude\\hooks\\guard.ps1')); exit (Get-Variable -Name LASTEXITCODE -ValueOnly)\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
