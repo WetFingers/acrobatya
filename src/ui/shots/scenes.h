@@ -77,6 +77,8 @@ std::vector<Scene> modeScenes();
 std::vector<Scene> prefsScenes();
 // search_scenes.cpp — find-bar, search-window (2.5).
 std::vector<Scene> searchScenes();
+// dialog_scenes.cpp — properties-description, properties-fonts, properties-initial-view, xmp-editor (2.5).
+std::vector<Scene> dialogScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.
 bool waitSceneReady(const Scene& scene, QWidget* window, int timeoutMs = 30000);

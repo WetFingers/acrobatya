@@ -98,6 +98,9 @@ const std::vector<Scene>& sceneTable() {
         for (Scene& s : searchScenes()) {  // 2.5: find-bar, search-window
             table.push_back(std::move(s));
         }
+        for (Scene& s : dialogScenes()) {  // 2.5: properties-*, xmp-editor
+            table.push_back(std::move(s));
+        }
         return table;
     }();
     return SCENES;

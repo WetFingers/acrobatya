@@ -2,6 +2,11 @@
 // строки «подпись — редактор»; подпись — buddy редактора (мнемоника &).
 #pragma once
 
+// <prsht.h> из <windows.h> делает PropertySheet макросом PropertySheetW (unity-сборка: windows.h соседа).
+#ifdef PropertySheet
+#undef PropertySheet
+#endif
+
 #include <QWidget>
 
 #include <vector>

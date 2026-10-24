@@ -115,8 +115,9 @@ void MainWindow::registerCommands() {
     r.add({.id = QStringLiteral("doc.properties"),
            .title = tr("Сво&йства документа…"),
            .shortcuts = {key(Qt::CTRL | Qt::Key_D)},
-           .menu = QStringLiteral("file"),
-           .stage = 2});
+           .run = [this] { showProperties(); },
+           .enabled = hasDoc,
+           .menu = QStringLiteral("file")});
     r.add({.id = QStringLiteral("app.quit"),
            .title = tr("В&ыход"),
            .shortcuts = {key(Qt::CTRL | Qt::Key_Q)},

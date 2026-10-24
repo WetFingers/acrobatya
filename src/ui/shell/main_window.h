@@ -40,6 +40,7 @@ class GlobalBar;
 class FullScreenWindow;
 class NavPane;
 class PreferencesDialog;
+class PropertiesDialog;
 class ReadModeBar;
 class SearchWindow;
 class StatusBar;
@@ -133,6 +134,10 @@ public:
     // Применить settings.ini к работающему окну: тема и «Крупные элементы», язык, однобуквенные ускорители,
     // логические номера страниц (зовёт «ОК» Установок).
     void applyPreferences();
+    // «Свойства документа» (Ctrl+D; dialogs/properties_dialog.h) текущей вкладки: новый диалог (open(),
+    // закрытие удаляет его); tab — вкладка (PropertiesDialog::Tab), −1 — «Описание». Нет документа — nullptr.
+    PropertiesDialog* showProperties(int tab = -1);
+    PropertiesDialog* propertiesDialog() const;
     // «Расширенный поиск» (Ctrl+Shift+F; dialogs/search_window.h): окно создаётся при первом вызове, не
     // модальное; text — строка поиска (пусто — прежняя).
     SearchWindow* showSearchWindow(const QString& text = {});
@@ -207,6 +212,7 @@ private:
     QPointer<PreferencesDialog> preferences_;
     QPointer<CommandPalette> palette_;
     QPointer<SearchWindow> search_;
+    QPointer<PropertiesDialog> properties_;
 
     struct Actions;
     std::unique_ptr<Actions> actions_;

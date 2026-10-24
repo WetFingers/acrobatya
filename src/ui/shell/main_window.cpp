@@ -38,6 +38,7 @@
 #include "services/shell_launcher.h"
 #include "services/thumbnails.h"
 #include "services/tile_cache.h"
+#include "ui/dialogs/properties_dialog.h"
 #include "ui/dialogs/search_window.h"
 #include "ui/panes/find_bar.h"
 #include "ui/shell/command_palette.h"
@@ -544,6 +545,26 @@ void MainWindow::applyPreferences() {
     status_->reloadSettings();
     updateActions();
 }
+
+PropertiesDialog* MainWindow::showProperties(int tab) {
+    DocumentView* view = currentDocument();
+    if (view == nullptr) {
+        return nullptr;
+    }
+    if (properties_ != nullptr) {
+        properties_->close();
+    }
+    auto* dialog = new PropertiesDialog(*view, view->isViewOnly(), this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    if (tab >= 0) {
+        dialog->showTab(static_cast<PropertiesDialog::Tab>(tab));
+    }
+    properties_ = dialog;
+    dialog->open();  // окно-модальный, без своего цикла событий
+    return dialog;
+}
+
+PropertiesDialog* MainWindow::propertiesDialog() const { return properties_.data(); }
 
 SearchWindow* MainWindow::showSearchWindow(const QString& text) {
     if (search_ == nullptr) {
