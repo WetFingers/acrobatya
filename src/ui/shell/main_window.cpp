@@ -37,6 +37,7 @@
 #include "services/convert_ops.h"
 #include "services/document_registry.h"
 #include "services/i18n.h"
+#include "services/memory_guard.h"
 #include "services/print_job.h"
 #include "services/recent.h"
 #include "services/render_pool.h"
@@ -98,9 +99,11 @@ MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent),
       pool_(std::make_unique<RenderPool>()),
       cache_(std::make_unique<TileCache>()),
+      memory_(std::make_unique<MemoryGuard>()),
       registry_(std::make_unique<DocumentRegistry>()),
       autosave_(std::make_unique<AutosaveRunner>(AutosaveRunner::defaultDir())) {
     setObjectName(QStringLiteral("mainWindow"));
+    memory_->setTileCache(cache_.get());
     setAcceptDrops(true);
     resize(1440, 900);
     setMinimumSize(1024, 640);

@@ -3,7 +3,7 @@
 // же вкладка, средняя кнопка закрывает, правка — точка «несохранено» и «Сохранить / Не сохранять / Отмена»,
 // не-PDF — только просмотр и «Сохранить как PDF», перетаскивание, --page, сеанс (state.sqlite) и его
 // восстановление по настройке, ошибка открытия — неблокирующий диалог, сцены shell-*, разбор командной
-// строки.
+// строки, «мало памяти» при уходе в фон.
 #include <QAction>
 #include <QDir>
 #include <QDropEvent>
@@ -25,6 +25,7 @@
 #include "services/convert_ops.h"
 #include "services/document_registry.h"
 #include "services/document_session.h"
+#include "services/memory_guard.h"
 #include "services/session_store.h"
 #include "support/ui_test.h"
 #include "ui/app/cli.h"
@@ -100,6 +101,17 @@ private slots:
         QTRY_VERIFY(!w.menuBar()->isVisible());
         QCOMPARE(w.grab().size(), QSize(1440, 900));
         std::printf("OT_FEATURE:view-29\n");
+    }
+
+    // «Мало памяти» (эталон 4.1, план 1.2; рубеж Р1 — MemoryGuard не был подключён к окну): уход программы в
+    // фон сжимает store MuPDF и кеш тайлов окна.
+    void lowMemoryWhenDeactivated() {
+        MainWindow w;
+        showActive(w);
+        const int before = w.memoryGuard().relieveCount();
+        QEvent deactivate(QEvent::ApplicationDeactivate);
+        QCoreApplication::sendEvent(qApp, &deactivate);
+        QCOMPARE(w.memoryGuard().relieveCount(), before + 1);
     }
 
     void twoFilesTwoTabsCtrlTab() {

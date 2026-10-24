@@ -33,6 +33,7 @@ class AutosaveRunner;
 class CommandRegistry;
 class DocumentRegistry;
 class DocumentSession;
+class MemoryGuard;
 class RenderPool;
 class TileCache;
 }  // namespace ot
@@ -154,6 +155,8 @@ public:
     // блокирует); nullptr — записей нет или «Предлагать восстановление» выключено.
     RecoverDialog* offerRecovery();
     RecoverDialog* recoverDialog() const;
+    // «Мало памяти»: store MuPDF и кеш тайлов окна (тесты — счётчик срабатываний).
+    MemoryGuard& memoryGuard() const { return *memory_; }
     // Открыть документы с восстановленными правками (файл не сохранён, история отмены — из журнала).
     int recoverDocuments(const std::vector<AutosaveEntry>& entries);
 
@@ -247,6 +250,9 @@ private:
 
     std::unique_ptr<RenderPool> pool_;
     std::unique_ptr<TileCache> cache_;
+    // «Мало памяти» (эталон 4.1, план 1.2): фон и простой 60 с — store MuPDF и кеш тайлов окна до 50 %.
+    // Объявлен после cache_ — уничтожается раньше него.
+    std::unique_ptr<MemoryGuard> memory_;
     std::unique_ptr<DocumentRegistry> registry_;
     std::unique_ptr<AutosaveRunner> autosave_;
     CommandRegistry* commands_ = nullptr;
