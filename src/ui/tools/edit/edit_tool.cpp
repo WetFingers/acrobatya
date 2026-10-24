@@ -360,8 +360,8 @@ void EditTool::buildPanel() {
     addCaption(column, tr("Формат текста"));
     format_ = new FormatPanel(panel_);
     column->addWidget(format_);
-    if (EditMode* m = mode()) {
-        format_->setMode(m);
+    if (EditMode* current = mode()) {
+        format_->setMode(current);
     }
     format_->setShowSystemFonts(Settings().get(settings::kEditSystemFonts));
 
