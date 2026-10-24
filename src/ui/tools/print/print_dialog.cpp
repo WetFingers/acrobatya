@@ -25,6 +25,7 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 
+#include <string>
 #include <vector>
 
 #include "services/document_session.h"
@@ -98,9 +99,14 @@ PrintDialog::PrintDialog(DocumentView& view, QList<int> pages, QWidget* parent)
     build();
     loadDefaults();
     if (preselect) {
-        // Те же страницы и в поле «Страницы» («1-3, 7») — удобно поправить диапазон.
+        // Те же страницы и в поле «Страницы» («1-3, 7»; логическими номерами, если они включены — поле так и
+        // разбирается) — удобно поправить диапазон.
         const std::vector<int> pages(pages_.begin(), pages_.end());
-        rangeEdit_->setText(QString::fromStdString(print::formatPageRange(pages)));
+        std::vector<std::string> labels;
+        for (const QString& l : session_->summary().pageLabels) {
+            labels.push_back(l.toStdString());
+        }
+        rangeEdit_->setText(QString::fromStdString(print::formatPageRange(pages, labels, useLabels_)));
         selected_->setChecked(true);
     }
     retranslate();

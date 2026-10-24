@@ -2,6 +2,7 @@
 // --register-notify) идут на QCoreApplication и не требуют платформенного плагина Qt. Обычный запуск — один
 // экземпляр на пользователя (services/single_instance.h): второй передаёт файлы первому и выходит; без файлов
 // в командной строке окно открывает вкладки прошлого сеанса, если это включено (general/restoreSession).
+// `/p файл`, `/pt файл принтер драйвер порт` (2.6) — печать без окна (ui/app/cli.h runPrint).
 #include <QApplication>
 #include <QCoreApplication>
 #include <QDir>
@@ -136,6 +137,11 @@ int main(int argc, char** argv) {
     ot::Settings::installDefaultFormat();
     if (!opts.logLevel.isEmpty()) {
         spdlog::set_level(spdlog::level::from_str(opts.logLevel.toStdString()));
+    }
+    // `/p`, `/pt` (2.6): Проводник «Печать» и «Печать на…» — без окна; запущенный экземпляр печатает сам.
+    if (opts.print) {
+        attachParentConsole();
+        return runPrint(opts);
     }
     // Инструменты «Все инструменты» (эталон 6.2): 16 регистраций, будущие — заглушки с этапом.
     registerBuiltinTools(ToolRegistry::instance());

@@ -4,8 +4,8 @@
 // --script,
 // --open-all и очередь — «test»; без переменной — «main»): offscreen-прогон не отдаёт файл «АкроБате»,
 // открытому у человека, и не закрывается из-за него. Протокол: одна строка JSON {"files": [абсолютные пути],
-// "page": N} и перевод строки; ответ "ok\n" — принято. Поток: GUI (сигнал requestReceived — в потоке
-// объекта).
+// "page": N} и перевод строки (2.6: ещё "print": true и "printer" — `/p`, `/pt`: напечатать без вкладки);
+// ответ "ok\n" — принято. Поток: GUI (сигнал requestReceived — в потоке объекта).
 #pragma once
 
 #include <QMetaType>
@@ -22,8 +22,10 @@ class SingleInstance : public QObject {
     Q_OBJECT
 public:
     struct Request {
-        QStringList files;  // абсолютные пути
-        int page = 0;       // --page N (1 — первая); 0 — как обычно
+        QStringList files;   // абсолютные пути
+        int page = 0;        // --page N (1 — первая); 0 — как обычно
+        bool print = false;  // `/p`, `/pt` (2.6): напечатать файлы без вкладки
+        QString printer;     // `/pt`: принтер; пусто — по умолчанию
         bool operator==(const Request&) const = default;
     };
 

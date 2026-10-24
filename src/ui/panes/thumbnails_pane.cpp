@@ -7,6 +7,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QListView>
+#include <QMenu>
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QPainter>
@@ -23,7 +24,9 @@
 #include "services/document_session.h"
 #include "services/render_pool.h"
 #include "ui/shell/document_view.h"
+#include "ui/shell/main_window.h"
 #include "ui/shell/status_bar.h"
+#include "ui/theme/icons.h"
 #include "ui/theme/theme.h"
 #include "ui/view/page_view.h"
 
@@ -203,6 +206,19 @@ ThumbnailsPane::ThumbnailsPane(QWidget* parent) : NavPage(parent) {
     list_->setItemDelegate(delegate_);
     list_->viewport()->installEventFilter(this);
     column->addWidget(list_);
+    list_->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(list_, &QWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
+        const QModelIndex index = list_->indexAt(pos);
+        if (view_ == nullptr || !index.isValid()) {
+            return;
+        }
+        QMenu menu(this);
+        QAction* print = menu.addAction(Icons::icon(QStringLiteral("printer")), tr("&Печать страниц…"));
+        print->setEnabled(view_->permissions().print);
+        const QList<int> pages = pagesForMenu(index.row());
+        connect(print, &QAction::triggered, this, [this, pages] { printPages(pages); });
+        menu.exec(list_->viewport()->mapToGlobal(pos));
+    });
     connect(list_->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this] {
         if (view_ != nullptr) {
             view_->setSelectedPages(selectedPages());
@@ -267,6 +283,17 @@ void ThumbnailsPane::setDocument(DocumentView* view) {
         rebind();
     } else {
         model_->reset(0);
+    }
+}
+
+QList<int> ThumbnailsPane::pagesForMenu(int page) const {
+    const QList<int> selected = selectedPages();
+    return selected.contains(page) ? selected : QList<int>{page};
+}
+
+void ThumbnailsPane::printPages(const QList<int>& pages) {
+    if (auto* window = view_ != nullptr ? qobject_cast<MainWindow*>(view_->window()) : nullptr) {
+        window->showPrintDialog(pages);
     }
 }
 

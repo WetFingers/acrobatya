@@ -41,6 +41,11 @@ public:
     bool isEmptyShown() const;
     // Перейти по закладке строки (то же, что щелчок).
     void activate(const QModelIndex& index);
+    // Страницы закладки (view-11, 2.6; контекстное меню «Печать страниц…»): от её страницы до страницы перед
+    // следующей закладкой того же или более высокого уровня (последняя — до конца документа); закладка без
+    // страницы документа — пусто. printBookmark — диалог «Печать» с ними.
+    QList<int> bookmarkPages(const QModelIndex& index) const;
+    void printBookmark(const QModelIndex& index);
 
 signals:
     // Уровень загружен: path — узел (пусто — верхний уровень), count — закладок, ms — от запроса.
@@ -53,6 +58,7 @@ private:
     void reload();
     void load(const std::vector<int>& path);
     void retranslate();
+    int pageOf(const QModelIndex& index) const;
 
     QStackedWidget* stack_ = nullptr;
     QTreeView* tree_ = nullptr;

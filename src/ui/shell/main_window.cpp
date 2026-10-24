@@ -15,6 +15,8 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QPrinter>
+#include <QPrinterInfo>
 #include <QPushButton>
 #include <QSplitter>
 #include <QStackedWidget>
@@ -35,6 +37,7 @@
 #include "services/convert_ops.h"
 #include "services/document_registry.h"
 #include "services/i18n.h"
+#include "services/print_job.h"
 #include "services/recent.h"
 #include "services/render_pool.h"
 #include "services/settings.h"
@@ -63,6 +66,7 @@
 #include "ui/shell/tool_panel.h"
 #include "ui/theme/theme.h"
 #include "ui/tools/print/print_dialog.h"
+#include "ui/tools/print/print_runner.h"
 #include "ui/tools/tool_registry.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
@@ -590,6 +594,12 @@ bool MainWindow::restoreLastViewEnabled() { return Settings().get(settings::kRes
 bool MainWindow::restoreSessionEnabled() { return Settings().get(settings::kRestoreSession); }
 
 void MainWindow::handleRequest(const SingleInstance::Request& request) {
+    if (request.print) {
+        for (const QString& file : request.files) {
+            printSilently(file, request.printer);
+        }
+        return;
+    }
     if (isMinimized()) {
         showNormal();
     }
@@ -759,6 +769,36 @@ PrintDialog* MainWindow::showPrintDialog(const QList<int>& pages, const QString&
 }
 
 PrintDialog* MainWindow::printDialog() const { return print_.data(); }
+
+PrintRunner* MainWindow::printSilently(const QString& path, const QString& printer) {
+    auto session = std::make_shared<DocumentSession>();
+    if (!session->open(path)) {
+        Toast::notify(this,
+                      tr("Не удалось напечатать «%1»: файл не открылся.").arg(QFileInfo(path).fileName()),
+                      Tone::Danger);
+        return nullptr;
+    }
+    const Settings st;
+    PrintSettings s;
+    s.title = QFileInfo(path).fileName();
+    s.maxDpi = st.get(settings::kPrintQuality);
+    s.layout.size = printScaleFromName(st.get(settings::kPrintScale));
+    std::unique_ptr<QPrinter> qprinter;
+    std::unique_ptr<PrintDevice> device = PrintDevices::open(printer);
+    if (device == nullptr) {
+        const QPrinterInfo info =
+            printer.isEmpty() ? QPrinterInfo::defaultPrinter() : QPrinterInfo::printerInfo(printer);
+        if (info.isNull()) {
+            Toast::notify(this, tr("Принтер «%1» не найден.").arg(printer), Tone::Danger);
+            return nullptr;
+        }
+        qprinter = std::make_unique<QPrinter>(info, QPrinter::HighResolution);
+        device = makePrinterDevice(*qprinter);
+    }
+    auto* runner = new PrintRunner(std::move(session), s, std::move(qprinter), std::move(device), this, this);
+    runner->start();
+    return runner;
+}
 
 SearchWindow* MainWindow::showSearchWindow(const QString& text) {
     if (search_ == nullptr) {

@@ -251,7 +251,10 @@ private slots:
         QVERIFY(d != nullptr);
         QVERIFY(d->selectedButton()->isEnabled());
         QVERIFY(d->selectedButton()->isChecked());
-        QCOMPARE(d->rangeEdit()->text(), QStringLiteral("2-3, 6"));
+        // В поле «Страницы» — логические номера (i, ii, 1…): «ii-1, 4»; «Страницы» дают то же.
+        QCOMPARE(d->rangeEdit()->text(), QStringLiteral("ii-1, 4"));
+        QCOMPARE(d->plan().pages, (std::vector<int>{1, 2, 5}));
+        d->rangeButton()->setChecked(true);
         QCOMPARE(d->plan().pages, (std::vector<int>{1, 2, 5}));
         // Заранее выбранные страницы (закладка) — важнее выделения миниатюр.
         d = w.showPrintDialog({7, 8});

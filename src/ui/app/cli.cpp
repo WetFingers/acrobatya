@@ -13,6 +13,8 @@
 
 #include "services/app_info.h"
 #include "services/open_probe.h"
+#include "services/print_job.h"
+#include "services/single_instance.h"
 
 #include "ui/theme/theme.h"
 
@@ -107,6 +109,19 @@ CliOptions parseCli(const QStringList& arguments) {
             }
         } else if (a == QLatin1String("--data-dir")) {
             if (!next(o.dataDir)) break;
+        } else if (a.compare(QLatin1String("/p"), Qt::CaseInsensitive) == 0) {
+            o.print = true;
+            if (!next(o.printFile)) break;
+        } else if (a.compare(QLatin1String("/pt"), Qt::CaseInsensitive) == 0) {
+            o.print = true;
+            if (!next(o.printFile) || !next(o.printer)) break;
+            // Проводник передаёт ещё драйвер и порт (%3, %4) — они не нужны.
+            for (int k = 0;
+                 k < 2 && i + 1 < arguments.size() && !arguments.at(i + 1).startsWith(QLatin1Char('/')) &&
+                 !arguments.at(i + 1).startsWith(QLatin1String("--"));
+                 ++k) {
+                ++i;
+            }
         } else if (a.startsWith(QLatin1String("--"))) {
             o.error = QStringLiteral("unknown option ") + a;
         } else if (!a.startsWith(QLatin1Char('-'))) {
@@ -217,6 +232,27 @@ int runOpenAll(const QString& folder) {
                   .arg(r.refused)
                   .arg(r.failures));
     return r.failures;
+}
+
+int runPrint(const CliOptions& options) {
+    const QString file = QFileInfo(options.printFile).absoluteFilePath();
+    // Запущенный экземпляр печатает сам (без вкладки) — Проводник не ждёт второго окна.
+    SingleInstance::Request request;
+    request.files = {file};
+    request.print = true;
+    request.printer = options.printer;
+    if (SingleInstance::sendToRunning(request)) {
+        return 0;
+    }
+    QString error;
+    const PrintStatus status = printFileSilently(file, options.printer, &error);
+    if (status != PrintStatus::Done) {
+        const QByteArray line = (QStringLiteral("print: ") + error + QLatin1Char('\n')).toUtf8();
+        std::fwrite(line.constData(), 1, static_cast<size_t>(line.size()), stderr);
+        std::fflush(stderr);
+        return 1;
+    }
+    return 0;
 }
 
 }  // namespace ot::ui

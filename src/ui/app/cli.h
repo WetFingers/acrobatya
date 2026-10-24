@@ -26,6 +26,13 @@
 //   --page <N>                открыть файлы на странице N (с 1)
 //   --log trace|debug|info|warn|error|off   уровень журнала
 //   --data-dir <папка>        каталог данных вместо %LOCALAPPDATA%\AcroBatya (как OTTISK_DATA_DIR)
+//   /p <файл>                 печать на принтер по умолчанию без окна (Проводник «Печать», ProgID
+//   shell\print;
+//                             2.6): запущенный экземпляр печатает сам, иначе — этот процесс; код 0 —
+//                             напечатано (или передано), 1 — ошибка (в журнал и stderr), 2 — ошибка
+//                             аргументов
+//   /pt <файл> <принтер> [<драйвер> <порт>]   то же на указанный принтер (shell\printto; драйвер и порт
+//                             Проводника не нужны)
 //   <файлы…>                  открыть (второй экземпляр передаёт их первому — services/single_instance.h)
 #pragma once
 
@@ -56,7 +63,10 @@ struct CliOptions {
     QString logLevel;  // пусто — по умолчанию
     QString dataDir;   // --data-dir
     QStringList files;
-    QString error;  // непустая — ошибка разбора
+    bool print = false;  // /p, /pt
+    QString printFile;
+    QString printer;  // /pt — принтер; пусто — по умолчанию
+    QString error;    // непустая — ошибка разбора
 };
 
 CliOptions parseCli(const QStringList& arguments);  // arguments[0] — путь программы
@@ -69,6 +79,9 @@ bool isConsoleMode(int argc, char** argv);
 
 // Режимы без окна; печатают в stdout (UTF-8), код — код выхода процесса.
 int runSelfCheck();
+// `/p`, `/pt` (2.6): передать запущенному экземпляру или напечатать здесь без окна (services/print_job.h
+// printFileSilently); 0 — напечатано или передано, 1 — ошибка (stderr и журнал). Нужен QGuiApplication.
+int runPrint(const CliOptions& options);
 int runRegisterNotify();
 
 struct OpenAllReport {

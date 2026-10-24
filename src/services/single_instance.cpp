@@ -65,6 +65,10 @@ QByteArray SingleInstance::encode(const Request& request) {
     QJsonObject o;
     o.insert(QStringLiteral("files"), files);
     o.insert(QStringLiteral("page"), request.page);
+    if (request.print) {
+        o.insert(QStringLiteral("print"), true);
+        o.insert(QStringLiteral("printer"), request.printer);
+    }
     return QJsonDocument(o).toJson(QJsonDocument::Compact) + '\n';
 }
 
@@ -82,6 +86,8 @@ bool SingleInstance::decode(const QByteArray& line, Request* request) {
         }
     }
     r.page = o.value(QStringLiteral("page")).toInt();
+    r.print = o.value(QStringLiteral("print")).toBool();
+    r.printer = o.value(QStringLiteral("printer")).toString();
     *request = r;
     return true;
 }

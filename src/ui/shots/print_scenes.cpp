@@ -2,19 +2,25 @@
 // (Ctrl+P) на demo/report.pdf: принтер, копии, страницы, «Размер», ориентация, «Комментарии и формы»,
 // предпросмотр первого листа; print-dialog-booklet — буклет «Обе стороны» (12 страниц → 3 листа, 6 сторон),
 // предпросмотр лицевой стороны листа 1 (стр. 12 и 1); print-dialog-poster — плакат A1 (pages/mixed-sizes.pdf,
-// стр. 4) на A4 при 100 % с перекрытием 10 мм, метками обреза и подписями — 9 листов; print-preview-nup — 4
-// на листе с границами страниц, предпросмотр листа 2. Принтеры — демонстрационные (runShots: demoPrinters),
-// живые не перечисляются. Кадр — когда растр предпросмотра готов и тайлы документа дорисованы.
+// стр. 4) на A4 при 100 % с перекрытием 10 мм, метками обреза и подписями — 12 листов (поля принтера 12 pt);
+// print-preview-nup — 4 на листе с границами страниц, предпросмотр листа 2; print-from-thumbnails — миниатюры
+// с выделенными стр. 2, 3, 6 и «Печать страниц…»: «Выделенные страницы (3)» и «ii-1, 4». Принтеры —
+// демонстрационные (runShots: demoPrinters), живые не перечисляются. Кадр — когда растр предпросмотра готов и
+// тайлы документа дорисованы.
 #include <QCheckBox>
 #include <QComboBox>
+#include <QItemSelectionModel>
 #include <QLineEdit>
+#include <QListView>
 #include <QRadioButton>
 #include <QTimer>
 
 #include <functional>
 #include <vector>
 
+#include "ui/panes/thumbnails_pane.h"
 #include "ui/shell/main_window.h"
+#include "ui/shell/nav_pane.h"
 #include "ui/shots/scenes.h"
 #include "ui/tools/print/print_dialog.h"
 #include "ui/tools/print/print_preview.h"
@@ -68,6 +74,32 @@ std::vector<Scene> printScenes() {
         d.refresh();
         d.preview()->setCurrentSheet(1);
     }));
+
+    Scene thumbs;
+    thumbs.name = QStringLiteral("print-from-thumbnails");
+    thumbs.make = withMainWindow([](MainWindow& w) {
+        w.openFile(sceneFixture(QStringLiteral("demo/report.pdf")));
+        QTimer::singleShot(0, &w, [&w] {
+            w.navPane().showPane(QStringLiteral("thumbnails"));
+            auto* pane = static_cast<ThumbnailsPane*>(w.navPane().page(QStringLiteral("thumbnails")));
+            QItemSelectionModel* sel = pane->list()->selectionModel();
+            for (const int row : {1, 2, 5}) {
+                sel->select(pane->list()->model()->index(row, 0), QItemSelectionModel::Select);
+            }
+            pane->printPages(pane->pagesForMenu(1));
+            if (PrintDialog* d = w.printDialog()) {
+                embedCentered(w, d);
+            }
+        });
+    });
+    thumbs.ready = [](QWidget* w) {
+        auto* window = static_cast<MainWindow*>(w);
+        PrintDialog* d = window->printDialog();
+        auto* pane = static_cast<ThumbnailsPane*>(window->navPane().page(QStringLiteral("thumbnails")));
+        return d != nullptr && d->preview()->isReady() && pane->hasThumbnail(0) && pane->hasThumbnail(2) &&
+               sceneDocumentReady(w);
+    };
+    scenes.push_back(thumbs);
     return scenes;
 }
 

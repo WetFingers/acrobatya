@@ -60,6 +60,10 @@ public:
     // Выделенные миниатюры (Ctrl/Shift+щелчок) — страницы с нуля по возрастанию; их же получает вкладка
     // (DocumentView::setSelectedPages) для «Печать → Выделенные страницы».
     QList<int> selectedPages() const;
+    // Страницы пункта «Печать страниц…» контекстного меню (view-10, 2.6): выделенные, а щелчок вне выделения
+    // — одна эта страница; printPages — диалог «Печать» с ними («Выделенные страницы»).
+    QList<int> pagesForMenu(int page) const;
+    void printPages(const QList<int>& pages);
     // Видимая во виде часть страницы — доли страницы (0…1); пусто — страница не видна.
     QRectF visibleFrame(int page) const { return frames_.value(page); }
     QSizeF thumbSize(int page) const;  // логические px миниатюры

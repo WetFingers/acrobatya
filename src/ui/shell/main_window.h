@@ -49,6 +49,7 @@ class NavPane;
 class PasswordDialog;
 class PreferencesDialog;
 class PrintDialog;
+class PrintRunner;
 class PropertiesDialog;
 class ReadModeBar;
 class RecoverDialog;
@@ -113,8 +114,13 @@ public:
     // Контекст команд режима чтения: Esc — «выход» (view.exitMode).
     static constexpr char kReadModeContext[] = "readMode";
 
-    // Второй экземпляр передал файлы: открыть и поднять окно.
+    // Второй экземпляр передал файлы: открыть и поднять окно; запрос печати (`/p`, `/pt`, 2.6) — напечатать
+    // без вкладки и без окна поверх (printSilently).
     void handleRequest(const ot::SingleInstance::Request& request);
+    // Напечатать файл без диалога и вкладки (Проводник «Печать» при открытой программе): все страницы,
+    // масштаб из Установок, принтер printer (пусто — по умолчанию); итог — тост. nullptr — файл не открылся
+    // (тост).
+    PrintRunner* printSilently(const QString& path, const QString& printer = {});
 
     // Ответ на «Сохранить изменения?» (тесты подставляют свой; по умолчанию — QMessageBox).
     void setCloseConfirm(CloseConfirm confirm) { confirm_ = std::move(confirm); }

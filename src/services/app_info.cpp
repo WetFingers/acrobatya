@@ -217,6 +217,29 @@ bool selfCheck(QStringList& lines) {
                           : native(program) + (ours ? QStringLiteral(" (this program)") : QString()));
     }
 
+    // ProgID печати (2.6; эталон 10.3): shell\print → «/p "%1"», shell\printto → «/pt "%1" "%2" "%3" "%4"»
+    // пишет установщик; сборка без установки — «not registered» (не сбой).
+    {
+        const auto command = [](const wchar_t* verb) -> QString {
+            wchar_t buf[MAX_PATH * 4] = {};
+            DWORD size = static_cast<DWORD>(std::size(buf));
+            if (FAILED(AssocQueryStringW(ASSOCF_NOTRUNCATE, ASSOCSTR_COMMAND, L"AcroBatya.pdf", verb, buf,
+                                         &size))) {
+                return {};
+            }
+            return QString::fromWCharArray(buf);
+        };
+        const QString print = command(L"print");
+        const QString printTo = command(L"printto");
+        if (print.isEmpty() && printTo.isEmpty()) {
+            lines << QStringLiteral("print verbs: not registered");
+        } else {
+            check(QStringLiteral("print verbs"),
+                  print.contains(QLatin1String(" /p ")) && printTo.contains(QLatin1String(" /pt ")),
+                  QStringLiteral("print /p, printto /pt"));
+        }
+    }
+
     lines << (ok ? QStringLiteral("result: ok") : QStringLiteral("result: FAILED"));
     return ok;
 }

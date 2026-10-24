@@ -85,7 +85,8 @@ std::vector<Scene> dialogScenes();
 std::vector<Scene> trustScenes();
 // render_scenes.cpp — view-night, view-high-contrast, view-overprint, view-boxes-overlay (2.5b).
 std::vector<Scene> renderScenes();
-// print_scenes.cpp — print-dialog, print-dialog-booklet, print-dialog-poster, print-preview-nup (2.6).
+// print_scenes.cpp — print-dialog, print-dialog-booklet, print-dialog-poster, print-preview-nup,
+// print-from-thumbnails (2.6).
 std::vector<Scene> printScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.

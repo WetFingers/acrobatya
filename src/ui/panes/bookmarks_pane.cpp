@@ -3,13 +3,17 @@
 #include <QEvent>
 #include <QFuture>
 #include <QHeaderView>
+#include <QMenu>
 #include <QStackedWidget>
 #include <QStandardItemModel>
 #include <QTreeView>
 #include <QVBoxLayout>
 
+#include "services/document_session.h"
 #include "services/nav_ops.h"
 #include "ui/shell/document_view.h"
+#include "ui/shell/main_window.h"
+#include "ui/theme/icons.h"
 #include "ui/view/page_view.h"
 #include "ui/widgets/empty_state.h"
 
@@ -56,6 +60,20 @@ BookmarksPane::BookmarksPane(QWidget* parent) : NavPage(parent) {
     stack_->addWidget(empty_);
     column->addWidget(stack_);
 
+    tree_->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(tree_, &QWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
+        const QModelIndex index = tree_->indexAt(pos);
+        if (view_ == nullptr || !index.isValid() || index.data(PlaceholderRole).toBool()) {
+            return;
+        }
+        QMenu menu(this);
+        QAction* go = menu.addAction(tr("П&ерейти к закладке"));
+        connect(go, &QAction::triggered, this, [this, index] { activate(index); });
+        QAction* print = menu.addAction(Icons::icon(QStringLiteral("printer")), tr("&Печать страниц…"));
+        print->setEnabled(view_->permissions().print && !bookmarkPages(index).isEmpty());
+        connect(print, &QAction::triggered, this, [this, index] { printBookmark(index); });
+        menu.exec(tree_->viewport()->mapToGlobal(pos));
+    });
     connect(tree_, &QTreeView::expanded, this, [this](const QModelIndex& index) {
         QStandardItem* item = model_->itemFromIndex(index);
         if (item != nullptr && item->rowCount() == 1 && item->child(0)->data(PlaceholderRole).toBool()) {
@@ -184,6 +202,51 @@ void BookmarksPane::activate(const QModelIndex& index) {
     link.page = view_->view().currentPage();
     link.action = actions_[static_cast<std::size_t>(n)];
     view_->view().activateLink(link);
+}
+
+int BookmarksPane::pageOf(const QModelIndex& index) const {
+    if (!index.isValid() || index.data(PlaceholderRole).toBool()) {
+        return -1;
+    }
+    const int n = index.data(ActionRole).toInt();
+    if (n < 0 || n >= static_cast<int>(actions_.size())) {
+        return -1;
+    }
+    const links::LinkAction& a = actions_[static_cast<std::size_t>(n)];
+    return a.kind == links::LinkKind::GoTo && a.page >= 0 ? a.page : -1;
+}
+
+QList<int> BookmarksPane::bookmarkPages(const QModelIndex& index) const {
+    const int start = pageOf(index);
+    if (view_ == nullptr || start < 0) {
+        return {};
+    }
+    int end = view_->session().pageCount() - 1;
+    // Следующая закладка того же или более высокого уровня со страницей дальше этой.
+    bool found = false;
+    for (QModelIndex level = index; level.isValid() && !found; level = level.parent()) {
+        for (QModelIndex next = level.sibling(level.row() + 1, 0); next.isValid() && !found;
+             next = next.sibling(next.row() + 1, 0)) {
+            const int page = pageOf(next);
+            if (page > start) {
+                end = page - 1;
+                found = true;
+            }
+        }
+    }
+    QList<int> pages;
+    for (int p = start; p <= end; ++p) {
+        pages << p;
+    }
+    return pages;
+}
+
+void BookmarksPane::printBookmark(const QModelIndex& index) {
+    const QList<int> pages = bookmarkPages(index);
+    auto* window = view_ != nullptr ? qobject_cast<MainWindow*>(view_->window()) : nullptr;
+    if (window != nullptr && !pages.isEmpty()) {
+        window->showPrintDialog(pages);
+    }
 }
 
 void BookmarksPane::retranslate() {
