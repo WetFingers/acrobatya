@@ -115,6 +115,37 @@ CharStyle StyleChange::applied(CharStyle style) const {
     return style;
 }
 
+Script scriptOf(const CharStyle& style) noexcept {
+    if (style.rise > 0.01f * style.size) {
+        return Script::Super;
+    }
+    if (style.rise < -0.01f * style.size) {
+        return Script::Sub;
+    }
+    return Script::Normal;
+}
+
+StyleChange scriptChange(const CharStyle& style, Script script) {
+    const Script now = scriptOf(style);
+    const float line = now == Script::Normal ? style.size : style.size / kScriptScale;
+    StyleChange c;
+    switch (script) {
+        case Script::Normal:
+            c.size = line;
+            c.rise = 0.0f;
+            break;
+        case Script::Super:
+            c.size = line * kScriptScale;
+            c.rise = line * kSuperRise;
+            break;
+        case Script::Sub:
+            c.size = line * kScriptScale;
+            c.rise = line * kSubRise;
+            break;
+    }
+    return c;
+}
+
 ParagraphEditor ParagraphEditor::fromBlock(const ContentModel& model, const TextBlock& block) {
     return fromBlock(model, block, {});
 }
@@ -321,6 +352,45 @@ ParagraphEditor ParagraphEditor::fromBlock(const ContentModel& model, const Text
             layout.bounds, RectF{l.x0, l.baseline - l.ascent, std::max(l.x0, l.x1), l.baseline + l.descent});
     }
     e.layoutValid_ = true;
+
+    // Подчёркнутые символы — под ними прямоугольник пометки /OttU своего объекта (правка редактором раньше).
+    std::vector<RectF> underlines;
+    {
+        std::vector<int> objects;
+        for (int op : e.source_.ops) {
+            const int t = model.operations()[static_cast<std::size_t>(op)].textObject;
+            if (std::find(objects.begin(), objects.end(), t) == objects.end()) {
+                objects.push_back(t);
+            }
+        }
+        for (int t : objects) {
+            for (const UnderlineMark& mark : underlineMarks(model, t)) {
+                for (const RectF& r : mark.rects) {
+                    underlines.push_back({r.x0, -r.y1, r.x1, -r.y0});  // PDF → раскладка (y вниз)
+                }
+            }
+        }
+    }
+    if (!underlines.empty()) {
+        for (const LayoutLine& line : layout.lines) {
+            for (int i = line.begin; i < line.end; ++i) {
+                EditChar& c = e.chars_[static_cast<std::size_t>(i)];
+                const float x0 = layout.x[static_cast<std::size_t>(i)];
+                const float x1 = x0 + layout.advance[static_cast<std::size_t>(i)];
+                const float size = e.styles_[static_cast<std::size_t>(c.style)].size;
+                const bool under = std::any_of(underlines.begin(), underlines.end(), [&](const RectF& r) {
+                    const float overlap = std::min(r.x1, x1) - std::max(r.x0, x0);
+                    return overlap > 0.5f * (x1 - x0) && r.y0 > line.baseline - 0.05f * size &&
+                           r.y0 < line.baseline + 0.5f * size;
+                });
+                if (under) {
+                    CharStyle st = e.styles_[static_cast<std::size_t>(c.style)];
+                    st.underline = true;
+                    c.style = e.styleIndex(st);
+                }
+            }
+        }
+    }
 
     // Геометрия набора: левый край — строк после первой (отступ или выступ первой — свой), правый — самой
     // длинной; у центра и правого — крайние строки.

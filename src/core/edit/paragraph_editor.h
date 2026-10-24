@@ -70,6 +70,17 @@ struct StyleChange {
     CharStyle applied(CharStyle style) const;
 };
 
+// Положение символа относительно строки (панель FORMAT TEXT: верхний и нижний индекс).
+enum class Script : std::uint8_t { Normal, Super, Sub };
+constexpr float kScriptScale = 0.65f;  // кегль индекса — доля кегля строки
+constexpr float kSuperRise = 0.35f;    // подъём верхнего индекса — доля кегля строки
+constexpr float kSubRise = -0.15f;     // нижнего
+// По подъёму Ts: выше базовой линии — верхний, ниже — нижний.
+Script scriptOf(const CharStyle& style) noexcept;
+// Изменение стиля style до положения script: индекс — кегль · 0,65 и подъём от кегля строки; обычный —
+// кегль строки обратно и подъём 0.
+StyleChange scriptChange(const CharStyle& style, Script script);
+
 struct EditChar {
     char32_t ch = 0;
     int style = 0;     // индекс в ParagraphEditor::styles()

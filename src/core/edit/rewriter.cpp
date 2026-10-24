@@ -945,10 +945,31 @@ RewriteReport Rewriter::Impl::rewrite(ParagraphEditor& e, const RewriteOptions& 
                 ++report.textObjectsRemoved;
             }
         }
+        // Прежнее подчёркивание абзаца (пометки /OttU после ET его объектов в прежней рамке) — снять: новое
+        // пишется заново по новой раскладке.
+        const RectF oldBox = e.source().bbox;
+        for (int t : objects) {
+            for (const UnderlineMark& mark : underlineMarks(m, t)) {
+                RectF onPage = RectF::none();
+                for (const PointF p :
+                     {PointF{mark.bounds.x0, mark.bounds.y0}, PointF{mark.bounds.x1, mark.bounds.y1}}) {
+                    const PointF q = mapPoint(p, m.pageMatrix());
+                    onPage = rectUnion(onPage, RectF{q.x, q.y, q.x, q.y});
+                }
+                const bool inside = oldBox.valid() && onPage.x0 >= oldBox.x0 - 3 &&
+                                    onPage.x1 <= oldBox.x1 + 3 && onPage.y0 >= oldBox.y0 - 3 &&
+                                    onPage.y1 <= oldBox.y1 + 6;
+                if (inside) {
+                    for (int k = mark.first; k <= mark.last; ++k) {
+                        repl[k] = std::string();
+                    }
+                }
+            }
+        }
         // Подчёркивание — после ET объекта своего текста, в своей пометке.
         std::string underline;
         if (!em.underlines.empty()) {
-            underline = "/OttU BMC q\n";
+            underline = "/OttU <<>> BDC q\n";
             for (const auto& [r, color] : em.underlines) {
                 std::string rect;
                 const PointF a = mapPoint({r.x0, r.y0}, em.toUser);

@@ -517,10 +517,17 @@ private:
             right.push_back(l.x1);
             center.push_back((l.x0 + l.x1) / 2);
         }
-        bool stretched = true;
+        // По ширине: строки, кроме последней, растянуты или доходят до правого края (самая длинная строка
+        // набора — без растяжки), и хоть одна растянута.
+        const float rightEdge = *std::max_element(rightButLast.begin(), rightButLast.end());
+        bool stretched = false;
+        bool full = true;
         for (std::size_t i = 0; i + 1 < n; ++i) {
-            stretched = stretched && t.lines[i].stretch > 0.02f;
+            const bool wide = t.lines[i].stretch > 0.02f;
+            stretched = stretched || wide;
+            full = full && (wide || std::fabs(t.lines[i].x1 - rightEdge) <= tol);
         }
+        stretched = stretched && full;
         const bool leftEven = spread(left) <= tol;
         if (stretched && leftEven && spread(rightButLast) <= tol) {
             t.align = Align::Justify;
@@ -727,6 +734,60 @@ const char* alignCode(Align align) noexcept {
 
 std::vector<TextBlock> blocksForPage(const ContentModel& model, const BlockOptions& options) {
     return blocks_impl::Builder(model, options).run();
+}
+
+std::vector<UnderlineMark> underlineMarks(const ContentModel& model, int textObject) {
+    std::vector<UnderlineMark> out;
+    if (textObject < 0 || textObject >= static_cast<int>(model.textObjects().size())) {
+        return out;
+    }
+    const TextObject& t = model.textObjects()[static_cast<std::size_t>(textObject)];
+    if (t.end < 0 || t.spans.empty()) {
+        return out;
+    }
+    const Matrix ctm = model.spans()[static_cast<std::size_t>(t.spans.front())].ctm;
+    const auto& ops = model.operations();
+    const int stream = ops[static_cast<std::size_t>(t.end)].stream;
+    int k = t.end + 1;
+    while (k < static_cast<int>(ops.size()) && ops[static_cast<std::size_t>(k)].stream == stream &&
+           ops[static_cast<std::size_t>(k)].kind == OpKind::BeginMarked) {
+        const Operation& begin = ops[static_cast<std::size_t>(k)];
+        if (begin.operands.empty() || begin.operands.front().kind != Operand::Kind::Name ||
+            begin.operands.front().text != "OttU") {
+            break;
+        }
+        UnderlineMark mark;
+        mark.first = k;
+        int depth = 0;
+        for (; k < static_cast<int>(ops.size()) && ops[static_cast<std::size_t>(k)].stream == stream; ++k) {
+            const Operation& o = ops[static_cast<std::size_t>(k)];
+            if (o.kind == OpKind::BeginMarked) {
+                ++depth;
+            } else if (o.kind == OpKind::EndMarked && --depth == 0) {
+                mark.last = k;
+                ++k;
+                break;
+            } else if (o.name == "re" && o.operands.size() >= 4) {
+                const float x = static_cast<float>(o.operands[0].number);
+                const float y = static_cast<float>(o.operands[1].number);
+                const float w = static_cast<float>(o.operands[2].number);
+                const float h = static_cast<float>(o.operands[3].number);
+                RectF r = RectF::none();
+                for (const PointF p :
+                     {PointF{x, y}, PointF{x + w, y}, PointF{x, y + h}, PointF{x + w, y + h}}) {
+                    const PointF q = mapPoint(p, ctm);
+                    r = rectUnion(r, RectF{q.x, q.y, q.x, q.y});
+                }
+                mark.rects.push_back(r);
+                mark.bounds = rectUnion(mark.bounds, r);
+            }
+        }
+        if (mark.last < 0) {
+            break;  // пометка не закрыта — не наша
+        }
+        out.push_back(std::move(mark));
+    }
+    return out;
 }
 
 }  // namespace ot::edit
