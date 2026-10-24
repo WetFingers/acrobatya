@@ -9,10 +9,11 @@
 //     сертификат подписанта (CMS, затем /DSS /Certs), хэш данных /ByteRange потоком против message-digest
 //     (CMS_SignerInfo_verify_content), подпись над signed-атрибутами (CMS_SignerInfo_verify) или — без
 //     атрибутов — над хэшем данных; ESS signing-certificate(-v2) сверяется с сертификатом подписанта;
-//     /SubFilter: ETSI.CAdES.detached, adbe.pkcs7.detached, adbe.pkcs7.sha1 (eContent — SHA-1 данных;
-//     «устаревший алгоритм»), ETSI.RFC3161 (метка документа: imprint — хэш /ByteRange); adbe.x509.rsa_sha1 и
-//     прочие — «не поддерживается»; MD5/MD2 — отказ, SHA-1 — предупреждение; CMS без ESS, RSA-PSS, ECDSA —
-//     читаются; «обёрнутая» CMS (eContent при detached) — данные подписи обязаны совпасть с /ByteRange.
+//     /SubFilter: ETSI.CAdES.detached (и PBAD.PAdES ICP-Brasil — тот же detached CMS), adbe.pkcs7.detached,
+//     adbe.pkcs7.sha1 (eContent — SHA-1 данных; «устаревший алгоритм»), ETSI.RFC3161 (метка документа:
+//     imprint — хэш /ByteRange); adbe.x509.rsa_sha1 и прочие — «не поддерживается»; MD5/MD2 — отказ, SHA-1 —
+//     предупреждение; CMS без ESS, RSA-PSS, ECDSA — читаются; «обёрнутая» CMS (eContent при detached) —
+//     данные подписи обязаны совпасть с /ByteRange.
 //
 // (3) доверие — ChainBuilder до якорей TrustStore (подписи, у сертифицирующей — «сертифицированные
 // документы»;

@@ -173,12 +173,12 @@ else()
 endif()
 ottisk_gtest_exe(engine_tests tests/engine engine "engine;slow" 600 ottisk_services
   PROPERTIES FIXTURES_REQUIRED "corpus\;mutants" TIMEOUT_AFTER_MATCH "120\;^progress:" PROCESSORS ${_engine_slots})
-# Матрица подписей engine.sign.matrix (план 4.3, п. 4) — помощники unit-тестов: тестовая PKI и openssl.exe, подписи
-# файла, PDF и временные каталоги.
+# Матрица подписей engine.sign.matrix (план 4.3, п. 4) и регрессия валидатора engine.sig.dss (план 4.4, п. 5) —
+# помощники unit-тестов: тестовая PKI и openssl.exe, подписи файла, PDF, временные каталоги, проверка подписей.
 if(TARGET engine_tests)
   target_sources(engine_tests PRIVATE "${CMAKE_SOURCE_DIR}/tests/unit/support/pki.cpp"
     "${CMAKE_SOURCE_DIR}/tests/unit/support/sign_support.cpp" "${CMAKE_SOURCE_DIR}/tests/unit/support/test_pdf.cpp"
-    "${CMAKE_SOURCE_DIR}/tests/unit/support/qt_app.cpp")
+    "${CMAKE_SOURCE_DIR}/tests/unit/support/qt_app.cpp" "${CMAKE_SOURCE_DIR}/tests/unit/support/verify_support.cpp")
   target_include_directories(engine_tests PRIVATE "${CMAKE_SOURCE_DIR}/tests/unit")
 endif()
 if(TARGET engine_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -286,6 +286,21 @@ if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   set_tests_properties(compat.sign.b compat.sign.b.multi compat.sign.t compat.sign.dts compat.sign.cng PROPERTIES
     LABELS "compat;slow"
     FIXTURES_REQUIRED compat_sign SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+endif()
+# Валидатор против pyHanko на корпусе EU DSS (план 4.4, п. 5): engine_tests sig.dss пишет вердикты
+# <сборка>/dss/ours.json (и сам сверяет их с tests/fixtures/sig/dss_expectations.json, ≥ 90 %); tools/compare_pyhanko.py
+# сверяет с ожиданиями и pyHanko (<сборка>/dss/pyhanko.json — считается, если нет), отчёт расхождений —
+# <сборка>/dss/report.md; нет корпуса или pyHanko — 77, пропуск.
+if(TARGET engine_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_test(NAME compat.sig.pyhanko.generate COMMAND engine_tests --gtest_filter=sig.dss --gtest_brief=1)
+  set_tests_properties(compat.sig.pyhanko.generate PROPERTIES LABELS "compat;slow" FIXTURES_SETUP compat_sig_dss
+    TIMEOUT 600)
+  add_test(NAME compat.sig.pyhanko
+    COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/compare_pyhanko.py" compare
+      --ours "${CMAKE_BINARY_DIR}/dss/ours.json" --expect "${CMAKE_SOURCE_DIR}/tests/fixtures/sig/dss_expectations.json"
+      --pyhanko "${CMAKE_BINARY_DIR}/dss/pyhanko.json" --report "${CMAKE_BINARY_DIR}/dss/report.md" --min 0.9)
+  set_tests_properties(compat.sig.pyhanko PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_sig_dss
+    SKIP_RETURN_CODE 77 TIMEOUT 900 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endif()
 # Публичные службы времени (план 4.1, п. 4): tsa_compat.DISABLED_public_servers — DigiCert, Sectigo, GlobalSign
 # живьём через QtHttpFetcher; сети в тестах очереди нет — только с OTTISK_LIVE_NET=1, иначе пропуск (GTEST_SKIP).

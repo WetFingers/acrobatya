@@ -5,7 +5,9 @@
   survey   — pyHanko 0.38 над файлами тегов sig-b/t/lt/lta корпуса dss (index.json корпуса): по каждой подписи
              intact, valid, trusted, покрытие, уровень изменений, метка времени, уровень PAdES — JSON.
              Якоря — самоподписанные сертификаты самого файла (CMS подписей и меток, /DSS /Certs): у корпуса DSS
-             чужие корни, доверие проверяет построение цепочки; отзыв — retroactive (--retroactive-revinfo),
+             чужие корни, доверие проверяет построение цепочки; политика — как у программы и Acrobat: SHA-1
+             допустим (у pyHanko по умолчанию — CRYPTO_CONSTRAINTS_FAILURE), ключ — digitalSignature или
+             nonRepudiation (у pyHanko — только nonRepudiation); отзыв — retroactive (--retroactive-revinfo),
              без сети, soft-fail; время проверки — метка подписи, если она цела, иначе /M (--validation-time
              claimed) — как у валидатора программы (время подписи, иначе заявленное).
   expect   — нормализованная таблица ожиданий из survey (файл → подписи {field, kind, intact, trusted,
@@ -85,12 +87,14 @@ def _embedded_certs(reader, sigs) -> tuple[list, list, list]:
             pass
     try:
         dss = reader.root.get("/DSS")
+        dss = dss.get_object() if dss is not None else None  # ссылка — разыменовать
     except Exception:  # noqa: BLE001
         dss = None
     if dss is not None:
         for key, kind in (("/Certs", "cert"), ("/OCSPs", "ocsp"), ("/CRLs", "crl")):
             try:
                 arr = dss.get(key) or []
+                arr = arr.get_object() if hasattr(arr, "get_object") else arr  # косвенный массив
             except Exception:  # noqa: BLE001
                 arr = []
             for ref in arr:
@@ -135,7 +139,13 @@ def _dss_revision(reader) -> int | None:
         return None
     raw = root.raw_get("/DSS")
     dss = root["/DSS"]
-    if not any(len(dss.get(k) or []) for k in ("/Certs", "/OCSPs", "/CRLs")):
+
+    def count(k: str) -> int:
+        v = dss.get(k)
+        v = v.get_object() if hasattr(v, "get_object") else v
+        return len(v or [])
+
+    if not any(count(k) for k in ("/Certs", "/OCSPs", "/CRLs")):
         return None
     if isinstance(raw, generic.IndirectObject):
         return _revision_of(reader, raw.reference)
@@ -197,8 +207,13 @@ def modified_of(status) -> str:
 def survey_file(path: Path) -> dict:
     from pyhanko.pdf_utils.reader import PdfFileReader
     from pyhanko.sign.validation import validate_pdf_signature, validate_pdf_timestamp
+    from pyhanko.sign.validation.settings import KeyUsageConstraints
     from pyhanko_certvalidator import ValidationContext
+    from pyhanko_certvalidator.policy_decl import AcceptAllAlgorithms
 
+    # Назначение ключа — как у программы и Acrobat: digitalSignature или nonRepudiation (pyHanko по умолчанию
+    # требует nonRepudiation).
+    key_usage = KeyUsageConstraints(key_usage={"digital_signature", "non_repudiation"}, match_all_key_usages=False)
     out: dict = {"signatures": []}
     with path.open("rb") as fh:
         try:
@@ -236,6 +251,8 @@ def survey_file(path: Path) -> dict:
                 allow_fetching=False,
                 retroactive_revinfo=True,
                 revocation_mode="soft-fail",
+                # Политика программы (как Acrobat): SHA-1 — предупреждение, не отказ доверия.
+                algorithm_usage_policy=AcceptAllAlgorithms(),
             )
             if moment is not None:
                 kw["moment"] = moment
@@ -256,7 +273,7 @@ def survey_file(path: Path) -> dict:
                     rec["level"] = "DTS"
                 else:
                     claimed = s.self_reported_timestamp
-                    st = validate_pdf_signature(s, vc(claimed), ts_validation_context=vc())
+                    st = validate_pdf_signature(s, vc(claimed), ts_validation_context=vc(), key_usage_settings=key_usage)
                     ts = getattr(st, "timestamp_validity", None)
                     if ts is not None:
                         rec["timestamp"] = {
@@ -266,7 +283,9 @@ def survey_file(path: Path) -> dict:
                             "time": ts.timestamp.isoformat() if ts.timestamp else None,
                         }
                         if ts.intact and ts.valid and ts.timestamp is not None:
-                            st = validate_pdf_signature(s, vc(ts.timestamp), ts_validation_context=vc())
+                            st = validate_pdf_signature(
+                                s, vc(ts.timestamp), ts_validation_context=vc(), key_usage_settings=key_usage
+                            )
                     sig_rev2 = sig_rev if sig_rev is not None else None
                     rec["level"] = pades_level(s, sig_rev2, dts_revs, dss_rev)
                     rec["claimed"] = claimed.isoformat() if claimed else None
@@ -354,6 +373,14 @@ def dump_table(table: dict) -> str:
 
 def cmd_expect(args) -> int:
     survey = json.loads(Path(args.survey).read_text(encoding="utf-8"))
+    # Ручные правки прежней таблицы («manual»: true, причина в note) переживают пересчёт.
+    manual: dict = {}
+    if Path(args.out).exists():
+        prev = json.loads(Path(args.out).read_text(encoding="utf-8")).get("files", {})
+        for name, entry in prev.items():
+            for sig in entry.get("signatures", []):
+                if sig.get("manual"):
+                    manual[(name, sig.get("field"))] = sig
     table: dict = {
         "about": "Ожидания валидатора на корпусе EU DSS (план 4.4, п. 5): retroactive, якоря — самоподписанные "
         "сертификаты файла, время — метка подписи, иначе /M. Сначала — pyHanko 0.38 (tools/compare_pyhanko.py "
@@ -371,7 +398,7 @@ def cmd_expect(args) -> int:
                 # Изменения после метки документа pyHanko оценивает строже подписи (DSS и следующая метка —
                 # OTHER): у меток сравниваются целостность и доверие.
                 n.pop("modified", None)
-            sigs.append(n)
+            sigs.append(manual.get((name, n.get("field")), n))
         entry: dict = {"signatures": sigs}
         if rec.get("error"):
             entry["error"] = rec["error"]

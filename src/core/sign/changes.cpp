@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cmath>
 #include <set>
 #include <stdexcept>
 #include <string_view>
@@ -276,6 +277,11 @@ bool same(fz_context* ctx, pdf_obj* a, pdf_obj* b, int depth = 0) {
         }
         return true;
     }
+    if (pdf_is_number(ctx, a) && pdf_is_number(ctx, b)) {
+        const double x = pdf_to_real(ctx, a);
+        const double y = pdf_to_real(ctx, b);
+        return x == y || std::abs(x - y) <= 1e-6 * std::max(1.0, std::abs(x));
+    }
     return pdf_objcmp(ctx, a, b) == 0;
 }
 
@@ -323,6 +329,15 @@ public:
 
     void run(ChangeReport& report) {
         report_ = &report;
+        // Каталог переписан другим объектом — сравнить словари каталога по ключам.
+        pdf_obj* oldRoot = pdf_dict_get(ctx_, pdf_trailer(ctx_, old_), PDF_NAME(Root));
+        pdf_obj* newRoot = pdf_dict_get(ctx_, pdf_trailer(ctx_, new_), PDF_NAME(Root));
+        oldRootNum_ = pdf_to_num(ctx_, oldRoot);
+        newRootNum_ = pdf_to_num(ctx_, newRoot);
+        if (oldRootNum_ != newRootNum_) {
+            catalogDiff(newRootNum_, pdf_resolve_indirect(ctx_, oldRoot),
+                        pdf_resolve_indirect(ctx_, newRoot));
+        }
         const int oldVersions = pdf_count_versions(ctx_, old_);
         const int newVersions = pdf_count_versions(ctx_, new_);
         const int after = newVersions - oldVersions;
@@ -414,7 +429,18 @@ private:
     }
 
     // Новое поле или виджет (о поле — по /AcroForm, о виджете — по /Annots).
-    void newField(int num, pdf_obj* f, int page, const std::string& name) {
+    void newField(int num, pdf_obj* f, int page, const std::string& name, int depth = 0) {
+        pdf_obj* kids = pdf_dict_get(ctx_, f, PDF_NAME(Kids));
+        if (fieldTypeName(f).empty() && pdf_array_len(ctx_, kids) > 0 && depth < 16) {
+            // Промежуточное поле без /FT — по его потомкам.
+            for (int i = 0; i < pdf_array_len(ctx_, kids); ++i) {
+                pdf_obj* kid = pdf_array_get(ctx_, kids, i);
+                const ObjInfo* ki = newRoles_.find(pdf_to_num(ctx_, kid));
+                newField(pdf_to_num(ctx_, kid), kid, ki != nullptr ? ki->page : page,
+                         ki != nullptr ? ki->field : name, depth + 1);
+            }
+            return;
+        }
         if (fieldTypeName(f) == "Sig") {
             pdf_obj* v = pdf_dict_get(ctx_, f, PDF_NAME(V));
             if (v == nullptr) {
@@ -433,6 +459,9 @@ private:
         const unsigned r = info.roles;
         const std::string what = o == nullptr ? "added" : n == nullptr ? "removed" : "changed";
         if ((r & kCatalog) != 0) {
+            if (oldRootNum_ != newRootNum_ && (num == oldRootNum_ || num == newRootNum_)) {
+                return;  // разобрано в run по ключам
+            }
             catalogDiff(num, o, n);
         } else if ((r & kPage) != 0) {
             pageDiff(num, info.page, o, n);
@@ -687,6 +716,8 @@ private:
     RoleMap oldRoles_;
     RoleMap newRoles_;
     ChangeReport* report_ = nullptr;
+    int oldRootNum_ = 0;
+    int newRootNum_ = 0;
 };
 
 }  // namespace

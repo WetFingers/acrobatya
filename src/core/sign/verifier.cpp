@@ -10,6 +10,7 @@
 #include <array>
 #include <cctype>
 #include <cstring>
+#include <memory>
 #include <stdexcept>
 
 #include "core/doc/document.h"
@@ -372,6 +373,9 @@ public:
     bool hasSignatureTimestamp() const { return !token_.empty(); }
     // Сертификаты CMS и метки — для DocumentVerification::embeddedCertificates.
     const std::vector<CertSummary>& seenCertificates() const { return seen_; }
+    // Промежуточные для цепочек: все сертификаты документа (CMS всех подписей и меток, /DSS); без пула —
+    // /DSS.
+    void setPool(STACK_OF(X509) * pool) { pool_ = pool; }
 
 private:
     void add(Issue issue, std::string detail) { sig_.findings.push_back({issue, std::move(detail)}); }
@@ -389,6 +393,7 @@ private:
     pdf_document* pdf_;
     SignatureInfo& sig_;
     STACK_OF(X509) * extra_;
+    STACK_OF(X509) * pool_ = nullptr;
     Bytes contents_;  // DER без дополнения
     Ossl<X509> signer_;
     Ossl<STACK_OF(X509)> cmsCerts_;
@@ -529,7 +534,7 @@ void SignatureCheck::integrity() {
     const std::string& sf = sig_.subFilter;
     if (sf == "ETSI.RFC3161") {
         checkDocTimestamp();
-    } else if (sf == "ETSI.CAdES.detached" || sf == "adbe.pkcs7.detached") {
+    } else if (sf == "ETSI.CAdES.detached" || sf == "adbe.pkcs7.detached" || sf == "PBAD.PAdES") {
         checkCms(false);
     } else if (sf == "adbe.pkcs7.sha1") {
         checkCms(true);
@@ -652,6 +657,14 @@ void SignatureCheck::checkCms(bool sha1Content) {
         add(Issue::UnsupportedAlgorithm,
             "algorithm " + algorithmName(md == nullptr ? info.digestAlgorithm : info.signatureAlgorithm) +
                 " is not supported");
+        return;
+    }
+    // Хэш в OID подписи (sha256WithRSA…) обязан совпасть с digestAlgorithm: подпись считается им (RFC
+    // 5652, 5.4), иначе алгоритм подменён (dss-1420: «SHA3-224withRSA» над SHA-256).
+    if (mdNid != NID_undef && mdNid != EVP_MD_get_type(md)) {
+        add(Issue::SignatureMismatch, "signature algorithm " + algorithmName(info.signatureAlgorithm) +
+                                          " does not match digest algorithm " +
+                                          algorithmName(info.digestAlgorithm));
         return;
     }
 
@@ -781,8 +794,9 @@ bool SignatureCheck::tsaTrusted(X509* tsa, STACK_OF(X509) * tokenCerts, std::tim
     for (int i = 0; tokenCerts != nullptr && i < sk_X509_num(tokenCerts); ++i) {
         builder.addUntrusted(sk_X509_value(tokenCerts, i));
     }
-    for (int i = 0; extra_ != nullptr && i < sk_X509_num(extra_); ++i) {
-        builder.addUntrusted(sk_X509_value(extra_, i));
+    STACK_OF(X509)* intermediates = pool_ != nullptr ? pool_ : extra_;
+    for (int i = 0; intermediates != nullptr && i < sk_X509_num(intermediates); ++i) {
+        builder.addUntrusted(sk_X509_value(intermediates, i));
     }
     // Назначение не проверяется строже подписи токена: у старых служб EKU timeStamping не критический.
     return builder.build(tsa).trusted();
@@ -892,8 +906,9 @@ void SignatureCheck::establishTrust(X509* leaf, ChainPurpose purposeCheck, unsig
     for (int i = 0; cmsCerts_ && i < sk_X509_num(cmsCerts_.get()); ++i) {
         builder.addUntrusted(sk_X509_value(cmsCerts_.get(), i));
     }
-    for (int i = 0; extra_ != nullptr && i < sk_X509_num(extra_); ++i) {
-        builder.addUntrusted(sk_X509_value(extra_, i));
+    STACK_OF(X509)* intermediates = pool_ != nullptr ? pool_ : extra_;
+    for (int i = 0; intermediates != nullptr && i < sk_X509_num(intermediates); ++i) {
+        builder.addUntrusted(sk_X509_value(intermediates, i));
     }
     builder.setPurpose(purposeCheck);
     if (anchors) {
@@ -1251,9 +1266,15 @@ DocumentVerification verifyDocument(Document& doc, const VerifyOptions& options)
         remember(summarize(x.get()));
     }
 
+    // Проход 1 — словарь, структура, целостность; проход 2 — доверие по общему пулу сертификатов документа,
+    // изменения, вердикт.
+    out.signatures.reserve(fields.size());
+    std::vector<std::unique_ptr<SignatureCheck>> checks;
+    std::vector<pdf_obj*> values;
     for (std::size_t i = 0; i < fields.size(); ++i) {
         pdf_obj* field = fields[i];
-        SignatureInfo sig;
+        out.signatures.emplace_back();
+        SignatureInfo& sig = out.signatures.back();
         sig.index = static_cast<int>(i);
         sig.fileSize = out.fileSize;
         pdf_obj* v = nullptr;
@@ -1313,11 +1334,37 @@ DocumentVerification verifyDocument(Document& doc, const VerifyOptions& options)
         }
         widgetPlacement(ctx, pdf, field, sig);
 
-        SignatureCheck check(ctx, pdf, sig, extra.get());
+        auto check = std::make_unique<SignatureCheck>(ctx, pdf, sig, extra.get());
         try {
-            if (check.structure(v)) {
-                check.integrity();
+            if (check->structure(v)) {
+                check->integrity();
             }
+        } catch (const std::exception& e) {
+            sig.findings.push_back({Issue::CmsDamaged, std::string("verification failed: ") + e.what()});
+            sig.intact = false;
+        }
+        for (const CertSummary& c : check->seenCertificates()) {
+            remember(c);
+        }
+        checks.push_back(std::move(check));
+        values.push_back(v);
+    }
+
+    Ossl<STACK_OF(X509)> pool(ossl::checkPtr(sk_X509_new_null(), "sk_X509_new_null"));
+    for (const CertSummary& c : out.embeddedCertificates) {
+        const unsigned char* p = c.der.data();
+        if (X509* x = d2i_X509(nullptr, &p, static_cast<long>(c.der.size()))) {
+            sk_X509_push(pool.get(), x);
+        }
+    }
+    ERR_clear_error();
+    for (std::size_t i = 0; i < fields.size(); ++i) {
+        pdf_obj* field = fields[i];
+        pdf_obj* v = values[i];
+        SignatureInfo& sig = out.signatures[i];
+        SignatureCheck& check = *checks[i];
+        check.setPool(pool.get());
+        try {
             check.trust(options, dssRevocationData);
         } catch (const std::exception& e) {
             sig.findings.push_back({Issue::CmsDamaged, std::string("verification failed: ") + e.what()});
@@ -1375,15 +1422,11 @@ DocumentVerification verifyDocument(Document& doc, const VerifyOptions& options)
             verdict = Verdict::ValidUntrusted;
         }
         sig.verdict = verdict;
-        for (const CertSummary& c : check.seenCertificates()) {
-            remember(c);
-        }
         if (sig.kind != SignatureKind::DocTimestamp) {
             sig.level = check.hasSignatureTimestamp() ? PadesLevel::T : PadesLevel::B;
         }
         spdlog::debug("verifier: {}: {} ({} findings)", sig.field, verdictName(sig.verdict),
                       sig.findings.size());
-        out.signatures.push_back(std::move(sig));
     }
     // Уровни PAdES: метка документа после подписи — T, /DSS после неё — LT, метка не раньше /DSS — LTA.
     int dssRevision = 0;
