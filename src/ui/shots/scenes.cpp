@@ -132,6 +132,20 @@ const std::vector<Scene>& sceneTable() {
         for (Scene& s : measureScenes()) {  // 5.5: measure-distance, measure-area, measure-scale-dialog
             table.push_back(std::move(s));
         }
+        // 5.5: тёмные двойники остальных экранов этапа 5 (панель инструмента, быстрые действия, меню панели
+        // «Комментарии», плоская копия, Установки комментирования и измерений).
+        for (const char* name :
+             {"tool-panel-comments", "annot-quick-actions", "comment-status", "comments-export",
+              "fill-sign-flatten-dialog", "preferences-commenting", "preferences-measuring"}) {
+            for (const Scene& s : std::vector<Scene>(table)) {
+                if (s.name == QLatin1String(name) && !s.theme) {
+                    Scene dark = s;
+                    dark.name += QStringLiteral("-dark");
+                    dark.theme = ThemeChoice::Dark;
+                    table.push_back(std::move(dark));
+                }
+            }
+        }
         return table;
     }();
     return SCENES;

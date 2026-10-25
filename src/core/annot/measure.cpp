@@ -13,6 +13,7 @@
 #include "core/doc/document.h"
 #include "core/doc/journal.h"
 #include "core/mu/call.h"
+#include "core/mu/context.h"
 #include "core/mu/handles.h"
 
 namespace ot::measure {

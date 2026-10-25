@@ -88,4 +88,52 @@ annot::LineEnding lineEnding(LineEnds ends) noexcept {
     return annot::LineEnding::None;
 }
 
+QChar csvSeparator(const QLocale& locale) {
+    const QString point = locale.decimalPoint();
+    return point == QLatin1String(",") ? QLatin1Char(';') : QLatin1Char(',');
+}
+
+namespace {
+
+QString csvField(QString text, QChar separator, bool number) {
+    if (!number && !text.isEmpty() &&
+        (text.front() == QLatin1Char('=') || text.front() == QLatin1Char('+') ||
+         text.front() == QLatin1Char('-') || text.front() == QLatin1Char('@'))) {
+        text.prepend(QLatin1Char('\''));
+    }
+    if (text.contains(separator) || text.contains(QLatin1Char('"')) || text.contains(QLatin1Char('\n')) ||
+        text.contains(QLatin1Char('\r'))) {
+        text.replace(QLatin1String("\""), QLatin1String("\"\""));
+        text = QLatin1Char('"') + text + QLatin1Char('"');
+    }
+    return text;
+}
+
+}  // namespace
+
+QByteArray toCsv(const std::vector<CsvRow>& rows, const QStringList& header, const QLocale& locale) {
+    const QChar separator = csvSeparator(locale);
+    const QString point = locale.decimalPoint();
+    const char decimal = point.isEmpty() ? '.' : point.at(0).toLatin1();
+    QString out;
+    QStringList fields;
+    for (const QString& h : header) {
+        fields << csvField(h, separator, false);
+    }
+    out += fields.join(separator) + QLatin1String("\r\n");
+    for (const CsvRow& row : rows) {
+        fields.clear();
+        fields << QString::number(row.page);
+        fields << csvField(row.kind, separator, false);
+        fields << (row.hasValue ? csvField(QString::fromStdString(formatNumber(row.value, row.precision,
+                                                                               decimal != 0 ? decimal : '.')),
+                                           separator, true)
+                                : QString());
+        fields << csvField(row.unit, separator, false);
+        fields << csvField(row.caption, separator, false);
+        out += fields.join(separator) + QLatin1String("\r\n");
+    }
+    return QByteArray("\xEF\xBB\xBF") + out.toUtf8();
+}
+
 }  // namespace ot::measure

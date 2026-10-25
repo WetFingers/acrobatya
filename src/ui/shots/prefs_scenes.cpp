@@ -74,6 +74,7 @@ std::vector<Scene> prefsScenes() {
     scenes.push_back(preferencesScene("preferences-print", "print"));            // 2.6
     scenes.push_back(preferencesScene("preferences-editing", "editing"));        // 3.4
     scenes.push_back(preferencesScene("preferences-commenting", "commenting"));  // 5.1
+    scenes.push_back(preferencesScene("preferences-measuring", "measuring"));    // 5.5
 
     Scene display;
     display.name = QStringLiteral("preferences-page-display-full");

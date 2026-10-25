@@ -77,3 +77,8 @@ pane-comments
 pane-comments-dark
 comment-reply
 summary-result
+# 5.5 — измерения и выравнивание
+measure-distance
+measure-distance-dark
+measure-scale-dialog
+annot-align

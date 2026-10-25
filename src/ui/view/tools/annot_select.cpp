@@ -1016,7 +1016,101 @@ void AnnotSelectTool::fillContextMenu(QMenu& menu) {
     lock->setCheckable(true);
     lock->setChecked(allLocked);
     lock->setEnabled(editable);
+    // Выровнять и распределить (5.5, comment-44) — нескольким выбранным с /Rect одной страницы.
+    if (selected_.size() >= 2) {
+        const std::size_t count = editable ? alignable().size() : 0;
+        QMenu* alignMenu = menu.addMenu(tr("Выровнять"));
+        alignMenu->setObjectName(QStringLiteral("annotAlignMenu"));
+        alignMenu->setEnabled(count >= 2);
+        const std::pair<annot::Align, const char*> aligns[] = {
+            {annot::Align::Left, QT_TRANSLATE_NOOP("ot::ui::AnnotSelectTool", "По левому краю")},
+            {annot::Align::HorizontalCenter,
+             QT_TRANSLATE_NOOP("ot::ui::AnnotSelectTool", "По центру по горизонтали")},
+            {annot::Align::Right, QT_TRANSLATE_NOOP("ot::ui::AnnotSelectTool", "По правому краю")},
+            {annot::Align::Top, QT_TRANSLATE_NOOP("ot::ui::AnnotSelectTool", "По верхнему краю")},
+            {annot::Align::VerticalCenter,
+             QT_TRANSLATE_NOOP("ot::ui::AnnotSelectTool", "По центру по вертикали")},
+            {annot::Align::Bottom, QT_TRANSLATE_NOOP("ot::ui::AnnotSelectTool", "По нижнему краю")},
+        };
+        for (const auto& [align, text] : aligns) {
+            const annot::Align a = align;
+            alignMenu->addAction(tr(text), [this, a] { alignSelection(a); });
+        }
+        QMenu* distributeMenu = menu.addMenu(tr("Распределить"));
+        distributeMenu->setObjectName(QStringLiteral("annotDistributeMenu"));
+        distributeMenu->setEnabled(count >= 3);
+        distributeMenu->addAction(tr("По горизонтали"),
+                                  [this] { distributeSelection(annot::Distribute::Horizontal); });
+        distributeMenu->addAction(tr("По вертикали"),
+                                  [this] { distributeSelection(annot::Distribute::Vertical); });
+    }
     controller_.emitAnnotContextMenu(&menu);  // пункты инструментов (5.1 — комментарии, 6.3 — поля)
+}
+
+std::vector<AnnotSelectTool::AnnotInfo> AnnotSelectTool::alignable() const {
+    std::vector<AnnotInfo> out;
+    if (selected_.empty()) {
+        return out;
+    }
+    const int page = selected_.front().ref.page;
+    for (const AnnotInfo& info : selected_) {
+        if (info.ref.page == page && movable(info) && !info.locked()) {
+            out.push_back(info);
+        }
+    }
+    return out;
+}
+
+void AnnotSelectTool::alignSelection(annot::Align align) {
+    DocumentSession* session = view_.document();
+    const std::vector<AnnotInfo> items = alignable();
+    if (session == nullptr || !controller_.editable() || items.size() < 2) {
+        return;
+    }
+    std::vector<RectF> rects;
+    for (const AnnotInfo& info : items) {
+        rects.push_back(info.rect);
+    }
+    const std::vector<RectF> placed = annot::alignRects(rects, align);
+    std::vector<annot::RectEdit> edits;
+    for (std::size_t i = 0; i < items.size(); ++i) {
+        edits.push_back({items[i].ref, placed[i]});
+    }
+    for (AnnotInfo& info : selected_) {
+        for (const annot::RectEdit& e : edits) {
+            if (info.ref == e.ref) {
+                info.rect = e.rect;  // до ответа сессии рамки — новые
+            }
+        }
+    }
+    annot::setRects(*session, std::move(edits), QString::fromLatin1(annot::kAlignStep));
+    publish();
+}
+
+void AnnotSelectTool::distributeSelection(annot::Distribute distribute) {
+    DocumentSession* session = view_.document();
+    const std::vector<AnnotInfo> items = alignable();
+    if (session == nullptr || !controller_.editable() || items.size() < 3) {
+        return;
+    }
+    std::vector<RectF> rects;
+    for (const AnnotInfo& info : items) {
+        rects.push_back(info.rect);
+    }
+    const std::vector<RectF> placed = annot::distributeRects(rects, distribute);
+    std::vector<annot::RectEdit> edits;
+    for (std::size_t i = 0; i < items.size(); ++i) {
+        edits.push_back({items[i].ref, placed[i]});
+    }
+    for (AnnotInfo& info : selected_) {
+        for (const annot::RectEdit& e : edits) {
+            if (info.ref == e.ref) {
+                info.rect = e.rect;
+            }
+        }
+    }
+    annot::setRects(*session, std::move(edits), QString::fromLatin1(annot::kDistributeStep));
+    publish();
 }
 
 bool AnnotSelectTool::wantsShortcut(const QKeyEvent* event) const {

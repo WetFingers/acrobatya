@@ -4,8 +4,11 @@
 // измерения документа (экспорт CSV); настройки «Измерения (2D)» (measuring/… services/settings_keys.h).
 #pragma once
 
+#include <QByteArray>
 #include <QFuture>
+#include <QLocale>
 #include <QString>
+#include <QStringList>
 
 #include <vector>
 
@@ -50,5 +53,23 @@ void setSettings(Settings& settings, const MeasureSettings& value);
 void setScale(Settings& settings, const Scale& scale);
 // /LE расстояния по настройке: стрелки — OpenArrow, засечки — Butt.
 annot::LineEnding lineEnding(LineEnds ends) noexcept;
+
+// Экспорт измерений в CSV (comment-40): строка на измерение — страница (с 1), тип, значение (точность
+// измерения, десятичный разделитель локали), единицы, подпись. Подписи типов и единиц — на языке интерфейса
+// (готовит ui).
+struct CsvRow {
+    int page = 1;
+    QString kind;
+    double value = 0;
+    bool hasValue = true;  // нет /Measure — пустое значение
+    int precision = 2;
+    QString unit;
+    QString caption;
+};
+// Разделитель полей по локали (как список Excel): десятичная запятая — «;», иначе «,».
+QChar csvSeparator(const QLocale& locale);
+// UTF-8 с BOM (Excel узнаёт кодировку), строки — CRLF; поле с разделителем, кавычкой или переводом строки — в
+// кавычках (кавычка удваивается); текст, начинающийся с = + - @, — с апострофом (не формула в Excel).
+QByteArray toCsv(const std::vector<CsvRow>& rows, const QStringList& header, const QLocale& locale);
 
 }  // namespace ot::measure

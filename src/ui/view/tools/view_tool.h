@@ -32,6 +32,7 @@
 #include <optional>
 #include <vector>
 
+#include "core/annot/align.h"
 #include "core/annot/annots.h"
 #include "core/text/selection.h"
 #include "core/util/geometry.h"
@@ -384,6 +385,13 @@ public:
     static bool movable(const AnnotInfo& info) noexcept;
     // Заблокировать / разблокировать выбранные (/F Locked) одним шагом.
     void setSelectionLocked(bool locked);
+    // Выравнивание и распределение (5.5, comment-44): выбранные с /Rect одной страницы (не разметка и не
+    // «Заблокировано») — сдвиг рамок одним шагом «Align annotations» / «Distribute annotations» (core/annot/
+    // align.h). Выровнять — от двух, распределить — от трёх; иначе пункты меню серые и вызов ничего не
+    // делает.
+    std::vector<AnnotInfo> alignable() const;
+    void alignSelection(annot::Align align);
+    void distributeSelection(annot::Distribute distribute);
     // Скрытые подтипы (показ/скрытие комментариев вкладки, 5.1): не выбираются, выбранные снимаются.
     void setHiddenTypes(std::uint32_t mask);
     bool hiddenType(annot::AnnotType type) const noexcept;

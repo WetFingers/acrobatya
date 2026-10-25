@@ -135,6 +135,10 @@ public:
     void exportTo(const QString& path, comments::ExchangeFormat format, bool selectedOnly);
     void importComments();
     void importFrom(const QString& path);
+    // «Экспорт измерений в CSV…» (5.5, comment-40): все измерения документа (страница, тип, значение,
+    // единицы, подпись) — CSV с разделителем и десятичным знаком локали; нет измерений — тост.
+    void exportMeasures();
+    void exportMeasuresTo(const QString& path);
     // «Сводка комментариев…» (comment-25).
     void showSummary();
     void setSaveChooser(SaveChooser chooser) { saveChooser_ = std::move(chooser); }
@@ -164,6 +168,8 @@ signals:
     void exported(const QString& path);
     void imported(const ot::annot::ImportReport& report);
     void importRefused(const QString& reason);
+    // CSV измерений записан: путь и число строк.
+    void measuresExported(const QString& path, int count);
 
 protected:
     void changeEvent(QEvent* event) override;

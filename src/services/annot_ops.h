@@ -29,6 +29,8 @@ inline constexpr const char* kEditNoteStep = "Edit note text";
 inline constexpr const char* kEditTextBoxStep = "Edit text box";
 inline constexpr const char* kMoveVertexStep = "Move vertex";
 inline constexpr const char* kRotateStampStep = "Rotate stamp";
+inline constexpr const char* kAlignStep = "Align annotations";  // 5.5, comment-44
+inline constexpr const char* kDistributeStep = "Distribute annotations";
 
 QFuture<std::vector<AnnotInfo>> list(DocumentSession& session, int page,
                                      TaskPriority priority = TaskPriority::Normal);
@@ -42,7 +44,9 @@ struct RectEdit {
     AnnotRef ref;
     RectF rect;
 };
-QFuture<void> setRects(DocumentSession& session, std::vector<RectEdit> edits);
+// step — шаг истории (выравнивание и распределение 5.5 — свои).
+QFuture<void> setRects(DocumentSession& session, std::vector<RectEdit> edits,
+                       QString step = QString::fromLatin1(kSetRectStep));
 QFuture<void> remove(DocumentSession& session, std::vector<AnnotRef> refs);
 
 // 5.1: создание (шаг — createStepName типа или step), группа «Заменить текст», правка свойств (шаг step —

@@ -12,10 +12,12 @@
 #include <QHBoxLayout>
 #include <QHash>
 #include <QLabel>
+#include <QLocale>
 #include <QMenu>
 #include <QMessageBox>
 #include <QPainter>
 #include <QPushButton>
+#include <QSaveFile>
 #include <QStackedWidget>
 #include <QStandardPaths>
 #include <QStyledItemDelegate>
@@ -28,6 +30,7 @@
 
 #include "core/annot/annots.h"
 #include "services/comment_settings.h"
+#include "services/measure_ops.h"
 #include "services/settings.h"
 #include "ui/dialogs/annot_props_dialog.h"
 #include "ui/dialogs/summary_dialog.h"
@@ -38,6 +41,7 @@
 #include "ui/theme/theme.h"
 #include "ui/tools/comment/popup_widget.h"
 #include "ui/tools/comment/reply_editor.h"
+#include "ui/tools/measure/measure_mode.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
 #include "ui/widgets/empty_state.h"
@@ -987,6 +991,78 @@ void CommentsPane::exportTo(const QString& path, comments::ExchangeFormat format
         });
 }
 
+void CommentsPane::exportMeasures() {
+    if (view_ == nullptr) {
+        return;
+    }
+    QString base = view_->path();
+    if (base.isEmpty()) {
+        base = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation))
+                   .filePath(view_->title());
+    }
+    const QString suggested = QFileInfo(base).absolutePath() + QLatin1Char('/') +
+                              tr("%1 — измерения.csv").arg(QFileInfo(base).completeBaseName());
+    const QString filter = tr("Таблица CSV (*.csv)");
+    const QString path = saveChooser_
+                             ? saveChooser_(suggested, filter)
+                             : QFileDialog::getSaveFileName(this, tr("Экспорт измерений"), suggested, filter);
+    if (!path.isEmpty()) {
+        exportMeasuresTo(path);
+    }
+}
+
+void CommentsPane::exportMeasuresTo(const QString& path) {
+    if (view_ == nullptr) {
+        return;
+    }
+    QPointer<CommentsPane> self(this);
+    measure::list(view_->session()).then(this, [self, path](QFuture<std::vector<measure::Measurement>> f) {
+        if (self == nullptr || self->view_ == nullptr) {
+            return;
+        }
+        std::vector<measure::Measurement> all;
+        try {
+            all = f.result();
+        } catch (
+            const std::exception&) {  // NOLINT(bugprone-empty-catch): не прочитались — как «нет измерений»
+        }
+        if (all.empty()) {
+            Toast::notify(self->view_, tr("В документе нет измерений."), Tone::Neutral);
+            return;
+        }
+        std::vector<measure::CsvRow> rows;
+        for (const measure::Measurement& m : all) {
+            measure::CsvRow row;
+            row.page = m.ref.page + 1;
+            row.kind =
+                MeasureMode::actionTitle(m.kind == measure::Kind::Area        ? MeasureAction::Area
+                                         : m.kind == measure::Kind::Perimeter ? MeasureAction::Perimeter
+                                                                              : MeasureAction::Distance);
+            row.value = m.value;
+            row.hasValue = m.hasValue;
+            row.precision = m.precision;
+            const bool area = m.unit.rfind("sq ", 0) == 0;
+            const std::optional<measure::Unit> unit = measure::unitFromLabel(m.unit);
+            row.unit = unit ? MeasureMode::unitLabel(*unit, area) : QString::fromStdString(m.unit);
+            row.caption = QString::fromStdString(m.caption);
+            rows.push_back(std::move(row));
+        }
+        const QStringList header = {tr("Страница"), tr("Тип"), tr("Значение"), tr("Единицы"), tr("Подпись")};
+        QSaveFile file(path);
+        if (!file.open(QIODevice::WriteOnly) || file.write(measure::toCsv(rows, header, QLocale())) < 0 ||
+            !file.commit()) {
+            Toast::notify(self->view_, tr("Не удалось записать «%1».").arg(QFileInfo(path).fileName()));
+            return;
+        }
+        Toast::notify(self->view_,
+                      tr("Измерений: %1 — сохранено в «%2».")
+                          .arg(static_cast<int>(rows.size()))
+                          .arg(QFileInfo(path).fileName()),
+                      Tone::Ok);
+        emit self->measuresExported(path, static_cast<int>(rows.size()));
+    });
+}
+
 void CommentsPane::importComments() {
     if (view_ == nullptr || !canAnnotate()) {
         return;
@@ -1260,10 +1336,12 @@ void CommentsPane::fillMoreMenu() {
     summary->setEnabled(view_ != nullptr && !view_->isViewOnly());
     emit moreMenuRequested(moreMenu_);
     moreMenu_->addSeparator();
-    QAction* measures = moreMenu_->addAction(tr("Экспорт &измерений в CSV…"));
+    QAction* measures =
+        moreMenu_->addAction(Icons::icon(QStringLiteral("sheet")), tr("Экспорт &измерений в CSV…"), this,
+                             &CommentsPane::exportMeasures);
     measures->setObjectName(QStringLiteral("commentsExportMeasures"));
-    measures->setEnabled(false);
-    measures->setToolTip(tr("Появится вместе с инструментом «Измерить»"));
+    measures->setEnabled(view_ != nullptr && !view_->isViewOnly());
+    measures->setToolTip(tr("Расстояния, периметры и площади документа — таблицей для Excel"));
 }
 
 void CommentsPane::retranslate() {
