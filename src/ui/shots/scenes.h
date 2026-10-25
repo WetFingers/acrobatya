@@ -102,6 +102,8 @@ std::vector<Scene> commentScenes();
 // fill-sign-text, fill-sign-comb, fill-sign-marks, fill-sign-placed, fill-sign-flatten-dialog (+ три
 // -dark, 5.3).
 std::vector<Scene> fillSignScenes();
+// comments_pane_scenes.cpp — pane-comments, pane-comments-filtered, pane-comments-search (5.4).
+std::vector<Scene> commentsPaneScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.
 bool waitSceneReady(const Scene& scene, QWidget* window, int timeoutMs = 30000);

@@ -17,6 +17,7 @@
 #include "services/commands.h"
 #include "services/document_session.h"
 #include "services/settings.h"
+#include "ui/panes/comments_pane.h"
 #include "ui/panes/find_bar.h"
 #include "ui/shell/document_tabs.h"
 #include "ui/shell/document_view.h"
@@ -474,6 +475,23 @@ void MainWindow::registerCommands() {
                .checkable = true,
                .checked = [this, p] { return navPane_->isPanelOpen() && navPane_->currentPane() == p; }});
     }
+    // Ctrl+8 (эталон 6.8): сбросить фильтр и поиск панели «Комментарии» (5.4; comment-19).
+    r.add({.id = QStringLiteral("comment.clearFilter"),
+           .title = tr("Сбросить &фильтр комментариев"),
+           .shortcuts = {key(Qt::CTRL | Qt::Key_8)},
+           .icon = QStringLiteral("funnel-x"),
+           .run =
+               [this] {
+                   if (auto* pane = qobject_cast<CommentsPane*>(navPane_->page(QStringLiteral("comments")))) {
+                       pane->clearFilter();
+                   }
+               },
+           .enabled =
+               [this] {
+                   auto* pane = qobject_cast<CommentsPane*>(navPane_->page(QStringLiteral("comments")));
+                   return pane != nullptr && pane->filterActive();
+               },
+           .menu = QStringLiteral("view/panels")});
     r.add({.id = QStringLiteral("view.toolPanel"),
            .title = tr("Панель &инструментов"),
            .shortcuts = {key(Qt::SHIFT | Qt::Key_F4)},

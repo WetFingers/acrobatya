@@ -385,6 +385,9 @@ public:
     // Скрытые подтипы (показ/скрытие комментариев вкладки, 5.1): не выбираются, выбранные снимаются.
     void setHiddenTypes(std::uint32_t mask);
     bool hiddenType(annot::AnnotType type) const noexcept;
+    // Скрытые фильтром панели «Комментарии» (5.4): номера объектов по страницам — как скрытые подтипы.
+    void setHiddenAnnots(const std::map<int, std::vector<int>>& byPage);
+    bool hiddenAnnot(const AnnotInfo& info) const;
     // Контекстное меню выбранных: Копировать, Вырезать, Удалить, Заблокировать — затем пункты инструментов
     // (сигнал ToolController::annotContextMenu). Правая кнопка показывает его, тест — заполняет.
     void fillContextMenu(QMenu& menu);
@@ -466,6 +469,7 @@ private:
     QSet<int> refresh_;           // страницы, где рамки выбранных ждут нового списка
     std::map<int, RectF> bands_;  // рамка выбора по страницам (пункты), ждёт списков
     std::uint32_t hiddenTypes_ = 0;
+    std::map<int, std::vector<int>> hiddenAnnots_;  // по возрастанию
     // Маркеры вершин (5.2).
     std::vector<QPointF> vertexPoints_;
     std::vector<PointF> callout_;  // выноска FreeText целиком (3 точки)

@@ -30,6 +30,7 @@ struct TileKey {
     std::uint64_t style = 0;         // RenderStyle::key() (renderer.h): замена цветов, сглаживание, overprint
     std::uint64_t revision = 0;      // DocumentSession::revision()
     std::uint32_t annotsHidden = 0;  // скрытые подтипы аннотаций (бит — AnnotType; 5.1 «Показать/скрыть»)
+    std::uint32_t annotFilter = 0;   // скрытые фильтром панели «Комментарии» (5.4): hiddenAnnotsKey страницы
 
     bool operator==(const TileKey&) const = default;
 };
@@ -74,11 +75,11 @@ inline constexpr int kPreviewDivisor = 8;
 float previewZoom(float zoom) noexcept;
 TileKey makePreviewKey(std::uint64_t doc, int page, float zoom, float dpr, int rotation,
                        std::uint64_t revision = 0, std::uint64_t layersHash = 0, std::uint64_t style = 0,
-                       std::uint32_t annotsHidden = 0) noexcept;
+                       std::uint32_t annotsHidden = 0, std::uint32_t annotFilter = 0) noexcept;
 
 // Ключ тайла: масштаб и dpr — в тысячных, поворот — нормализован.
 TileKey makeTileKey(std::uint64_t doc, int page, float zoom, float dpr, int rotation, const TileRect& tile,
                     std::uint64_t revision = 0, std::uint64_t layersHash = 0, std::uint64_t style = 0,
-                    std::uint32_t annotsHidden = 0) noexcept;
+                    std::uint32_t annotsHidden = 0, std::uint32_t annotFilter = 0) noexcept;
 
 }  // namespace ot

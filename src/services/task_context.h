@@ -66,8 +66,10 @@ public:
     // Загрузить страницу на время задачи; ошибка — MuError.
     PageHandle page(int index) const;
     // Display list страницы из кеша документа (строится с cookie задачи — отмена прерывает построение).
+    // hidden — скрытые фильтром номера объектов страницы (по возрастанию; панель «Комментарии» 5.4).
     std::shared_ptr<const DisplayList> displayList(int index, bool annotations = true,
-                                                   std::uint32_t annotsHidden = 0) const;
+                                                   std::uint32_t annotsHidden = 0,
+                                                   const std::vector<int>& hidden = {}) const;
     // Текстовый слой страницы из кеша документа (LRU 16; строится с cookie задачи).
     std::shared_ptr<const TextPage> textPage(int index, const TextOptions& options = {}) const;
     // Правка затронула страницу: её display list и текстовый слой сбрасываются (и страница записывается в шаг

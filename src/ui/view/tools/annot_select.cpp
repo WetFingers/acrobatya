@@ -596,7 +596,7 @@ void AnnotSelectTool::hitArrived(const std::optional<AnnotInfo>& found, quint64 
         return;  // нажатие брошено (Esc, смена документа) — ответ устарел
     }
     // Скрытые показом/скрытием комментариев — как пустое место.
-    const std::optional<AnnotInfo> hit = found && hiddenType(found->type) ? std::nullopt : found;
+    const std::optional<AnnotInfo> hit = found && hiddenAnnot(*found) ? std::nullopt : found;
     const bool shift = (press_.modifiers & Qt::ShiftModifier) != 0;
     if (press_.button == Qt::RightButton) {
         drag_ = Drag::None;
@@ -772,7 +772,7 @@ bool AnnotSelectTool::applyBands() {
         }
         const QRectF band = annotQRect(it->second);
         for (const AnnotInfo& info : *list) {
-            if (annotSelectable(info) && !hiddenType(info.type) &&
+            if (annotSelectable(info) && !hiddenAnnot(info) &&
                 annotQRect(info.rect).normalized().intersects(band) && !isSelected(info.ref)) {
                 selected_.push_back(info);
                 changed = true;
@@ -948,11 +948,28 @@ bool AnnotSelectTool::hiddenType(annot::AnnotType type) const noexcept {
     return i >= 0 && i < 32 && (hiddenTypes_ & (1u << i)) != 0;
 }
 
+bool AnnotSelectTool::hiddenAnnot(const AnnotInfo& info) const {
+    if (hiddenType(info.type)) {
+        return true;
+    }
+    const auto it = hiddenAnnots_.find(info.ref.page);
+    return it != hiddenAnnots_.end() &&
+           std::binary_search(it->second.begin(), it->second.end(), info.ref.objnum);
+}
+
+void AnnotSelectTool::setHiddenAnnots(const std::map<int, std::vector<int>>& byPage) {
+    hiddenAnnots_ = byPage;
+    for (auto& [page, list] : hiddenAnnots_) {
+        std::sort(list.begin(), list.end());
+    }
+    setHiddenTypes(hiddenTypes_);
+}
+
 void AnnotSelectTool::setHiddenTypes(std::uint32_t mask) {
     hiddenTypes_ = mask;
     const auto before = selected_.size();
     selected_.erase(std::remove_if(selected_.begin(), selected_.end(),
-                                   [this](const AnnotInfo& info) { return hiddenType(info.type); }),
+                                   [this](const AnnotInfo& info) { return hiddenAnnot(info); }),
                     selected_.end());
     if (selected_.size() != before) {
         publish();

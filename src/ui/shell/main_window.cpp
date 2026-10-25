@@ -57,6 +57,7 @@
 #include "ui/dialogs/properties_dialog.h"
 #include "ui/dialogs/recover_dialog.h"
 #include "ui/dialogs/search_window.h"
+#include "ui/panes/comments_pane.h"
 #include "ui/panes/find_bar.h"
 #include "ui/panes/signatures_pane.h"
 #include "ui/shell/command_palette.h"
@@ -156,6 +157,7 @@ MainWindow::MainWindow(QWidget* parent)
     // Правая навигация: панель 280 — в сплиттере (тянется 220–480), полоса 44 — у правого края.
     navPane_ = new NavPane(row);
     navPane_->replacePage(new SignaturesPane(navPane_->panel()->pages()));  // 4.6 — вместо заглушки
+    navPane_->replacePage(new CommentsPane(navPane_->panel()->pages()));    // 5.4
     body_->addWidget(navPane_->panel());
     body_->setStretchFactor(body_->indexOf(navPane_->panel()), 0);
     body_->setCollapsible(body_->indexOf(navPane_->panel()), false);

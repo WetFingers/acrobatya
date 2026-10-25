@@ -27,6 +27,7 @@
 #include "support/ui_test.h"
 #include "ui/panes/attachments_pane.h"
 #include "ui/panes/bookmarks_pane.h"
+#include "ui/panes/comments_pane.h"
 #include "ui/panes/destinations_pane.h"
 #include "ui/panes/layers_pane.h"
 #include "ui/panes/thumbnails_pane.h"
@@ -458,16 +459,16 @@ private slots:
         MainWindow w;
         showActive(w);
         QVERIFY(w.openFile(fixture("view/nav.pdf")));
-        // «Подписи» живые с 4.6 (ui/panes/signatures_pane.h); заглушка — «Комментарии».
-        for (const auto& [id, stage] : {std::pair{"comments", 5}}) {
-            w.navPane().showPane(QLatin1String(id));
-            auto* page = w.navPane().page(QLatin1String(id));
-            bool found = false;
-            for (QLabel* l : page->findChildren<QLabel*>()) {
-                found = found || l->text().contains(QStringLiteral("появится в версии 0.%1").arg(stage));
-            }
-            QVERIFY2(found, id);
+        // «Подписи» живые с 4.6 (ui/panes/signatures_pane.h), «Комментарии» — с 5.4
+        // (ui/panes/comments_pane.h); заглушка — «Поля» (6.3, видна только в «Подготовить форму»).
+        QVERIFY(qobject_cast<ot::ui::CommentsPane*>(w.navPane().page(QStringLiteral("comments"))) != nullptr);
+        auto* page = w.navPane().page(QStringLiteral("fields"));
+        QVERIFY(page != nullptr);
+        bool found = false;
+        for (QLabel* l : page->findChildren<QLabel*>()) {
+            found = found || l->text().contains(QStringLiteral("появится в версии 0.6"));
         }
+        QVERIFY(found);
     }
 
 private:

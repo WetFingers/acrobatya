@@ -23,6 +23,7 @@
 #include <QSet>
 #include <QString>
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <unordered_map>
@@ -85,6 +86,10 @@ public:
     // Показ/скрытие комментариев (5.1; ключ тайлов annotsHidden): скрытые подтипы — бит AnnotType.
     void setAnnotsHidden(std::uint32_t mask);
     std::uint32_t annotsHidden() const noexcept { return annotsHidden_; }
+    // Скрытые фильтром панели «Комментарии» (5.4): номера объектов по страницам (по возрастанию; поле
+    // annotFilter ключа тайлов). Другой состав страницы — её растры и список заново.
+    void setHiddenAnnots(std::map<int, std::vector<int>> byPage);
+    const std::map<int, std::vector<int>>& hiddenAnnots() const noexcept { return hiddenAnnots_; }
     const RenderStyle& style() const noexcept { return style_; }
     // Смена экрана (dpr): растры документа и задачи — сброс.
     void resetDevice();
@@ -141,8 +146,11 @@ private:
     quint64 docId_ = 0;
     quint64 layers_ = 0;  // DocumentSession::layersHash() — поле layersHash ключей
     RenderStyle style_;
-    quint64 styleKey_ = 0;            // style_.key() — поле style ключей
-    std::uint32_t annotsHidden_ = 0;  // скрытые подтипы аннотаций — поле annotsHidden ключей
+    quint64 styleKey_ = 0;                          // style_.key() — поле style ключей
+    std::uint32_t annotsHidden_ = 0;                // скрытые подтипы аннотаций — поле annotsHidden ключей
+    std::map<int, std::vector<int>> hiddenAnnots_;  // скрытые фильтром 5.4 по страницам
+    std::map<int, std::uint32_t> hiddenKeys_;       // их отпечатки (hiddenAnnotsKey) — поле annotFilter
+    std::uint32_t filterKey(int page) const;
     RenderPool* pool_ = nullptr;
     TileCache* cache_ = nullptr;
     std::unique_ptr<RenderPool> ownPool_;

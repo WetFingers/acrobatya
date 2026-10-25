@@ -1,5 +1,7 @@
 #include "core/render/display_cache.h"
 
+#include <algorithm>
+
 #include "core/doc/document.h"
 #include "core/mu/call.h"
 #include "core/mu/context.h"
@@ -8,8 +10,24 @@
 
 namespace ot {
 
+std::uint32_t hiddenAnnotsKey(const std::vector<int>& objnums) noexcept {
+    if (objnums.empty()) {
+        return 0;
+    }
+    std::uint32_t h = 2166136261u;  // FNV-1a по номерам
+    for (const int n : objnums) {
+        auto v = static_cast<std::uint32_t>(n);
+        for (int i = 0; i < 4; ++i) {
+            h = (h ^ (v & 0xFFu)) * 16777619u;
+            v >>= 8;
+        }
+    }
+    return h == 0 ? 1u : h;
+}
+
 DisplayList::DisplayList(std::unique_ptr<MuContext> owner, fz_display_list* list, const RectF& bounds,
-                         int page, bool annotations, bool usesOverprint, std::uint32_t annotsHidden) noexcept
+                         int page, bool annotations, bool usesOverprint, std::uint32_t annotsHidden,
+                         std::uint32_t hiddenKey) noexcept
     : owner_(std::move(owner)),
       family_(owner_ ? owner_->family() : nullptr),
       list_(list),
@@ -17,7 +35,8 @@ DisplayList::DisplayList(std::unique_ptr<MuContext> owner, fz_display_list* list
       page_(page),
       annotations_(annotations),
       usesOverprint_(usesOverprint),
-      annotsHidden_(annotsHidden) {}
+      annotsHidden_(annotsHidden),
+      hiddenKey_(hiddenKey) {}
 
 DisplayList::~DisplayList() {
     if (list_ != nullptr && owner_) {
@@ -53,8 +72,10 @@ RectF DisplayList::contentBounds() const {
 }
 
 std::shared_ptr<const DisplayList> DisplayList::build(const Document& doc, int page, bool annotations,
-                                                      fz_cookie* cookie, std::uint32_t annotsHidden) {
+                                                      fz_cookie* cookie, std::uint32_t annotsHidden,
+                                                      const std::vector<int>& hidden) {
     fz_context* ctx = doc.context().get();
+    const bool filtered = annotations && (annotsHidden != 0 || !hidden.empty());
     mu::PageHandle p(ctx);
     mu::DisplayListHandle list(ctx);
     mu::DeviceHandle dev(ctx);
@@ -67,14 +88,16 @@ std::shared_ptr<const DisplayList> DisplayList::build(const Document& doc, int p
         overprint = fz_page_uses_overprint(ctx, p);
         list.reset(fz_new_display_list(ctx, bounds));
         dev.reset(fz_new_list_device(ctx, list));
-        if (annotations && annotsHidden != 0 && pdf_page_from_fz_page(ctx, p) != nullptr) {
-            // Показ/скрытие по подтипам — визуальный фильтр (не /F Hidden): как pdf_run_page, но аннотации
-            // по одной.
+        if (filtered && pdf_page_from_fz_page(ctx, p) != nullptr) {
+            // Показ/скрытие по подтипам и фильтр панели «Комментарии» — визуальный фильтр (не /F Hidden):
+            // как pdf_run_page, но аннотации по одной.
             pdf_page* pp = pdf_page_from_fz_page(ctx, p);
             pdf_run_page_contents(ctx, pp, dev, fz_identity, cookie);
             for (pdf_annot* a = pdf_first_annot(ctx, pp); a != nullptr; a = pdf_next_annot(ctx, a)) {
                 const int type = static_cast<int>(pdf_annot_type(ctx, a));
-                if (type < 0 || type >= 32 || (annotsHidden & (1u << type)) == 0) {
+                const bool typeShown = type < 0 || type >= 32 || (annotsHidden & (1u << type)) == 0;
+                if (typeShown && !std::binary_search(hidden.begin(), hidden.end(),
+                                                     pdf_to_num(ctx, pdf_annot_obj(ctx, a)))) {
                     pdf_run_annot(ctx, a, dev, fz_identity, cookie);
                 }
             }
@@ -93,37 +116,42 @@ std::shared_ptr<const DisplayList> DisplayList::build(const Document& doc, int p
     auto owner = doc.context().clone();
     return std::make_shared<const DisplayList>(std::move(owner), list.release(),
                                                RectF{bounds.x0, bounds.y0, bounds.x1, bounds.y1}, page,
-                                               annotations, overprint != 0, annotations ? annotsHidden : 0);
+                                               annotations, overprint != 0, annotations ? annotsHidden : 0,
+                                               annotations ? hiddenAnnotsKey(hidden) : 0);
 }
 
 std::shared_ptr<const DisplayList> DisplayCache::get(const Document& doc, int page, bool annotations,
-                                                     fz_cookie* cookie, std::uint32_t annotsHidden) {
+                                                     fz_cookie* cookie, std::uint32_t annotsHidden,
+                                                     const std::vector<int>& hidden) {
     if (!annotations) {
         annotsHidden = 0;
     }
-    const Key key{page, annotations, annotsHidden};
+    static const std::vector<int> kNone;
+    const std::vector<int>& objnums = annotations ? hidden : kNone;
+    const Key key{page, annotations, annotsHidden, hiddenAnnotsKey(objnums)};
     if (const auto it = index_.find(key); it != index_.end()) {
         order_.splice(order_.begin(), order_, it->second);
         ++hits_;
         return it->second->second;
     }
     ++misses_;
-    auto list = DisplayList::build(doc, page, annotations, cookie, annotsHidden);
+    auto list = DisplayList::build(doc, page, annotations, cookie, annotsHidden, objnums);
     order_.emplace_front(key, list);
     index_[key] = order_.begin();
     trim();
     return list;
 }
 
-std::shared_ptr<const DisplayList> DisplayCache::find(int page, bool annotations,
-                                                      std::uint32_t annotsHidden) const {
-    const auto it = index_.find(Key{page, annotations, annotations ? annotsHidden : 0});
+std::shared_ptr<const DisplayList> DisplayCache::find(int page, bool annotations, std::uint32_t annotsHidden,
+                                                      std::uint32_t hiddenKey) const {
+    const auto it =
+        index_.find(Key{page, annotations, annotations ? annotsHidden : 0, annotations ? hiddenKey : 0});
     return it == index_.end() ? nullptr : it->second->second;
 }
 
 void DisplayCache::invalidate(int page) {
     // Все варианты страницы (с пометками и без, фильтры показа).
-    for (auto it = index_.lower_bound(Key{page, false, 0});
+    for (auto it = index_.lower_bound(Key{page, false, 0, 0});
          it != index_.end() && std::get<0>(it->first) == page;) {
         order_.erase(it->second);
         it = index_.erase(it);

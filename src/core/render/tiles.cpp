@@ -43,6 +43,7 @@ std::size_t hashValue(const TileKey& k) noexcept {
     h = mix(h, k.style);
     h = mix(h, k.revision);
     h = mix(h, k.annotsHidden);
+    h = mix(h, k.annotFilter);
     return static_cast<std::size_t>(h);
 }
 
@@ -115,7 +116,7 @@ std::vector<TileRect> tileRectsFor(const RectF& pageRect, float zoom, float dpr,
 
 TileKey makeTileKey(std::uint64_t doc, int page, float zoom, float dpr, int rotation, const TileRect& tile,
                     std::uint64_t revision, std::uint64_t layersHash, std::uint64_t style,
-                    std::uint32_t annotsHidden) noexcept {
+                    std::uint32_t annotsHidden, std::uint32_t annotFilter) noexcept {
     TileKey k;
     k.doc = doc;
     k.page = page;
@@ -129,6 +130,7 @@ TileKey makeTileKey(std::uint64_t doc, int page, float zoom, float dpr, int rota
     k.style = style;
     k.revision = revision;
     k.annotsHidden = annotsHidden;
+    k.annotFilter = annotFilter;
     return k;
 }
 
@@ -138,9 +140,9 @@ float previewZoom(float zoom) noexcept {
 
 TileKey makePreviewKey(std::uint64_t doc, int page, float zoom, float dpr, int rotation,
                        std::uint64_t revision, std::uint64_t layersHash, std::uint64_t style,
-                       std::uint32_t annotsHidden) noexcept {
+                       std::uint32_t annotsHidden, std::uint32_t annotFilter) noexcept {
     TileKey k = makeTileKey(doc, page, previewZoom(zoom), dpr, rotation, TileRect{-1, -1, {}}, revision,
-                            layersHash, style, annotsHidden);
+                            layersHash, style, annotsHidden, annotFilter);
     k.zoomBucket = zoomBucket(zoom);
     return k;
 }

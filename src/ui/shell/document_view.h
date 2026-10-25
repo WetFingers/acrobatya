@@ -9,9 +9,10 @@
 #include <QPointer>
 #include <QWidget>
 
+#include <map>
 #include <memory>
-
 #include <optional>
+#include <vector>
 
 #include "core/links/links.h"
 #include "services/document_session.h"
@@ -77,6 +78,11 @@ public:
     bool commentsHidden() const;
     // Подтипы-комментарии (annot::isComment) маской.
     static std::uint32_t commentTypesMask();
+    // Фильтр панели «Комментарии» (5.4; эталон 3.4 «фильтры действуют на панель, оверлей, печать/сводку»):
+    // скрытые фильтром номера объектов по страницам — не рисуются (поле annotFilter ключа тайлов), не
+    // выбираются; файл не меняется. Пусто — фильтра нет.
+    void setFilteredAnnots(std::map<int, std::vector<int>> byPage);
+    const std::map<int, std::vector<int>>& filteredAnnots() const { return filtered_; }
     bool isPdfX() const { return pdfx_; }
     // Права /P документа (OpenSummary::permissions; после сохранения — заново).
     const Permissions& permissions() const { return permissions_; }
@@ -122,6 +128,7 @@ public:
 
 signals:
     void annotsHiddenChanged(std::uint32_t mask);
+    void filteredAnnotsChanged();
     void modifiedChanged(bool modified);
     void readOnlyChanged(bool readOnly);
     void protectedViewChanged(bool on);
@@ -148,7 +155,8 @@ private:
     MessageStack* stack_ = nullptr;
     FindBar* find_ = nullptr;
     QuickActionsBar* quickActions_ = nullptr;
-    std::uint32_t annotsHidden_ = 0;  // 5.1: действия над выделенным текстом (вьюпорт вида)
+    std::uint32_t annotsHidden_ = 0;            // 5.1: действия над выделенным текстом (вьюпорт вида)
+    std::map<int, std::vector<int>> filtered_;  // 5.4: скрытые фильтром панели «Комментарии»
     QPointer<QWidget> floating_;
     QString error_;
     int initialPage_ = -1;

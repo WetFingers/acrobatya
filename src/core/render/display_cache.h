@@ -14,6 +14,7 @@
 #include <memory>
 #include <tuple>
 #include <utility>
+#include <vector>
 
 #include "core/util/geometry.h"
 
@@ -26,12 +27,17 @@ namespace ot {
 class Document;
 class MuContext;
 
+// Отпечаток скрытых фильтром аннотаций страницы (номера объектов по возрастанию; 5.4 — фильтр панели
+// «Комментарии»): ключ кеша списков и поле annotFilter ключа тайлов. Пусто — 0.
+std::uint32_t hiddenAnnotsKey(const std::vector<int>& objnums) noexcept;
+
 class DisplayList {
 public:
     // Принимает ссылку list (из fz_new_display_list…) и owner — клон контекста документа (только для отдачи
     // списка и для contentBounds в чужом потоке). bounds — рамка страницы (fz_bound_page).
     DisplayList(std::unique_ptr<MuContext> owner, fz_display_list* list, const RectF& bounds, int page,
-                bool annotations, bool usesOverprint = false, std::uint32_t annotsHidden = 0) noexcept;
+                bool annotations, bool usesOverprint = false, std::uint32_t annotsHidden = 0,
+                std::uint32_t hiddenKey = 0) noexcept;
     ~DisplayList();
     DisplayList(const DisplayList&) = delete;
     DisplayList& operator=(const DisplayList&) = delete;
@@ -42,6 +48,8 @@ public:
     bool annotations() const noexcept { return annotations_; }
     // Скрытые подтипы аннотаций (бит i — AnnotType i, 5.1 «Показать/скрыть комментарии»): их нет в списке.
     std::uint32_t annotsHidden() const noexcept { return annotsHidden_; }
+    // Отпечаток скрытых по номерам объектов (hiddenAnnotsKey; 0 — нет).
+    std::uint32_t hiddenKey() const noexcept { return hiddenKey_; }
     // Страница рисует с overprint (fz_page_uses_overprint: /OP, /op в ExtGState ресурсов) — симуляции
     // наложения (RenderStyle::overprint) есть что показать; иначе она не включается (дешевле).
     bool usesOverprint() const noexcept { return usesOverprint_; }
@@ -53,10 +61,12 @@ public:
 
     // Построить список страницы в контексте документа (поток документа). cookie: abort = 1 прерывает
     // интерпретацию (MuError, ErrorKind::Aborted) — недостроенный список не возвращается.
-    // annotsHidden ≠ 0 — содержимое, затем аннотации (pdf_run_annot) без скрытых подтипов, затем поля.
+    // annotsHidden ≠ 0 или hidden не пуст — содержимое, затем аннотации (pdf_run_annot) без скрытых подтипов
+    // и без скрытых номеров объектов hidden (по возрастанию; фильтр 5.4), затем поля.
     static std::shared_ptr<const DisplayList> build(const Document& doc, int page, bool annotations = true,
                                                     fz_cookie* cookie = nullptr,
-                                                    std::uint32_t annotsHidden = 0);
+                                                    std::uint32_t annotsHidden = 0,
+                                                    const std::vector<int>& hidden = {});
 
 private:
     std::unique_ptr<MuContext> owner_;
@@ -67,6 +77,7 @@ private:
     bool annotations_;
     bool usesOverprint_;
     std::uint32_t annotsHidden_;
+    std::uint32_t hiddenKey_;
 };
 
 class DisplayCache {
@@ -79,10 +90,11 @@ public:
     // Список страницы: из кеша (становится самым свежим) или построенный (вытесняет самый старый).
     // Прерванное построение не кешируется (MuError Aborted).
     std::shared_ptr<const DisplayList> get(const Document& doc, int page, bool annotations = true,
-                                           fz_cookie* cookie = nullptr, std::uint32_t annotsHidden = 0);
+                                           fz_cookie* cookie = nullptr, std::uint32_t annotsHidden = 0,
+                                           const std::vector<int>& hidden = {});
     // Без построения и без смены порядка; nullptr — нет в кеше.
-    std::shared_ptr<const DisplayList> find(int page, bool annotations = true,
-                                            std::uint32_t annotsHidden = 0) const;
+    std::shared_ptr<const DisplayList> find(int page, bool annotations = true, std::uint32_t annotsHidden = 0,
+                                            std::uint32_t hiddenKey = 0) const;
 
     // Правка страницы: сбросить оба варианта (с пометками и без).
     void invalidate(int page);
@@ -96,7 +108,8 @@ public:
     std::size_t misses() const noexcept { return misses_; }
 
 private:
-    using Key = std::tuple<int, bool, std::uint32_t>;  // {страница, с пометками, скрытые подтипы}
+    // {страница, с пометками, скрытые подтипы, отпечаток скрытых номеров}
+    using Key = std::tuple<int, bool, std::uint32_t, std::uint32_t>;
     using Entry = std::pair<Key, std::shared_ptr<const DisplayList>>;
 
     void trim();

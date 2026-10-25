@@ -90,6 +90,7 @@ ACTIONS: dict[str, str] = {
     "tool.stamp": "штамп",
     "comment.note": "Комментарии: записка",
     "comment.toggleAll": "Комментарии: показать-скрыть все",
+    "comment.clearFilter": "Комментарии: очистить фильтр",
 }
 
 # Одна физическая клавиша — разные имена QKeySequence.

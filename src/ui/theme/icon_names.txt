@@ -148,3 +148,14 @@ settings-2
 dot
 rectangle-horizontal
 case-upper
+
+# 5.4 — панель «Комментарии», ответы, статусы, FDF/XFDF и сводка
+arrow-up-down
+list-filter
+funnel-x
+reply
+chevrons-down-up
+chevrons-up-down
+file-down
+file-up
+list-checks

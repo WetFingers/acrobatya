@@ -143,6 +143,19 @@ void DocumentView::setAnnotsHidden(std::uint32_t mask) {
     emit annotsHiddenChanged(mask);
 }
 
+void DocumentView::setFilteredAnnots(std::map<int, std::vector<int>> byPage) {
+    for (auto& [page, list] : byPage) {
+        std::sort(list.begin(), list.end());
+    }
+    if (byPage == filtered_) {
+        return;
+    }
+    filtered_ = std::move(byPage);
+    view_->tilePainter().setHiddenAnnots(filtered_);
+    view_->tools().annotSelect().setHiddenAnnots(filtered_);
+    emit filteredAnnotsChanged();
+}
+
 void DocumentView::setCommentsHidden(bool hidden) { setAnnotsHidden(hidden ? commentTypesMask() : 0); }
 
 bool DocumentView::commentsHidden() const {
