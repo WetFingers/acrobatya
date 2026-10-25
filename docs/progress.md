@@ -8,6 +8,17 @@
 Новые пункты — сверху, с номером сессии или рубежа. Ничего из этого не блокирует очередь: она работает на
 `Fake*`-реализациях и фикстурах, живая часть ждёт здесь (эталон 8.1 «Человек отдельно», 9.7).
 
+- **Сессия 5.4 · Комментарии, ответы и обмен с Acrobat вживую** — (1) `AcroBatya.exe --script
+  tests\scripts\comments.json --out <папка>`: `review.pdf` открыть в Acrobat Reader — в панели комментариев
+  записка Бориса с ответом Марии и статусом «Принято», выделение с галочкой; ответы и статусы на странице не
+  видны (только в панели). (2) `review.xfdf` и `review.fdf` — «Комментарии → Импорт» в Acrobat Reader/Acrobat в
+  чистую копию `word-paragraphs.pdf`: те же пометки, ответ, статус и /RC (жирное слово); обратно — экспорт
+  комментариев из Acrobat (XFDF и FDF) → «…» → «Импорт комментариев…» в АкроБате: всё на месте, ничего не
+  удвоено. (3) На экране: панель «Комментарии» — щелчок по карточке прокручивает и выделяет пометку, выделение
+  на странице выбирает карточку, фильтр «Только мои»/по автору прячет пометки и на странице, Ctrl+8 сбрасывает;
+  ответ полем под списком с жирным и цветом, ответ в окне записки по Enter. (4) «Сводка комментариев…» →
+  «Печать…» на настоящем принтере или «Microsoft Print to PDF»: лист «с выносками» печатается целиком.
+
 - **Сессия 5.3 · Fill & Sign вживую** — (1) `AcroBatya.exe --script tests\scripts\fillsign.json --out <папка>` (или
   вручную на `tests/fixtures/forms/flat/anketa.pdf`): открыть `fillsign.pdf` в Acrobat Reader и Edge — подпись
   (штамп с картинкой) видна с прозрачным фоном, текст стоит на линиях, цифры — по клеткам, галочка во флажке
@@ -2792,3 +2803,76 @@
 - Проверки: verify.py зелёный; `compat.fillsign` (qpdf, pdfcpu strict, mutool clean, pypdfium2) зелёный; сцены:
   fill-sign-capture-type, -capture-draw, -capture-image, -text, -comb, -marks, -placed, -flatten-dialog,
   -text-dark, -capture-draw-dark, -placed-dark (просмотрены).
+
+### 2026-10-25 · Сессия 5.4 · Панель «Комментарии», ответы, статусы, FDF/XFDF и сводка
+- Сделано:
+  1. **Модель комментариев** (`core/annot/comments`): дерево документа — корни, ответы `/IRT` + `/RT /R` на всех
+     уровнях, части групп `/RT /Group`, статусы `/StateModel` Review/Marked с историей; ответ без родителя —
+     корень, Popup и не-комментарии — вне дерева; `addReply`/`setStatus` — записки без окна, скрытые на странице
+     (`/F Hidden|Print|NoZoom|NoRotate`), `annotAt` пропускает служебные; `branch` — ветка для удаления; сортировка
+     и фильтр (`arrange`, `matches`, `hiddenByFilter`), `foldCase` (fz_tolower), `/RC` — простой XHTML Acrobat
+     туда и обратно; `commentsDocumentKey` — SHA-256 `/ID`; `services/read_state` — «прочитано» в `state.sqlite`
+     (`comments_read`, миграция 7). `unit.comments_model`. comment-19, comment-20, comment-21.
+  2. **Панель «Комментарии»** (`ui/panes/comments_pane`): карточки 64 px на своей модели `QTreeView` (строки одной
+     высоты — 1 500 комментариев читаются и фильтруются за секунды), ответы деревом с линией ветки, поиск,
+     сортировка, фильтр с меню и сводкой «Показано N из M», `comment.clearFilter` Ctrl+8; фильтр действует на
+     страницу — номера скрытых в `DisplayList::build`, ключе `DisplayCache` и поле `TileKey::annotFilter`
+     (`hiddenAnnotsKey`), `AnnotSelectTool::setHiddenAnnots`, окна записок скрытых закрываются; двусторонняя
+     синхронизация с «Выбором объектов»; `services/comments_ops`. `ui.comments_pane`; сцены pane-comments,
+     -filtered, -search. comment-18, comment-19.
+  3. **Ответы и статусы**: `ReplyEditor` (жирный, курсив, подчёркивание, цвет → `/RC`; Ctrl+Enter/Esc) под
+     списком панели; меню записи — Ответить, Изменить текст, Статус ▸, галочка, (не)прочитанное; окно записки —
+     ветка ответов, статус и поле «Ответить…»; меню «Выбора объектов» — «Ответить» и «Статус ▸» вместо серых;
+     «Свойства → История проверок» — список статусов; `ui/panes/comment_actions`. `ui.replies_status`; сцены
+     comment-reply, comment-status. comment-20, comment-21.
+  4. **FDF/XFDF и сводка**: `core/annot/fdf` (свой сериализатор на `pdf_create_document`, «%FDF-1.2», чтение
+     `pdf_open_document`), `core/annot/xfdf` + `services/xfdf_xml` (атрибуты Adobe, `/RC` разметкой, вложения
+     base64/hex), импорт — совмещение по `/NM`, пропуск страниц с отчётом, отказ для чужого `/F`/`<f href>`,
+     одна операция «Import comments»; `core/annot/summary` (три макета, Segoe UI, линии-связки) и `SummaryDialog`
+     → вкладка «Без имени» (`DocumentSession::openMemoryAsync`, `MainWindow::openUntitled`) или печать; меню «…»
+     панели (экспорт всех/выбранного, импорт с подтверждением, сводка); `--script` comment.reply, comment.setStatus,
+     comments.export/import/summary, `annot.create{nm}`; `tests/scripts/comments.json` (сценарий 2). `unit.fdf`,
+     `unit.xfdf`, `unit.summary`, `ui.comments_exchange`, `ui.script_comments`, `compat.xfdf`
+     (`tools/xfdf_check.py`); сцены comments-export, summary-dialog, summary-result (+ три -dark, `ui.shots`
+     stage5comments). comment-25, comment-27, security-36.
+- Решения:
+  - «Прочитано» — по ключу документа SHA-256 первого `/ID` (переживает запись и переименование), без `/ID` —
+    SHA-256 пути; без отметки своё прочитано, чужое — нет (как у Acrobat); запись без `/NM` — «#страница:объект».
+  - Ответы и статусы программы — скрытые на странице записки без окна (план); чужие видимые ответы файл не
+    трогает, но выбор на странице их пропускает. Статус пишет `/Contents` «<State> set by <author>», как Acrobat.
+  - Поле ответа — под списком панели (ниже карточек), а не внутри строки списка: строки одной высоты держат
+    виртуализацию; в окне записки — однострочное «Ответить…».
+  - Фильтр панели на странице — по номерам объектов (не только по подтипам, как в 5.1): отпечаток набора — в
+    ключах кеша и тайлов, меняется только у затронутых страниц. «Печать/сводка» из эталона — сводка: «Только
+    видимые в панели» берёт фильтр и поиск панели; печать документа фильтр не применяет (заметка на 9.x).
+  - XFDF: поля форм — не комментарии (данные форм — 6.1); служебные подтипы (Sound, Movie, Screen, 3D,
+    PrinterMark, TrapNet, Watermark, Projection, RichMedia) переносятся типом, рамкой, цветом, текстом и автором,
+    без своих данных; 3D — элемент `threed`. Вложения — base64 (план), читаются и hex Acrobat; сжатые (`filter`)
+    не разбираются.
+  - Экспорт «всех комментариев» панели — корни дерева с ветками; `refs` пусто в ядре — все аннотации, кроме окон и
+    полей (матрица 28 подтипов).
+  - Сводка — новый документ «Без имени» (`openMemoryAsync`: путь пуст, «Сохранить» — «Сохранить как», без истории
+    и автосохранения; закрытие не спрашивает — сводку легко построить заново). Подписи сводки дают ui (`tr`),
+    `--script comments.summary` — английские.
+  - `annot.create` получил `nm` — сценарии отвечают по `/NM`.
+- Подводные камни:
+  - MuPDF 1.28.5 `pdf_create_annot` даёт записке и вложению окно `/Popup` всегда — `createIn(…, autoPopup=false)`
+    снимает его у ответов и статусов. `PDF_NAME(State)`, `PDF_NAME(StateModel)`, `PDF_NAME(FDF)` в MuPDF нет —
+    `pdf_dict_gets/puts`.
+  - `pdf_to_num` у разрешённого словаря — 0: номера копий в FDF держатся отдельно (иначе `/IRT 0 0 R`).
+  - Синтез MuPDF для штампа пишет Times-Bold base14 без `/Widths` и `/FontDescriptor` — строгий pdfcpu (PDF 2.0)
+    его не принимает; импорт дописывает ширины WinAnsi и дескриптор по метрикам base14; у Redact без `/DA` —
+    «/Helv 12 Tf 0 g».
+  - `fz_try` в своих функциях — C4611 и страж `fztry`; словари копий сразу в xref (`pdf_add_new_dict`), `return`
+    внутри тела `mu::call` — тоже красный страж.
+  - Unity-группы сдвинулись: `MainWindow::Actions` определялась в `menus.cpp`, конструктор окна в другой группе не
+    видел полный тип — определение вынесено в `ui/shell/main_window_actions.h`. `font_embed.cpp` не включал
+    `core/mu/context.h`.
+  - `fz_drop_text/path/stroke_state` принимают `const` — для `mu::Handle` нужны обёртки. QTest `keyClicks` с
+    кириллицей падает в qasciikey — в тестах `insertPlainText`. `QSignalSpy` с `DocumentView*` — `qRegisterMetaType`.
+  - Heredoc в Bash ломается и ловится хуком — правки скриптами-файлами Python в `.queue/tmp`.
+- Замеры: unit_tests — 6–25 с инкрементом, ui_tests — 10–50 с; `ui.comments_pane` — 8 с (1 500 комментариев —
+  загрузка < 1 с), `ui.shots` — 58 с (11 новых сцен); `compat.xfdf` — 3 с; verify.py — ~100 с.
+- Проверки: verify.py зелёный; `compat.xfdf` (qpdf, pdfcpu strict, mutool clean, pypdfium2) зелёный; сцены:
+  pane-comments, pane-comments-filtered, pane-comments-search, comment-reply, comment-status, comments-export,
+  summary-dialog, summary-result, pane-comments-dark, comment-reply-dark, summary-dialog-dark (просмотрены).

@@ -3,7 +3,42 @@
 Где что лежит и как добавляется типовая вещь. Сессия читает этот файл **первым**, до поиска по коду.
 Дерево и состав — эталон `docs/design.md` 5.1–5.3; здесь — короткий путеводитель и рецепты.
 
-> **Состояние: сессия 5.3 — «Заполнить и подписать»: текст, отметки, подпись и инициалы, умное размещение**.
+> **Состояние: сессия 5.4 — панель «Комментарии», ответы, статусы, FDF/XFDF и сводка**.
+> `core/annot/` — `comments.h` (`buildComments(doc)` → `CommentTree{roots}`: `Comment{ref, type, author, contents,
+> richContents, color, created/modified, index, depth, replies, group, history}` — корни без `/IRT`, ответы `/RT /R`
+> деревом, части `/RT /Group`, статусы `StatusEntry{model Review|Marked, state}`; `review()`, `marked()`,
+> `replyCount()`; `find`, `rootOf`, `branch` (всё, что удаляется вместе), `forEach`; `addReply(doc, parent, ReplyProps)`
+> и `setStatus(doc, target, model, state, author)` — записки без окна с `kServiceAnnotFlags` (Hidden), шаги «Add
+> reply», «Set status», «Set check mark»; `isServiceAnnot` — `annotAt` их пропускает; сортировка/фильтр:
+> `CommentSort`, `CommentFilter{types, authors, states, onlyMine, unreadOnly, markedOnly, colors, search}`,
+> `arrange`, `matches`, `hiddenByFilter` (номера скрытых по страницам), `foldCase`; `/RC` — `RichSpan`,
+> `richContentsFrom`, `parseRichContents`, `plainText`; `commentsDocumentKey` — SHA-256 `/ID`), `fdf.h`
+> (`exportFdf`, `probeFdf`, `importFdf`; `ExchangeError{Malformed, ForeignDocument}`, `ImportReport{created,
+> updated, skipped, skippedPages, refs}`, `ExchangeInfo`, `sameDocumentName`), `xfdf.h` (модель `XfdfAnnot`/
+> `XfdfDocument`, `exportXfdf`, `probeXfdf`, `importXfdf`, `xfdfElement`/`xfdfType`, `parseNumbers`/`formatNumbers`),
+> `summary.h` (`buildSummary(doc, tree, SummaryOptions{layout, sort, filter, isUnread, pages, fontSize, texts})` →
+> PDF в памяти; макеты `DocumentAndComments`/`CommentsOnly`/`SeparatePages`); внутреннее — `annot_exchange.cpp`
+> (`detail::exchangeSet`, `findByName`, `placeImported`, `attachPopup`, `finishImported` — синтез вида и ширины
+> base14), `detail::createIn(…, autoPopup)`, `AnnotPatch::richContents`. Рендер — `hiddenAnnotsKey(objnums)`,
+> `DisplayList::build(…, hidden)`, ключ `DisplayCache` с отпечатком, `TileKey::annotFilter`; `DocumentSession::
+> displayList(…, hidden)`, `openMemoryAsync` (документ «Без имени»), `DocumentRegistry::openMemory`. Службы —
+> `comments_ops.h` (`snapshot` — дерево и ключ, `reply`, `setStatus(…, when)`, `removeBranch` «Delete comment»,
+> `editText` «Edit comment text», `exportFile`, `readExchange`, `importFile` «Import comments», `summary`),
+> `read_state.h` (`ReadState` — `state.sqlite comments_read`, миграция 7), `xfdf_xml.h` (`xfdf::write/read`). ui —
+> `ui/panes/comments_pane` (`CommentsPane`: модель и делегат карточек, `CardTree`, поиск/сортировка/фильтр,
+> `setFilteredAnnots` вида, `selectComment`, `fillRecordMenu`, `startReply`/`startEdit`, `exportComments`/`exportTo`,
+> `importComments`/`importFrom` с `setSaveChooser`/`setOpenChooser`/`setImportConfirm`, `showSummary`; сигналы
+> `reloaded`, `exported`, `imported`, `importRefused`), `ui/panes/comment_actions` (подписи типов и статусов,
+> `threadHtml`, `addStatusMenu`, `addCheckAction`), `ui/tools/comment/reply_editor` (`ReplyEditor` ↔ `RichSpan`),
+> окно записки — ветка и «Ответить…», `ui/dialogs/summary_dialog`, `AnnotPropsDialog::historyList`,
+> `DocumentView::setFilteredAnnots`/`title()` «Без имени», `AnnotSelectTool::setHiddenAnnots`,
+> `MainWindow::openUntitled`, `ui/shell/main_window_actions.h`; команда `comment.clearFilter` Ctrl+8; `--script`
+> (`comments_script.cpp`) `comment.reply`, `comment.setStatus`, `comments.export`, `comments.import`,
+> `comments.summary`, `annot.create{nm}`; сцены `pane-comments*`, `comment-reply`, `comment-status`,
+> `comments-export`, `summary-dialog`, `summary-result` (+ `-dark`); ctest `unit.comments_model`, `unit.fdf`,
+> `unit.xfdf`, `unit.summary`, `ui.comments_pane`, `ui.replies_status`, `ui.comments_exchange`,
+> `ui.script_comments`, `compat.xfdf` (`tools/xfdf_check.py`); `tests/scripts/comments.json` (сценарий 2).
+> Из 5.3 — «Заполнить и подписать»: текст, отметки, подпись и инициалы, умное размещение.
 > `core/annot/` — `fillsign.h` (`geometryOf(vectors, lines)` → `PageGeometry{horizontal, vertical, checks, text}` —
 > линии, края рамок (сдвиг на полутолщину), засечки и флажки из `TextPage::Options{collectVectors}`; `placeText` →
 > `Placement{kind Line|Box|Comb|None, field, x, baseline, fontSize, cellHeight, cells}` — замкнутая клетка, иначе
@@ -379,7 +414,7 @@ ETSI.CAdES.detached/PBAD.PAdES, adbe.pkcs7.detached, adbe.pkcs7.sha1, ETSI.RFC31
 дерево имён, страницы, комментарии, поля, закладки, цепочки /Next), `eutl.h` (логика EUTL без XML), `aatl.h` (разбор
 SecuritySettings.xml по факту), в `docmdp.h` — запись DocMDP и правила, в `signer.h` — уровни и сертификация, в
 `trust_store.h` — импорт/экспорт и корни Windows по назначениям; 4.6 — `sig_fields.h` (`SignatureField{name, page, rect, visible, isSigned, readOnly, docTimestamp}`, `signatureFields(doc)` — все /FT /Sig в порядке /AcroForm /Fields, `emptyFieldAt(fields, page, point)`, `ClearBlock` + `clearBlock(doc, field)` — только последняя и не заблокированная, `clearSignature` — своя очистка в операции «Clear signature» (`pdf_clear_signature` MuPDF 1.28 оставляет операцию журнала открытой): `pdf_signature_appearance_unsigned`, /V снят у поля и виджета, Locked снят, у сертифицирующей — /Perms /DocMDP), в `x509_info.h` — `certDetails(der)` → `CertDetails` (назначение ключа, EKU, политики, OCSP/CRL, расширения текстом OpenSSL, SHA-1/SHA-256, `selfSigned`), в `verifier.h` — `VerificationTime` (SigningTime/SecureTime/Current) и `VerifyOptions::time` | 4.1–4.6 |
-| `annot/` | 5.1 — `annots.h` (28 подтипов, свойства, создание, правка, хит-тест по типу, буфер, JSON — см. «Новая аннотация»), `annot_internal.h`, `defaults.h`, `ink_math.h`; 2.2 — `annots.h` (минимум: `AnnotRef{page, objnum}`, `AnnotType` — 28 подтипов в порядке `pdf_annot_type`, `AnnotInfo{ref, type, subtype, rect, flags}`; `listAnnots` — весь `/Annots`, с Link/Popup/Widget, которых нет в списке `pdf_annot` MuPDF; рамки — координаты страницы MuPDF (`pdf_bound_annot`, NoZoom/NoRotate, `/Rotate`); `findAnnot`, `annotAt` — верхняя, без Popup и скрытых; `setRect` — `/Rect` без пересоздания `/AP`; `remove` — `pdf_delete_annot` (с его Popup) или из `/Annots`; правки — `Journal::Operation`; 28 типов, сеттеры и JSON — 5.1), дальше `appearance.h`, `popups.h`, `fdf.h`, `xfdf.h`, `stamps.h`, `measure.h`, `summary.h`, `fillsign.h` | 2.2, 5.1–5.5 |
+| `annot/` | 5.1 — `annots.h` (28 подтипов, свойства, создание, правка, хит-тест по типу, буфер, JSON — см. «Новая аннотация»), `annot_internal.h`, `defaults.h`, `ink_math.h`; 2.2 — `annots.h` (минимум: `AnnotRef{page, objnum}`, `AnnotType` — 28 подтипов в порядке `pdf_annot_type`, `AnnotInfo{ref, type, subtype, rect, flags}`; `listAnnots` — весь `/Annots`, с Link/Popup/Widget, которых нет в списке `pdf_annot` MuPDF; рамки — координаты страницы MuPDF (`pdf_bound_annot`, NoZoom/NoRotate, `/Rotate`); `findAnnot`, `annotAt` — верхняя, без Popup и скрытых; `setRect` — `/Rect` без пересоздания `/AP`; `remove` — `pdf_delete_annot` (с его Popup) или из `/Annots`; правки — `Journal::Operation`; 28 типов, сеттеры и JSON — 5.1), 5.2–5.3 — `freetext.h`, `stamps.h`, `fillsign.h`; 5.4 — `comments.h` (дерево, ответы, статусы, фильтр, /RC), `fdf.h`, `xfdf.h`, `summary.h`, внутреннее `annot_exchange.cpp`; дальше `measure.h` (5.5) | 2.2, 5.1–5.5 |
 | `forms/` | `fields.h`, `field_factory.h`, `js_bridge.h`, `data_io.h`, `submit.h`, `detect.h`, `tab_order.h` | 6.1–6.4 |
 | `pages/` | 2.4 — `labels.h` (чтение `/PageLabels`: `pageLabels`, `pageLabel`, `parsePageInput` — «iv», «3» (логический, иначе физический), «(3)»); 2.5b — `boxes.h` (`pageBoxes(doc, page)` — Media/Crop/Bleed/Trim/Art в координатах `fz_bound_page_box`, `has*` — задана с наследованием); 7.1 — `organizer.h`, `graft.h`, `split.h`, запись в `labels.h` и `boxes.h`, `insert.h` | 2.4, 2.5b, 7.1 |
 | `create/` | `to_pdf.h` (2.3: `renderToPdf`/`writeAsPdf` — документ «только просмотр» (XPS, EPUB, картинки, TXT) → PDF через `fz_document_writer` «pdf», страницы как есть, отмена между страницами), `text_export.h` (`exportText(doc, TextExportOptions{format, encoding, bom, firstPage, lastPage}, cancelled)`: TXT UTF-8/UTF-16/CP1251 с CRLF и «\f» между страницами, HTML/XHTML/XML через `fz_print_stext_page_as_*`, RTF), `rtf_writer.h` (`RtfWriter`, `rtfText`, `rtfFontFamily`) — 1.4; дальше `dispatcher.h`, `image_to_pdf.h`, `pdf_to_images.h`, `tiff_writer.h`, `combine.h`, `html_to_pdf.h`, `presets.h` | 1.4, 7.2 |

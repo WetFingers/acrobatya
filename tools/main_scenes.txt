@@ -72,3 +72,8 @@ fill-sign-text
 fill-sign-text-dark
 fill-sign-placed
 fill-sign-capture-draw
+# 5.4 — панель «Комментарии» с ответами, поле ответа, сводка «с выносками»
+pane-comments
+pane-comments-dark
+comment-reply
+summary-result

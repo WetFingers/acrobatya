@@ -349,6 +349,41 @@ private slots:
                      qPrintable(n + QStringLiteral(": %1").arg(sum / count)));
         }
     }
+
+    // ui.shots.stage5-comments (план 5.4): панель «Комментарии», ответы и статусы, обмен и сводка — светлые и
+    // тёмные снимаются, кадр 1440 × 900, тёмные — с тёмной глобальной панелью.
+    void stage5comments() {
+        QTemporaryDir dir;
+        ShotOptions o;
+        o.outDir = dir.path();
+        const QStringList names = {
+            QStringLiteral("pane-comments"),        QStringLiteral("pane-comments-filtered"),
+            QStringLiteral("pane-comments-search"), QStringLiteral("comment-reply"),
+            QStringLiteral("comment-status"),       QStringLiteral("comments-export"),
+            QStringLiteral("summary-dialog"),       QStringLiteral("summary-result"),
+            QStringLiteral("pane-comments-dark"),   QStringLiteral("comment-reply-dark"),
+            QStringLiteral("summary-dialog-dark")};
+        for (const QString& n : names) {
+            QVERIFY2(sceneNames().contains(n), qPrintable(n));
+        }
+        QCOMPARE(runShots(names, o), 0);
+        for (const QString& n : names) {
+            const QImage img(QDir(dir.path()).filePath(n + QStringLiteral(".png")));
+            QVERIFY2(!img.isNull(), qPrintable(n));
+            QCOMPARE(img.size(), QSize(1440, 900));
+            long sum = 0;
+            int count = 0;
+            for (int y = 4; y < 44; y += 2) {
+                for (int x = 0; x < img.width(); x += 4) {
+                    sum += qGray(img.pixel(x, y));
+                    ++count;
+                }
+            }
+            const bool dark = n.endsWith(QLatin1String("-dark"));
+            QVERIFY2(dark ? sum / count < 90 : sum / count > 150,
+                     qPrintable(n + QStringLiteral(": %1").arg(sum / count)));
+        }
+    }
 };
 
 OT_UI_TEST(ShotsTest, "shots");

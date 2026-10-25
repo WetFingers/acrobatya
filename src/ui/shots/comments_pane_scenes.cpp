@@ -11,7 +11,8 @@
 // FDF/XFDF и сводка: comments-export — меню «…» панели (развернуть/свернуть, экспорт всех и выбранного в
 // FDF/XFDF, импорт, сводка); summary-dialog — «Сводка комментариев» (макет «с выносками», сортировка,
 // страницы, кегль); summary-result — вкладка «Без имени» со сводкой «с выносками»: страница слева, карточки
-// справа, линии-связки и номера у пометок.
+// справа, линии-связки и номера у пометок. Тёмные двойники: pane-comments-dark, comment-reply-dark,
+// summary-dialog-dark.
 #include <QCoreApplication>
 #include <QDate>
 #include <QDateTime>
@@ -392,6 +393,17 @@ std::vector<Scene> commentsPaneScenes() {
                    window->currentDocument()->path().isEmpty();
         });
     scenes.push_back(result);
+    // Тёмные двойники главных экранов (закреплённая тема).
+    for (const char* name : {"pane-comments", "comment-reply", "summary-dialog"}) {
+        for (const Scene& s : std::vector<Scene>(scenes)) {
+            if (s.name == QLatin1String(name)) {
+                Scene dark = s;
+                dark.name += QStringLiteral("-dark");
+                dark.theme = ThemeChoice::Dark;
+                scenes.push_back(std::move(dark));
+            }
+        }
+    }
     return scenes;
 }
 
