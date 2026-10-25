@@ -1,9 +1,9 @@
 // Ключи settings.ini и их умолчания — в одном месте (эталон 4.7; рецепт «Новая настройка» docs/map.md).
 // Группы — по категориям диалога «Установки» (эталон 3.18): general/, pageDisplay/, documents/, commenting/,
-// forms/, editing/, signatures/, trust/, search/, reading/, ocr/, convert/, print/, hotkeys/, quickbar/,
-// language/; состояние окна между запусками — window/, tools/, navpane/, fullScreen/. Читать и писать — через
-// типизированный Settings (services/settings.h). Смена смысла ключа — новый шаг миграции по meta/version
-// (Settings::migrate), а не молчаливая подмена умолчания.
+// measuring/ (5.5), forms/, editing/, signatures/, trust/, search/, reading/, ocr/, convert/, print/,
+// hotkeys/, quickbar/, language/; состояние окна между запусками — window/, tools/, navpane/, fullScreen/.
+// Читать и писать — через типизированный Settings (services/settings.h). Смена смысла ключа — новый шаг
+// миграции по meta/version (Settings::migrate), а не молчаливая подмена умолчания.
 #pragma once
 
 namespace ot::settings {
@@ -212,5 +212,23 @@ inline constexpr BoolKey kCommentKeepTool{"commenting/keepToolSelected", false};
 inline constexpr StringKey kCommentToolStyles{"commenting/toolStyles", ""};
 // Штамп инструмента «Штамп» (5.2): id каталога (services/stamps_catalog.h) — последний выбранный в палитре.
 inline constexpr StringKey kCommentStamp{"commenting/stamp", "standard/approved"};
+
+// --- Измерения (2D) (measuring/; эталон 3.4 «Измерения»; Установки — 5.5; comment-29, comment-30) ---
+// Масштаб пользователя — метка /R ядра (core/annot/measure.h parseRatio: "1 cm = 10 m") и точность (знаков).
+inline constexpr StringKey kMeasureScale{"measuring/scale", "1 cm = 1 cm"};
+inline constexpr IntKey kMeasurePrecision{"measuring/precision", 2, 0, 4};
+// Масштаб и единицы документа (/VP страницы), если они есть, — вместо масштаба пользователя.
+inline constexpr BoolKey kMeasureUseDocumentScale{"measuring/useDocumentScale", true};
+// Привязка к вершинам и концам путей страницы; ортогональная привязка (отрезки — по горизонтали и вертикали).
+inline constexpr BoolKey kMeasureSnap{"measuring/snapToPaths", true};
+inline constexpr BoolKey kMeasureOrtho{"measuring/ortho", false};
+// Пометка расстояния: концы линии, выносные линии (пт), подпись в разрыве линии или над ней.
+inline constexpr StringKey kMeasureLineEnds{"measuring/lineEnds", "arrow", "arrow|tick|none"};
+inline constexpr IntKey kMeasureLeaderLength{"measuring/leaderLength", 0, 0, 72};
+inline constexpr IntKey kMeasureLeaderExtension{"measuring/leaderExtension", 0, 0, 72};
+inline constexpr IntKey kMeasureLeaderOffset{"measuring/leaderOffset", 0, 0, 72};
+inline constexpr StringKey kMeasureCaption{"measuring/caption", "inline", "inline|top"};
+// Окно «Сведения об измерении» при включённом инструменте.
+inline constexpr BoolKey kMeasureShowInfo{"measuring/showInfo", true};
 
 }  // namespace ot::settings

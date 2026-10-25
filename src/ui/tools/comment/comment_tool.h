@@ -128,6 +128,7 @@ private:
     QPointer<QComboBox> lineEnd_;
     QPointer<QLabel> stampLabel_;
     QPointer<ToolButton> paletteButton_;
+    QPointer<ToolButton> measureButton_;          // «Измерить ▾» (5.5)
     std::vector<annot::AnnotRef> formatTargets_;  // выбранные поля FreeText
     bool loadingStyle_ = false;
     std::vector<QMetaObject::Connection> connections_;

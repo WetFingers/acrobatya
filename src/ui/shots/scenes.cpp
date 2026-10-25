@@ -129,6 +129,9 @@ const std::vector<Scene>& sceneTable() {
         for (Scene& s : commentsPaneScenes()) {  // 5.4: pane-comments, ответы и статусы, FDF/XFDF, сводка
             table.push_back(std::move(s));
         }
+        for (Scene& s : measureScenes()) {  // 5.5: measure-distance, measure-area, measure-scale-dialog
+            table.push_back(std::move(s));
+        }
         return table;
     }();
     return SCENES;

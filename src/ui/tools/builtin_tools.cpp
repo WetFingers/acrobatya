@@ -9,6 +9,7 @@
 #include "ui/tools/comment/comment_tool.h"
 #include "ui/tools/edit/edit_tool.h"
 #include "ui/tools/fillsign/fillsign_tool.h"
+#include "ui/tools/measure/measure_tool.h"
 #include "ui/tools/print/print_tool.h"
 #include "ui/tools/stub_tool.h"
 #include "ui/tools/tool_registry.h"
@@ -42,7 +43,7 @@ void registerBuiltinTools(ToolRegistry& registry) {
     registry.add(std::make_unique<CertificateTool>(registry));
     registry.add(stub("scan", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Сканировать и OCR"), 8));
     registry.add(std::make_unique<PrintTool>(registry));
-    registry.add(stub("measure", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Измерить"), 5));
+    registry.add(std::make_unique<MeasureTool>(registry));
     registry.add(
         stub("accessibility", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Специальные возможности"), 8));
     registry.add(stub("javascript", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Использовать JavaScript"), 6));

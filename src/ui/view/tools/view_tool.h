@@ -48,7 +48,8 @@ class ToolController;
 
 // Edit — слот инструмента «Редактировать PDF» (3.4): экземпляр ставит EditTool (ToolController::install);
 // Sign — рамка подписи «Использовать сертификат» (4.6: SignPlacementTool ставит CertificateTool); Comment —
-// инструменты «Добавить комментарии» (5.1: CommentMode ставит CommentTool).
+// инструменты «Добавить комментарии» (5.1: CommentMode ставит CommentTool); FillSign — «Заполнить и
+// подписать» (5.3); Measure — «Измерить» (5.5: MeasureMode ставит MeasureTool).
 enum class ViewToolId {
     Select,
     Hand,
@@ -60,9 +61,10 @@ enum class ViewToolId {
     Edit,
     Sign,
     Comment,
-    FillSign
+    FillSign,
+    Measure
 };
-inline constexpr int kViewToolCount = 11;
+inline constexpr int kViewToolCount = 12;
 
 class ViewTool {
 public:

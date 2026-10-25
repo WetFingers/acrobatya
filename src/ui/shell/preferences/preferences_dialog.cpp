@@ -16,6 +16,7 @@
 #include "ui/shell/preferences/documents_page.h"
 #include "ui/shell/preferences/editing_page.h"
 #include "ui/shell/preferences/general_page.h"
+#include "ui/shell/preferences/measuring_page.h"
 #include "ui/shell/preferences/page_display_page.h"
 #include "ui/shell/preferences/preferences_page.h"
 #include "ui/shell/preferences/print_page.h"
@@ -130,6 +131,7 @@ PreferencesDialog::PreferencesDialog(QWidget* parent) : QDialog(parent) {
     addPage(new PageDisplayPage());
     addPage(new DocumentsPage());
     addPage(new CommentingPage());
+    addPage(new MeasuringPage());
     addPage(new StubPreferencesPage(QStringLiteral("forms"), 6));
     addPage(new EditingPage());
     addPage(new SignaturesPage());

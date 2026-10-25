@@ -75,27 +75,28 @@ private slots:
         PreferencesDialog* d = w.preferencesDialog();
         QVERIFY(d != nullptr);
         QTRY_VERIFY(d->isVisible());
-        QCOMPARE(
-            d->categoryIds(),
-            (QStringList{QStringLiteral("general"), QStringLiteral("pageDisplay"),
-                         QStringLiteral("documents"), QStringLiteral("commenting"), QStringLiteral("forms"),
-                         QStringLiteral("editing"), QStringLiteral("signatures"), QStringLiteral("trust"),
-                         QStringLiteral("search"), QStringLiteral("reading"), QStringLiteral("ocr"),
-                         QStringLiteral("convert"), QStringLiteral("print"), QStringLiteral("hotkeys"),
-                         QStringLiteral("quickbar"), QStringLiteral("about")}));
-        QCOMPARE(d->categoryList()->count(), 16);
+        QCOMPARE(d->categoryIds(),
+                 (QStringList{QStringLiteral("general"), QStringLiteral("pageDisplay"),
+                              QStringLiteral("documents"), QStringLiteral("commenting"),
+                              QStringLiteral("measuring"), QStringLiteral("forms"), QStringLiteral("editing"),
+                              QStringLiteral("signatures"), QStringLiteral("trust"), QStringLiteral("search"),
+                              QStringLiteral("reading"), QStringLiteral("ocr"), QStringLiteral("convert"),
+                              QStringLiteral("print"), QStringLiteral("hotkeys"), QStringLiteral("quickbar"),
+                              QStringLiteral("about")}));
+        QCOMPARE(d->categoryList()->count(), 17);
         QCOMPARE(d->categoryList()->item(0)->text(), QStringLiteral("Общие"));
         QCOMPARE(d->categoryList()->item(1)->text(), QStringLiteral("Просмотр страницы"));
         QCOMPARE(d->categoryList()->item(2)->text(), QStringLiteral("Документы"));
-        QCOMPARE(d->categoryList()->item(6)->text(), QStringLiteral("Подписи"));
+        QCOMPARE(d->categoryList()->item(4)->text(), QStringLiteral("Измерения (2D)"));
+        QCOMPARE(d->categoryList()->item(7)->text(), QStringLiteral("Подписи"));
         QCOMPARE(d->currentCategory(), QStringLiteral("general"));
         // Живые — без этапа (с 2.6 и «Печать», с 3.4 — «Редактирование содержимого», с 4.6 — «Подписи», с 5.1
-        // — «Комментирование»), остальные — заглушки «появится в версии 0.N».
+        // — «Комментирование», с 5.5 — «Измерения (2D)»), остальные — заглушки «появится в версии 0.N».
         for (const QString& id : d->categoryIds()) {
             const bool live = id == QLatin1String("general") || id == QLatin1String("pageDisplay") ||
                               id == QLatin1String("documents") || id == QLatin1String("print") ||
                               id == QLatin1String("editing") || id == QLatin1String("signatures") ||
-                              id == QLatin1String("commenting");
+                              id == QLatin1String("commenting") || id == QLatin1String("measuring");
             QCOMPARE(d->page(id)->stage() == 0, live);
         }
         QVERIFY(d->showCategory(QStringLiteral("trust")));

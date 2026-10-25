@@ -159,3 +159,6 @@ chevrons-up-down
 file-down
 file-up
 list-checks
+ruler-dimension-line
+land-plot
+scaling

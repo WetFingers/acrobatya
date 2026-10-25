@@ -522,7 +522,7 @@
 
 Сначала тесты: расстояние двух точек при 1 см = 10 м даёт 3,54 м для 100 pt; периметр треугольника; площадь прямоугольника в м²; `/Measure` из фикстуры с `/VP` подхватывается; привязка к вершине в радиусе и не вне; CSV с 3 измерениями и десятичной запятой в ru; выравнивание трёх записок по левому краю даёт равный `x`
 
-- [ ] **Измерения в ядре:** `src/core/annot/measure.{h,cpp}` (масштаб, единицы, точность, вычисления, запись `/Measure` и `/IT`, чтение `/VP`, привязки). Закрывает comment-29, comment-30 (ядро). Тесты: `tests/unit/measure_test.cpp`.
+- [x] **Измерения в ядре:** `src/core/annot/measure.{h,cpp}` (масштаб, единицы, точность, вычисления, запись `/Measure` и `/IT`, чтение `/VP`, привязки). Закрывает comment-29, comment-30 (ядро). Тесты: `tests/unit/measure_test.cpp`.
 - [ ] **Инструменты измерения и панель:** `src/ui/tools/measure/{measure_tool.cpp,measure_info_pane.cpp,measure_scale_dialog.cpp}` (расстояние/периметр/площадь, привязка, орто, Shift; регистрация в `ToolRegistry`), страница настроек «Измерения (2D)». Закрывает comment-29, comment-30 (UI). Тесты: `tests/ui/measure_tools_test.cpp`; сцены `measure-distance`, `measure-area`, `measure-scale-dialog`.
 - [ ] **CSV, выравнивание, сцены, версия 0.5.0:** экспорт измерений в CSV из панели «Комментарии», выравнивание/распределение нескольких пометок, сцены этапа в тёмной теме, «Нужна ручная проверка»: файл с комментариями, ответами и Fill & Sign в Acrobat Reader/Edge; `CHANGELOG.md`, версия 0.5.0, `git tag -a v0.5.0 -m "АкроБатя 0.5.0"`. Закрывает comment-40, comment-44. Тесты: `tests/unit/measure_csv_test.cpp`, `tests/ui/align_annots_test.cpp`; сцена `annot-align`.
 

@@ -3,6 +3,7 @@
 #include <QComboBox>
 #include <QCoreApplication>
 #include <QFormLayout>
+#include <QMenu>
 #include <QScrollArea>
 #include <QSignalBlocker>
 #include <QVBoxLayout>
@@ -26,6 +27,7 @@
 #include "ui/theme/icons.h"
 #include "ui/theme/theme.h"
 #include "ui/tools/comment/inline_text_editor.h"
+#include "ui/tools/measure/measure_tool.h"
 #include "ui/tools/tool_registry.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
@@ -351,6 +353,9 @@ void CommentTool::syncButtons() {
         button->setChecked(active && m->action() == action);
         button->setToolTip(usable ? CommentMode::actionTitle(action) : lock_);
     }
+    if (measureButton_ != nullptr) {
+        measureButton_->setEnabled(usable);
+    }
     if (paletteButton_ != nullptr) {
         paletteButton_->setEnabled(usable);
         paletteButton_->setToolTip(usable ? tr("Выбрать или создать штамп") : lock_);
@@ -451,6 +456,25 @@ void CommentTool::buildPanel() {
     paletteButton_ = palette;
     addAction(kStampRows[1]);
     updateStampLabel();
+    // «Измерить ▾» (5.5; эталон 6.2 п. 3): тот же инструмент, что «Измерить» во «Все инструменты».
+    addCaption(column, tr("Измерения"));
+    ToolButton* measureButton = addRow(column, QStringLiteral("ruler"), tr("Измерить"));
+    measureButton->setObjectName(QStringLiteral("commentMeasure"));
+    measureButton->setPopupMode(QToolButton::InstantPopup);
+    auto* measureMenu = new QMenu(measureButton);
+    measureMenu->setObjectName(QStringLiteral("commentMeasureMenu"));
+    for (const MeasureAction action :
+         {MeasureAction::Distance, MeasureAction::Perimeter, MeasureAction::Area}) {
+        QAction* item = measureMenu->addAction(MeasureMode::actionTitle(action));
+        connect(item, &QAction::triggered, this, [this, action] {
+            auto* tool = dynamic_cast<MeasureTool*>(registry_.find(QStringLiteral("measure")));
+            if (tool != nullptr && view_ != nullptr && registry_.activate(QStringLiteral("measure"), view_)) {
+                tool->start(action);
+            }
+        });
+    }
+    measureButton->setMenu(measureMenu);
+    measureButton_ = measureButton;
     buildStyle(column);
     column->addStretch(1);
     scroll->setWidget(body);
