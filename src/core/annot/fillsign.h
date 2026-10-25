@@ -10,7 +10,8 @@
 //     6 пт): текст на линии с точки щелчка до конца линии, высота клетки — до горизонтали или строки текста
 //     выше (нет — 20 пт); кегль — 0,55 высоты клетки в 6–12 пт;
 //   * гребёнка — у линии-основания не меньше 4 клеток равного шага 6–30 пт: засечки (короткие вертикали от
-//     линии) или смежные рамки; символы — по одному в клетку, моноширинным Courier New по центру;
+//     линии) или смежные рамки; символы — по одному в клетку шрифтом текста (цифры Arial одной ширины) по
+//     центру;
 //   * отметки ✓ ✕ ● — ▭ — FreeText с глифом Segoe UI Symbol (core/annot/freetext.h kSymbolFont), во флажке —
 //   по
 //     его центру и размеру, иначе — центром в точке щелчка;
@@ -81,7 +82,7 @@ Placement placeText(const PageGeometry& geometry, PointF point, float defaultSiz
 Placement placeMark(const PageGeometry& geometry, PointF point, float size = kMarkSize);
 
 inline constexpr const char* kTextFont = "Arial";
-inline constexpr const char* kCombFont = "Courier New";
+inline constexpr const char* kCombFont = "Arial";  // цифры Arial одной ширины; третий шрифт в файл не идёт
 inline constexpr const char* kMarkFont = "Segoe UI Symbol";
 inline constexpr const char* kTypeWriterIntent = "FreeTextTypeWriter";
 
@@ -96,7 +97,7 @@ RectF textBoxRect(std::string_view family, float x0, float x1, float baseline, f
 // Arial кеглем placement, цвет текста color; без рамки и заливки, /IT /FreeTextTypeWriter.
 annot::AnnotProps textProps(const Placement& placement, std::string text, annot::AnnotColor color,
                             float pageWidth);
-// Гребёнка: по символу в клетку (лишние отброшены, пробел — пустая клетка), Courier New по центру клетки.
+// Гребёнка: по символу в клетку (лишние отброшены, пробел — пустая клетка), Arial по центру клетки.
 std::vector<annot::AnnotProps> combProps(const Placement& placement, std::u32string_view text,
                                          annot::AnnotColor color);
 // Отметка: глиф Segoe UI Symbol центром в центре placement.field кеглем placement.

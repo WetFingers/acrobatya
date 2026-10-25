@@ -49,7 +49,8 @@ CombEditor* CombEditor::active(const PageView& view) {
     return nullptr;
 }
 
-// Вид по клеткам: Courier New кеглем клетки, интервал — шаг минус ширина знака; рамка — по клеткам.
+// Вид по клеткам: шрифт гребёнки (kCombFont) кеглем клетки, интервал — шаг минус ширина знака; рамка — по
+// клеткам.
 void CombEditor::applyFormat() {
     if (done_ || placement_.cells.empty()) {
         return;

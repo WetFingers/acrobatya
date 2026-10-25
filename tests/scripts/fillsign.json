@@ -1,0 +1,19 @@
+{
+  "comment": "Сценарий 3 эталона через --script (план 5.3, п. 4; им пользуется рубеж Р3): плоская анкета forms/flat/anketa.pdf → «Заполнить и подписать»: фамилия на подчёркивании, дата рождения в гребёнке, ИНН по засечкам, дата на линии, галочка во флажке → «Подпись → Нарисовать» (три штриха, подпись сохраняется для следующего раза) на линии «Подпись» → инкрементальная копия ${OUT_DIR}/fillsign.pdf (исходная анкета — её начало байт в байт) и плоская копия ${OUT_DIR}/fillsign-flat.pdf без аннотаций. Координаты — пункты от левого верхнего угла страницы.",
+  "steps": [
+    {"cmd": "doc.open", "args": {"path": "../fixtures/forms/flat/anketa.pdf"}},
+    {"cmd": "fillsign.placeText", "args": {"page": 1, "point": [200, 118], "text": "Иванова"}, "name": "фамилия"},
+    {"cmd": "fillsign.placeText", "args": {"page": 1, "point": [200, 150], "text": "Мария"}, "name": "имя"},
+    {"cmd": "fillsign.placeText", "args": {"page": 1, "point": [190, 228], "text": "01021990"}, "name": "дата рождения"},
+    {"cmd": "fillsign.placeText", "args": {"page": 1, "point": [190, 279], "text": "770123456789"}, "name": "ИНН"},
+    {"cmd": "fillsign.placeText", "args": {"page": 1, "point": [410, 458], "text": "25.10.2026"}, "name": "дата"},
+    {"cmd": "fillsign.placeMark", "args": {"page": 1, "point": [78, 368], "mark": "check", "color": "#1a3b9c"}, "name": "галочка"},
+    {"cmd": "fillsign.placeSignature", "args": {"page": 1, "rect": [150, 436, 300, 470], "kind": "signature", "save": true,
+      "strokes": [[[10, 40], [30, 10], [50, 45], [70, 12], [90, 40]],
+                  [[110, 30], [125, 12], [140, 30], [125, 46], [112, 32]],
+                  [[20, 55], [80, 52], [150, 56]]]}, "name": "подпись"},
+    {"cmd": "doc.saveCopy", "args": {"path": "${OUT_DIR}/fillsign.pdf", "mode": "incremental"}},
+    {"cmd": "fillsign.flatCopy", "args": {"path": "${OUT_DIR}/fillsign-flat.pdf"}},
+    {"cmd": "doc.close"}
+  ]
+}

@@ -313,6 +313,42 @@ private slots:
                      qPrintable(n + QStringLiteral(": %1").arg(sum / count)));
         }
     }
+
+    // ui.shots.stage5-fillsign (план 5.3, п. 4): сцены «Заполнить и подписать» — светлые и тёмные
+    // (закреплённая тема) — снимаются, кадр 1440 × 900; у тёмных глобальная панель тёмная, у светлых —
+    // светлая.
+    void stage5fillsign() {
+        QTemporaryDir dir;
+        ShotOptions o;
+        o.outDir = dir.path();
+        const QStringList names = {
+            QStringLiteral("fill-sign-capture-type"),  QStringLiteral("fill-sign-capture-draw"),
+            QStringLiteral("fill-sign-capture-image"), QStringLiteral("fill-sign-text"),
+            QStringLiteral("fill-sign-comb"),          QStringLiteral("fill-sign-marks"),
+            QStringLiteral("fill-sign-placed"),        QStringLiteral("fill-sign-flatten-dialog"),
+            QStringLiteral("fill-sign-text-dark"),     QStringLiteral("fill-sign-capture-draw-dark"),
+            QStringLiteral("fill-sign-placed-dark")};
+        for (const QString& n : names) {
+            QVERIFY2(sceneNames().contains(n), qPrintable(n));
+        }
+        QCOMPARE(runShots(names, o), 0);
+        for (const QString& n : names) {
+            const QImage img(QDir(dir.path()).filePath(n + QStringLiteral(".png")));
+            QVERIFY2(!img.isNull(), qPrintable(n));
+            QCOMPARE(img.size(), QSize(1440, 900));
+            long sum = 0;
+            int count = 0;
+            for (int y = 4; y < 44; y += 2) {
+                for (int x = 0; x < img.width(); x += 4) {
+                    sum += qGray(img.pixel(x, y));
+                    ++count;
+                }
+            }
+            const bool dark = n.endsWith(QLatin1String("-dark"));
+            QVERIFY2(dark ? sum / count < 90 : sum / count > 150,
+                     qPrintable(n + QStringLiteral(": %1").arg(sum / count)));
+        }
+    }
 };
 
 OT_UI_TEST(ShotsTest, "shots");

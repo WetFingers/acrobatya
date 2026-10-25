@@ -331,6 +331,17 @@ std::vector<Scene> fillSignScenes() {
     add("fill-sign-marks", fillsign_scene::marksScene);
     add("fill-sign-placed", fillsign_scene::placedScene);
     add("fill-sign-flatten-dialog", fillsign_scene::flattenDialogScene);
+    // Тёмные двойники главных экранов (закреплённая тема).
+    for (const char* name : {"fill-sign-text", "fill-sign-capture-draw", "fill-sign-placed"}) {
+        for (const Scene& s : std::vector<Scene>(scenes)) {
+            if (s.name == QLatin1String(name)) {
+                Scene dark = s;
+                dark.name += QStringLiteral("-dark");
+                dark.theme = ThemeChoice::Dark;
+                scenes.push_back(std::move(dark));
+            }
+        }
+    }
     return scenes;
 }
 

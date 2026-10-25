@@ -210,6 +210,30 @@ void checkTarget(Document& doc, int page, const AnnotProps& props) {
     }
 }
 
+// Картинка штампа и её /SMask без фильтра (pdf_add_image кладёт распакованный PNG как есть) — сжать
+// FlateDecode: инкрементальная запись потоки не сжимает, а подпись Fill & Sign — сотни килобайт растра.
+void compressStampImage(fz_context* ctx, pdf_document* pdf, pdf_obj* annot) {
+    pdf_obj* image = nullptr;
+    mu::call(ctx, [&] { image = pdf_dict_getp(ctx, annot, "AP/N/Resources/XObject/I"); });
+    pdf_obj* mask = nullptr;
+    mu::call(ctx, [&] { mask = pdf_dict_get(ctx, image, PDF_NAME(SMask)); });
+    for (pdf_obj* stream : {image, mask}) {
+        mu::BufferHandle raw(ctx);
+        mu::BufferHandle packed(ctx);
+        mu::call(ctx, [&] {
+            if (pdf_is_stream(ctx, stream) && pdf_dict_get(ctx, stream, PDF_NAME(Filter)) == nullptr) {
+                raw.reset(pdf_load_raw_stream(ctx, stream));
+                std::size_t length = 0;
+                unsigned char* data = fz_new_deflated_data_from_buffer(ctx, &length, raw, FZ_DEFLATE_DEFAULT);
+                packed.reset(fz_new_buffer_from_data(ctx, data, length));
+                pdf_update_stream(ctx, pdf, stream, packed, 1);
+                pdf_dict_put(ctx, stream, PDF_NAME(Filter), PDF_NAME(FlateDecode));
+                pdf_dict_del(ctx, stream, PDF_NAME(DecodeParms));
+            }
+        });
+    }
+}
+
 // Картинка из байтов.
 void loadImage(fz_context* ctx, const std::string& image, mu::BufferHandle& buf, mu::ImageHandle& img) {
     const auto* data = reinterpret_cast<const unsigned char*>(image.data());
@@ -340,6 +364,7 @@ AnnotRef createImageStamp(Document& doc, int page, const std::string& image, Ann
         putCommon(ctx, annot, props, nmText, created, nameText);
         pdf_update_annot(ctx, annot);
     });
+    compressStampImage(ctx, pa.pdf(), pdf_annot_obj(ctx, annot));
     op.invalidate(page);
     op.commit();
     pa.refresh();
@@ -452,6 +477,7 @@ void setStampImage(Document& doc, const AnnotRef& ref, const std::string& image,
         pdf_set_annot_modification_date(ctx, a, time(nullptr));
         pdf_update_annot(ctx, a);
     });
+    compressStampImage(ctx, pa.pdf(), pdf_annot_obj(ctx, a));
     op.invalidate(ref.page);
     op.commit();
 }

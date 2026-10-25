@@ -67,3 +67,8 @@ annot-note-open
 annot-note-open-dark
 annot-markup
 tool-panel-comments
+# 5.3 — Fill & Sign: текст на линиях бланка, подпись на линии, рисование подписи
+fill-sign-text
+fill-sign-text-dark
+fill-sign-placed
+fill-sign-capture-draw
