@@ -21,6 +21,7 @@
 #include "ui/shell/main_window.h"
 #include "ui/tools/certificate/sign_script.h"
 #include "ui/tools/comment/comment_script.h"
+#include "ui/tools/comment/comments_script.h"
 #include "ui/tools/edit/edit_script.h"
 #include "ui/tools/fillsign/fillsign_script.h"
 #include "ui/view/page_view.h"
@@ -340,6 +341,7 @@ void registerBaseActions(ScriptRunner& runner, MainWindow& w) {
                               w);  // 4.6: sign.sign, sign.certify, sign.timestamp, sign.verifyAll, sign.trust
     registerCommentScriptActions(runner, w);   // 5.1: annot.create
     registerFillSignScriptActions(runner, w);  // 5.3: fillsign.placeText/placeMark/placeSignature/flatCopy
+    registerCommentsScriptActions(runner, w);  // 5.4: comment.reply/setStatus, comments.export/import/summary
 }
 
 int runScript(const QString& file, const QString& outDir) {

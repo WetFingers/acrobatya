@@ -72,6 +72,9 @@ public:
     // password — для зашифрованного (--script doc.open; диалог пароля — 2.5). false — не открылся: окно
     // сообщает причину (неблокирующий диалог), errorString().
     bool openFile(const QString& path, int page = -1, const QString& password = {});
+    // PDF из памяти — вкладка «Без имени» (5.4: сводка комментариев; операция с перезаписью — без истории,
+    // «Сохранить» — «Сохранить как»). nullptr — не открылся (errorString()).
+    DocumentView* openUntitled(const QByteArray& pdf);
     int openFiles(const QStringList& paths, int page = -1);  // сколько открылось
     // Закрыть вкладку (с подтверждением, если есть правки); false — «Отмена» или нет вкладки.
     bool closeDocument(int index);

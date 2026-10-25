@@ -299,6 +299,20 @@ if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   set_tests_properties(compat.fillsign PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_fillsign
     SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endif()
+# Совместимость обмена комментариями (план 5.4, п. 4; критерий этапа 5): xfdf_compat.DISABLED_write пишет
+# <сборка>/compat/xfdf — XFDF и FDF матрицы 28 подтипов (с ответом, статусом и /RC), пустую копию матрицы с импортом
+# XFDF и expected.json; tools/xfdf_check.py — XML Adobe, заголовок FDF, imported.pdf (pikepdf) против ожиданий и
+# compat_check.py по нему. Нет pikepdf — 77.
+if(TARGET unit_tests AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_test(NAME compat.xfdf.generate
+    COMMAND unit_tests --gtest_also_run_disabled_tests --gtest_filter=xfdf_compat.* --gtest_brief=1)
+  set_tests_properties(compat.xfdf.generate PROPERTIES LABELS "compat;slow" FIXTURES_SETUP compat_xfdf
+    ENVIRONMENT "OTTISK_COMPAT_OUT=${CMAKE_BINARY_DIR}/compat" TIMEOUT 120)
+  add_test(NAME compat.xfdf COMMAND "${OTTISK_PYTHON}" -X utf8 -I "${CMAKE_SOURCE_DIR}/tools/xfdf_check.py" --quiet
+    "${CMAKE_BINARY_DIR}/compat/xfdf")
+  set_tests_properties(compat.xfdf PROPERTIES LABELS "compat;slow" FIXTURES_REQUIRED compat_xfdf
+    SKIP_RETURN_CODE 77 TIMEOUT 600 WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+endif()
 # Совместимость правки картинок (план 3.4, п. 3): image_compat.DISABLED_write пишет <сборка>/compat/images/*.pdf
 # (перемещение, масштаб, поворот, отражение, обрезка, замена, добавление, удаление — полная запись);
 # tools/compat_check.py — qpdf --check, pdfcpu strict, mutool clean, pypdfium2 рендер.

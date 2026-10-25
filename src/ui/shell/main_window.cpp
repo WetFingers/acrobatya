@@ -325,6 +325,16 @@ bool MainWindow::openFile(const QString& path, int page, const QString& password
     return true;
 }
 
+DocumentView* MainWindow::openUntitled(const QByteArray& pdf) {
+    error_.clear();
+    const DocumentRegistry::Opened opened = registry_->openMemory(pdf);
+    if (opened.id == 0) {
+        error_ = tr("Документ не создан.");
+        return nullptr;
+    }
+    return addDocumentView(opened, -1);
+}
+
 DocumentView* MainWindow::addDocumentView(const DocumentRegistry::Opened& opened, int page) {
     auto* view = new DocumentView(registry_->session(opened.id), pool_.get(), cache_.get(), documents_);
     documents_->addWidget(view);
@@ -429,11 +439,16 @@ DocumentView* MainWindow::addDocumentView(const DocumentRegistry::Opened& opened
     }
     view->setViewStyle(ViewStyle::fromSettings(Settings()));
     // Чужой файл (Zone.Identifier, временная папка; эталон 7.5) — защищённый просмотр.
-    applyProtectedView(view, protected_view::check(view->path()));
-    if (opened.summary.isPdf) {
+    const bool untitled = view->path().isEmpty();  // «Без имени» (5.4): ни защищённого просмотра, ни недавних
+    if (!untitled) {
+        applyProtectedView(view, protected_view::check(view->path()));
+    }
+    if (opened.summary.isPdf && !untitled) {
         autosave_->watch(&view->session());
     }
-    RecentFiles::shared().touch(view->path(), opened.summary.pageCount);
+    if (!untitled) {
+        RecentFiles::shared().touch(view->path(), opened.summary.pageCount);
+    }
     const int index = tabs().addDocument(opened.id, view->title(), view->path());
     showDocument(index);
     applyInitialView(view, opened.summary);

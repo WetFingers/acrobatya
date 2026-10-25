@@ -5,7 +5,10 @@
 #include <QActionGroup>
 #include <QCursor>
 #include <QDateTime>
+#include <QDir>
 #include <QEvent>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QHBoxLayout>
 #include <QHash>
 #include <QLabel>
@@ -14,6 +17,7 @@
 #include <QPainter>
 #include <QPushButton>
 #include <QStackedWidget>
+#include <QStandardPaths>
 #include <QStyledItemDelegate>
 #include <QTimer>
 #include <QTreeView>
@@ -26,8 +30,10 @@
 #include "services/comment_settings.h"
 #include "services/settings.h"
 #include "ui/dialogs/annot_props_dialog.h"
+#include "ui/dialogs/summary_dialog.h"
 #include "ui/panes/comment_actions.h"
 #include "ui/shell/document_view.h"
+#include "ui/shell/main_window.h"
 #include "ui/theme/icons.h"
 #include "ui/theme/theme.h"
 #include "ui/tools/comment/popup_widget.h"
@@ -36,6 +42,7 @@
 #include "ui/view/tool_controller.h"
 #include "ui/widgets/empty_state.h"
 #include "ui/widgets/search_field.h"
+#include "ui/widgets/toast.h"
 #include "ui/widgets/tool_button.h"
 
 namespace ot::ui {
@@ -915,6 +922,166 @@ void CommentsPane::removeComment(const annot::AnnotRef& ref) {
     comments::removeBranch(view_->session(), ref);  // ошибка — taskFailed сессии
 }
 
+// ---------------------------------------------------------------- FDF/XFDF и сводка
+
+void CommentsPane::exportComments(comments::ExchangeFormat format, bool selectedOnly) {
+    if (view_ == nullptr) {
+        return;
+    }
+    const bool fdf = format == comments::ExchangeFormat::Fdf;
+    const QString ext = fdf ? QStringLiteral("fdf") : QStringLiteral("xfdf");
+    QString base = view_->path();
+    if (base.isEmpty()) {
+        base = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation))
+                   .filePath(view_->title());
+    }
+    const QString suggested = QFileInfo(base).absolutePath() + QLatin1Char('/') +
+                              QFileInfo(base).completeBaseName() + QLatin1Char('.') + ext;
+    const QString filter = fdf ? tr("Комментарии FDF (*.fdf)") : tr("Комментарии XFDF (*.xfdf)");
+    const QString path =
+        saveChooser_ ? saveChooser_(suggested, filter)
+                     : QFileDialog::getSaveFileName(this, tr("Экспорт комментариев"), suggested, filter);
+    if (!path.isEmpty()) {
+        exportTo(path, format, selectedOnly);
+    }
+}
+
+void CommentsPane::exportTo(const QString& path, comments::ExchangeFormat format, bool selectedOnly) {
+    if (view_ == nullptr) {
+        return;
+    }
+    std::vector<annot::AnnotRef> refs;
+    if (selectedOnly) {
+        if (const auto current = currentComment()) {
+            refs.push_back(*current);
+        }
+    } else {
+        for (const annot::Comment& c : tree_.roots) {
+            refs.push_back(c.ref);  // ветки — ядро (ответы, статусы, части групп)
+        }
+    }
+    if (refs.empty()) {
+        Toast::notify(view_, tr("Нет комментариев для экспорта."), Tone::Neutral);
+        return;
+    }
+    QPointer<CommentsPane> self(this);
+    comments::exportFile(view_->session(), std::move(refs), format, path)
+        .then(this, [self, path](QFuture<void> f) {
+            if (self == nullptr) {
+                return;
+            }
+            try {
+                f.waitForFinished();
+            } catch (const std::exception&) {
+                if (self->view_ != nullptr) {
+                    Toast::notify(self->view_,
+                                  tr("Не удалось записать «%1».").arg(QFileInfo(path).fileName()));
+                }
+                return;
+            }
+            if (self->view_ != nullptr) {
+                Toast::notify(self->view_,
+                              tr("Комментарии сохранены в «%1».").arg(QFileInfo(path).fileName()), Tone::Ok);
+            }
+            emit self->exported(path);
+        });
+}
+
+void CommentsPane::importComments() {
+    if (view_ == nullptr || !canAnnotate()) {
+        return;
+    }
+    const QString filter = tr("Комментарии FDF и XFDF (*.fdf *.xfdf)");
+    const QString path = openChooser_
+                             ? openChooser_(filter)
+                             : QFileDialog::getOpenFileName(this, tr("Импорт комментариев"),
+                                                            QFileInfo(view_->path()).absolutePath(), filter);
+    if (!path.isEmpty()) {
+        importFrom(path);
+    }
+}
+
+void CommentsPane::importFrom(const QString& path) {
+    if (view_ == nullptr || !canAnnotate()) {
+        return;
+    }
+    const QString name = QFileInfo(path).fileName();
+    comments::ExchangeFile file;
+    try {
+        file = comments::readExchange(path);
+    } catch (const std::exception&) {
+        const QString reason = tr("«%1» — не файл комментариев FDF или XFDF.").arg(name);
+        Toast::notify(view_, reason);
+        emit importRefused(reason);
+        return;
+    }
+    // Чужой документ (/F, <f href>) — отказ до вопроса (эталон 7.3).
+    const QString own = QFileInfo(view_->path()).fileName();
+    if (!annot::sameDocumentName(file.info.file, own.toStdString())) {
+        const QString reason =
+            tr("Комментарии из «%1» относятся к другому документу («%2») — импорт отменён.")
+                .arg(name, QFileInfo(QString::fromStdString(file.info.file)).fileName());
+        Toast::notify(view_, reason);
+        emit importRefused(reason);
+        return;
+    }
+    const int count = file.info.annots;
+    const bool ok =
+        importConfirm_
+            ? importConfirm_(name, count)
+            : QMessageBox::question(
+                  this, tr("Импорт комментариев"),
+                  tr("Импортировать комментарии из файла «%1»? Объектов: %2.").arg(name).arg(count),
+                  QMessageBox::Yes | QMessageBox::No, QMessageBox::No) == QMessageBox::Yes;
+    if (!ok) {
+        return;
+    }
+    QPointer<CommentsPane> self(this);
+    comments::importFile(view_->session(), std::move(file))
+        .then(this, [self, name](QFuture<annot::ImportReport> f) {
+            if (self == nullptr) {
+                return;
+            }
+            annot::ImportReport report;
+            try {
+                report = f.result();
+            } catch (const std::exception&) {
+                const QString reason = tr("Комментарии из «%1» импортировать не удалось.").arg(name);
+                if (self->view_ != nullptr) {
+                    Toast::notify(self->view_, reason);
+                }
+                emit self->importRefused(reason);
+                return;
+            }
+            QString text = tr("Импортировано: %1").arg(report.created);
+            if (report.updated > 0) {
+                text += tr(", обновлено: %1").arg(report.updated);
+            }
+            if (report.skipped > 0) {
+                QStringList pages;
+                for (const int p : report.skippedPages) {
+                    pages << QString::number(p + 1);
+                }
+                text += tr(". Пропущено %1: в документе нет страниц %2")
+                            .arg(report.skipped)
+                            .arg(pages.join(QStringLiteral(", ")));
+            }
+            if (self->view_ != nullptr) {
+                Toast::notify(self->view_, text + QLatin1Char('.'),
+                              report.skipped > 0 ? Tone::Warn : Tone::Ok);
+            }
+            emit self->imported(report);
+        });
+}
+
+void CommentsPane::showSummary() {
+    auto* window = qobject_cast<MainWindow*>(this->window());
+    if (window == nullptr || view_ == nullptr) {
+        return;
+    }
+    SummaryDialog::openFor(*window, *view_, this);
+}
+
 void CommentsPane::fillSortMenu() {
     sortMenu_->clear();
     auto* group = new QActionGroup(sortMenu_);
@@ -1060,7 +1227,38 @@ void CommentsPane::fillMoreMenu() {
     QAction* collapse = moreMenu_->addAction(Icons::icon(QStringLiteral("chevrons-down-up")),
                                              tr("&Свернуть все"), this, &CommentsPane::collapseAll);
     collapse->setObjectName(QStringLiteral("commentsCollapseAll"));
-    emit moreMenuRequested(moreMenu_);  // экспорт, импорт, сводка (5.4)
+    moreMenu_->addSeparator();
+    const bool hasComments = !tree_.roots.empty();
+    QMenu* exportAll =
+        moreMenu_->addMenu(Icons::icon(QStringLiteral("file-up")), tr("&Экспорт всех комментариев"));
+    exportAll->setObjectName(QStringLiteral("commentsExportAll"));
+    exportAll->setEnabled(hasComments);
+    QMenu* exportOne = moreMenu_->addMenu(tr("Экспорт &выбранного"));
+    exportOne->setObjectName(QStringLiteral("commentsExportSelected"));
+    exportOne->setEnabled(currentComment().has_value());
+    for (QMenu* sub : {exportAll, exportOne}) {
+        const bool selected = sub == exportOne;
+        QAction* fdf = sub->addAction(tr("В файл &FDF…"), this, [this, selected] {
+            exportComments(comments::ExchangeFormat::Fdf, selected);
+        });
+        fdf->setObjectName(selected ? QStringLiteral("commentsExportSelectedFdf")
+                                    : QStringLiteral("commentsExportFdf"));
+        QAction* xfdf = sub->addAction(tr("В файл &XFDF…"), this, [this, selected] {
+            exportComments(comments::ExchangeFormat::Xfdf, selected);
+        });
+        xfdf->setObjectName(selected ? QStringLiteral("commentsExportSelectedXfdf")
+                                     : QStringLiteral("commentsExportXfdf"));
+    }
+    QAction* import = moreMenu_->addAction(Icons::icon(QStringLiteral("file-down")),
+                                           tr("&Импорт комментариев…"), this, &CommentsPane::importComments);
+    import->setObjectName(QStringLiteral("commentsImport"));
+    import->setEnabled(canAnnotate());
+    moreMenu_->addSeparator();
+    QAction* summary = moreMenu_->addAction(Icons::icon(QStringLiteral("list-checks")),
+                                            tr("&Сводка комментариев…"), this, &CommentsPane::showSummary);
+    summary->setObjectName(QStringLiteral("commentsSummary"));
+    summary->setEnabled(view_ != nullptr && !view_->isViewOnly());
+    emit moreMenuRequested(moreMenu_);
     moreMenu_->addSeparator();
     QAction* measures = moreMenu_->addAction(tr("Экспорт &измерений в CSV…"));
     measures->setObjectName(QStringLiteral("commentsExportMeasures"));

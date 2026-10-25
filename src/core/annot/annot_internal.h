@@ -3,8 +3,10 @@
 // только внутри вызова функции ядра — наружу не уходят (эталон 4.1).
 #pragma once
 
+#include <map>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "core/annot/annots.h"
 #include "core/mu/handles.h"
@@ -85,5 +87,21 @@ void writeFreeText(Document& doc, PageAnnots& pa, int objnum);
 // Вид заново: FreeText — writeFreeText (без dirty — вид прежний), прочие — pdf_update_annot (dirty — сначала
 // pdf_dirty_annot: синтез обязателен). Вне mu::call.
 void updateAppearance(Document& doc, PageAnnots& pa, int objnum, bool dirty);
+
+// ---------------------------------------------------------------- обмен FDF/XFDF (5.4, annot_exchange.cpp)
+
+// Набор записи: refs пусто — все аннотации, кроме окон /Popup и полей форм; иначе — refs и их ветки
+// (comments.h branch). По страницам и номерам объектов.
+std::vector<AnnotRef> exchangeSet(Document& doc, const std::vector<AnnotRef>& refs);
+// Номер объекта аннотации страницы с /NM nm (не окна); 0 — нет. Вне mu::call.
+int findByName(PageAnnots& pa, const std::string& nm);
+// Перенесённая аннотация ref (косвенный объект документа) — на страницу: /P и в /Annots; та же /NM уже есть —
+// на её место (её окно уходит). Внутри операции вызывающего, вне mu::call. true — заменила прежнюю.
+bool placeImported(PageAnnots& pa, pdf_obj* ref, const std::string& nm);
+// Окно записки popup (косвенный словарь) — /Parent parent, /P, в /Annots; у родителя — /Popup. Вне mu::call.
+void attachPopup(PageAnnots& pa, pdf_obj* parent, pdf_obj* popup);
+// После импорта (в операции вызывающего): списки аннотаций страниц заново, вид у перенесённых без /AP —
+// синтез MuPDF (FreeText — свой шрифт).
+void finishImported(Document& doc, const std::map<int, std::vector<int>>& byPage);
 
 }  // namespace ot::annot::detail

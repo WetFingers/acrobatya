@@ -106,7 +106,10 @@ DocumentView::~DocumentView() {
 
 QString DocumentView::path() const { return session_->path(); }
 
-QString DocumentView::title() const { return QFileInfo(session_->path()).fileName(); }
+QString DocumentView::title() const {
+    const QString path = session_->path();
+    return path.isEmpty() ? tr("Без имени") : QFileInfo(path).fileName();  // 5.4: документ из памяти
+}
 
 bool DocumentView::isViewOnly() const { return !session_->summary().isPdf; }
 

@@ -793,6 +793,31 @@ QFuture<OpenSummary> DocumentSession::openAsync(const QString& path, const QStri
         TaskPriority::Urgent, QStringLiteral("open"));
 }
 
+QFuture<OpenSummary> DocumentSession::openMemoryAsync(QByteArray bytes) {
+    return post(
+        [this, bytes = std::move(bytes)](TaskContext&) {
+            displayCache_->clear();
+            textCache_->clear();
+            textEditing_.reset();
+            doc_.reset();
+            OpenSummary s;
+            OpenResult r = Document::openMemory(bytes.toStdString());
+            s.ok = r.ok;
+            s.repaired = r.repaired;
+            s.pdfa = r.pdfa;
+            s.isSigned = r.isSigned;
+            s.hasForm = r.hasForm;
+            s.hasXfa = r.hasXfa;
+            s.error.code = r.error.code;
+            s.error.kind = r.error.kind;
+            s.error.message = QString::fromStdString(r.error.message);
+            s.error.hint = hintFor(r.error.kind);
+            install(r.ok ? std::move(r.document) : nullptr, s, QString());
+            return s;
+        },
+        TaskPriority::Urgent, QStringLiteral("open-memory"));
+}
+
 QFuture<OpenSummary> DocumentSession::recoverAsync(const QString& autosaveDir, const AutosaveEntry& entry,
                                                    const QString& password) {
     return post(

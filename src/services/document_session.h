@@ -144,6 +144,9 @@ public:
     // То же с ожиданием (окно этапа 0, тесты); false — ошибка, текст — errorString(). Сигнал opened —
     // из вызывающего потока до возврата.
     bool open(const QString& path, const QString& password = {});
+    // Открыть PDF из памяти (5.4: сводка комментариев; 7.2 — объединение): документ «Без имени» — путь пуст,
+    // «Сохранить» спрашивает «Сохранить как» (Saver: NoPath), истории нет (операция с перезаписью).
+    QFuture<OpenSummary> openMemoryAsync(QByteArray bytes);
     // Открыть документ с правками, восстановленными автосохранением (Autosave::recover в потоке документа):
     // путь — путь записи, история undo/redo — из журнала, файл не сохранён. Ошибка — в OpenSummary::error
     // (hint "recover-source-changed", "recover-mismatch", "recover-failed").

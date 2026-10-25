@@ -55,6 +55,19 @@ DocumentRegistry::Opened DocumentRegistry::recover(const QString& autosaveDir, c
     return out;
 }
 
+DocumentRegistry::Opened DocumentRegistry::openMemory(const QByteArray& bytes) {
+    Opened out;
+    auto session = std::make_shared<DocumentSession>();
+    out.summary = session->openMemoryAsync(bytes).result();
+    if (!out.summary.ok) {
+        return out;
+    }
+    out.id = session->id();
+    sessions_.emplace(out.id, std::move(session));
+    emit documentOpened(out.id);
+    return out;
+}
+
 std::shared_ptr<DocumentSession> DocumentRegistry::session(quint64 id) const {
     const auto it = sessions_.find(id);
     return it == sessions_.end() ? nullptr : it->second;

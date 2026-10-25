@@ -103,7 +103,7 @@ std::vector<Scene> commentScenes();
 // -dark, 5.3).
 std::vector<Scene> fillSignScenes();
 // comments_pane_scenes.cpp — pane-comments, pane-comments-filtered, pane-comments-search, comment-reply,
-// comment-status (5.4).
+// comment-status, comments-export, summary-dialog, summary-result (5.4).
 std::vector<Scene> commentsPaneScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.

@@ -8,11 +8,16 @@
 // Ответы и статусы: comment-reply — поле ответа панели на записку (текст с жирным словом) и открытое окно
 // записки с веткой ответов, статусом и полем «Ответить…»; comment-status — «Свойства комментария» записки на
 // вкладке «История проверок» («Принято»).
+// FDF/XFDF и сводка: comments-export — меню «…» панели (развернуть/свернуть, экспорт всех и выбранного в
+// FDF/XFDF, импорт, сводка); summary-dialog — «Сводка комментариев» (макет «с выносками», сортировка,
+// страницы, кегль); summary-result — вкладка «Без имени» со сводкой «с выносками»: страница слева, карточки
+// справа, линии-связки и номера у пометок.
 #include <QCoreApplication>
 #include <QDate>
 #include <QDateTime>
 #include <QFuture>
 #include <QLabel>
+#include <QMenu>
 #include <QTime>
 #include <QTimer>
 #include <QTreeView>
@@ -33,6 +38,7 @@
 #include "services/document_session.h"
 #include "services/settings.h"
 #include "ui/dialogs/annot_props_dialog.h"
+#include "ui/dialogs/summary_dialog.h"
 #include "ui/panes/comments_pane.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
@@ -41,6 +47,7 @@
 #include "ui/tools/comment/popup_widget.h"
 #include "ui/tools/comment/reply_editor.h"
 #include "ui/view/page_view.h"
+#include "ui/widgets/tool_button.h"
 
 namespace ot::ui {
 
@@ -187,23 +194,23 @@ std::function<QWidget*()> reviewScene() {
 // extra (если есть) согласен и тайлы перерисованы.
 std::function<bool(QWidget*)> reviewReady(Variant variant, std::function<bool(QWidget*)> extra = {}) {
     return [variant = std::move(variant), extra = std::move(extra)](QWidget* w) {
-        if (!w->property(kDone).toBool()) {
-            return false;
-        }
         CommentsPane* pane = paneOf(w);
-        if (pane == nullptr || !pane->isLoaded() || pane->tree().roots.size() != 5 ||
-            pane->tree().count() != 7) {
-            return false;
-        }
         if (!w->property(kApplied).toBool()) {
+            if (!w->property(kDone).toBool() || pane == nullptr || !pane->isLoaded() ||
+                pane->tree().roots.size() != 5 || pane->tree().count() != 7) {
+                return false;
+            }
             w->setProperty(kApplied, true);
             variant(*pane);
             return false;
         }
+        // После варианта панель может показывать другую вкладку (сводка «Без имени») — дерево не сверяется.
         if (extra && !extra(w)) {
             return false;
         }
-        pane->list()->viewport()->repaint();
+        if (pane != nullptr) {
+            pane->list()->viewport()->repaint();
+        }
         return sceneDocumentReady(w);
     };
 }
@@ -303,6 +310,88 @@ std::vector<Scene> commentsPaneScenes() {
             return d != nullptr && d->loaded() && d->historyList()->topLevelItemCount() > 0;
         });
     scenes.push_back(status);
+
+    Scene exportMenu;
+    exportMenu.name = QStringLiteral("comments-export");
+    exportMenu.make = comments_scene::reviewScene();
+    exportMenu.ready = comments_scene::reviewReady(
+        [](CommentsPane& pane) {
+            if (const annot::Comment* note = comments_scene::noteOf(pane)) {
+                pane.selectComment(note->ref, true);
+            }
+            auto* w = qobject_cast<MainWindow*>(pane.window());
+            pane.fillMoreMenu();
+            QMenu* menu = pane.moreMenu();
+            if (w == nullptr) {
+                return;
+            }
+            embedWindow(*w, menu);
+            menu->adjustSize();
+            const QPoint anchor =
+                pane.moreButton()->mapTo(w, QPoint(pane.moreButton()->width(), pane.moreButton()->height()));
+            menu->move(anchor.x() - menu->width(), anchor.y());
+            menu->show();
+            menu->raise();
+            // Подменю «Экспорт всех комментариев» — рядом, слева от меню.
+            if (auto* sub = menu->findChild<QMenu*>(QStringLiteral("commentsExportAll"))) {
+                menu->setActiveAction(sub->menuAction());
+                embedWindow(*w, sub);
+                sub->adjustSize();
+                const QRect item = menu->actionGeometry(sub->menuAction());
+                sub->move(menu->x() - sub->width(), menu->y() + item.y());
+                sub->show();
+                sub->raise();
+            }
+        },
+        [](QWidget* w) {
+            auto* pane = comments_scene::paneOf(w);
+            return pane != nullptr && pane->moreMenu()->isVisible();
+        });
+    scenes.push_back(exportMenu);
+
+    Scene dialog;
+    dialog.name = QStringLiteral("summary-dialog");
+    dialog.make = comments_scene::reviewScene();
+    dialog.ready = comments_scene::reviewReady(
+        [](CommentsPane& pane) {
+            auto* w = qobject_cast<MainWindow*>(pane.window());
+            if (w == nullptr || pane.document() == nullptr) {
+                return;
+            }
+            auto* d = new SummaryDialog(*w, *pane.document(), &pane, w);
+            d->setAttribute(Qt::WA_DeleteOnClose);
+            d->adjustSize();
+            embedCentered(*w, d);
+        },
+        [](QWidget* w) { return w->findChild<SummaryDialog*>() != nullptr; });
+    scenes.push_back(dialog);
+
+    Scene result;
+    result.name = QStringLiteral("summary-result");
+    result.make = comments_scene::reviewScene();
+    result.ready = comments_scene::reviewReady(
+        [](CommentsPane& pane) {
+            auto* w = qobject_cast<MainWindow*>(pane.window());
+            if (w == nullptr || pane.document() == nullptr) {
+                return;
+            }
+            auto* d = new SummaryDialog(*w, *pane.document(), &pane, w);
+            d->setAttribute(Qt::WA_DeleteOnClose);
+            QObject::connect(d, &SummaryDialog::created, w, [w](DocumentView* view) {
+                if (view != nullptr) {
+                    view->view().setZoomPercent(50);
+                    w->navPane().closePanel();
+                }
+                w->setProperty("summaryCreated", true);
+            });
+            d->build(false);
+        },
+        [](QWidget* w) {
+            auto* window = static_cast<MainWindow*>(w);
+            return w->property("summaryCreated").toBool() && window->currentDocument() != nullptr &&
+                   window->currentDocument()->path().isEmpty();
+        });
+    scenes.push_back(result);
     return scenes;
 }
 

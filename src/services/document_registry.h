@@ -34,6 +34,8 @@ public:
     // Открыть документ с правками из автосохранения (2.5, «Восстановить несохранённые изменения?»): путь
     // записи — путь документа; уже открыт — его вкладка (existing), правки не накладываются.
     Opened recover(const QString& autosaveDir, const AutosaveEntry& entry, const QString& password = {});
+    // PDF из памяти — новая сессия «Без имени» (5.4; путь пуст, с файлами не совпадает).
+    Opened openMemory(const QByteArray& bytes);
     // Сессия вкладки; nullptr — нет такой.
     std::shared_ptr<DocumentSession> session(quint64 id) const;
     // id вкладки с этим файлом (сравнение без регистра и с нормализацией пути); 0 — не открыт.

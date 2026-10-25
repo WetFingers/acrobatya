@@ -574,18 +574,17 @@ AnnotRef createIn(Document& doc, PageAnnots& pa, const AnnotProps& props, int ir
         mu::call(ctx, [&] {
             pdf_obj* obj = pdf_annot_obj(ctx, annot);
             pdf_obj* pop = pdf_dict_get(ctx, obj, PDF_NAME(Popup));
-            if (pop == nullptr) {
-                return;
-            }
-            const int num = pdf_to_num(ctx, pop);
-            pdf_obj* arr = pdf_dict_get(ctx, page->obj, PDF_NAME(Annots));
-            for (int i = pdf_array_len(ctx, arr) - 1; i >= 0; --i) {
-                if (num > 0 && pdf_to_num(ctx, pdf_array_get(ctx, arr, i)) == num) {
-                    pdf_array_delete(ctx, arr, i);
+            if (pop != nullptr) {
+                const int num = pdf_to_num(ctx, pop);
+                pdf_obj* arr = pdf_dict_get(ctx, page->obj, PDF_NAME(Annots));
+                for (int i = pdf_array_len(ctx, arr) - 1; i >= 0; --i) {
+                    if (num > 0 && pdf_to_num(ctx, pdf_array_get(ctx, arr, i)) == num) {
+                        pdf_array_delete(ctx, arr, i);
+                    }
                 }
+                pdf_dict_del(ctx, obj, PDF_NAME(Popup));
+                dropped = true;
             }
-            pdf_dict_del(ctx, obj, PDF_NAME(Popup));
-            dropped = true;
         });
     }
     pa.refresh(dropped);

@@ -3,6 +3,7 @@
 // DocumentSession::edit со своим шагом истории (подпись «Отменить: ответ» выбирает ui).
 #pragma once
 
+#include <QByteArray>
 #include <QFuture>
 #include <QString>
 
@@ -11,6 +12,8 @@
 #include <vector>
 
 #include "core/annot/comments.h"
+#include "core/annot/fdf.h"
+#include "core/annot/summary.h"
 #include "services/document_session.h"
 
 namespace ot::comments {
@@ -36,5 +39,30 @@ QFuture<annot::AnnotRef> setStatus(DocumentSession& session, annot::AnnotRef tar
 QFuture<void> removeBranch(DocumentSession& session, annot::AnnotRef ref);
 // Текст записи (корня или ответа): /Contents и /RC (пусто — снять) одним шагом «Edit comment text».
 QFuture<void> editText(DocumentSession& session, annot::AnnotRef ref, std::string contents, std::string rich);
+
+// ---------------------------------------------------------------- FDF/XFDF и сводка (comment-27, comment-25)
+
+inline constexpr const char* kImportStep = "Import comments";
+
+enum class ExchangeFormat { Fdf, Xfdf };
+
+// Записать комментарии в файл (QSaveFile): refs пусто — все аннотации документа (без окон и полей), иначе —
+// refs с ветками; /F (<f href>) — имя файла документа. Ошибка — исключение будущего (std::runtime_error).
+QFuture<void> exportFile(DocumentSession& session, std::vector<annot::AnnotRef> refs, ExchangeFormat format,
+                         QString path);
+
+// Файл обмена, прочитанный для подтверждения (эталон 7.3): формат — по содержимому («%FDF-» — FDF, иначе
+// XFDF), что внутри. Не читается / не FDF и не XFDF — annot::ExchangeError или std::runtime_error.
+struct ExchangeFile {
+    ExchangeFormat format = ExchangeFormat::Xfdf;
+    QByteArray bytes;
+    annot::ExchangeInfo info;
+};
+ExchangeFile readExchange(const QString& path);
+// Импорт одним шагом «Import comments». /F на другой документ — annot::ExchangeError (ForeignDocument).
+QFuture<annot::ImportReport> importFile(DocumentSession& session, ExchangeFile file);
+
+// Сводка комментариев по свежему дереву документа (core/annot/summary.h) — PDF в памяти.
+QFuture<annot::SummaryResult> summary(DocumentSession& session, annot::SummaryOptions options);
 
 }  // namespace ot::comments

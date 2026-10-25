@@ -1,5 +1,5 @@
 // Действия --script комментариев (план 5.1; рецепт «Новое действие --script»):
-//   annot.create{type, page, rect, points, contents, color, author, icon, opacity, width} — создать
+//   annot.create{type, page, rect, points, contents, color, author, icon, opacity, width, nm} — создать
 //   комментарий
 //     одного из 15 создаваемых типов на странице page (с 1): rect — [x0, y0, x1, y1] в пунктах от левого
 //     верхнего угла страницы; points — вершины [[x, y], …] для Line, Polygon, PolyLine, Ink (без них —
@@ -101,7 +101,8 @@ void registerCommentScriptActions(ScriptRunner& runner, MainWindow& w) {
             "contents": {"type": "string"}, "color": {"type": "string", "minLength": 4},
             "author": {"type": "string"}, "icon": {"type": "string", "minLength": 1},
             "opacity": {"type": "number", "minimum": 0.05, "maximum": 1},
-            "width": {"type": "number", "minimum": 0, "maximum": 12}},
+            "width": {"type": "number", "minimum": 0, "maximum": 12},
+            "nm": {"type": "string", "minLength": 1}},
             "required": ["type", "page"], "additionalProperties": false})",
         [window](const QJsonObject& a, ScriptContext&) {
             DocumentView& doc = script::document(*window);
@@ -141,6 +142,9 @@ void registerCommentScriptActions(ScriptRunner& runner, MainWindow& w) {
             }
             if (a.contains(QLatin1String("author"))) {
                 props.author = a.value(QLatin1String("author")).toString().toStdString();
+            }
+            if (a.contains(QLatin1String("nm"))) {
+                props.nm = a.value(QLatin1String("nm")).toString().toStdString();  // 5.4: ответы по /NM
             }
             if (a.contains(QLatin1String("icon"))) {
                 props.icon = a.value(QLatin1String("icon")).toString().toStdString();

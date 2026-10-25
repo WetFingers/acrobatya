@@ -1,0 +1,20 @@
+{
+  "comment": "Сценарий 2 эталона через --script (план 5.4, п. 4; им пользуется рубеж Р3): абзацы Word → выделение фразы жёлтым и записка рецензента → ответ на записку и статус «Принято», галочка на выделении → копия ${OUT_DIR}/review.pdf с комментариями, экспорт всех комментариев в XFDF и FDF, сводка «с выносками» → тот же документ без комментариев: импорт XFDF создаёт 5 записей (выделение, записка, ответ, два статуса), повторный импорт FDF обновляет те же 5 по /NM → копия ${OUT_DIR}/imported.pdf. «Поделиться → Отправить по почте» — сессия 9.1. Координаты — пункты от левого верхнего угла страницы.",
+  "steps": [
+    {"cmd": "doc.open", "args": {"path": "../fixtures/edit/word-paragraphs.pdf"}},
+    {"cmd": "annot.create", "args": {"type": "Highlight", "page": 1, "rect": [72, 112, 300, 128], "contents": "Уточнить формулировку", "author": "Мария Иванова", "nm": "scenario2-highlight"}, "name": "выделение"},
+    {"cmd": "annot.create", "args": {"type": "Text", "page": 1, "rect": [520, 176, 540, 196], "contents": "Нужна ссылка на приложение 2", "author": "Борис Петров", "nm": "scenario2-note"}, "name": "записка"},
+    {"cmd": "comment.reply", "args": {"nm": "scenario2-note", "text": "Добавлю в следующей версии", "author": "Мария Иванова"}, "name": "ответ"},
+    {"cmd": "comment.setStatus", "args": {"nm": "scenario2-note", "state": "Accepted", "author": "Мария Иванова"}, "name": "статус"},
+    {"cmd": "comment.setStatus", "args": {"nm": "scenario2-highlight", "state": "Marked"}, "name": "галочка"},
+    {"cmd": "doc.saveCopy", "args": {"path": "${OUT_DIR}/review.pdf"}, "name": "копия с комментариями"},
+    {"cmd": "comments.export", "args": {"path": "${OUT_DIR}/review.xfdf", "format": "xfdf"}, "name": "экспорт XFDF"},
+    {"cmd": "comments.export", "args": {"path": "${OUT_DIR}/review.fdf", "format": "fdf"}, "name": "экспорт FDF"},
+    {"cmd": "comments.summary", "args": {"path": "${OUT_DIR}/summary.pdf", "layout": "callouts"}, "name": "сводка"},
+    {"cmd": "doc.close"},
+    {"cmd": "doc.open", "args": {"path": "../fixtures/edit/word-paragraphs.pdf"}},
+    {"cmd": "comments.import", "args": {"path": "${OUT_DIR}/review.xfdf", "expect": {"created": 5, "updated": 0, "skipped": 0}}, "name": "импорт XFDF"},
+    {"cmd": "comments.import", "args": {"path": "${OUT_DIR}/review.fdf", "expect": {"created": 0, "updated": 5, "skipped": 0}}, "name": "импорт FDF"},
+    {"cmd": "doc.saveCopy", "args": {"path": "${OUT_DIR}/imported.pdf"}, "name": "копия после импорта"}
+  ]
+}

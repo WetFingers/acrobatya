@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "core/annot/comments.h"
+#include "core/annot/fdf.h"
 #include "services/comments_ops.h"
 #include "services/read_state.h"
 #include "ui/panes/nav_page.h"
@@ -53,6 +54,11 @@ class CommentsPane : public NavPage {
     Q_OBJECT
 public:
     using Confirm = std::function<bool(const QString& text)>;
+    // Выбор файла (тесты подменяют): сохранить — предложенный путь и фильтр; открыть — фильтр.
+    using SaveChooser = std::function<QString(const QString& suggested, const QString& filter)>;
+    using OpenChooser = std::function<QString(const QString& filter)>;
+    // Подтверждение импорта (эталон 7.3, security-36): имя файла и число объектов.
+    using ImportConfirm = std::function<bool(const QString& fileName, int count)>;
 
     explicit CommentsPane(QWidget* parent = nullptr);
     ~CommentsPane() override;
@@ -122,6 +128,19 @@ public:
     // Можно ли править комментарии документа (не только чтение, право /P «комментарии»).
     bool canAnnotate() const;
 
+    // FDF/XFDF (comment-27): экспорт всех комментариев (с ответами и статусами) или выбранного — в файл;
+    // импорт — выбор файла, отказ для чужого документа (/F, <f href>), подтверждение с именем файла и числом
+    // объектов (security-36), одна правка «Import comments», итог — тостом (пропущенные страницы — списком).
+    void exportComments(comments::ExchangeFormat format, bool selectedOnly);
+    void exportTo(const QString& path, comments::ExchangeFormat format, bool selectedOnly);
+    void importComments();
+    void importFrom(const QString& path);
+    // «Сводка комментариев…» (comment-25).
+    void showSummary();
+    void setSaveChooser(SaveChooser chooser) { saveChooser_ = std::move(chooser); }
+    void setOpenChooser(OpenChooser chooser) { openChooser_ = std::move(chooser); }
+    void setImportConfirm(ImportConfirm confirm) { importConfirm_ = std::move(confirm); }
+
     // Ответ на запись ref (корень или ответ) / правка её текста — поле под списком; дерево ещё не прочитано —
     // откроется, когда придёт. Ответ — автор Identity, шаг «Add reply»; правка — «Edit comment text».
     void startReply(const annot::AnnotRef& ref);
@@ -141,6 +160,10 @@ signals:
     // Меню «…» наполнено (5.4 FDF/XFDF и сводка добавляют пункты; прямым соединением).
     void moreMenuRequested(QMenu* menu);
     void currentCommentChanged(const ot::annot::AnnotRef& ref);
+    // Файл обмена записан / импорт сделан / отказ импорта (причина — текст тоста).
+    void exported(const QString& path);
+    void imported(const ot::annot::ImportReport& report);
+    void importRefused(const QString& reason);
 
 protected:
     void changeEvent(QEvent* event) override;
@@ -192,6 +215,9 @@ private:
     QString searchText_;
     comments::ReadState read_;
     Confirm confirm_;
+    SaveChooser saveChooser_;
+    OpenChooser openChooser_;
+    ImportConfirm importConfirm_;
     QStringList labels_;
     quint64 generation_ = 0;
     bool dirty_ = true;
