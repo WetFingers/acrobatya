@@ -19,6 +19,7 @@
 #include <QtTest/QtTest>
 
 #include "core/doc/saver.h"
+#include "core/forms/data_io.h"
 #include "core/forms/fields.h"
 #include "core/util/features.h"
 #include "services/app_info.h"
@@ -357,6 +358,68 @@ private slots:
                     .accepted);
         doc->forms().resetForm();
         QTRY_COMPARE(QString::fromStdString(current(*doc, "comment").value), QString());
+    }
+
+    void exportAndImportData() {
+        OT_FEATURE("forms-35");
+        OT_FEATURE("forms-36");
+        MainWindow w;
+        w.setCloseConfirm([](DocumentView&) { return MainWindow::CloseAnswer::Discard; });
+        DocumentView* doc = openDoc(w, fixture("forms-all.pdf"));
+        QVERIFY(doc != nullptr);
+        QVERIFY(forms::setValue(doc->session(), QStringLiteral("name"), QStringLiteral("Анна"))
+                    .result()
+                    .accepted);
+        QVERIFY(forms::setValue(doc->session(), QStringLiteral("agree"), QStringLiteral("Off"))
+                    .result()
+                    .accepted);
+        const QString xfdf = QDir(dataDir()).filePath(QStringLiteral("данные.xfdf"));
+        QFile::remove(xfdf);
+        QSignalSpy exported(&doc->forms(), &FormFillTool::dataExported);
+        doc->forms().exportDataTo(xfdf, forms::DataFormat::Xfdf);
+        QTRY_COMPARE(exported.count(), 1);
+        QVERIFY(exported.at(0).at(1).toBool());
+        QVERIFY(QFile::exists(xfdf));
+        // Чистая копия: импорт с подтверждением (имя файла и число значений).
+        MainWindow w2;
+        w2.setCloseConfirm([](DocumentView&) { return MainWindow::CloseAnswer::Discard; });
+        DocumentView* other = openDoc(w2, fixture("forms-all.pdf"));
+        QVERIFY(other != nullptr);
+        QString asked;
+        int askedValues = 0;
+        other->forms().setImportConfirm([&](const QString& file, int values) {
+            asked = file;
+            askedValues = values;
+            return true;
+        });
+        other->forms().setReportWindow(false);
+        QSignalSpy imported(&other->forms(), &FormFillTool::dataImported);
+        other->forms().importDataFrom(xfdf);
+        QTRY_COMPARE(imported.count(), 1);
+        QCOMPARE(asked, xfdf);
+        QVERIFY(askedValues > 10);
+        QCOMPARE(QString::fromStdString(current(*other, "name").value), QStringLiteral("Анна"));
+        QCOMPARE(QString::fromStdString(current(*other, "agree").value), QStringLiteral("Off"));
+        QTRY_COMPARE(other->session().undoState().undoName, QStringLiteral("Import form data"));
+        // Отказ подтверждения — ничего не меняется; чужой FDF — отказ с причиной.
+        other->forms().setImportConfirm([](const QString&, int) { return false; });
+        other->forms().importDataFrom(xfdf);
+        QCOMPARE(imported.count(), 1);
+        const QString foreign = QDir(dataDir()).filePath(QStringLiteral("чужой.fdf"));
+        {
+            QFile f(foreign);
+            QVERIFY(f.open(QIODevice::WriteOnly));
+            const forms::FormData data{{forms::FieldValue{"name", {"x"}, false}}, "другой.pdf", {}};
+            const std::string bytes = forms::writeData(data, forms::DataFormat::Fdf);
+            f.write(bytes.data(), static_cast<qint64>(bytes.size()));
+        }
+        other->forms().setImportConfirm([](const QString&, int) { return true; });
+        QSignalSpy failed(&other->forms(), &FormFillTool::dataImportFailed);
+        other->forms().importDataFrom(foreign);
+        QTRY_COMPARE(failed.count(), 1);
+        QVERIFY2(failed.at(0).at(1).toString().contains(QStringLiteral("другой.pdf")),
+                 qPrintable(failed.at(0).at(1).toString()));
+        QCOMPARE(QString::fromStdString(current(*other, "name").value), QStringLiteral("Анна"));
     }
 
     void xfaBar() {

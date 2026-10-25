@@ -108,7 +108,7 @@ std::vector<Scene> commentsPaneScenes();
 // measure_scenes.cpp — measure-distance, measure-area, measure-scale-dialog (+ два -dark, 5.5).
 std::vector<Scene> measureScenes();
 // form_scenes.cpp — form-fill (+ -dark), form-highlight, form-combo-open, form-js-bar, form-js-alert,
-// form-xfa-bar (6.1).
+// form-xfa-bar, form-data-export, form-data-import-report (6.1).
 std::vector<Scene> formScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.

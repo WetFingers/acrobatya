@@ -1,6 +1,10 @@
 #include "ui/tools/forms/form_fill_tool.h"
 
 #include <QApplication>
+#include <QDir>
+#include <QFile>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QFuture>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -17,6 +21,7 @@
 #include "services/forms_ops.h"
 #include "services/settings.h"
 #include "services/settings_keys.h"
+#include "ui/dialogs/form_data_dialog.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/message_bar.h"
 #include "ui/theme/theme.h"
@@ -25,6 +30,7 @@
 #include "ui/tools/forms/js_alert_dialog.h"
 #include "ui/view/page_view.h"
 #include "ui/widgets/message_bar.h"
+#include "ui/widgets/toast.h"
 
 namespace ot::ui {
 
@@ -686,9 +692,14 @@ void FormFillTool::handleAction(const forms::FieldAction& action) {
         case forms::ActionKind::SubmitForm:
             emit submitRequested(action);
             break;
-        case forms::ActionKind::ImportData:
+        case forms::ActionKind::ImportData: {
             emit importRequested(action);
+            // Путь действия — от папки документа (как у Acrobat); импорт спросит подтверждение.
+            const QString target = QString::fromStdString(action.target);
+            const QString dir = QFileInfo(view_.path()).absolutePath();
+            importDataFrom(QFileInfo(target).isAbsolute() ? target : QDir(dir).filePath(target));
             break;
+        }
         case forms::ActionKind::Uri:
         case forms::ActionKind::GoToR:
         case forms::ActionKind::Launch: {
@@ -726,6 +737,117 @@ void FormFillTool::resetForm() {
     cancelEditor();
     rejected_.clear();
     forms::reset(view_.session());
+}
+
+// ---------------------------------------------------------------- данные формы
+
+void FormFillTool::exportData() {
+    int values = 0;
+    for (const forms::Field& f : form_.fields) {
+        if (f.type != forms::FieldType::PushButton && f.type != forms::FieldType::Signature &&
+            !f.noExport() && !f.password()) {
+            ++values;
+        }
+    }
+    auto* dialog = new FormDataExportDialog(view_.path(), values, view_.window());
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    connect(dialog, &QDialog::accepted, this,
+            [this, dialog] { exportDataTo(dialog->path(), dialog->format()); });
+    dialog->open();
+}
+
+void FormFillTool::exportDataTo(const QString& path, forms::DataFormat format) {
+    const QString name = QFileInfo(view_.path()).fileName();
+    forms::exportData(view_.session(), format, name).then(this, [this, path](QFuture<QByteArray> done) {
+        bool ok = false;
+        try {
+            const QByteArray bytes = done.result();
+            QFile out(path);
+            ok = out.open(QIODevice::WriteOnly) && out.write(bytes) == bytes.size();
+        } catch (const std::exception& e) {
+            spdlog::warn("forms: export failed: {}", e.what());
+        }
+        Toast::notify(view_.window(),
+                      ok ? tr("Данные формы сохранены: %1").arg(QFileInfo(path).fileName())
+                         : tr("Не удалось сохранить данные формы в «%1».").arg(QFileInfo(path).fileName()),
+                      ok ? Tone::Ok : Tone::Danger);
+        emit dataExported(path, ok);
+    });
+}
+
+void FormFillTool::importData() {
+    QString path;
+    if (openChooser_) {
+        path = openChooser_();
+    } else {
+        const QString filter = tr("Данные формы (*.fdf *.xfdf *.xml *.txt *.tsv)");
+        path = QFileDialog::getOpenFileName(view_.window(), tr("Импорт данных формы"),
+                                            QFileInfo(view_.path()).absolutePath(), filter);
+    }
+    if (!path.isEmpty()) {
+        importDataFrom(path);
+    }
+}
+
+void FormFillTool::importDataFrom(const QString& path) {
+    const QString file = QFileInfo(path).fileName();
+    const auto fail = [this, path](const QString& reason) {
+        Toast::notify(view_.window(), reason, Tone::Danger);
+        emit dataImportFailed(path, reason);
+    };
+    QFile in(path);
+    if (!in.open(QIODevice::ReadOnly)) {
+        fail(tr("Не удалось открыть «%1».").arg(file));
+        return;
+    }
+    const QByteArray raw = in.readAll();
+    const std::string bytes(raw.constData(), static_cast<std::size_t>(raw.size()));
+    // Формат — по содержимому (расширение может лгать: .txt с XFDF внутри).
+    const forms::DataFormat format = forms::detectDataFormat(bytes);
+    forms::FormData data;
+    try {
+        data = forms::readData(bytes, format);
+    } catch (const forms::DataError& e) {
+        spdlog::warn("forms: {} is not form data: {}", path.toStdString(), e.what());
+        fail(tr("«%1» — не файл данных формы или повреждён.").arg(file));
+        return;
+    }
+    const int values = static_cast<int>(std::max(data.fields.size(), data.pairs.size()));
+    const bool yes =
+        importConfirm_ ? importConfirm_(path, values) : confirmFormDataImport(view_.window(), path, values);
+    if (!yes) {
+        return;
+    }
+    forms::importData(view_.session(), std::move(data), QFileInfo(view_.path()).fileName())
+        .then(this, [this, path, file, fail](QFuture<forms::DataImportReport> done) {
+            forms::DataImportReport report;
+            try {
+                report = done.result();
+            } catch (const forms::DataError& e) {
+                if (e.kind() == forms::DataError::Kind::ForeignDocument) {
+                    fail(tr("Данные в «%1» относятся к другому документу: %2.")
+                             .arg(file, QString::fromStdString(e.file())));
+                } else {
+                    fail(tr("«%1» — не файл данных формы или повреждён.").arg(file));
+                }
+                return;
+            } catch (const std::exception& e) {
+                spdlog::warn("forms: import failed: {}", e.what());
+                fail(tr("Не удалось импортировать данные из «%1».").arg(file));
+                return;
+            }
+            const bool clean = report.unknown.empty() && report.readOnly.empty() && report.rejected.empty();
+            if (clean || !reportWindow_) {
+                Toast::notify(view_.window(),
+                              tr("Импортировано значений: %1").arg(static_cast<int>(report.updated.size())),
+                              Tone::Ok);
+            } else {
+                auto* dialog = new FormDataReportDialog(path, report, view_.window());
+                dialog->setAttribute(Qt::WA_DeleteOnClose);
+                dialog->open();
+            }
+            emit dataImported(path, report);
+        });
 }
 
 }  // namespace ot::ui

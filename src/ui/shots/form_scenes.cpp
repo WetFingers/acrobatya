@@ -14,6 +14,7 @@
 #include <functional>
 
 #include "core/forms/js_bridge.h"
+#include "ui/dialogs/form_data_dialog.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
 #include "ui/shots/scenes.h"
@@ -135,6 +136,28 @@ std::vector<Scene> formScenes() {
         embedCentered(w, dialog);
     }));
     scenes.push_back(scene("form-xfa-bar", "forms/xfa-stub.pdf", [](MainWindow&, DocumentView&) {}));
+    // 6.1, п. 3: экспорт данных формы и отчёт импорта.
+    scenes.push_back(scene("form-data-export", "forms/forms-all.pdf", [](MainWindow& w, DocumentView& doc) {
+        doc.forms().setHighlight(false);
+        auto* dialog = new FormDataExportDialog(doc.path(), 17, &w);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->setFormat(forms::DataFormat::Xfdf);
+        dialog->adjustSize();
+        embedCentered(w, dialog);
+    }));
+    scenes.push_back(
+        scene("form-data-import-report", "forms/forms-all.pdf", [](MainWindow& w, DocumentView& doc) {
+            doc.forms().setHighlight(false);
+            forms::DataImportReport report;
+            report.updated = {"name", "comment", "agree", "color", "city"};
+            report.unknown = {"passport.number", "passport.issued"};
+            report.readOnly = {"total"};
+            report.rejected = {"langs"};
+            auto* dialog = new FormDataReportDialog(QStringLiteral("anketa-2026.fdf"), report, &w);
+            dialog->setAttribute(Qt::WA_DeleteOnClose);
+            dialog->adjustSize();
+            embedCentered(w, dialog);
+        }));
     return scenes;
 }
 

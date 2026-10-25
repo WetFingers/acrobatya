@@ -141,4 +141,22 @@ QFuture<std::vector<int>> recalculate(DocumentSession& session) {
     });
 }
 
+QFuture<QByteArray> exportData(DocumentSession& session, DataFormat format, QString fileName) {
+    return session.post(
+        [format, name = fileName.toStdString()](TaskContext& tc) {
+            const std::string bytes = writeData(collectData(tc.document(), name), format);
+            return QByteArray(bytes.data(), static_cast<qsizetype>(bytes.size()));
+        },
+        TaskPriority::Normal, QStringLiteral("export form data"));
+}
+
+QFuture<DataImportReport> importData(DocumentSession& session, FormData data, QString documentFile) {
+    return session.edit(QString::fromLatin1(kImportDataStep),
+                        [data = std::move(data), file = documentFile.toStdString()](TaskContext& tc) {
+                            DataImportReport r = forms::importData(tc.document(), data, file);
+                            touch(tc, r.pages);
+                            return r;
+                        });
+}
+
 }  // namespace ot::forms

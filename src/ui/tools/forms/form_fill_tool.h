@@ -27,12 +27,14 @@
 #include <QPointer>
 #include <QString>
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
 #include <set>
 #include <vector>
 
+#include "core/forms/data_io.h"
 #include "core/forms/fields.h"
 #include "core/forms/js_bridge.h"
 #include "services/js_prompter.h"
@@ -89,6 +91,21 @@ public:
     void cancelEditor();
     // «Очистить форму» (forms-06) — шаг «Reset form».
     void resetForm();
+
+    // Данные формы (6.1, п. 3; forms-35, forms-36): «Экспорт данных…» — диалог FormDataExportDialog, запись —
+    // exportDataTo; «Импорт данных…» — выбор файла, importDataFrom: разбор, подтверждение с именем файла и
+    // числом значений (security-36), шаг «Import form data», отчёт (окно, если что-то не принято). Действие
+    // кнопки ImportData — тот же импорт (путь — от папки документа).
+    void exportData();
+    void exportDataTo(const QString& path, forms::DataFormat format);
+    void importData();
+    void importDataFrom(const QString& path);
+    using ImportConfirm = std::function<bool(const QString& file, int values)>;
+    void setImportConfirm(ImportConfirm confirm) { importConfirm_ = std::move(confirm); }
+    using FileChooser = std::function<QString()>;
+    void setOpenChooser(FileChooser chooser) { openChooser_ = std::move(chooser); }
+    // Окно отчёта импорта (тесты — выкл.: только сигнал dataImported).
+    void setReportWindow(bool on) noexcept { reportWindow_ = on; }
     // Поля с непринятым значением (рамка danger).
     const std::set<QString>& rejected() const noexcept { return rejected_; }
     // Настройки «Формы» сменились (Установки, ОК).
@@ -113,6 +130,9 @@ signals:
     void submitRequested(const ot::forms::FieldAction& action);
     void importRequested(const ot::forms::FieldAction& action);
     void signatureFieldClicked(const QString& field);
+    void dataExported(const QString& path, bool ok);
+    void dataImported(const QString& file, const ot::forms::DataImportReport& report);
+    void dataImportFailed(const QString& file, const QString& reason);
     void javaScriptChanged(ot::forms::JsState state);
 
 private:
@@ -154,6 +174,9 @@ private:
     bool popupOnRelease_ = false;
     QPointer<FieldEditor> editor_;
     std::set<QString> rejected_;
+    ImportConfirm importConfirm_;
+    FileChooser openChooser_;
+    bool reportWindow_ = true;
 };
 
 }  // namespace ot::ui

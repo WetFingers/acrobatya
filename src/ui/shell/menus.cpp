@@ -587,6 +587,37 @@ void MainWindow::registerCommands() {
                    return f != nullptr && f->hasForm() && currentDocument()->canEdit();
                },
            .menu = QStringLiteral("tools/forms")});
+    r.add({.id = QStringLiteral("forms.exportData"),
+           .title = tr("&Экспорт данных…"),
+           .icon = QStringLiteral("file-output"),
+           .run =
+               [formFill] {
+                   if (FormFillTool* f = formFill()) {
+                       f->exportData();
+                   }
+               },
+           .enabled =
+               [formFill] {
+                   const FormFillTool* f = formFill();
+                   return f != nullptr && f->hasForm();
+               },
+           .menu = QStringLiteral("tools/forms"),
+           .separatorBefore = true});
+    r.add({.id = QStringLiteral("forms.importData"),
+           .title = tr("&Импорт данных…"),
+           .icon = QStringLiteral("file-input"),
+           .run =
+               [formFill] {
+                   if (FormFillTool* f = formFill()) {
+                       f->importData();
+                   }
+               },
+           .enabled =
+               [this, formFill] {
+                   const FormFillTool* f = formFill();
+                   return f != nullptr && f->hasForm() && currentDocument()->canEdit();
+               },
+           .menu = QStringLiteral("tools/forms")});
     r.add({.id = QStringLiteral("tools.all"),
            .title = tr("Все &инструменты"),
            .icon = QStringLiteral("grid-2x2"),

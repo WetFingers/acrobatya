@@ -214,6 +214,20 @@ SetResult setValue(Document& doc, std::string_view name, std::string_view value,
 // Список с мультивыбором: значения — экспортные (или подписи вариантов).
 SetResult setValues(Document& doc, std::string_view name, const std::vector<std::string>& values,
                     const SetOptions& options = {});
+// Несколько полей одной операцией «Fill fields» (импорт данных 6.1, п. 3): форма читается один раз, вид — в
+// конце; values — значение (у списка с мультивыбором — несколько). Отчёт — по именам.
+struct Assignment {
+    std::string name;
+    std::vector<std::string> values;
+};
+struct BatchResult {
+    std::vector<std::string> updated;
+    std::vector<std::string> unknown;   // нет такого поля
+    std::vector<std::string> readOnly;  // только для чтения или закрыто подписью
+    std::vector<std::string> rejected;  // нет варианта, отказ проверки, не поле значения (кнопка, подпись)
+    std::vector<int> pages;
+};
+BatchResult setMany(Document& doc, const std::vector<Assignment>& values, const SetOptions& options = {});
 // Щелчок по флажку или переключателю (pdf_toggle_widget): соседи группы и /V — как у Acrobat.
 SetResult toggle(Document& doc, int page, int objnum, const SetOptions& options = {});
 // «Очистить форму» и действие ResetForm (forms-06): /V ← /DV (нет /DV — значение снимается), флажки — по /DV;

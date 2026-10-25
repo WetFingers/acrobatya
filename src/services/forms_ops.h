@@ -3,6 +3,7 @@
 // которых изменился. ui зовёт эти функции, а не TaskContext.
 #pragma once
 
+#include <QByteArray>
 #include <QFuture>
 #include <QString>
 #include <QStringList>
@@ -10,6 +11,7 @@
 #include <map>
 #include <vector>
 
+#include "core/forms/data_io.h"
 #include "core/forms/fields.h"
 #include "services/document_session.h"
 
@@ -19,6 +21,7 @@ inline constexpr const char* kFillStep = "Fill field";
 inline constexpr const char* kResetStep = "Reset form";
 inline constexpr const char* kClickStep = "Click button";
 inline constexpr const char* kCalculateStep = "Calculate form";
+inline constexpr const char* kImportDataStep = "Import form data";
 
 QFuture<Form> read(DocumentSession& session, TaskPriority priority = TaskPriority::High);
 // Поля и порядок табуляции страниц с полями — одной задачей (слой заполнения ui).
@@ -42,5 +45,11 @@ QFuture<std::vector<int>> reset(DocumentSession& session, QStringList names = {}
 QFuture<ClickResult> click(DocumentSession& session, int page, int objnum);
 QFuture<std::vector<int>> focus(DocumentSession& session, int page, int objnum, bool in);
 QFuture<std::vector<int>> recalculate(DocumentSession& session);
+
+// Данные формы (forms-35, forms-36; core/forms/data_io.h): байты файла формата format (fileName — /F и href).
+QFuture<QByteArray> exportData(DocumentSession& session, DataFormat format, QString fileName);
+// Импорт разобранных данных шагом «Import form data»; documentFile — имя файла документа для проверки /F
+// (чужой — DataError в QFuture).
+QFuture<DataImportReport> importData(DocumentSession& session, FormData data, QString documentFile);
 
 }  // namespace ot::forms

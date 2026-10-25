@@ -878,10 +878,16 @@ std::optional<std::size_t> optionIndex(const Field& f, std::string_view value) {
 }
 
 // Отказ до правки: нет поля, не поле значения, только для чтения.
+std::optional<std::string> refusal(const Field& f);
 std::optional<std::string> refusal(const std::optional<Field>& f) {
     if (!f) {
         return std::string("unknown-field");
     }
+    return refusal(*f);
+}
+
+std::optional<std::string> refusal(const Field& field) {
+    const Field* f = &field;
     if (f->type == FieldType::PushButton || f->type == FieldType::Signature ||
         f->type == FieldType::Unknown || f->widgets.empty()) {
         return std::string("not-a-value-field");
@@ -1163,7 +1169,77 @@ std::vector<int> tabSequence(const Document& doc, int page) {
 
 // ---------------------------------------------------------------- правка
 
+namespace fields_impl {
+
+// Значения values полю f (проверки, варианты, keystroke/validate MuPDF) внутри операции вызывающего: пусто —
+// принято, иначе причина отказа ("not-an-option", "rejected", "not-a-value-field").
+std::string assign(fz_context* ctx, pdf_document* pdf, const detail::WidgetPages& pages, const Field& f,
+                   const std::vector<std::string>& values) {
+    const bool choice = f.type == FieldType::ListBox || f.type == FieldType::ComboBox;
+    if (choice && (f.multiSelect() || values.size() != 1)) {
+        std::vector<std::pair<int, std::string>> picked;
+        for (const std::string& v : values) {
+            const std::optional<std::size_t> i = optionIndex(f, v);
+            if (!i) {
+                return "not-an-option";
+            }
+            picked.emplace_back(static_cast<int>(*i), f.options[*i].exportValue);
+        }
+        std::sort(picked.begin(), picked.end());
+        picked.erase(std::unique(picked.begin(), picked.end()), picked.end());
+        if (!f.multiSelect() && picked.size() > 1) {
+            return "not-an-option";
+        }
+        std::vector<std::string> exports;
+        std::vector<int> indices;
+        for (const auto& [i, v] : picked) {
+            indices.push_back(i);
+            exports.push_back(v);
+        }
+        setChoiceValues(ctx, pdf, lookup(ctx, pdf, f.name), exports, indices, pages, f);
+        return {};
+    }
+    if (values.size() != 1) {
+        return "not-a-value-field";
+    }
+    std::string v = values.front();
+    if (f.type == FieldType::CheckBox || f.type == FieldType::RadioButton) {
+        const std::optional<std::string> state = stateFor(f, v);
+        if (!state) {
+            return "not-an-option";
+        }
+        setButtonState(ctx, pdf, lookup(ctx, pdf, f.name), *state, pages, f);
+        return {};
+    }
+    if (f.type == FieldType::Text) {
+        if (f.maxLen > 0) {
+            v = truncateChars(v, f.maxLen);
+        }
+    } else if (!v.empty()) {  // combo, список с одним значением
+        if (const std::optional<std::size_t> i = optionIndex(f, v)) {
+            v = f.options[*i].exportValue;
+        } else if (!f.editable()) {
+            return "not-an-option";
+        }
+    }
+    pdf_annot* annot = pages.find(f.widgets.front().objnum).first;
+    if (annot == nullptr) {
+        throw MuError(FZ_ERROR_ARGUMENT, "field " + f.name + ": widget is not on a page");
+    }
+    int rc = 0;
+    const char* text = v.c_str();
+    mu::call(ctx, [&] { rc = pdf_set_text_field_value(ctx, annot, text); });
+    return rc != 0 ? std::string() : std::string("rejected");
+}
+
+}  // namespace fields_impl
+
 SetResult setValue(Document& doc, std::string_view name, std::string_view value, const SetOptions& options) {
+    return setValues(doc, name, {std::string(value)}, options);
+}
+
+SetResult setValues(Document& doc, std::string_view name, const std::vector<std::string>& values,
+                    const SetOptions& options) {
     using namespace fields_impl;
     pdf_document* pdf = detail::pdfOf(doc);
     fz_context* ctx = doc.context().get();
@@ -1177,48 +1253,11 @@ SetResult setValue(Document& doc, std::string_view name, std::string_view value,
         return result;
     }
     result.value = field->value;
-    if (field->multiSelect()) {
-        return setValues(doc, name, {std::string(value)}, options);
-    }
-    std::string v(value);
-    std::optional<std::string> state;
-    if (field->type == FieldType::CheckBox || field->type == FieldType::RadioButton) {
-        state = stateFor(*field, v);
-        if (!state) {
-            result.error = "not-an-option";
-            return result;
-        }
-    } else if (field->type == FieldType::Text) {
-        if (field->maxLen > 0) {
-            v = truncateChars(v, field->maxLen);
-        }
-    } else if (!v.empty()) {  // combo, список
-        if (const std::optional<std::size_t> i = optionIndex(*field, v)) {
-            v = field->options[*i].exportValue;
-        } else if (!field->editable()) {
-            result.error = "not-an-option";
-            return result;
-        }
-    }
-
     Journal::Operation op(doc, "Fill field");
     beginUserAction(doc);
     detail::WidgetPages pages(doc);
-    pdf_obj* obj = lookup(ctx, pdf, field->name);
-    bool ok = false;
-    if (state) {
-        setButtonState(ctx, pdf, obj, *state, pages, *field);
-        ok = true;
-    } else {
-        pdf_annot* annot = pages.find(field->widgets.front().objnum).first;
-        if (annot == nullptr) {
-            throw MuError(FZ_ERROR_ARGUMENT, "field " + field->name + ": widget is not on a page");
-        }
-        int rc = 0;
-        const char* text = v.c_str();
-        mu::call(ctx, [&] { rc = pdf_set_text_field_value(ctx, annot, text); });
-        ok = rc != 0;
-    }
+    result.error = assign(ctx, pdf, pages, *field, values);
+    const bool ok = result.error.empty();
     if (!options.recalculate) {
         setRecalculate(pdf, false);
     }
@@ -1228,70 +1267,47 @@ SetResult setValue(Document& doc, std::string_view name, std::string_view value,
     }
     op.commit();
     result.accepted = ok;
-    if (!ok) {
-        result.error = "rejected";
-    }
-    result.value = readField(doc, name)->value;
+    const std::optional<Field> after = readField(doc, name);
+    result.value = after ? after->value : std::string();
     return result;
 }
 
-SetResult setValues(Document& doc, std::string_view name, const std::vector<std::string>& values,
-                    const SetOptions& options) {
+BatchResult setMany(Document& doc, const std::vector<Assignment>& list, const SetOptions& options) {
     using namespace fields_impl;
     pdf_document* pdf = detail::pdfOf(doc);
     fz_context* ctx = doc.context().get();
-    SetResult result;
-    const std::optional<Field> field = readField(doc, name);
-    if (const std::optional<std::string> refused = refusal(field)) {
-        result.error = *refused;
-        return result;
-    }
-    result.value = field->value;
-    if (field->type != FieldType::ListBox && field->type != FieldType::ComboBox) {
-        if (values.size() == 1) {
-            return setValue(doc, name, values.front(), options);
-        }
-        result.error = "not-a-value-field";
-        return result;
-    }
-    std::vector<std::pair<int, std::string>> picked;
-    for (const std::string& v : values) {
-        const std::optional<std::size_t> i = optionIndex(*field, v);
-        if (!i) {
-            result.error = "not-an-option";
-            return result;
-        }
-        picked.emplace_back(static_cast<int>(*i), field->options[*i].exportValue);
-    }
-    std::sort(picked.begin(), picked.end());
-    picked.erase(std::unique(picked.begin(), picked.end()), picked.end());
-    if (!field->multiSelect() && picked.size() > 1) {
-        result.error = "not-an-option";
-        return result;
-    }
-    std::vector<std::string> exports;
-    std::vector<int> indices;
-    for (const auto& [i, v] : picked) {
-        indices.push_back(i);
-        exports.push_back(v);
-    }
-
-    Journal::Operation op(doc, "Fill field");
+    BatchResult result;
+    const Form form = read(doc, false);
+    Journal::Operation op(doc, "Fill fields");
     beginUserAction(doc);
     detail::WidgetPages pages(doc);
-    pdf_obj* obj = lookup(ctx, pdf, field->name);
-    setChoiceValues(ctx, pdf, obj, exports, indices, pages, *field);
+    std::vector<int> touched;
+    for (const Assignment& a : list) {
+        const Field* f = form.find(a.name);
+        if (f == nullptr) {
+            result.unknown.push_back(a.name);
+            continue;
+        }
+        const std::optional<std::string> refused = refusal(*f);
+        if (refused) {
+            (*refused == "not-a-value-field" ? result.rejected : result.readOnly).push_back(a.name);
+            continue;
+        }
+        if (assign(ctx, pdf, pages, *f, a.values).empty()) {
+            result.updated.push_back(a.name);
+            touched = unite(std::move(touched), pagesOf(*f));
+        } else {
+            result.rejected.push_back(a.name);
+        }
+    }
     if (!options.recalculate) {
         setRecalculate(pdf, false);
     }
-    result.pages = unite(pages.update(), pagesOf(*field));
+    result.pages = unite(pages.update(), touched);
     for (const int p : result.pages) {
         op.invalidate(p);
     }
     op.commit();
-    result.accepted = true;
-    const std::optional<Field> after = readField(doc, name);
-    result.value = after ? after->value : std::string();
     return result;
 }
 
