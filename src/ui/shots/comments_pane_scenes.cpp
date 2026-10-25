@@ -5,13 +5,18 @@
 // pane-comments-filtered — фильтр по автору «Мария Иванова» (сводка «Показано 2 из 5», на странице только её
 // пометки); pane-comments-search — поиск «приложени» (находит записку по тексту ответа). Комментарии
 // создаются в открытом документе (на закрытии — «Не сохранять»).
+// Ответы и статусы: comment-reply — поле ответа панели на записку (текст с жирным словом) и открытое окно
+// записки с веткой ответов, статусом и полем «Ответить…»; comment-status — «Свойства комментария» записки на
+// вкладке «История проверок» («Принято»).
 #include <QCoreApplication>
 #include <QDate>
 #include <QDateTime>
 #include <QFuture>
+#include <QLabel>
 #include <QTime>
 #include <QTimer>
 #include <QTreeView>
+#include <QTreeWidget>
 
 #include <functional>
 #include <memory>
@@ -27,11 +32,14 @@
 #include "services/comments_ops.h"
 #include "services/document_session.h"
 #include "services/settings.h"
+#include "ui/dialogs/annot_props_dialog.h"
 #include "ui/panes/comments_pane.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
 #include "ui/shell/nav_pane.h"
 #include "ui/shots/scenes.h"
+#include "ui/tools/comment/popup_widget.h"
+#include "ui/tools/comment/reply_editor.h"
 #include "ui/view/page_view.h"
 
 namespace ot::ui {
@@ -120,7 +128,8 @@ void buildReview(MainWindow& w, DocumentView& doc, const TextPtr& text) {
     }
 
     annot::create(s, 0, std::move(hl)).then(&w, [&s](annot::AnnotRef ref) {
-        comments::setStatus(s, ref, std::string(annot::kMarkedModel), "Marked", comments::author(Settings()));
+        comments::setStatus(s, ref, std::string(annot::kMarkedModel), "Marked", comments::author(Settings()),
+                            when(20, 17, 0));
     });
     QFuture<annot::AnnotRef> noteRef = annot::create(s, 0, std::move(note));
     QFuture<annot::AnnotRef> ulRef = annot::create(s, 0, std::move(ul));
@@ -140,11 +149,14 @@ void buildReview(MainWindow& w, DocumentView& doc, const TextPtr& text) {
                          QT_TRANSLATE_NOOP("ot::ui::CommentsScenes", "Согласна, приложение уже готово.")),
                      .created = when(21, 8, 55)});
                 comments::setStatus(s, ref, std::string(annot::kReviewModel), "Accepted",
-                                    sceneText(QT_TRANSLATE_NOOP("ot::ui::CommentsScenes", "Мария Иванова")));
+                                    sceneText(QT_TRANSLATE_NOOP("ot::ui::CommentsScenes", "Мария Иванова")),
+                                    when(21, 12, 15));
                 comments::setStatus(s, ulRef.result(), std::string(annot::kReviewModel), "Rejected",
-                                    sceneText(QT_TRANSLATE_NOOP("ot::ui::CommentsScenes", "Борис Петров")));
+                                    sceneText(QT_TRANSLATE_NOOP("ot::ui::CommentsScenes", "Борис Петров")),
+                                    when(21, 15, 40));
                 comments::setStatus(s, boxRef.result(), std::string(annot::kReviewModel), "Completed",
-                                    sceneText(QT_TRANSLATE_NOOP("ot::ui::CommentsScenes", "Анна Смирнова")))
+                                    sceneText(QT_TRANSLATE_NOOP("ot::ui::CommentsScenes", "Анна Смирнова")),
+                                    when(23, 9, 10))
                     .then(&w, [&w](annot::AnnotRef) { w.setProperty(kDone, true); });
             });
     });
@@ -171,10 +183,10 @@ std::function<QWidget*()> reviewScene() {
     });
 }
 
-// Готово: рецензия создана, панель прочитала её (пять карточек, у записки два ответа), вариант применён и
-// тайлы перерисованы.
-std::function<bool(QWidget*)> reviewReady(Variant variant) {
-    return [variant = std::move(variant)](QWidget* w) {
+// Готово: рецензия создана, панель прочитала её (пять карточек, у записки два ответа), вариант применён,
+// extra (если есть) согласен и тайлы перерисованы.
+std::function<bool(QWidget*)> reviewReady(Variant variant, std::function<bool(QWidget*)> extra = {}) {
+    return [variant = std::move(variant), extra = std::move(extra)](QWidget* w) {
         if (!w->property(kDone).toBool()) {
             return false;
         }
@@ -186,6 +198,9 @@ std::function<bool(QWidget*)> reviewReady(Variant variant) {
         if (!w->property(kApplied).toBool()) {
             w->setProperty(kApplied, true);
             variant(*pane);
+            return false;
+        }
+        if (extra && !extra(w)) {
             return false;
         }
         pane->list()->viewport()->repaint();
@@ -233,6 +248,61 @@ std::vector<Scene> commentsPaneScenes() {
         pane.setSearchText(QCoreApplication::translate("ot::ui::CommentsScenes", "приложени"));
     });
     scenes.push_back(search);
+
+    Scene reply;
+    reply.name = QStringLiteral("comment-reply");
+    reply.make = comments_scene::reviewScene();
+    reply.ready = comments_scene::reviewReady(
+        [](CommentsPane& pane) {
+            const annot::Comment* note = comments_scene::noteOf(pane);
+            if (note == nullptr || pane.document() == nullptr) {
+                return;
+            }
+            pane.selectComment(note->ref, true);
+            pane.startReply(note->ref);
+            pane.replyEditor()->setSpans(
+                {{.text =
+                      comments_scene::sceneText(QT_TRANSLATE_NOOP("ot::ui::CommentsScenes", "Расчёт — в "))},
+                 {.text =
+                      comments_scene::sceneText(QT_TRANSLATE_NOOP("ot::ui::CommentsScenes", "приложении 2")),
+                  .bold = true},
+                 {.text =
+                      comments_scene::sceneText(QT_TRANSLATE_NOOP("ot::ui::CommentsScenes", ", стр. 14."))}});
+            PopupLayer::of(pane.document()->view()).open(note->ref, false);
+        },
+        [](QWidget* w) {
+            CommentsPane* pane = comments_scene::paneOf(w);
+            const annot::Comment* note = comments_scene::noteOf(*pane);
+            PopupWidget* popup =
+                note != nullptr ? PopupLayer::of(pane->document()->view()).popup(note->ref) : nullptr;
+            return popup != nullptr && !popup->repliesLabel()->text().isEmpty() && popup->isVisible();
+        });
+    scenes.push_back(reply);
+
+    Scene status;
+    status.name = QStringLiteral("comment-status");
+    status.make = comments_scene::reviewScene();
+    status.ready = comments_scene::reviewReady(
+        [](CommentsPane& pane) {
+            const annot::Comment* note = comments_scene::noteOf(pane);
+            if (note == nullptr || pane.document() == nullptr) {
+                return;
+            }
+            pane.selectComment(note->ref, true);
+            auto* w = qobject_cast<MainWindow*>(pane.window());
+            AnnotPropsDialog* d = AnnotPropsDialog::openFor(pane.document()->view(), note->ref);
+            d->showTab(AnnotPropsDialog::History);
+            QObject::connect(d, &AnnotPropsDialog::loadedChanged, d, [w, d] {
+                if (w != nullptr) {
+                    embedCentered(*w, d);
+                }
+            });
+        },
+        [](QWidget* w) {
+            auto* d = w->findChild<AnnotPropsDialog*>();
+            return d != nullptr && d->loaded() && d->historyList()->topLevelItemCount() > 0;
+        });
+    scenes.push_back(status);
     return scenes;
 }
 

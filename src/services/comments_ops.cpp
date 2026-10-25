@@ -26,11 +26,11 @@ QFuture<annot::AnnotRef> reply(DocumentSession& session, annot::AnnotRef parent,
 }
 
 QFuture<annot::AnnotRef> setStatus(DocumentSession& session, annot::AnnotRef target, std::string model,
-                                   std::string state, std::string author) {
+                                   std::string state, std::string author, std::int64_t when) {
     const QString step = QString::fromLatin1(model == annot::kMarkedModel ? kCheckStep : kStatusStep);
     return session.edit(step, [target, model = std::move(model), state = std::move(state),
-                               author = std::move(author)](TaskContext& tc) {
-        annot::AnnotRef ref = annot::setStatus(tc.document(), target, model, state, author);
+                               author = std::move(author), when](TaskContext& tc) {
+        annot::AnnotRef ref = annot::setStatus(tc.document(), target, model, state, author, when);
         tc.touchPage(target.page);
         return ref;
     });

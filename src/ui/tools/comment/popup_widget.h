@@ -8,7 +8,8 @@
 // PopupLayer — окна записок одного вида (ребёнок PageView, слой z 50): open/close/closeAll, линии-связки от
 // значка к окну (Установки: «Линии-связки»), подсказка «автор — текст» при наведении на комментарий
 // (Установки: «Показывать окно при наведении»). Правка страницы перечитывает свойства открытых окон её
-// страницы; исчезнувшие (undo, удаление) закрываются.
+// страницы; исчезнувшие (undo, удаление) закрываются. 5.4: под текстом — ответы деревом и статус, внизу —
+// поле «Ответить…» (окно вырастает по высоте, не больше двух высот токена).
 #pragma once
 
 #include <QFrame>
@@ -22,6 +23,7 @@
 #include "ui/view/overlay.h"
 
 class QLabel;
+class QLineEdit;
 class QPlainTextEdit;
 class QToolButton;
 
@@ -47,6 +49,12 @@ public:
     QPlainTextEdit* editor() const noexcept { return editor_; }
     QLabel* authorLabel() const noexcept { return author_; }
     QToolButton* closeButton() const noexcept { return close_; }
+    // 5.4: ветка ответов и статус (HTML под текстом; пусто — скрыта) и поле «Ответить…» (Enter — ответ автора
+    // Identity шагом «Add reply»).
+    QLabel* repliesLabel() const noexcept { return replies_; }
+    QLineEdit* replyField() const noexcept { return reply_; }
+    // Перечитать ветку (дерево документа задачей).
+    void loadThread();
     // Записать набранный текст сейчас (без паузы).
     void flush();
     bool pending() const { return timer_.isActive(); }
@@ -69,7 +77,12 @@ private:
     QLabel* date_ = nullptr;
     QToolButton* close_ = nullptr;
     QPlainTextEdit* editor_ = nullptr;
+    QLabel* replies_ = nullptr;
+    QLineEdit* reply_ = nullptr;
     QTimer timer_;
+    quint64 threadRequest_ = 0;
+    void sendReply();
+    void fitHeight();
     QString committed_;
     bool loading_ = false;
 };

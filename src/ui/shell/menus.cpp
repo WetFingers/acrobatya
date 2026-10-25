@@ -23,6 +23,7 @@
 #include "ui/shell/document_view.h"
 #include "ui/shell/global_bar.h"
 #include "ui/shell/main_window.h"
+#include "ui/shell/main_window_actions.h"
 #include "ui/shell/nav_pane.h"
 #include "ui/shell/quick_bar.h"
 #include "ui/shell/status_bar.h"
@@ -34,14 +35,6 @@
 #include "ui/view/tool_controller.h"
 
 namespace ot::ui {
-
-struct MainWindow::Actions {
-    QHash<QString, QMenu*> menus;  // "file", "view/zoom"…
-    QHash<QString, QAction*> byId;
-    QMenu* main = nullptr;   // «Меню ▾»
-    QMenu* share = nullptr;  // «Поделиться ▾»
-    QList<QAction*> tabActions;
-};
 
 namespace {
 

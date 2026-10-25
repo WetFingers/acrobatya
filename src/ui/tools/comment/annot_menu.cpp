@@ -13,6 +13,8 @@
 #include "services/document_session.h"
 #include "services/settings.h"
 #include "ui/panes/attachments_pane.h"
+#include "ui/panes/comment_actions.h"
+#include "ui/panes/comments_pane.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
 #include "ui/shell/nav_pane.h"
@@ -146,11 +148,33 @@ void fill(PageView& view, QMenu* menu) {
         });
     saveFile->setObjectName(QStringLiteral("commentSaveAttachment"));
     saveFile->setVisible(attachment);
-    for (const char* later : {QT_TRANSLATE_NOOP("ot::ui::CommentMenu", "Ответить"),
-                              QT_TRANSLATE_NOOP("ot::ui::CommentMenu", "Статус")}) {
-        QAction* a = menu->addAction(QCoreApplication::translate("ot::ui::CommentMenu", later));
-        a->setEnabled(false);
-        a->setToolTip(QCoreApplication::translate("ot::ui::CommentMenu", "Появится в версии 0.5"));
+    // Ответ и статус (5.4): поле ответа — в панели «Комментарии»; статус и галочка — шагом истории.
+    auto* window = qobject_cast<MainWindow*>(view.window());
+    CommentsPane* pane = window != nullptr
+                             ? qobject_cast<CommentsPane*>(window->navPane().page(QStringLiteral("comments")))
+                             : nullptr;
+    const bool canReply = single && view.tools().editable();
+    QAction* reply =
+        menu->addAction(QCoreApplication::translate("ot::ui::CommentMenu", "Ответить"), [guard, ref] {
+            if (guard == nullptr) {
+                return;
+            }
+            auto* w = qobject_cast<MainWindow*>(guard->window());
+            if (w == nullptr) {
+                return;
+            }
+            w->navPane().showPane(QStringLiteral("comments"));
+            if (auto* p = qobject_cast<CommentsPane*>(w->navPane().page(QStringLiteral("comments")))) {
+                p->startReply(ref);
+            }
+        });
+    reply->setObjectName(QStringLiteral("commentReply"));
+    reply->setEnabled(canReply);
+    if (DocumentSession* session = view.document()) {
+        const annot::Comment* known = pane != nullptr ? pane->comment(ref) : nullptr;
+        comment_actions::addStatusMenu(
+            *menu, *session, ref, known != nullptr ? known->review() : annot::ReviewState::None, canReply);
+        comment_actions::addCheckAction(*menu, *session, ref, known != nullptr && known->marked(), canReply);
     }
     QAction* props =
         menu->addAction(QCoreApplication::translate("ot::ui::CommentMenu", "Свойства…"), [guard, ref] {

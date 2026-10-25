@@ -11,8 +11,9 @@
 // объектов»), комментарий становится прочитанным; выделение на странице выбирает его карточку. «Прочитано» —
 // локально (services/read_state.h): чужие непрочитанные — жирный автор и точка accent. Документ читается
 // задачей (services/comments_ops.h) после каждой правки (undo/redo тоже) — выбор и развёрнутость
-// сохраняются. Меню записи — Удалить (с ответами — подтверждение, ветка целиком), Свойства; ответы и статусы
-// — 5.4 «Ответы и статусы».
+// сохраняются. Меню записи — Ответить, Изменить текст, Статус ▸, Отметить галочкой, Отметить как
+// (не)прочитанное, Удалить (с ответами — подтверждение, ветка целиком), Свойства. Ответ и правка текста —
+// поле ReplyEditor под списком (жирный, курсив, подчёркивание, цвет → /RC; comment-20).
 #pragma once
 
 #include <QPointer>
@@ -39,6 +40,7 @@ class QTreeView;
 namespace ot::ui {
 
 class EmptyState;
+class ReplyEditor;
 class SearchField;
 class ToolButton;
 
@@ -120,6 +122,16 @@ public:
     // Можно ли править комментарии документа (не только чтение, право /P «комментарии»).
     bool canAnnotate() const;
 
+    // Ответ на запись ref (корень или ответ) / правка её текста — поле под списком; дерево ещё не прочитано —
+    // откроется, когда придёт. Ответ — автор Identity, шаг «Add reply»; правка — «Edit comment text».
+    void startReply(const annot::AnnotRef& ref);
+    void startEdit(const annot::AnnotRef& ref);
+    void submitReply();
+    void closeReply();
+    ReplyEditor* replyEditor() const { return reply_; }
+    bool isReplyOpen() const;
+    std::optional<annot::AnnotRef> replyTarget() const { return replyTarget_; }
+
 signals:
     // Список перестроен по свежему дереву (после чтения документа или смены фильтра/сортировки).
     void reloaded();
@@ -168,6 +180,12 @@ private:
     QLabel* summary_ = nullptr;
     QPushButton* clearButton_ = nullptr;
     QTimer* reloadTimer_ = nullptr;
+    ReplyEditor* reply_ = nullptr;
+    std::optional<annot::AnnotRef> replyTarget_;
+    std::optional<annot::AnnotRef> pendingReply_;
+    bool editing_ = false;
+    bool pendingEdit_ = false;
+    void openReply();
     annot::CommentSort sort_ = annot::CommentSort::Page;
     bool descending_ = false;
     annot::CommentFilter filter_;
@@ -178,6 +196,7 @@ private:
     quint64 generation_ = 0;
     bool dirty_ = true;
     bool loaded_ = false;
+    bool loading_ = false;
     bool syncing_ = false;
     bool firstFill_ = true;
 };

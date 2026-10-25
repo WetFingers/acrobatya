@@ -6,6 +6,7 @@
 #include <QFuture>
 #include <QString>
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -28,9 +29,9 @@ struct Snapshot {
 QFuture<Snapshot> snapshot(DocumentSession& session, TaskPriority priority = TaskPriority::Normal);
 
 QFuture<annot::AnnotRef> reply(DocumentSession& session, annot::AnnotRef parent, annot::ReplyProps props);
-// model — Review | Marked (annot::kReviewModel, kMarkedModel).
+// model — Review | Marked (annot::kReviewModel, kMarkedModel); when — секунды Unix (0 — сейчас).
 QFuture<annot::AnnotRef> setStatus(DocumentSession& session, annot::AnnotRef target, std::string model,
-                                   std::string state, std::string author);
+                                   std::string state, std::string author, std::int64_t when = 0);
 // Ветка записи (сама, ответы, статусы, части групп) — одним шагом «Delete comment».
 QFuture<void> removeBranch(DocumentSession& session, annot::AnnotRef ref);
 // Текст записи (корня или ответа): /Contents и /RC (пусто — снять) одним шагом «Edit comment text».

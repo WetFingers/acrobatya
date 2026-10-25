@@ -1,4 +1,5 @@
 #include "ui/dialogs/annot_props_dialog.h"
+#include "ui/panes/comment_actions.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -12,6 +13,7 @@
 #include <QLocale>
 #include <QPushButton>
 #include <QTabWidget>
+#include <QTreeWidget>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -21,6 +23,7 @@
 #include "core/annot/defaults.h"
 #include "core/annot/freetext.h"
 #include "services/annot_ops.h"
+#include "services/comments_ops.h"
 #include "services/document_session.h"
 #include "ui/theme/theme.h"
 #include "ui/tools/comment/annot_menu.h"
@@ -339,8 +342,53 @@ QWidget* AnnotPropsDialog::buildHistory() {
     history_->setObjectName(QStringLiteral("annotPropsHistoryEmpty"));
     history_->setWordWrap(true);
     layout->addWidget(history_);
+    historyList_ = new QTreeWidget(page);
+    historyList_->setObjectName(QStringLiteral("annotPropsHistoryList"));
+    historyList_->setColumnCount(3);
+    historyList_->setHeaderLabels({tr("Дата"), tr("Автор"), tr("Статус")});
+    historyList_->setRootIsDecorated(false);
+    historyList_->setAccessibleName(tr("История проверок"));
+    historyList_->hide();
+    layout->addWidget(historyList_, 1);
     layout->addStretch(1);
+    loadHistory();
     return page;
+}
+
+void AnnotPropsDialog::loadHistory() {
+    if (session_ == nullptr) {
+        return;
+    }
+    const QPointer<AnnotPropsDialog> self(this);
+    comments::snapshot(*session_, TaskPriority::High).then(this, [self](QFuture<comments::Snapshot> f) {
+        if (self == nullptr) {
+            return;
+        }
+        std::vector<annot::StatusEntry> history;
+        try {
+            const comments::Snapshot snap = f.result();
+            if (const annot::Comment* c = snap.tree.find(self->ref_)) {
+                history = c->history;
+            }
+        } catch (const std::exception&) {  // NOLINT(bugprone-empty-catch): нет дерева — истории нет
+        }
+        self->historyList_->clear();
+        for (const annot::StatusEntry& e : history) {
+            QString state;
+            if (e.model == annot::kMarkedModel) {
+                state = e.state == "Marked" ? tr("Отмечено галочкой") : tr("Галочка снята");
+            } else {
+                state = comment_actions::stateTitle(annot::reviewStateFromName(e.state));
+            }
+            auto* item = new QTreeWidgetItem(self->historyList_);
+            item->setText(0, comment_actions::dateText(e.modified));
+            item->setText(1, QString::fromStdString(e.author));
+            item->setText(2, state);
+        }
+        self->historyList_->setVisible(!history.empty());
+        self->history_->setVisible(history.empty());
+        self->historyList_->resizeColumnToContents(0);
+    });
 }
 
 void AnnotPropsDialog::setRowVisible(QWidget* editor, bool visible) {

@@ -21,6 +21,7 @@ class QLabel;
 class QLineEdit;
 class QPushButton;
 class QTabWidget;
+class QTreeWidget;
 
 namespace ot {
 class DocumentSession;
@@ -68,6 +69,8 @@ public:
     QLineEdit* subjectEdit() const { return subject_; }
     QLabel* modifiedLabel() const { return modified_; }
     QLabel* historyLabel() const { return history_; }
+    // 5.4: статусы записи (дата, автор, статус) — по дереву документа; пусто — подпись historyLabel.
+    QTreeWidget* historyList() const { return historyList_; }
     QCheckBox* lockedBox() const { return locked_; }
     QCheckBox* makeDefaultBox() const { return makeDefault_; }
     QPushButton* okButton() const { return ok_; }
@@ -120,6 +123,8 @@ private:
     QLabel* type_ = nullptr;
     QLabel* modified_ = nullptr;
     QLabel* history_ = nullptr;
+    QTreeWidget* historyList_ = nullptr;
+    void loadHistory();
     QCheckBox* locked_ = nullptr;
     QCheckBox* makeDefault_ = nullptr;
     QPushButton* ok_ = nullptr;

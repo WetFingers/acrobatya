@@ -7,6 +7,7 @@
 #include <QHBoxLayout>
 #include <QHelpEvent>
 #include <QLabel>
+#include <QLineEdit>
 #include <QLocale>
 #include <QPainter>
 #include <QPlainTextEdit>
@@ -18,9 +19,12 @@
 #include <algorithm>
 
 #include "services/annot_ops.h"
+#include "services/comment_settings.h"
+#include "services/comments_ops.h"
 #include "services/document_session.h"
 #include "services/settings.h"
 #include "services/settings_keys.h"
+#include "ui/panes/comment_actions.h"
 #include "ui/theme/icons.h"
 #include "ui/theme/theme.h"
 #include "ui/theme/tokens.h"
@@ -96,6 +100,21 @@ PopupWidget::PopupWidget(PageView& view, const annot::AnnotRef& ref)
     editor_->setFont(
         QFont(settings.get(settings::kCommentPopupFont), settings.get(settings::kCommentPopupFontSize)));
     column->addWidget(editor_, 1);
+    replies_ = new QLabel(this);
+    replies_->setObjectName(QStringLiteral("notePopupReplies"));
+    replies_->setWordWrap(true);
+    replies_->setTextFormat(Qt::RichText);
+    replies_->setContentsMargins(m.grid * 2, 0, m.grid * 2, 0);
+    replies_->hide();
+    column->addWidget(replies_);
+    reply_ = new QLineEdit(this);
+    reply_->setObjectName(QStringLiteral("notePopupReply"));
+    reply_->setPlaceholderText(tr("Ответить…"));
+    reply_->setAccessibleName(tr("Ответ на комментарий"));
+    reply_->setFrame(false);
+    reply_->setTextMargins(m.grid * 2, m.grid, m.grid * 2, m.grid);
+    connect(reply_, &QLineEdit::returnPressed, this, &PopupWidget::sendReply);
+    column->addWidget(reply_);
 
     timer_.setSingleShot(true);
     timer_.setInterval(kCommitDelayMs);
@@ -139,8 +158,62 @@ void PopupWidget::setProps(const annot::AnnotProps& props) {
     }
     committed_ = text;
     editor_->setReadOnly(!view_.tools().editable());
+    reply_->setVisible(view_.tools().editable());
     applyStyle();
     reposition();
+    loadThread();
+}
+
+void PopupWidget::loadThread() {
+    DocumentSession* session = view_.document();
+    if (session == nullptr) {
+        return;
+    }
+    const quint64 request = ++threadRequest_;
+    const QPointer<PopupWidget> self(this);
+    comments::snapshot(*session, TaskPriority::High)
+        .then(this, [self, request](QFuture<comments::Snapshot> f) {
+            if (self == nullptr || request != self->threadRequest_) {
+                return;
+            }
+            QString html;
+            try {
+                const comments::Snapshot snap = f.result();
+                if (const annot::Comment* c = snap.tree.find(self->ref_)) {
+                    html = comment_actions::threadHtml(*c);
+                }
+            } catch (const std::exception&) {  // NOLINT(bugprone-empty-catch): нет дерева — без ветки
+            }
+            self->replies_->setText(html);
+            self->replies_->setVisible(!html.isEmpty());
+            self->fitHeight();
+        });
+}
+
+void PopupWidget::fitHeight() {
+    const Metrics& m = Theme::sizes();
+    int extra = 0;
+    if (replies_->isVisible()) {
+        extra += replies_->heightForWidth(m.notePopupWidth) + m.grid;
+    }
+    resize(m.notePopupWidth, std::min(m.notePopupHeight * 2, m.notePopupHeight + extra));
+    reposition();
+}
+
+void PopupWidget::sendReply() {
+    const QString text = reply_->text().trimmed();
+    DocumentSession* session = view_.document();
+    if (text.isEmpty() || session == nullptr || !view_.tools().editable()) {
+        return;
+    }
+    reply_->clear();
+    const QPointer<PopupWidget> self(this);
+    comments::reply(*session, ref_, {.author = comments::author(Settings()), .contents = text.toStdString()})
+        .then(this, [self](annot::AnnotRef) {
+            if (self != nullptr) {
+                self->loadThread();
+            }
+        });
 }
 
 void PopupWidget::flush() {

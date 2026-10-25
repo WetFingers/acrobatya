@@ -26,10 +26,12 @@
 #include "services/comment_settings.h"
 #include "services/settings.h"
 #include "ui/dialogs/annot_props_dialog.h"
+#include "ui/panes/comment_actions.h"
 #include "ui/shell/document_view.h"
 #include "ui/theme/icons.h"
 #include "ui/theme/theme.h"
 #include "ui/tools/comment/popup_widget.h"
+#include "ui/tools/comment/reply_editor.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
 #include "ui/widgets/empty_state.h"
@@ -45,82 +47,10 @@ using annot::Comment;
 
 QString refKey(const annot::AnnotRef& ref) { return QStringLiteral("%1:%2").arg(ref.page).arg(ref.objnum); }
 
-// Иконка типа на карточке (Lucide из icon_names.txt).
-QString typeIcon(const Comment& c) {
-    if (c.depth > 0) {
-        return QStringLiteral("reply");
-    }
-    switch (c.type) {
-        case AnnotType::Text:
-            return QStringLiteral("sticky-note");
-        case AnnotType::FreeText:
-            return c.intent == "FreeTextCallout" ? QStringLiteral("message-square-quote")
-                                                 : QStringLiteral("type");
-        case AnnotType::Line:
-            return c.intent == "LineArrow" ? QStringLiteral("move-up-right") : QStringLiteral("slash");
-        case AnnotType::Square:
-            return QStringLiteral("square");
-        case AnnotType::Circle:
-            return QStringLiteral("circle");
-        case AnnotType::Polygon:
-            return QStringLiteral("pentagon");
-        case AnnotType::PolyLine:
-            return QStringLiteral("waypoints");
-        case AnnotType::Highlight:
-            return QStringLiteral("highlighter");
-        case AnnotType::Underline:
-        case AnnotType::Squiggly:
-            return QStringLiteral("underline");
-        case AnnotType::StrikeOut:
-            return QStringLiteral("strikethrough");
-        case AnnotType::Caret:
-            return QStringLiteral("text-cursor");
-        case AnnotType::Ink:
-            return QStringLiteral("pencil");
-        case AnnotType::Stamp:
-            return QStringLiteral("stamp");
-        case AnnotType::FileAttachment:
-            return QStringLiteral("paperclip");
-        default:
-            return QStringLiteral("message-square");
-    }
-}
-
-QString typeTitle(const Comment& c) {
-    if (c.depth > 0) {
-        return QCoreApplication::translate("ot::ui::CommentsPane", "Ответ");
-    }
-    if (c.type == AnnotType::Redact) {
-        return QCoreApplication::translate("ot::ui::CommentsPane", "Пометка для скрытия");
-    }
-    annot::AnnotProps p;
-    p.type = c.type;
-    p.intent = c.intent;
-    return AnnotPropsDialog::typeTitle(p);
-}
-
-QString stateTitle(annot::ReviewState state) {
-    switch (state) {
-        case annot::ReviewState::Accepted:
-            return QCoreApplication::translate("ot::ui::CommentsPane", "Принято");
-        case annot::ReviewState::Rejected:
-            return QCoreApplication::translate("ot::ui::CommentsPane", "Отклонено");
-        case annot::ReviewState::Cancelled:
-            return QCoreApplication::translate("ot::ui::CommentsPane", "Отменено");
-        case annot::ReviewState::Completed:
-            return QCoreApplication::translate("ot::ui::CommentsPane", "Завершено");
-        case annot::ReviewState::None:
-            break;
-    }
-    return QCoreApplication::translate("ot::ui::CommentsPane", "Нет");
-}
-
-QString dateText(std::int64_t seconds) {
-    if (seconds <= 0) {
-        return {};
-    }
-    return QDateTime::fromSecsSinceEpoch(seconds).toString(QStringLiteral("dd.MM.yyyy HH:mm"));
-}
+using comment_actions::dateText;
+using comment_actions::stateTitle;
+using comment_actions::typeIcon;
+using comment_actions::typeTitle;
 
 QString oneLine(const std::string& text) {
     QString s = QString::fromStdString(text);
@@ -454,6 +384,11 @@ CommentsPane::CommentsPane(QWidget* parent) : NavPage(parent) {
     stack_->addWidget(list_);
     stack_->addWidget(empty_);
     column->addWidget(stack_, 1);
+    reply_ = new ReplyEditor(this);
+    reply_->hide();
+    connect(reply_, &ReplyEditor::submitted, this, &CommentsPane::submitReply);
+    connect(reply_, &ReplyEditor::cancelled, this, &CommentsPane::closeReply);
+    column->addWidget(reply_);
 
     reloadTimer_ = new QTimer(this);
     reloadTimer_->setSingleShot(true);
@@ -481,6 +416,8 @@ void CommentsPane::setDocument(DocumentView* view) {
     view_ = view;
     ++generation_;
     loaded_ = false;
+    pendingReply_.reset();
+    closeReply();
     tree_ = {};
     shown_.clear();
     model_->reset({});
@@ -523,6 +460,7 @@ void CommentsPane::reload() {
         return;
     }
     const quint64 generation = ++generation_;
+    loading_ = true;
     QPointer<CommentsPane> self(this);
     comments::snapshot(view_->session(), TaskPriority::Normal)
         .then(this, [self, generation](QFuture<comments::Snapshot> done) {
@@ -543,6 +481,7 @@ void CommentsPane::applySnapshot(comments::Snapshot snapshot, quint64 generation
     if (generation != generation_ || view_ == nullptr) {
         return;  // вкладку сменили, пока шло чтение
     }
+    loading_ = false;
     const QSet<QString> expanded = expandedKeys();
     const std::optional<annot::AnnotRef> current = currentComment();
     labels_ = view_->session().summary().pageLabels;
@@ -560,6 +499,93 @@ void CommentsPane::applySnapshot(comments::Snapshot snapshot, quint64 generation
             }
         }
         syncing_ = false;
+    }
+    if (replyTarget_ && tree_.find(*replyTarget_) == nullptr) {
+        closeReply();  // запись исчезла (undo, удаление)
+    }
+    if (pendingReply_) {
+        const annot::AnnotRef ref = *pendingReply_;
+        pendingReply_.reset();
+        if (pendingEdit_) {
+            startEdit(ref);
+        } else {
+            startReply(ref);
+        }
+    }
+}
+
+bool CommentsPane::isReplyOpen() const { return !reply_->isHidden(); }
+
+void CommentsPane::startReply(const annot::AnnotRef& ref) {
+    if (!loaded_ || tree_.find(ref) == nullptr) {
+        pendingReply_ = ref;
+        pendingEdit_ = false;
+        if (loaded_ && !loading_ && !reloadTimer_->isActive()) {
+            pendingReply_.reset();  // дерево свежее, а такой записи нет
+        }
+        return;
+    }
+    editing_ = false;
+    replyTarget_ = ref;
+    openReply();
+}
+
+void CommentsPane::startEdit(const annot::AnnotRef& ref) {
+    if (!loaded_ || tree_.find(ref) == nullptr) {
+        pendingReply_ = ref;
+        pendingEdit_ = true;
+        if (loaded_ && !loading_ && !reloadTimer_->isActive()) {
+            pendingReply_.reset();
+        }
+        return;
+    }
+    editing_ = true;
+    replyTarget_ = ref;
+    openReply();
+}
+
+void CommentsPane::openReply() {
+    const annot::Comment* c = replyTarget_ ? tree_.find(*replyTarget_) : nullptr;
+    if (c == nullptr) {
+        closeReply();
+        return;
+    }
+    selectComment(c->ref, false);
+    const QString author = c->author.empty() ? tr("без автора") : QString::fromStdString(c->author);
+    if (editing_) {
+        reply_->setTitle(tr("Изменить текст: %1").arg(author), tr("Сохранить"));
+        reply_->setSpans(c->richContents.empty() ? std::vector<annot::RichSpan>{{.text = c->contents}}
+                                                 : annot::parseRichContents(c->richContents));
+    } else {
+        reply_->setTitle(tr("Ответ: %1").arg(author), tr("Ответить"));
+        reply_->clear();
+    }
+    reply_->setEnabled(canAnnotate());
+    reply_->show();
+    reply_->editor()->setFocus();
+}
+
+void CommentsPane::submitReply() {
+    if (!replyTarget_ || view_ == nullptr || !canAnnotate() || reply_->isEmpty()) {
+        return;
+    }
+    const annot::AnnotRef target = *replyTarget_;
+    if (editing_) {
+        comments::editText(view_->session(), target, reply_->plainText(), reply_->richContents());
+    } else {
+        comments::reply(
+            view_->session(), target,
+            {.author = me(), .contents = reply_->plainText(), .richContents = reply_->richContents()});
+    }
+    closeReply();
+}
+
+void CommentsPane::closeReply() {
+    replyTarget_.reset();
+    editing_ = false;
+    if (reply_ != nullptr) {
+        reply_->clear();
+        reply_->hide();
     }
 }
 
@@ -818,11 +844,38 @@ void CommentsPane::fillRecordMenu(QMenu& menu, const annot::AnnotRef& ref) {
     if (c == nullptr) {
         return;
     }
-    emit recordMenuRequested(&menu, ref);  // ответы и статусы — свои пункты (5.4)
-    if (!menu.isEmpty()) {
-        menu.addSeparator();
-    }
     QPointer<CommentsPane> self(this);
+    const bool editable = canAnnotate();
+    QAction* replyAction =
+        menu.addAction(Icons::icon(QStringLiteral("reply")), tr("&Ответить"), this, [self, ref] {
+            if (self != nullptr) {
+                self->startReply(ref);
+            }
+        });
+    replyAction->setObjectName(QStringLiteral("commentsReply"));
+    replyAction->setEnabled(editable);
+    QAction* edit = menu.addAction(tr("&Изменить текст"), this, [self, ref] {
+        if (self != nullptr) {
+            self->startEdit(ref);
+        }
+    });
+    edit->setObjectName(QStringLiteral("commentsEditText"));
+    edit->setEnabled(editable && (c->flags & annot::kAnnotLocked) == 0);
+    if (view_ != nullptr) {
+        comment_actions::addStatusMenu(menu, view_->session(), ref, c->review(), editable);
+        comment_actions::addCheckAction(menu, view_->session(), ref, c->marked(), editable);
+    }
+    const bool unread = isUnread(*c);
+    QAction* readAction =
+        menu.addAction(unread ? tr("Отметить как &прочитанное") : tr("Отметить как &непрочитанное"), this,
+                       [self, ref, unread] {
+                           if (self != nullptr) {
+                               self->setRead(ref, unread);
+                           }
+                       });
+    readAction->setObjectName(QStringLiteral("commentsToggleRead"));
+    emit recordMenuRequested(&menu, ref);
+    menu.addSeparator();
     QAction* remove =
         menu.addAction(Icons::icon(QStringLiteral("trash-2")), tr("&Удалить"), this, [self, ref] {
             if (self != nullptr) {

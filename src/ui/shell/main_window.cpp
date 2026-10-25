@@ -1,5 +1,7 @@
 #include "ui/shell/main_window.h"
 
+#include "ui/shell/main_window_actions.h"
+
 #include <QApplication>
 #include <QClipboard>
 #include <QCloseEvent>
