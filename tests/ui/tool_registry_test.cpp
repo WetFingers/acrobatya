@@ -95,10 +95,12 @@ private slots:
             QCOMPARE(t->stage(), kStages[i]);
             // С 2.6 «Печать» — настоящий инструмент (tools/print/print_tool.h), с 3.4 — «Редактировать PDF»
             // (tools/edit/edit_tool.h), с 4.6 — «Использовать сертификат» (tools/certificate), с 5.1 —
-            // «Добавить комментарии», с 5.3 — «Заполнить и подписать» (tools/fillsign), прочие — заглушки.
+            // «Добавить комментарии», с 5.3 — «Заполнить и подписать» (tools/fillsign), с 5.5 — «Измерить»
+            // (tools/measure), прочие — заглушки.
             const bool live = t->id() == QLatin1String("print") || t->id() == QLatin1String("edit") ||
                               t->id() == QLatin1String("comment") ||
-                              t->id() == QLatin1String("certificate") || t->id() == QLatin1String("fillsign");
+                              t->id() == QLatin1String("certificate") ||
+                              t->id() == QLatin1String("fillsign") || t->id() == QLatin1String("measure");
             QVERIFY2(t->isStub() != live, qPrintable(t->id()));
             QCOMPARE(t->icon(), QLatin1String(ot::ui::toolIconName(t->id().toStdString())));
             QVERIFY(ot::ui::Icons::exists(t->icon()));
@@ -118,15 +120,15 @@ private slots:
             QCOMPARE(rows[i]->property("toolId").toString(), ToolRegistry::builtinOrder().at(i));
             QCOMPARE(rows[i]->text(), QString::fromUtf8(kTitles[i]));
             const QString id = ToolRegistry::builtinOrder().at(i);
-            QCOMPARE(rows[i]->isEnabled(), id == QLatin1String("print") || id == QLatin1String("edit") ||
-                                               id == QLatin1String("comment") ||
-                                               id == QLatin1String("certificate") ||
-                                               id == QLatin1String("fillsign"));
+            QCOMPARE(rows[i]->isEnabled(),
+                     id == QLatin1String("print") || id == QLatin1String("edit") ||
+                         id == QLatin1String("comment") || id == QLatin1String("certificate") ||
+                         id == QLatin1String("fillsign") || id == QLatin1String("measure"));
         }
         QCOMPARE(panel.row(QStringLiteral("organize"))->toolTip(),
                  QStringLiteral("«Упорядочить страницы» появится в версии 0.7"));
-        QCOMPARE(panel.row(QStringLiteral("measure"))->toolTip(),
-                 QStringLiteral("«Измерить» появится в версии 0.5"));
+        QCOMPARE(panel.row(QStringLiteral("prepareform"))->toolTip(),
+                 QStringLiteral("«Подготовить форму» появится в версии 0.6"));
         QCOMPARE(panel.railButtons().size(), 16);
         std::printf("OT_FEATURE:view-30\n");
     }
@@ -162,14 +164,14 @@ private slots:
 
     void realToolReplacesStubInPlace() {
         ToolRegistry& r = ToolRegistry::instance();
-        r.add(std::make_unique<DummyTool>(QStringLiteral("measure")));
+        r.add(std::make_unique<DummyTool>(QStringLiteral("accessibility")));
         QCOMPARE(static_cast<int>(r.tools().size()), 16);
-        QCOMPARE(r.tools()[13]->id(), QStringLiteral("measure"));
-        QVERIFY(!r.tools()[13]->isStub());
-        QVERIFY(r.activate(QStringLiteral("measure"), nullptr));
+        QCOMPARE(r.tools()[14]->id(), QStringLiteral("accessibility"));
+        QVERIFY(!r.tools()[14]->isStub());
+        QVERIFY(r.activate(QStringLiteral("accessibility"), nullptr));
         ot::ui::registerBuiltinTools(r);  // заглушки обратно (и выключение активного)
         QCOMPARE(r.active(), nullptr);
-        QVERIFY(r.find(QStringLiteral("measure"))->isStub());
+        QVERIFY(r.find(QStringLiteral("accessibility"))->isStub());
         QVERIFY(!r.find(QStringLiteral("print"))->isStub());  // «Печать» — настоящий (2.6)
     }
 

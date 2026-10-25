@@ -3,7 +3,37 @@
 Где что лежит и как добавляется типовая вещь. Сессия читает этот файл **первым**, до поиска по коду.
 Дерево и состав — эталон `docs/design.md` 5.1–5.3; здесь — короткий путеводитель и рецепты.
 
-> **Состояние: сессия 5.4 — панель «Комментарии», ответы, статусы, FDF/XFDF и сводка**.
+> **Состояние: сессия 5.5 — измерения, выравнивание пометок, этап 5 закрыт (версия 0.5.0)**.
+> `core/annot/` — `measure.h` (`Unit` mm…pt, `pointsPerUnit`, `unitLabel`/`unitFromLabel` — метки Acrobat «cm»,
+> «sq m»; `Scale{paperValue, paperUnit, realValue, realUnit, precision}` — `unitsPerPoint`, `ratio()` «1 cm = 10 m»,
+> `parseRatio`, `calibrate`; `Kind{Distance, Perimeter, Area}` → Line/PolyLine/Polygon, `intentOf` …Dimension,
+> `createStepName` «Add distance/perimeter/area»; геометрия `length`, `pathLength`, `polygonArea`, `angle` (против
+> часовой, y вниз), `constrain` (45°/90°), `value`, `formatNumber(…, ',')`; `MeasureProps{kind, points, scale, caption,
+> style, leaderLength/Extension/Offset, captionTop}` → `create` (createIn + /Measure /RL /X /D /A /O, /LL /LLE /LLO,
+> /Cap, /CP; `completeBase14Fonts` — дескриптор HelvCYR подписи для pdfcpu strict); `readMeasurement`/
+> `listMeasurements` → `Measurement{ref, kind, points, value, hasValue, unit, ratio, unitsPerPoint, precision,
+> caption}` (и пометки Acrobat); `viewports(doc, page)` → `Viewport{bbox, name, scale}`, `viewportScale` — последний
+> экран /VP в точке; `snapPoints` — своё устройство `fz_device` (концы moveto/lineto/curveto, углы re, не
+> управляющие точки), `SnapIndex::nearest(p, radius)` по сетке), `align.h` (`Align`, `Distribute`, `alignRects`,
+> `distributeRects`); `annot_internal.h` — `detail::completeBase14Fonts`. Службы — `measure_ops.h` (`snapPoints`,
+> `viewports`, `create`, `list`; `MeasureSettings`/`settings`/`setSettings`/`setScale`, `LineEnds`, `lineEnding`;
+> CSV — `CsvRow`, `csvSeparator` (десятичная запятая → «;»), `toCsv` — BOM, CRLF, кавычки, апостроф перед
+> формулой), `annot_ops.h` — `setRects(…, step)`, `kAlignStep`, `kDistributeStep`; ключи `measuring/` (scale,
+> precision, useDocumentScale, snapToPaths, ortho, lineEnds, leader*, caption, showInfo). ui — `ui/tools/measure/`
+> (`MeasureTool` id `measure` — панель: действия, масштаб, «Масштаб и точность…», «Калибровать по отрезку»,
+> привязка, «Ортогонально», «Сведения об измерении»; `MeasureMode` — `ViewToolId::Measure` (`kViewToolCount` 12):
+> `addPoint`, `finish`, `adjust` (привязка 8 px, Shift 45°, орто), `scaleAt` (/VP или пользователя), `reading()` →
+> `MeasureReading`, кеши `snapIndex`/`viewports` по страницам, `calibrationRequested`; `unitLabel`/`formatValue`/
+> `scaleText`/`number` — подписи «3,53 м», «м²», «1 см = 10 м»; `MeasureInfoPanel` (`ToolWindow`);
+> `MeasureScaleDialog` + `ScaleFields` (калибровка, заметка о масштабе документа)), «Измерить ▾» в панели
+> `CommentTool` (`commentMeasure`), `preferences/measuring_page` («Измерения (2D)», категория `measuring`),
+> «Выбор объектов» — `alignable`, `alignSelection`, `distributeSelection`, меню `annotAlignMenu`/
+> `annotDistributeMenu`; `CommentsPane::exportMeasures/exportMeasuresTo` (сигнал `measuresExported`); заголовки
+> отмены «расстояние», «периметр», «площадь», «выравнивание/распределение комментариев»; сцены `measure-*`,
+> `annot-align`, `preferences-measuring` (+ `-dark`) и тёмные двойники экранов этапа 5 (`scenes.cpp`); фикстура
+> `tests/fixtures/annots/measure-viewport.pdf` (`tools/gen/make_measure.py`, `measure.json`); ctest `unit.measure`,
+> `unit.measure_csv`, `ui.measure_tools`, `ui.align_annots`, `compat.annots` (+ `measure.pdf`).
+> Из 5.4 — панель «Комментарии», ответы, статусы, FDF/XFDF и сводка.
 > `core/annot/` — `comments.h` (`buildComments(doc)` → `CommentTree{roots}`: `Comment{ref, type, author, contents,
 > richContents, color, created/modified, index, depth, replies, group, history}` — корни без `/IRT`, ответы `/RT /R`
 > деревом, части `/RT /Group`, статусы `StatusEntry{model Review|Marked, state}`; `review()`, `marked()`,
@@ -414,7 +444,7 @@ ETSI.CAdES.detached/PBAD.PAdES, adbe.pkcs7.detached, adbe.pkcs7.sha1, ETSI.RFC31
 дерево имён, страницы, комментарии, поля, закладки, цепочки /Next), `eutl.h` (логика EUTL без XML), `aatl.h` (разбор
 SecuritySettings.xml по факту), в `docmdp.h` — запись DocMDP и правила, в `signer.h` — уровни и сертификация, в
 `trust_store.h` — импорт/экспорт и корни Windows по назначениям; 4.6 — `sig_fields.h` (`SignatureField{name, page, rect, visible, isSigned, readOnly, docTimestamp}`, `signatureFields(doc)` — все /FT /Sig в порядке /AcroForm /Fields, `emptyFieldAt(fields, page, point)`, `ClearBlock` + `clearBlock(doc, field)` — только последняя и не заблокированная, `clearSignature` — своя очистка в операции «Clear signature» (`pdf_clear_signature` MuPDF 1.28 оставляет операцию журнала открытой): `pdf_signature_appearance_unsigned`, /V снят у поля и виджета, Locked снят, у сертифицирующей — /Perms /DocMDP), в `x509_info.h` — `certDetails(der)` → `CertDetails` (назначение ключа, EKU, политики, OCSP/CRL, расширения текстом OpenSSL, SHA-1/SHA-256, `selfSigned`), в `verifier.h` — `VerificationTime` (SigningTime/SecureTime/Current) и `VerifyOptions::time` | 4.1–4.6 |
-| `annot/` | 5.1 — `annots.h` (28 подтипов, свойства, создание, правка, хит-тест по типу, буфер, JSON — см. «Новая аннотация»), `annot_internal.h`, `defaults.h`, `ink_math.h`; 2.2 — `annots.h` (минимум: `AnnotRef{page, objnum}`, `AnnotType` — 28 подтипов в порядке `pdf_annot_type`, `AnnotInfo{ref, type, subtype, rect, flags}`; `listAnnots` — весь `/Annots`, с Link/Popup/Widget, которых нет в списке `pdf_annot` MuPDF; рамки — координаты страницы MuPDF (`pdf_bound_annot`, NoZoom/NoRotate, `/Rotate`); `findAnnot`, `annotAt` — верхняя, без Popup и скрытых; `setRect` — `/Rect` без пересоздания `/AP`; `remove` — `pdf_delete_annot` (с его Popup) или из `/Annots`; правки — `Journal::Operation`; 28 типов, сеттеры и JSON — 5.1), 5.2–5.3 — `freetext.h`, `stamps.h`, `fillsign.h`; 5.4 — `comments.h` (дерево, ответы, статусы, фильтр, /RC), `fdf.h`, `xfdf.h`, `summary.h`, внутреннее `annot_exchange.cpp`; дальше `measure.h` (5.5) | 2.2, 5.1–5.5 |
+| `annot/` | 5.1 — `annots.h` (28 подтипов, свойства, создание, правка, хит-тест по типу, буфер, JSON — см. «Новая аннотация»), `annot_internal.h`, `defaults.h`, `ink_math.h`; 2.2 — `annots.h` (минимум: `AnnotRef{page, objnum}`, `AnnotType` — 28 подтипов в порядке `pdf_annot_type`, `AnnotInfo{ref, type, subtype, rect, flags}`; `listAnnots` — весь `/Annots`, с Link/Popup/Widget, которых нет в списке `pdf_annot` MuPDF; рамки — координаты страницы MuPDF (`pdf_bound_annot`, NoZoom/NoRotate, `/Rotate`); `findAnnot`, `annotAt` — верхняя, без Popup и скрытых; `setRect` — `/Rect` без пересоздания `/AP`; `remove` — `pdf_delete_annot` (с его Popup) или из `/Annots`; правки — `Journal::Operation`; 28 типов, сеттеры и JSON — 5.1), 5.2–5.3 — `freetext.h`, `stamps.h`, `fillsign.h`; 5.4 — `comments.h` (дерево, ответы, статусы, фильтр, /RC), `fdf.h`, `xfdf.h`, `summary.h`, внутреннее `annot_exchange.cpp`; 5.5 — `measure.h` (масштаб и единицы, значения, пометки-измерения с `/Measure`, масштаб `/VP`, привязки `snapPoints`/`SnapIndex`), `align.h` (выравнивание и распределение рамок) | 2.2, 5.1–5.5 |
 | `forms/` | `fields.h`, `field_factory.h`, `js_bridge.h`, `data_io.h`, `submit.h`, `detect.h`, `tab_order.h` | 6.1–6.4 |
 | `pages/` | 2.4 — `labels.h` (чтение `/PageLabels`: `pageLabels`, `pageLabel`, `parsePageInput` — «iv», «3» (логический, иначе физический), «(3)»); 2.5b — `boxes.h` (`pageBoxes(doc, page)` — Media/Crop/Bleed/Trim/Art в координатах `fz_bound_page_box`, `has*` — задана с наследованием); 7.1 — `organizer.h`, `graft.h`, `split.h`, запись в `labels.h` и `boxes.h`, `insert.h` | 2.4, 2.5b, 7.1 |
 | `create/` | `to_pdf.h` (2.3: `renderToPdf`/`writeAsPdf` — документ «только просмотр» (XPS, EPUB, картинки, TXT) → PDF через `fz_document_writer` «pdf», страницы как есть, отмена между страницами), `text_export.h` (`exportText(doc, TextExportOptions{format, encoding, bom, firstPage, lastPage}, cancelled)`: TXT UTF-8/UTF-16/CP1251 с CRLF и «\f» между страницами, HTML/XHTML/XML через `fz_print_stext_page_as_*`, RTF), `rtf_writer.h` (`RtfWriter`, `rtfText`, `rtfFontFamily`) — 1.4; дальше `dispatcher.h`, `image_to_pdf.h`, `pdf_to_images.h`, `tiff_writer.h`, `combine.h`, `html_to_pdf.h`, `presets.h` | 1.4, 7.2 |
