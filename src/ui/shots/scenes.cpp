@@ -123,6 +123,9 @@ const std::vector<Scene>& sceneTable() {
              commentScenes()) {  // 5.1: annot-note-open, annot-markup, annot-caret, annot-quick-actions
             table.push_back(std::move(s));
         }
+        for (Scene& s : fillSignScenes()) {  // 5.3: fill-sign-capture-*, fill-sign-text…
+            table.push_back(std::move(s));
+        }
         return table;
     }();
     return SCENES;

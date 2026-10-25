@@ -145,3 +145,6 @@ cloud
 waypoints
 clipboard-paste
 settings-2
+dot
+rectangle-horizontal
+case-upper

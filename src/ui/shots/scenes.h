@@ -98,6 +98,8 @@ std::vector<Scene> editScenes();
 std::vector<Scene> signScenes();
 // comment_scenes.cpp — annot-note-open (+ -dark), annot-markup, annot-caret, annot-quick-actions (5.1).
 std::vector<Scene> commentScenes();
+// fillsign_scenes.cpp — fill-sign-capture-type, fill-sign-capture-draw, fill-sign-capture-image (5.3).
+std::vector<Scene> fillSignScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.
 bool waitSceneReady(const Scene& scene, QWidget* window, int timeoutMs = 30000);
