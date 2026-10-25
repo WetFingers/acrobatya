@@ -30,6 +30,7 @@
 #include "ui/shell/tool_panel.h"
 #include "ui/shell/undo_titles.h"
 #include "ui/theme/icons.h"
+#include "ui/tools/forms/form_fill_tool.h"
 #include "ui/tools/tool_registry.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tool_controller.h"
@@ -544,6 +545,48 @@ void MainWindow::registerCommands() {
            .enabled = hasDoc,
            .menu = QStringLiteral("tools"),
            .singleKey = true});
+    // Формы (6.1; forms-02, forms-06): подсветка полей и «Очистить форму» — «Инструменты → Формы».
+    const auto formFill = [this]() -> FormFillTool* {
+        DocumentView* d = currentDocument();
+        return d != nullptr ? &d->forms() : nullptr;
+    };
+    r.add({.id = QStringLiteral("forms.highlight"),
+           .title = tr("&Подсветить поля"),
+           .icon = QStringLiteral("form-input"),
+           .run =
+               [formFill] {
+                   if (FormFillTool* f = formFill()) {
+                       f->setHighlight(!f->highlight());
+                   }
+               },
+           .enabled =
+               [formFill] {
+                   const FormFillTool* f = formFill();
+                   return f != nullptr && f->hasForm();
+               },
+           .menu = QStringLiteral("tools/forms"),
+           .separatorBefore = true,
+           .checkable = true,
+           .checked =
+               [formFill] {
+                   const FormFillTool* f = formFill();
+                   return f != nullptr && f->highlight();
+               }});
+    r.add({.id = QStringLiteral("forms.reset"),
+           .title = tr("&Очистить форму"),
+           .icon = QStringLiteral("eraser"),
+           .run =
+               [formFill] {
+                   if (FormFillTool* f = formFill()) {
+                       f->resetForm();
+                   }
+               },
+           .enabled =
+               [this, formFill] {
+                   const FormFillTool* f = formFill();
+                   return f != nullptr && f->hasForm() && currentDocument()->canEdit();
+               },
+           .menu = QStringLiteral("tools/forms")});
     r.add({.id = QStringLiteral("tools.all"),
            .title = tr("Все &инструменты"),
            .icon = QStringLiteral("grid-2x2"),
@@ -702,6 +745,7 @@ void MainWindow::rebuildMenus() {
         {QStringLiteral("view/navigate"), tr("Пере&ход по страницам")},
         {QStringLiteral("view/panels"), tr("Показать или с&крыть")},
         {QStringLiteral("view/navpanes"), tr("Панели на&вигации")},
+        {QStringLiteral("tools/forms"), tr("&Формы")},
     };
 
     for (const Command* c : commands_->all()) {

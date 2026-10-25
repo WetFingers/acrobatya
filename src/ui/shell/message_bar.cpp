@@ -33,6 +33,7 @@ Tone MessageStack::toneOf(MessageKind kind) {
         case MessageKind::ProtectedView:
         case MessageKind::Repaired:
         case MessageKind::JavaScriptOff:
+        case MessageKind::Xfa:
         case MessageKind::SignatureWarning:
             return Tone::Warn;
         case MessageKind::SignatureInvalid:

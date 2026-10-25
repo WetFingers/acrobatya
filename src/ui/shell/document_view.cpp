@@ -19,6 +19,7 @@
 #include "ui/tools/comment/annot_menu.h"
 #include "ui/tools/comment/popup_widget.h"
 #include "ui/tools/comment/quick_actions_bar.h"
+#include "ui/tools/forms/form_fill_tool.h"
 #include "ui/view/boxes_overlay.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tile_painter.h"
@@ -84,6 +85,7 @@ DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool*
     updateModified();
 
     signatures_ = std::make_unique<SignatureStatus>(*this);
+    forms_ = std::make_unique<FormFillTool>(*this);
     if (isViewOnly()) {
         MessageBar* bar = stack_->showMessage(
             MessageKind::ViewOnly,
@@ -100,6 +102,7 @@ DocumentView::DocumentView(std::shared_ptr<DocumentSession> session, RenderPool*
 
 // Вид отпускает документ раньше сессии: задачи тайлов отменяются, кеш документа чистится (TilePainter).
 DocumentView::~DocumentView() {
+    forms_.reset();
     signatures_.reset();
     view_->setDocument(nullptr);
 }

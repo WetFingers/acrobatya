@@ -1,5 +1,7 @@
 #include "ui/view/page_view.h"
 
+#include "ui/view/field_interaction.h"
+
 #include <QKeyEvent>
 #include <QPainter>
 #include <QScrollBar>
@@ -1029,6 +1031,17 @@ QVariant PageView::inputMethodQuery(Qt::InputMethodQuery query) const {
 }
 
 bool PageView::event(QEvent* event) {
+    // Tab/Shift+Tab — сначала по полям формы (6.1, порядок /Tabs). Не в focusNextPrevChild: туда Qt приходит
+    // и сам, когда прячет виджет с фокусом (редактор поля, список combo), — фокус не должен уходить на поле.
+    if (event->type() == QEvent::KeyPress && fields_ != nullptr && controller_->followsLinks()) {
+        auto* key = static_cast<QKeyEvent*>(event);
+        const Qt::KeyboardModifiers mods = key->modifiers() & ~(Qt::KeypadModifier | Qt::ShiftModifier);
+        if ((key->key() == Qt::Key_Tab || key->key() == Qt::Key_Backtab) && mods == Qt::NoModifier &&
+            fields_->focusNextField(key->key() == Qt::Key_Tab && !(key->modifiers() & Qt::ShiftModifier))) {
+            key->accept();
+            return true;
+        }
+    }
     // Клавиши вида не отдаются ярлыкам окна, пока фокус у вида (Ctrl+0…3, Alt+←/→, Home/End…).
     if (event->type() == QEvent::ShortcutOverride) {
         auto* key = static_cast<QKeyEvent*>(event);
@@ -1057,7 +1070,9 @@ bool PageView::event(QEvent* event) {
                                  !controller_->annotSelect().selection().empty();
         // Инструмент правки набирает текст (3.4): его клавиши — раньше ярлыков окна.
         const bool toolKey = controller_->current().wantsShortcut(key);
-        if (ctrlZoom || rotate || history || tool || copy || annotDelete || toolKey) {
+        // Поле формы в фокусе (6.1): стрелки группы переключателей, Enter.
+        const bool fieldKey = fields_ != nullptr && controller_->followsLinks() && fields_->wantsKey(key);
+        if (ctrlZoom || rotate || history || tool || copy || annotDelete || toolKey || fieldKey) {
             event->accept();
             return true;
         }
@@ -1066,7 +1081,8 @@ bool PageView::event(QEvent* event) {
 }
 
 bool PageView::focusNextPrevChild(bool next) {
-    // Tab/Shift+Tab — по ссылкам видимых страниц (эталон 6.9); кончились — фокус дальше по окну.
+    // Tab/Shift+Tab — по ссылкам видимых страниц (эталон 6.9; поля формы — раньше, в event()); кончились —
+    // фокус дальше по окну.
     if (links_->focusNext(next)) {
         if (const links::LinkInfo* link = links_->focused()) {
             ensureVisible(link->page, link->rect, kEnsureMarginPx);

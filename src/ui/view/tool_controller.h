@@ -119,6 +119,7 @@ private:
     std::optional<ViewToolId> beforeSpace_;     // пробел — временная «Рука»
     std::optional<links::LinkInfo> linkPress_;  // нажатие над ссылкой: отпустили на месте — переход
     QPointF linkPressPos_;
+    bool fieldPress_ = false;  // 6.1: нажатие пришлось на поле формы — отпускание тоже ему
     bool pinned_ = false;
     bool singleKeys_ = false;
     bool editable_ = true;

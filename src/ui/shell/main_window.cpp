@@ -1,5 +1,7 @@
 #include "ui/shell/main_window.h"
 
+#include "ui/tools/forms/form_fill_tool.h"
+
 #include "ui/shell/main_window_actions.h"
 
 #include <QApplication>
@@ -79,6 +81,7 @@
 #include "ui/shell/status_bar.h"
 #include "ui/shell/tool_panel.h"
 #include "ui/theme/theme.h"
+#include "ui/tools/certificate/certificate_tool.h"
 #include "ui/tools/print/print_dialog.h"
 #include "ui/tools/print/print_runner.h"
 #include "ui/tools/tool_registry.h"
@@ -372,6 +375,21 @@ DocumentView* MainWindow::addDocumentView(const DocumentRegistry::Opened& opened
             if (CertificateViewer* viewer = pane->showCertificate(field)) {
                 viewer->select(viewer->chainLength() - 1);  // корень цепочки
                 viewer->showTab(CertificateViewer::Trust);
+            }
+        }
+    });
+    // Формы (6.1): пустое поле подписи — диалог подписи (4.6), как «Подписать поле…» панели «Подписи».
+    connect(&view->forms(), &FormFillTool::signatureFieldClicked, this, [this, view](const QString& field) {
+        const std::string name = field.toStdString();
+        for (const sign::SignatureField& f : view->signatures().fields()) {
+            if (f.name == name && !f.isSigned) {
+                ToolRegistry& registry = ToolRegistry::instance();
+                registry.activate(QStringLiteral("certificate"), view);
+                if (auto* tool =
+                        dynamic_cast<CertificateTool*>(registry.find(QStringLiteral("certificate")))) {
+                    tool->placeSignature(f.page, f.rect, field);
+                }
+                return;
             }
         }
     });

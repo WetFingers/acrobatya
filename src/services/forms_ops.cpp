@@ -1,5 +1,7 @@
 #include "services/forms_ops.h"
 
+#include <set>
+
 #include "services/task_context.h"
 
 namespace ot::forms {
@@ -29,6 +31,31 @@ using forms_ops_impl::touch;
 QFuture<Form> read(DocumentSession& session, TaskPriority priority) {
     return session.post([](TaskContext& tc) { return readForm(tc.document()); }, priority,
                         QStringLiteral("read form"));
+}
+
+QFuture<FormSnapshot> snapshot(DocumentSession& session) {
+    return session.post(
+        [](TaskContext& tc) {
+            FormSnapshot s;
+            if (tc.document().pdf() == nullptr) {
+                return s;
+            }
+            s.form = readForm(tc.document());
+            std::set<int> pages;
+            for (const Field& f : s.form.fields) {
+                for (const Widget& w : f.widgets) {
+                    if (w.page >= 0) {
+                        pages.insert(w.page);
+                    }
+                }
+            }
+            for (const int p : pages) {
+                s.tabs[p] =
+                    forms::tabSequence(s.form, p, tabOrder(tc.document(), p), annotOrder(tc.document(), p));
+            }
+            return s;
+        },
+        TaskPriority::High, QStringLiteral("form snapshot"));
 }
 
 QFuture<std::vector<PageWidget>> widgets(DocumentSession& session, int page, TaskPriority priority) {

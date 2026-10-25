@@ -19,6 +19,7 @@
 #include <QString>
 
 #include <functional>
+#include <mutex>
 
 #include "core/forms/js_bridge.h"
 
@@ -50,6 +51,9 @@ signals:
     void requested(int kind, const QString& detail);  // forms::JsRequestKind
 
 private:
+    Prompt prompt() const;
+
+    mutable std::mutex mutex_;  // prompt_ ставит поток интерфейса, читает поток документа
     Prompt prompt_;
     int timeoutMs_ = kTimeoutMs;
 };

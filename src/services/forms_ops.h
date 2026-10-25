@@ -7,6 +7,7 @@
 #include <QString>
 #include <QStringList>
 
+#include <map>
 #include <vector>
 
 #include "core/forms/fields.h"
@@ -20,6 +21,12 @@ inline constexpr const char* kClickStep = "Click button";
 inline constexpr const char* kCalculateStep = "Calculate form";
 
 QFuture<Form> read(DocumentSession& session, TaskPriority priority = TaskPriority::High);
+// Поля и порядок табуляции страниц с полями — одной задачей (слой заполнения ui).
+struct FormSnapshot {
+    Form form;
+    std::map<int, std::vector<int>> tabs;  // страница → виджеты в порядке Tab
+};
+QFuture<FormSnapshot> snapshot(DocumentSession& session);
 QFuture<std::vector<PageWidget>> widgets(DocumentSession& session, int page,
                                          TaskPriority priority = TaskPriority::High);
 QFuture<std::vector<int>> tabSequence(DocumentSession& session, int page);

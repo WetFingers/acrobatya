@@ -32,6 +32,7 @@ class TileCache;
 namespace ot::ui {
 
 class FindBar;
+class FormFillTool;
 class QuickActionsBar;
 class MessageBar;
 class MessageStack;
@@ -108,6 +109,9 @@ public:
     QuickActionsBar& quickActions() const { return *quickActions_; }
     // Подписи вкладки (4.6, ui/shell/signature_status.h): проверка, полоса, значки на полях.
     SignatureStatus& signatures() const { return *signatures_; }
+    // Заполнение формы (6.1, ui/tools/forms/form_fill_tool.h): поля, редакторы, подсветка, полосы формы и
+    // JavaScript.
+    FormFillTool& forms() const { return *forms_; }
 
     // Плавающая панель (QuickBar) — поверх вида, по центру у нижнего края.
     void setFloatingBar(QWidget* bar);
@@ -171,6 +175,7 @@ private:
     ViewStyle viewStyle_;
     QList<int> selectedPages_;
     std::unique_ptr<SignatureStatus> signatures_;  // до дочерних виджетов: снимает свой слой с PageView
+    std::unique_ptr<FormFillTool> forms_;          // так же: снимает слой и обработчик полей с PageView
 };
 
 }  // namespace ot::ui

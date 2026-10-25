@@ -18,15 +18,24 @@ namespace ot {
 
 JsPrompter::JsPrompter(QObject* parent) : QObject(parent) {}
 
-void JsPrompter::setPrompt(Prompt prompt) { prompt_ = std::move(prompt); }
+void JsPrompter::setPrompt(Prompt prompt) {
+    const std::lock_guard lock(mutex_);
+    prompt_ = std::move(prompt);
+}
+
+JsPrompter::Prompt JsPrompter::prompt() const {
+    const std::lock_guard lock(mutex_);
+    return prompt_;
+}
 
 forms::AlertReply JsPrompter::alert(const forms::AlertRequest& request) {
     spdlog::info("js: app.alert: {}", request.message);
-    if (!prompt_) {
+    const Prompt current = prompt();
+    if (!current) {
         return forms::defaultReply(request);
     }
     if (QThread::currentThread() == thread()) {
-        return prompt_(request);
+        return current(request);
     }
     // Поток документа: окно — в потоке объекта, ответ — через семафор с пределом ожидания.
     struct Pending {
@@ -36,14 +45,15 @@ forms::AlertReply JsPrompter::alert(const forms::AlertRequest& request) {
     };
     auto pending = std::make_shared<Pending>();
     pending->reply = forms::defaultReply(request);
-    const Prompt prompt = prompt_;
     QMetaObject::invokeMethod(
         this,
-        [pending, prompt, request] {
+        [this, pending, request] {
             if (pending->abandoned.load()) {
                 return;  // поток документа уже не ждёт — окно не показывать
             }
-            pending->reply = prompt(request);
+            if (const Prompt now = prompt()) {  // вкладку могли закрыть, пока событие шло
+                pending->reply = now(request);
+            }
             pending->done.release();
         },
         Qt::QueuedConnection);

@@ -51,6 +51,7 @@ class TileCache;
 namespace ot::ui {
 
 class BoxesOverlay;
+class FieldInteraction;
 class LinkLayer;
 class TilePainter;
 class ToolController;
@@ -151,6 +152,9 @@ public:
 
     // Ссылки страниц и переход по ним.
     LinkLayer& linkLayer() const noexcept { return *links_; }
+    // Поля формы (6.1; ui/view/field_interaction.h): слой заполнения — раньше инструмента; nullptr — нет.
+    void setFieldInteraction(FieldInteraction* fields) noexcept { fields_ = fields; }
+    FieldInteraction* fieldInteraction() const noexcept { return fields_; }
     // Рамки обрезки, подрезки и выпуска (2.5b; Установки → Просмотр страницы).
     BoxesOverlay& boxesOverlay() const noexcept { return *boxes_; }
     void activateLink(const links::LinkInfo& link);
@@ -261,6 +265,7 @@ private:
     ToolController* controller_ = nullptr;  // ребёнок вида
     std::unique_ptr<LinkLayer> links_;
     std::unique_ptr<BoxesOverlay> boxes_;
+    FieldInteraction* fields_ = nullptr;  // 6.1: слой заполнения формы (не владеет)
     std::vector<SearchHit> hits_;
     std::vector<std::vector<std::pair<int, int>>> hitQuads_;  // совпадение → его квады {страница, индекс}
     int currentHit_ = -1;

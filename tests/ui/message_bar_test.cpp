@@ -55,15 +55,16 @@ private slots:
         s.showMessage(MessageKind::ProtectedView, QStringLiteral("protected"));
         s.showMessage(MessageKind::Repaired, QStringLiteral("repaired"));
         s.showMessage(MessageKind::JavaScriptOff, QStringLiteral("js"));
+        s.showMessage(MessageKind::Xfa, QStringLiteral("xfa"));
         s.showMessage(MessageKind::SignatureValid, QStringLiteral("sig-ok"));
         s.showMessage(MessageKind::SignatureWarning, QStringLiteral("sig-warn"));
         s.showMessage(MessageKind::ViewOnly, QStringLiteral("view-only"));
         QCOMPARE(
             order(s),
             (QStringList{QStringLiteral("protected"), QStringLiteral("sig-bad"), QStringLiteral("repaired"),
-                         QStringLiteral("js"), QStringLiteral("sig-warn"), QStringLiteral("sig-ok"),
-                         QStringLiteral("pdfa"), QStringLiteral("form"), QStringLiteral("scan"),
-                         QStringLiteral("view-only"), QStringLiteral("custom")}));
+                         QStringLiteral("js"), QStringLiteral("xfa"), QStringLiteral("sig-warn"),
+                         QStringLiteral("sig-ok"), QStringLiteral("pdfa"), QStringLiteral("form"),
+                         QStringLiteral("scan"), QStringLiteral("view-only"), QStringLiteral("custom")}));
         QCOMPARE(s.bar(MessageKind::ProtectedView)->tone(), Tone::Warn);
         QCOMPARE(s.bar(MessageKind::SignatureInvalid)->tone(), Tone::Danger);
         QCOMPARE(s.bar(MessageKind::SignatureValid)->tone(), Tone::Info);
@@ -71,6 +72,7 @@ private slots:
         QCOMPARE(s.bar(MessageKind::Form)->tone(), Tone::Form);
         QCOMPARE(s.bar(MessageKind::LooksScanned)->tone(), Tone::Info);
         QCOMPARE(s.bar(MessageKind::JavaScriptOff)->tone(), Tone::Warn);
+        QCOMPARE(s.bar(MessageKind::Xfa)->tone(), Tone::Warn);
         QCOMPARE(s.bar(MessageKind::Repaired)->tone(), Tone::Warn);
         QCOMPARE(s.bars().last()->tone(), Tone::Ok);
         QCOMPARE(s.bars().first()->property("tone").toString(), QStringLiteral("warn"));

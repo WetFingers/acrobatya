@@ -1,5 +1,7 @@
 #include "ui/view/tool_controller.h"
 
+#include "ui/view/field_interaction.h"
+
 #include <QApplication>
 #include <QCursor>
 #include <QInputMethod>
@@ -145,6 +147,13 @@ bool ToolController::followsLinks() const noexcept {
 bool ToolController::mousePress(QMouseEvent* event) {
     linkPress_.reset();
     const Qt::KeyboardModifiers mods = event->modifiers() & ~Qt::KeypadModifier;
+    // Поле формы (6.1) — раньше инструмента, как у Acrobat: «Рука» и «Выделение» заполняют форму.
+    if (event->button() == Qt::LeftButton && followsLinks() && view_.fieldInteraction() != nullptr &&
+        view_.fieldInteraction()->fieldPress(event)) {
+        fieldPress_ = true;
+        updateCursor(event->position(), event->modifiers(), event->buttons());
+        return true;
+    }
     if (event->button() == Qt::LeftButton && mods == Qt::NoModifier && followsLinks()) {
         linkPress_ = view_.linkLayer().linkAt(event->position());
         linkPressPos_ = event->position();
@@ -161,6 +170,13 @@ bool ToolController::mouseMove(QMouseEvent* event) {
 }
 
 bool ToolController::mouseRelease(QMouseEvent* event) {
+    if (std::exchange(fieldPress_, false) && event->button() == Qt::LeftButton) {
+        if (view_.fieldInteraction() != nullptr) {
+            view_.fieldInteraction()->fieldRelease(event);
+        }
+        updateCursor(event->position(), event->modifiers(), event->buttons());
+        return true;
+    }
     const std::optional<links::LinkInfo> pressed = std::exchange(linkPress_, std::nullopt);
     const bool handled = current().mouseRelease(event);
     if (pressed && event->button() == Qt::LeftButton && followsLinks() &&
@@ -184,6 +200,11 @@ bool ToolController::keyPress(QKeyEvent* event) {
     // Набор текста: клавиши — сначала инструменту (пробел — это пробел, буква — не однобуквенный ярлык).
     const bool captured = current().capturesKeyboard();
     if (captured && current().keyPress(event)) {
+        return true;
+    }
+    // Поле формы в фокусе без редактора (6.1): пробел, Enter, стрелки группы переключателей, Esc.
+    if (!captured && followsLinks() && view_.fieldInteraction() != nullptr &&
+        view_.fieldInteraction()->fieldKey(event)) {
         return true;
     }
     if (key == Qt::Key_Escape && mods == Qt::NoModifier) {
@@ -248,6 +269,12 @@ QVariant ToolController::inputMethodQuery(Qt::InputMethodQuery query) const {
 }
 
 void ToolController::updateCursor(QPointF point, Qt::KeyboardModifiers modifiers, Qt::MouseButtons buttons) {
+    if (buttons == Qt::NoButton && followsLinks() && view_.fieldInteraction() != nullptr) {
+        if (const std::optional<QCursor> cursor = view_.fieldInteraction()->fieldCursor(point)) {
+            view_.viewport()->setCursor(*cursor);
+            return;
+        }
+    }
     if (buttons == Qt::NoButton && followsLinks() && view_.linkLayer().linkAt(point)) {
         view_.viewport()->setCursor(QCursor(Qt::PointingHandCursor));
         return;

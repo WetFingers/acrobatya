@@ -1095,31 +1095,70 @@ std::vector<int> orderWidgets(const std::vector<std::pair<int, RectF>>& widgets,
     return out;
 }
 
-std::vector<int> tabSequence(const Document& doc, int page) {
-    const std::vector<PageWidget> widgets = pageWidgets(doc, page);
-    const Form form = fields_impl::read(doc, false);
-    std::vector<std::pair<int, RectF>> stops;
-    std::set<std::string> radios;
-    for (const PageWidget& pw : widgets) {
-        const Field* f = form.find(pw.field);
-        if (f == nullptr || pw.widget.hidden || f->readOnly()) {
+std::vector<int> annotOrder(const Document& doc, int page) {
+    std::vector<int> order;
+    pdf_document* pdf = doc.pdf();
+    if (pdf == nullptr) {
+        return order;
+    }
+    fz_context* ctx = doc.context().get();
+    mu::call(ctx, [&] {
+        pdf_obj* annots = pdf_dict_get(ctx, pdf_lookup_page_obj(ctx, pdf, page), PDF_NAME(Annots));
+        const int n = pdf_array_len(ctx, annots);
+        for (int i = 0; i < n; ++i) {
+            order.push_back(pdf_to_num(ctx, pdf_array_get(ctx, annots, i)));
+        }
+    });
+    return order;
+}
+
+std::vector<int> tabSequence(const Form& form, int page, TabOrder order, const std::vector<int>& annots) {
+    struct Stop {
+        std::size_t rank;
+        int objnum;
+        RectF rect;
+    };
+    std::vector<Stop> stops;
+    for (const Field& f : form.fields) {
+        if (f.readOnly()) {
             continue;
         }
-        if (f->type == FieldType::RadioButton) {
-            // Одна остановка на группу: выбранный виджет, иначе первый.
-            if (radios.count(f->name) != 0) {
-                continue;
+        const Widget* chosen = nullptr;
+        if (f.type == FieldType::RadioButton) {
+            // Одна остановка на группу: выбранный виджет страницы, иначе первый по /Annots.
+            for (const Widget& w : f.widgets) {
+                if (w.page == page && !w.hidden && w.on) {
+                    chosen = &w;
+                }
             }
-            const auto selected = std::find_if(f->widgets.begin(), f->widgets.end(),
-                                               [page](const Widget& w) { return w.on && w.page == page; });
-            if (selected != f->widgets.end() && selected->objnum != pw.widget.objnum) {
-                continue;
-            }
-            radios.insert(f->name);
         }
-        stops.emplace_back(pw.widget.objnum, pw.widget.rect);
+        for (const Widget& w : f.widgets) {
+            if (w.page != page || w.hidden || (chosen != nullptr && &w != chosen)) {
+                continue;
+            }
+            const auto it = std::find(annots.begin(), annots.end(), w.objnum);
+            stops.push_back({static_cast<std::size_t>(it - annots.begin()), w.objnum, w.rect});
+        }
     }
-    return orderWidgets(stops, tabOrder(doc, page));
+    std::stable_sort(stops.begin(), stops.end(),
+                     [](const Stop& a, const Stop& b) { return a.rank < b.rank; });
+    std::vector<std::pair<int, RectF>> ordered;
+    std::set<std::string> radios;
+    for (const Stop& s : stops) {
+        const Field* f = form.fieldOf(page, s.objnum);
+        if (f != nullptr && f->type == FieldType::RadioButton) {
+            if (!radios.insert(f->name).second) {
+                continue;
+            }
+        }
+        ordered.emplace_back(s.objnum, s.rect);
+    }
+    return orderWidgets(ordered, order);
+}
+
+std::vector<int> tabSequence(const Document& doc, int page) {
+    const Form form = fields_impl::read(doc, false);
+    return tabSequence(form, page, tabOrder(doc, page), annotOrder(doc, page));
 }
 
 // ---------------------------------------------------------------- правка

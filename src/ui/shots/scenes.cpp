@@ -132,6 +132,9 @@ const std::vector<Scene>& sceneTable() {
         for (Scene& s : measureScenes()) {  // 5.5: measure-distance, measure-area, measure-scale-dialog
             table.push_back(std::move(s));
         }
+        for (Scene& s : formScenes()) {  // 6.1: form-fill, form-highlight, form-combo-open, полосы, app.alert
+            table.push_back(std::move(s));
+        }
         // 5.5: тёмные двойники остальных экранов этапа 5 (панель инструмента, быстрые действия, меню панели
         // «Комментарии», плоская копия, Установки комментирования и измерений).
         for (const char* name :

@@ -186,6 +186,9 @@ std::vector<int> orderWidgets(const std::vector<std::pair<int, RectF>>& widgets,
 // Порядок обхода Tab по странице: видимые виджеты полей, кроме только для чтения (у переключателей — первый
 // виджет группы или выбранный).
 std::vector<int> tabSequence(const Document& doc, int page);
+// То же по прочитанной форме: порядок /Tabs страницы и номера объектов её /Annots (annotOrder).
+std::vector<int> tabSequence(const Form& form, int page, TabOrder order, const std::vector<int>& annots);
+std::vector<int> annotOrder(const Document& doc, int page);
 
 // ---------------------------------------------------------------- правка
 
