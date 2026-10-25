@@ -78,6 +78,13 @@ AnnotRef createStamp(Document& doc, int page, const StampSource& source, const S
 // Штамп-картинка (PNG/JPEG байтами): вид MuPDF с картинкой; name — /Name (пусто — «Image»).
 AnnotRef createImageStamp(Document& doc, int page, const std::string& image, AnnotProps props,
                           const std::string& name = {});
+// PNG картинки штампа-картинки (5.3, подпись Fill & Sign): XObject /I вида (или первая картинка ресурсов /AP
+// /N) с альфой из /SMask; не штамп или без картинки — MuError.
+std::string stampImage(Document& doc, const AnnotRef& ref);
+// Заменить картинку штампа-картинки (PNG/JPEG байтами; рамка прежняя, вид — заново): цвет подписи Fill &
+// Sign. Операция operation.
+void setStampImage(Document& doc, const AnnotRef& ref, const std::string& image,
+                   const std::string& operation = "Set stamp image");
 // Размер картинки в пунктах (96 dpi, как вставка картинки Acrobat; нет dpi — 96); не картинка — MuError.
 StampSize imageStampSize(const std::string& image);
 

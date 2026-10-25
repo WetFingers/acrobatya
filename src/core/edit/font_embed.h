@@ -99,6 +99,9 @@ public:
     // Только словарь шрифта (номер объекта) — без ресурса страницы: шрифт /DA текстового поля комментария
     // (core/annot/freetext.h). Ошибки — как у add.
     int fontObject(const SystemFace& face, EmbedKind kind);
+    // Встраивание — «тяжёлая» правка (полная запись файла, 3.2); шрифт поля комментария и Fill & Sign (5.3) —
+    // лёгкая: дописывается инкрементом и не задевает подписи.
+    void setHeavy(bool heavy) noexcept { heavy_ = heavy; }
     // Код символа для строки этим шрифтом (Cid — GID двумя байтами, SimpleWinAnsi — байт cp1252); пусто —
     // глифа нет (или символа нет в WinAnsi).
     std::string encode(const EmbeddedFont& font, char32_t u);
@@ -124,6 +127,7 @@ private:
     Document& doc_;
     FontLibrary& lib_;
     std::vector<Entry> entries_;
+    bool heavy_ = true;
     std::map<std::pair<int, std::size_t>, std::string> resources_;  // (страница, запись) → ресурс
 };
 
@@ -133,6 +137,6 @@ SubsetReport subsetFonts(Document& doc, const std::vector<int>& fontObjnums);
 // Один шрифт objnum (встроенный FontEmbedder) — до глифов gids (0 — всегда), независимо от страниц:
 // программа, /W и /ToUnicode — только они, имя — с префиксом подмножества. Операция «Subset fonts» (внутри
 // внешней — её часть). Не вышло — false, шрифт полный (spdlog).
-bool subsetFont(Document& doc, int objnum, const std::set<int>& gids);
+bool subsetFont(Document& doc, int objnum, const std::set<int>& gids, bool heavy = true);
 
 }  // namespace ot::edit

@@ -15,8 +15,10 @@
 #include "core/annot/freetext.h"
 #include "services/annot_ops.h"
 #include "services/document_session.h"
+#include "services/fillsign_ops.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
+#include "ui/shell/save_flow.h"
 #include "ui/theme/icons.h"
 #include "ui/theme/theme.h"
 #include "ui/tools/comment/inline_text_editor.h"
@@ -199,6 +201,9 @@ void FillSignTool::syncButtons() {
         button->setChecked(active && m->action() == action);
         button->setToolTip(usable ? FillSignMode::actionTitle(action) : lock_);
     }
+    if (flatten_ != nullptr) {
+        flatten_->setEnabled(view_ != nullptr && !view_->isViewOnly());
+    }
     for (QWidget* w : {static_cast<QWidget*>(fontSize_.data()), static_cast<QWidget*>(color_.data())}) {
         if (w != nullptr) {
             w->setEnabled(usable);
@@ -342,6 +347,12 @@ void FillSignTool::buildPanel() {
     column->addLayout(style);
     connect(fontSize_, &NumberField::valueChanged, this, [this] { styleChanged(); });
     connect(color_, &ColorSwatch::colorChanged, this, [this] { styleChanged(); });
+
+    addCaption(column, tr("Сохранить"));
+    flatten_ = addRow(column, QStringLiteral("layers"), tr("Плоская копия…"));
+    flatten_->setObjectName(QStringLiteral("fillSignFlatten"));
+    flatten_->setToolTip(tr("Сохранить копию, в которой текст, отметки и подписи — часть страниц"));
+    connect(flatten_, &ToolButton::clicked, this, [this] { saveFlatCopy(); });
     column->addStretch(1);
     scroll->setWidget(body);
 }
@@ -366,13 +377,30 @@ void FillSignTool::styleChanged() {
                           color, editor->props().align);
         return;
     }
+    // Выбранное: тексту и отметкам — цвет текста, подписи и инициалам — цвет картинки.
     for (const annot::AnnotInfo& a : view_->view().tools().annotSelect().selection()) {
-        if (a.type != annot::AnnotType::FreeText || a.locked()) {
+        if (a.locked()) {
             continue;
         }
-        annot::AnnotPatch patch;
-        patch.textColor = annot::AnnotColor::fromRgb(static_cast<std::uint32_t>(color.rgb() & 0xffffff));
-        annot::update(view_->session(), a.ref, patch);
+        if (a.type == annot::AnnotType::FreeText) {
+            annot::AnnotPatch patch;
+            patch.textColor = annot::AnnotColor::fromRgb(static_cast<std::uint32_t>(color.rgb() & 0xffffff));
+            annot::update(view_->session(), a.ref, patch);
+        } else if (a.type == annot::AnnotType::Stamp) {
+            fillsign::setSignatureColor(view_->session(), a.ref, color);  // не подпись Fill & Sign — без шага
+        }
+    }
+}
+
+void FillSignTool::saveFlatCopy() {
+    if (view_ == nullptr) {
+        return;
+    }
+    if (auto* w = qobject_cast<MainWindow*>(view_->window())) {
+        if (InlineTextEditor* editor = InlineTextEditor::active(view_->view())) {
+            editor->commit();  // набранное — в копию
+        }
+        w->saveFlow().saveFlatCopy(*view_);
     }
 }
 

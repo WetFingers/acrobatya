@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <ctime>
 #include <filesystem>
 #include <utility>
 
@@ -343,6 +344,116 @@ AnnotRef createImageStamp(Document& doc, int page, const std::string& image, Ann
     op.commit();
     pa.refresh();
     return {page, objnum, nm};
+}
+
+std::string stampImage(Document& doc, const AnnotRef& ref) {
+    detail::pdfOf(doc);
+    if (!ref.valid() || ref.page >= doc.pageCount()) {
+        detail::notFound(ref);
+    }
+    detail::PageAnnots pa(doc, ref.page);
+    pdf_obj* obj = pa.object(ref.objnum);
+    if (obj == nullptr) {
+        detail::notFound(ref);
+    }
+    fz_context* ctx = pa.ctx();
+    pdf_document* pdf = pa.pdf();
+    mu::ImageHandle img(ctx);
+    mu::PixmapHandle color(ctx);
+    mu::PixmapHandle rgb(ctx);
+    mu::PixmapHandle mask(ctx);
+    mu::PixmapHandle out(ctx);
+    mu::BufferHandle png(ctx);
+    pdf_obj* image = nullptr;
+    mu::call(ctx, [&] {
+        if (pdf_name_eq(ctx, pdf_dict_get(ctx, obj, PDF_NAME(Subtype)), PDF_NAME(Stamp))) {
+            pdf_obj* xobjects = pdf_dict_getp(ctx, obj, "AP/N/Resources/XObject");
+            image = pdf_dict_get(ctx, xobjects, PDF_NAME(I));
+            for (int i = 0; image == nullptr && i < pdf_dict_len(ctx, xobjects); ++i) {
+                pdf_obj* x = pdf_dict_get_val(ctx, xobjects, i);
+                if (pdf_name_eq(ctx, pdf_dict_get(ctx, x, PDF_NAME(Subtype)), PDF_NAME(Image))) {
+                    image = x;
+                }
+            }
+            if (!pdf_is_stream(ctx, image)) {
+                image = nullptr;
+            }
+        }
+    });
+    const bool found = image != nullptr;
+    if (!found) {
+        detail::badArgument("annotation is not an image stamp");
+    }
+    mu::call(ctx, [&] {
+        img.reset(pdf_load_image(ctx, pdf, image));
+        color.reset(fz_get_pixmap_from_image(ctx, img, nullptr, nullptr, nullptr, nullptr));
+        rgb.reset(
+            fz_convert_pixmap(ctx, color, fz_device_rgb(ctx), nullptr, nullptr, fz_default_color_params, 1));
+        if (img->mask != nullptr) {
+            mask.reset(fz_get_pixmap_from_image(ctx, img->mask, nullptr, nullptr, nullptr, nullptr));
+        }
+        const int w = rgb->w;
+        const int h = rgb->h;
+        out.reset(fz_new_pixmap(ctx, fz_device_rgb(ctx), w, h, nullptr, 1));
+        // Альфа — из /SMask (ближайший отсчёт, если размер другой) или своя; данные — с предумножением, как
+        // у пиксмапов MuPDF (запись PNG его снимает).
+        for (int y = 0; y < h; ++y) {
+            const unsigned char* src = rgb->samples + static_cast<std::ptrdiff_t>(y) * rgb->stride;
+            unsigned char* dst = out->samples + static_cast<std::ptrdiff_t>(y) * out->stride;
+            for (int x = 0; x < w; ++x) {
+                const unsigned char* p = src + static_cast<std::ptrdiff_t>(x) * rgb->n;
+                int alpha = rgb->alpha != 0 ? p[3] : 255;
+                if (mask != nullptr) {
+                    const int mx = std::min(mask->w - 1, x * mask->w / std::max(1, w));
+                    const int my = std::min(mask->h - 1, y * mask->h / std::max(1, h));
+                    alpha = mask->samples[static_cast<std::ptrdiff_t>(my) * mask->stride +
+                                          static_cast<std::ptrdiff_t>(mx) * mask->n];
+                }
+                const int un = rgb->alpha != 0 ? std::max(1, static_cast<int>(p[3])) : 255;
+                for (int k = 0; k < 3; ++k) {
+                    const int c = rgb->alpha != 0 ? p[k] * 255 / un : p[k];  // без своего предумножения
+                    dst[x * 4 + k] = static_cast<unsigned char>(c * alpha / 255);
+                }
+                dst[x * 4 + 3] = static_cast<unsigned char>(alpha);
+            }
+        }
+        png.reset(fz_new_buffer_from_pixmap_as_png(ctx, out, fz_default_color_params));
+    });
+    unsigned char* data = nullptr;
+    const std::size_t size = fz_buffer_storage(ctx, png, &data);
+    return {reinterpret_cast<const char*>(data), size};
+}
+
+void setStampImage(Document& doc, const AnnotRef& ref, const std::string& image,
+                   const std::string& operation) {
+    detail::pdfOf(doc);
+    if (!ref.valid() || ref.page >= doc.pageCount()) {
+        detail::notFound(ref);
+    }
+    detail::PageAnnots pa(doc, ref.page);
+    pdf_annot* a = pa.find(ref.objnum);
+    if (a == nullptr) {
+        detail::notFound(ref);
+    }
+    fz_context* ctx = pa.ctx();
+    mu::BufferHandle buf(ctx);
+    mu::ImageHandle img(ctx);
+    loadImage(ctx, image, buf, img);
+    bool stamp = false;
+    mu::call(ctx, [&] { stamp = pdf_annot_type(ctx, a) == PDF_ANNOT_STAMP; });
+    if (!stamp) {
+        detail::badArgument("annotation is not a stamp");
+    }
+    Journal::Operation op(doc, operation);
+    mu::call(ctx, [&] {
+        const fz_rect rect = pdf_dict_get_rect(ctx, pdf_annot_obj(ctx, a), PDF_NAME(Rect));
+        pdf_set_annot_stamp_image(ctx, a, img);
+        pdf_dict_put_rect(ctx, pdf_annot_obj(ctx, a), PDF_NAME(Rect), rect);
+        pdf_set_annot_modification_date(ctx, a, time(nullptr));
+        pdf_update_annot(ctx, a);
+    });
+    op.invalidate(ref.page);
+    op.commit();
 }
 
 std::string imageStampPdf(const std::string& image) {

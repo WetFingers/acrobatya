@@ -61,6 +61,9 @@ struct SaveOptions {
     std::optional<bool> objectStreams;   // потоки объектов (do_use_objstms) — меньше файл
     std::optional<bool> compressImages;  // сжать несжатые картинки (do_compress_images)
     bool subsetFonts = false;  // встроенные шрифты — подмножествами (pdf_subset_fonts) перед записью
+    // «Сохранить как → Плоская копия» (5.3; эталон 3.5): только saveCopy — комментарии и Fill & Sign
+    // впекаются в содержимое страниц копии (pdf_bake_document: аннотации да, поля формы нет), запись полная.
+    bool flattenAnnotations = false;
     // Подготовка документа перед полной записью (после решения о режиме, до subsetFonts): редактор урезает
     // шрифты, которые встроил сам (core/edit/font_embed.h). Исключение — как ошибка записи.
     std::function<void(Document&)> prepare;

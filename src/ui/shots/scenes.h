@@ -99,7 +99,7 @@ std::vector<Scene> signScenes();
 // comment_scenes.cpp — annot-note-open (+ -dark), annot-markup, annot-caret, annot-quick-actions (5.1).
 std::vector<Scene> commentScenes();
 // fillsign_scenes.cpp — fill-sign-capture-type, fill-sign-capture-draw, fill-sign-capture-image,
-// fill-sign-text, fill-sign-comb, fill-sign-marks (5.3).
+// fill-sign-text, fill-sign-comb, fill-sign-marks, fill-sign-placed, fill-sign-flatten-dialog (5.3).
 std::vector<Scene> fillSignScenes();
 
 // Показанное окно сцены — до готовности (Scene::ready) или timeoutMs; false — не дождались.

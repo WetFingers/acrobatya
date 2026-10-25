@@ -120,7 +120,7 @@ bool SaveFlow::save(DocumentView& view) {
     }
 }
 
-bool SaveFlow::saveAs(DocumentView& view, bool copy) {
+bool SaveFlow::saveAs(DocumentView& view, bool copy, bool flat) {
     error_.clear();
     if (view.isViewOnly()) {
         error_ = errorText(SaveError::NotPdf);
@@ -128,13 +128,19 @@ bool SaveFlow::saveAs(DocumentView& view, bool copy) {
     }
     const QFileInfo current(view.path());
     QString suggested = view.path();
-    if (copy) {
+    if (flat) {
+        suggested =
+            current.absoluteDir().filePath(tr("%1 (плоская копия).pdf").arg(current.completeBaseName()));
+    } else if (copy) {
         suggested = current.absoluteDir().filePath(tr("%1 (копия).pdf").arg(current.completeBaseName()));
     } else if (suggested.isEmpty()) {
         suggested = QDir::home().filePath(tr("Без имени.pdf"));
     }
     SaveAsDialog dialog(suggested, view.session().summary().isSigned, &window_);
-    if (copy) {
+    if (flat) {
+        dialog.setWindowTitle(tr("Сохранить как — плоская копия"));
+        dialog.flatCopyBox()->setChecked(true);
+    } else if (copy) {
         dialog.setWindowTitle(tr("Сохранить как копию"));
         dialog.fullButton()->setChecked(true);  // копия подписанного — полная запись
     }
@@ -143,6 +149,9 @@ bool SaveFlow::saveAs(DocumentView& view, bool copy) {
         return false;
     }
     SaveOptions options = dialog.options();
+    if (options.flattenAnnotations) {
+        copy = true;  // плоская — всегда копия: документ с комментариями остаётся
+    }
     if (copy) {
         options.allowBreakingSignatures = true;
     }
@@ -166,7 +175,11 @@ bool SaveFlow::write(DocumentView& view, const QString& path, const SaveOptions&
     }
     emit saved(&view, path);
     if (copy) {
-        Toast::notify(&window_, tr("Копия сохранена: «%1».").arg(QFileInfo(path).fileName()), Tone::Ok);
+        Toast::notify(
+            &window_,
+            (options.flattenAnnotations ? tr("Плоская копия сохранена: «%1».") : tr("Копия сохранена: «%1»."))
+                .arg(QFileInfo(path).fileName()),
+            Tone::Ok);
     }
     return true;
 }

@@ -66,6 +66,10 @@ SaveAsDialog::SaveAsDialog(const QString& suggested, bool isSigned, QWidget* par
     grid->addLayout(modes, 1, 1, 1, 2);
     grid->setColumnStretch(1, 1);
     column->addLayout(grid);
+    flat_ = new QCheckBox(this);
+    flat_->setObjectName(QStringLiteral("saveAsFlatCopy"));
+    connect(flat_, &QCheckBox::toggled, this, &SaveAsDialog::updateEnabled);
+    column->addWidget(flat_);
     signedNote_ = new QLabel(this);
     signedNote_->setObjectName(QStringLiteral("saveAsSignedNote"));
     signedNote_->setWordWrap(true);
@@ -112,6 +116,10 @@ SaveOptions SaveAsDialog::options() const {
     } else {
         o.subsetFonts = subset_->isChecked();  // применяется, если программа решит писать полностью
     }
+    if (flat_->isChecked()) {
+        o.flattenAnnotations = true;  // копия, запись полная (Saver::saveCopy)
+        o.mode = SaveMode::Full;
+    }
     return o;
 }
 
@@ -129,6 +137,12 @@ void SaveAsDialog::updateEnabled() {
     if (ok_ == nullptr) {
         return;  // конструктор: переключатели уже есть, флажков и кнопок ещё нет
     }
+    // Плоская копия пишется только заново: дописывать изменения некуда — это новый файл.
+    if (flat_->isChecked() && !full_->isChecked()) {
+        full_->setChecked(true);
+    }
+    auto_->setEnabled(!flat_->isChecked());
+    incremental_->setEnabled(!flat_->isChecked());
     const bool full = full_->isChecked();
     objstms_->setEnabled(full);
     images_->setEnabled(full);
@@ -154,6 +168,10 @@ void SaveAsDialog::retranslate() {
     objstms_->setText(tr("Потоки &объектов (меньше размер файла)"));
     images_->setText(tr("Сжимать &изображения"));
     subset_->setText(tr("Встраивать &подмножества шрифтов"));
+    flat_->setText(tr("Пло&ская копия: комментарии и Fill && Sign — в содержимое страниц"));
+    flat_->setToolTip(
+        tr("Пишется новый файл; в нём текст, отметки и подписи станут частью страниц и их нельзя "
+           "будет сдвинуть или удалить. Открытый документ не меняется."));
     signedNote_->setText(
         tr("Документ подписан. Полная запись сделает подписи недействительными; чтобы подписи "
            "остались, выберите «Как решит программа» или «Дописать изменения»."));

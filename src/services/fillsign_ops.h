@@ -3,7 +3,9 @@
 // (гребёнка). Подпись и инициалы — штамп-картинка (annot_ops.h createImageStamp; шаг «Add signature»).
 #pragma once
 
+#include <QColor>
 #include <QFuture>
+#include <QImage>
 #include <QString>
 
 #include <vector>
@@ -35,5 +37,11 @@ QFuture<std::vector<annot::AnnotRef>> createAll(DocumentSession& session, int pa
 // «Add initials».
 QFuture<annot::AnnotRef> createSignature(DocumentSession& session, int page, std::string png,
                                          annot::AnnotProps props, bool initials);
+
+// Цвет поставленной подписи или инициалов (штамп /Name FillSignSignature / FillSignInitials): картинка
+// перекрашивается, альфа прежняя; шаг «Set signature color». Другая аннотация — исключение, шага нет.
+QFuture<void> setSignatureColor(DocumentSession& session, annot::AnnotRef ref, QColor color);
+// Картинка штампа-картинки с альфой (core/annot/stamps.h stampImage) — проверка подписи.
+QFuture<QImage> stampImage(DocumentSession& session, annot::AnnotRef ref);
 
 }  // namespace ot::fillsign

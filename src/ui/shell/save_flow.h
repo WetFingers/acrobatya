@@ -41,8 +41,11 @@ public:
 
     // Ctrl+S. true — записано (или нечего записывать).
     bool save(DocumentView& view);
-    // Ctrl+Shift+S; copy — «Сохранить как копию» (документ остаётся на своём файле).
-    bool saveAs(DocumentView& view, bool copy = false);
+    // Ctrl+Shift+S; copy — «Сохранить как копию» (документ остаётся на своём файле); flat — «Плоская копия»
+    // (5.3: флажок отмечен, комментарии и Fill & Sign — в содержимое страниц копии).
+    bool saveAs(DocumentView& view, bool copy = false, bool flat = false);
+    // «Сохранить как → Плоская копия…» (инструмент «Заполнить и подписать»).
+    bool saveFlatCopy(DocumentView& view) { return saveAs(view, true, true); }
     // Что сделает «Сохранить» (без записи).
     SaveReport decide(DocumentView& view, const SaveOptions& options = {});
 

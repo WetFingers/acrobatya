@@ -2,8 +2,10 @@
 // «Обзор…» — нативный диалог), способ записи — «Как решит программа» (Saver::Auto: инкремент для лёгких
 // правок, полная для тяжёлых), «Дописать изменения» (инкрементально), «Записать файл заново» (полностью); для
 // полной записи — «Потоки объектов» (меньше файл), «Сжимать изображения», «Подмножества шрифтов». Подписанный
-// документ — подсказка: полная запись сделает подписи недействительными (пишется только копия). Пункты
-// «Плоская копия» и «Быстрый просмотр в Интернете» сюда добавят их владельцы (5.3, 9.3).
+// документ — подсказка: полная запись сделает подписи недействительными (пишется только копия). «Плоская
+// копия» (5.3; эталон 3.5): комментарии и Fill & Sign впекаются в содержимое страниц новой копии
+// (SaveOptions::flattenAnnotations — всегда копия и полная запись), документ остаётся как есть. Пункт
+// «Быстрый просмотр в Интернете» сюда добавит его владелец (9.3).
 #pragma once
 
 #include <QDialog>
@@ -38,6 +40,7 @@ public:
     QCheckBox* objectStreamsBox() const { return objstms_; }
     QCheckBox* compressImagesBox() const { return images_; }
     QCheckBox* subsetFontsBox() const { return subset_; }
+    QCheckBox* flatCopyBox() const { return flat_; }
     QLabel* signedNote() const { return signedNote_; }
 
     QString path() const;
@@ -64,6 +67,7 @@ private:
     QCheckBox* objstms_ = nullptr;
     QCheckBox* images_ = nullptr;
     QCheckBox* subset_ = nullptr;
+    QCheckBox* flat_ = nullptr;
     QLabel* signedNote_ = nullptr;
     QPushButton* ok_ = nullptr;
     QPushButton* cancel_ = nullptr;

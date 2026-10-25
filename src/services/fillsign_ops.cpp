@@ -1,7 +1,10 @@
 #include "services/fillsign_ops.h"
 
+#include <QImage>
 #include "core/annot/stamps.h"
 #include "core/text/stext.h"
+
+#include "services/signature_image.h"
 #include "services/task_context.h"
 
 namespace ot::fillsign {
@@ -36,6 +39,39 @@ QFuture<annot::AnnotRef> createSignature(DocumentSession& session, int page, std
         tc.touchPage(page);
         return ref;
     });
+}
+
+QFuture<void> setSignatureColor(DocumentSession& session, annot::AnnotRef ref, QColor color) {
+    return session.edit(QString::fromLatin1(kSignatureColorStep), [ref, color](TaskContext& tc) {
+        const std::optional<annot::AnnotProps> props = annot::readProps(tc.document(), ref);
+        if (!props || props->type != annot::AnnotType::Stamp ||
+            (props->icon != kSignatureStampName && props->icon != kInitialsStampName)) {
+            throw std::invalid_argument("not a Fill & Sign signature");
+        }
+        const std::string png = annot::stampImage(tc.document(), ref);
+        QImage image;
+        if (!image.loadFromData(reinterpret_cast<const uchar*>(png.data()), static_cast<int>(png.size()),
+                                "PNG")) {
+            throw std::runtime_error("signature image is not readable");
+        }
+        const QByteArray recolored = toPng(recolor(image, color));
+        annot::setStampImage(tc.document(), ref,
+                             std::string(recolored.constData(), static_cast<std::size_t>(recolored.size())),
+                             kSignatureColorStep);
+        tc.touchPage(ref.page);
+    });
+}
+
+QFuture<QImage> stampImage(DocumentSession& session, annot::AnnotRef ref) {
+    return session.post(
+        [ref](TaskContext& tc) {
+            const std::string png = annot::stampImage(tc.document(), ref);
+            QImage image;
+            image.loadFromData(reinterpret_cast<const uchar*>(png.data()), static_cast<int>(png.size()),
+                               "PNG");
+            return image.convertToFormat(QImage::Format_ARGB32);
+        },
+        TaskPriority::High, QStringLiteral("Stamp image"));
 }
 
 }  // namespace ot::fillsign

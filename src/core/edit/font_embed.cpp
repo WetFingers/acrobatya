@@ -414,7 +414,9 @@ std::size_t FontEmbedder::entryFor(const SystemFace& face, EmbedKind kind) {
                 fed::putToUnicode(ctx, pdf, ref, toUnicode);
             }
         });
-        op.markHeavy();
+        if (heavy_) {
+            op.markHeavy();
+        }
         op.commit();
         e.objnum = objnum;
         entries_.push_back(std::move(e));
@@ -751,14 +753,16 @@ SubsetReport subsetFonts(Document& doc, const std::vector<int>& fontObjnums) {
     return r;
 }
 
-bool subsetFont(Document& doc, int objnum, const std::set<int>& gids) {
+bool subsetFont(Document& doc, int objnum, const std::set<int>& gids, bool heavy) {
     if (doc.pdf() == nullptr || objnum <= 0) {
         return false;
     }
     SubsetReport r;
     Journal::Operation op(doc, "Subset fonts");
     const bool done = fed::subsetOne(doc, objnum, gids, r);
-    op.markHeavy();
+    if (heavy) {
+        op.markHeavy();
+    }
     op.commit();
     return done;
 }

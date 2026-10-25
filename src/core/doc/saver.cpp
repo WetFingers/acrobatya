@@ -425,6 +425,21 @@ SaveReport Saver::saveCopy(Document& doc, const fs::path& target, const SaveOpti
     SaveOptions exact = options;
     exact.mode = r.mode;  // режим самого документа (тяжёлые правки второго документа решают так же)
     exact.allowBreakingSignatures = true;  // подписанному decide уже ответил выше
+    if (options.flattenAnnotations) {
+        // Плоская копия: аннотации — в содержимое страниц копии (виджеты полей остаются), запись полная.
+        try {
+            fz_context* tctx = twin->context().get();
+            pdf_document* tpdf = twin->pdf();
+            Journal::Operation op(*twin, "Flatten annotations");
+            mu::call(tctx, [&] { pdf_bake_document(tctx, tpdf, 1, 0); });
+            op.invalidateAll();
+            op.markHeavy();
+            op.commit();
+        } catch (const std::exception& e) {
+            return refuse(r, SaveError::WriteFailed, std::string("flatten: ") + e.what());
+        }
+        exact.mode = SaveMode::Full;
+    }
     SaveReport written = save(*twin, absTarget, exact);
     written.mode = r.mode;
     if (written.ok()) {

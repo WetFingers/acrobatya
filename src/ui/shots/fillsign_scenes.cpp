@@ -2,10 +2,14 @@
 // Набрать» (имя рукописным шрифтом); fill-sign-capture-draw — «Нарисовать» с росчерком из трёх штрихов;
 // fill-sign-capture-image — «Картинка»: скан подписи на сером листе, фон убран по порогу; fill-sign-text —
 // фамилия, имя и отчество на подчёркиваниях и набор даты на линии; fill-sign-comb — дата рождения в клетках и
-// набор ИНН в гребёнку; fill-sign-marks — ✓ и ✕ во флажках, ● и — у строки, «—» выбрана. Документ —
-// плоская анкета tests/fixtures/forms/flat/anketa.pdf, панель «Заполнить и подписать» открыта.
+// набор ИНН в гребёнку; fill-sign-marks — ✓ и ✕ во флажках, ● и — у строки, «—» выбрана; fill-sign-placed —
+// заполненная анкета с нарисованной подписью на линии «Подпись» (выбрана: рамка и ручки);
+// fill-sign-flatten-dialog — «Сохранить как — плоская копия» с отмеченным флажком. Документ — плоская анкета
+// tests/fixtures/forms/flat/anketa.pdf, панель «Заполнить и подписать» открыта.
+#include <QCheckBox>
 #include <QCoreApplication>
 #include <QDir>
+#include <QFileInfo>
 #include <QImage>
 #include <QLineEdit>
 #include <QPainter>
@@ -20,6 +24,8 @@
 #include "services/annot_ops.h"
 #include "services/document_session.h"
 #include "services/fillsign_ops.h"
+#include "services/signature_image.h"
+#include "ui/dialogs/save_as_dialog.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
 #include "ui/shots/scenes.h"
@@ -250,6 +256,62 @@ void marksScene(MainWindow& w, DocumentView& doc) {
     });
 }
 
+// Анкета: фамилия, имя, отчество, дата рождения и отметка — для сцен подписи и плоской копии.
+void fillAnketa(MainWindow& w, DocumentView& doc, std::function<void(MainWindow&, DocumentView&)> then) {
+    withGeometry(w, doc, [then](MainWindow& w, DocumentView& d, const fillsign::PageGeometry& g) {
+        std::vector<annot::AnnotProps> items = {
+            lineText(g, pt(170, 724), QT_TRANSLATE_NOOP("ot::ui::FillSignScenes", "Петров")),
+            lineText(g, pt(170, 692), QT_TRANSLATE_NOOP("ot::ui::FillSignScenes", "Иван")),
+            lineText(g, pt(170, 660), QT_TRANSLATE_NOOP("ot::ui::FillSignScenes", "Сергеевич")),
+            lineText(g, pt(410, 384), QT_TRANSLATE_NOOP("ot::ui::FillSignScenes", "25.10.2026")),
+            fillsign::markProps(fillsign::Mark::Check, fillsign::placeMark(g, pt(78, 474)),
+                                annot::AnnotColor::gray(0)),
+        };
+        for (annot::AnnotProps& p : fillsign::combProps(fillsign::placeText(g, pt(190, 612)), U"01021990",
+                                                        annot::AnnotColor::gray(0))) {
+            items.push_back(std::move(p));
+        }
+        fillsign::createAll(d.session(), 0, std::move(items))
+            .then(&w, [&w, then](std::vector<annot::AnnotRef>) {
+                if (DocumentView* doc2 = w.currentDocument()) {
+                    then(w, *doc2);
+                }
+            });
+    });
+}
+
+void placedScene(MainWindow& w, DocumentView& doc) {
+    fillAnketa(w, doc, [](MainWindow& w, DocumentView& d) {
+        FillSignMode& mode = FillSignTool::modeOf(d.view());
+        mode.setSignatureImage(fillsign::SignatureKind::Signature,
+                               fillsign::strokesToImage(demoStrokes(QSizeF(520, 180)), QSizeF(520, 180),
+                                                        QColor(0x1A, 0x3B, 0x9C), 2.5, 3.0));
+        sceneTool().start(FillSignAction::Signature);
+        QObject::connect(&mode, &FillSignMode::created, &w, [&w] {
+            QTimer::singleShot(200, &w, [&w] { markDone(w); });  // выбор приходит задачей
+        });
+        mode.placeAt(0, QPointF(150, kPageHeight - 386));
+    });
+}
+
+void flattenDialogScene(MainWindow& w, DocumentView& doc) {
+    fillAnketa(w, doc, [](MainWindow& w, DocumentView& d) {
+        const QFileInfo file(d.path());
+        auto* dialog =
+            new SaveAsDialog(file.absoluteDir().filePath(
+                                 QCoreApplication::translate("ot::ui::SaveFlow", "%1 (плоская копия).pdf")
+                                     .arg(file.completeBaseName())),
+                             false, &w);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->setWindowTitle(
+            QCoreApplication::translate("ot::ui::SaveFlow", "Сохранить как — плоская копия"));
+        dialog->flatCopyBox()->setChecked(true);
+        dialog->resize(dialog->sizeHint().expandedTo(dialog->minimumSizeHint()));
+        embedCentered(w, dialog);
+        markDone(w);
+    });
+}
+
 }  // namespace fillsign_scene
 
 std::vector<Scene> fillSignScenes() {
@@ -267,6 +329,8 @@ std::vector<Scene> fillSignScenes() {
     add("fill-sign-text", fillsign_scene::textScene);
     add("fill-sign-comb", fillsign_scene::combScene);
     add("fill-sign-marks", fillsign_scene::marksScene);
+    add("fill-sign-placed", fillsign_scene::placedScene);
+    add("fill-sign-flatten-dialog", fillsign_scene::flattenDialogScene);
     return scenes;
 }
 

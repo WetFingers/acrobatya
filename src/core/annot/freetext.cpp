@@ -287,6 +287,8 @@ int fieldFont(Document& doc, edit::FontLibrary& lib, const edit::SystemFace& fac
         return existing;
     }
     edit::FontEmbedder embedder(doc, lib);
+    embedder.setHeavy(
+        false);  // шрифт поля — лёгкая правка: инкремент, подписи целы (Fill & Sign поверх подписанного)
     const int objnum = embedder.fontObject(face, edit::EmbedKind::Cid);
     std::set<int> gids = needed;
     for (const auto& [first, last] : kAlwaysEmbedded) {
@@ -299,7 +301,7 @@ int fieldFont(Document& doc, edit::FontLibrary& lib, const edit::SystemFace& fac
             }
         }
     }
-    edit::subsetFont(doc, objnum, gids);
+    edit::subsetFont(doc, objnum, gids, false);
     mu::call(ctx, [&] {
         pdf_obj* root = pdf_dict_get(ctx, pdf_trailer(ctx, pdf), PDF_NAME(Root));
         pdf_obj* form = pdf_dict_get(ctx, root, PDF_NAME(AcroForm));
