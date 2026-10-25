@@ -14,7 +14,7 @@
       tools/build_lock.ps1: строки pid=, pidStart=, taken=, target=, preset=; чужой ждём --lock-wait мин);
   (3) параллельно с (1)–(2): стражи tools/*_guard.py и scope_check.py через OTTISK_PYTHON
       (-X utf8 -I, код 77 — пропуск) и PowerShell-стражи tools/test_reset_parse.ps1, tools/test_guard.ps1;
-  (4) после зелёной сборки: ctest --test-dir build/<dir> -L <labels> -LE slow --timeout 60 -j 12
+  (4) после зелёной сборки: ctest --test-dir build/<dir> -L <labels> -LE slow --timeout 60 -j 12 --repeat until-pass:2
       --output-on-failure --no-tests=error --output-junit <abs>/build/<dir>/ctest.xml
       (QT_QPA_PLATFORM=offscreen, QT_QPA_FONTDIR=C:/Windows/Fonts, QT_FORCE_STDERR_LOGGING=1, Qt bin в PATH);
       если в --labels есть заведомо медленные метки (render, engine, e2e, compat, build, bench) —
@@ -527,7 +527,11 @@ def main(argv: list[str]) -> int:
         if args.fast:
             return chain
         slow = wants_slow(args.labels)
-        labels = ["-L", anchor_labels(args.labels)] + ([] if slow else ["-LE", "^slow$"]) + ["--timeout", "60", "-j", "12"]
+        # Повтор упавшего один раз: тесты интерфейса на время (ui.shots, ui.modes, отмена рендера) изредка падают
+        # только под параллельной нагрузкой -j 12 и отдельно зелёные (журналы 1.4, 4.2, 5.5); настоящая поломка
+        # падает оба раза. Так же — прогон --full ниже.
+        labels = (["-L", anchor_labels(args.labels)] + ([] if slow else ["-LE", "^slow$"])
+                  + ["--timeout", "60", "-j", "12", "--repeat", "until-pass:2"])
         s = step_ctest("ctest", build_dir, labels, build_dir / "ctest.xml", env)
         if slow:
             s.note = (s.note + "; " if s.note else "") + "без -LE slow (в метках есть медленные)"
