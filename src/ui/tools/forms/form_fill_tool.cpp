@@ -11,6 +11,7 @@
 #include <QPainter>
 #include <QPushButton>
 #include <QToolTip>
+#include <QtConcurrent/QtConcurrentRun>
 
 #include <algorithm>
 
@@ -19,9 +20,12 @@
 #include "core/links/links.h"
 #include "services/document_session.h"
 #include "services/forms_ops.h"
+#include "services/http_fetcher.h"
+#include "services/mail.h"
 #include "services/settings.h"
 #include "services/settings_keys.h"
 #include "ui/dialogs/form_data_dialog.h"
+#include "ui/dialogs/submit_dialog.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/message_bar.h"
 #include "ui/theme/theme.h"
@@ -691,6 +695,7 @@ void FormFillTool::handleAction(const forms::FieldAction& action) {
     switch (action.kind) {
         case forms::ActionKind::SubmitForm:
             emit submitRequested(action);
+            submit(action);
             break;
         case forms::ActionKind::ImportData: {
             emit importRequested(action);
@@ -848,6 +853,103 @@ void FormFillTool::importDataFrom(const QString& path) {
             }
             emit dataImported(path, report);
         });
+}
+
+// ---------------------------------------------------------------- отправка формы
+
+void FormFillTool::submit(const forms::FieldAction& action) {
+    const auto finish = [this](bool ok, const QString& message) {
+        Toast::notify(view_.window(), message, ok ? Tone::Ok : Tone::Danger);
+        emit submitted(ok, message);
+    };
+    if (view_.isProtectedView()) {
+        finish(false, tr("В защищённом просмотре форма не отправляется. Включите все функции, если доверяете "
+                         "файлу."));
+        return;
+    }
+    forms::planSubmit(view_.session(), action).then(this, [this, finish](QFuture<forms::SubmitPlan> planned) {
+        forms::SubmitPlan plan;
+        try {
+            plan = planned.result();
+        } catch (const std::exception& e) {
+            spdlog::warn("forms: submit plan failed: {}", e.what());
+            finish(false, tr("Не удалось подготовить данные формы к отправке."));
+            return;
+        }
+        if (plan.target == forms::SubmitTarget::Unsupported) {
+            finish(false, tr("Адрес отправки не поддерживается: %1").arg(QString::fromStdString(plan.url)));
+            return;
+        }
+        const bool yes = submitConfirm_ ? submitConfirm_(plan) : SubmitDialog::ask(view_.window(), plan);
+        if (!yes) {
+            return;  // без подтверждения ничего не уходит (эталон 7.4)
+        }
+        forms::submitBody(view_.session(), plan).then(this, [this, plan, finish](QFuture<QByteArray> done) {
+            QByteArray body;
+            try {
+                body = done.result();
+            } catch (const std::exception& e) {
+                spdlog::warn("forms: submit body failed: {}", e.what());
+                finish(false, tr("Не удалось подготовить документ к отправке."));
+                return;
+            }
+            if (plan.target == forms::SubmitTarget::Mail) {
+                const MailResult r = forms::sendMail(plan, body, mailer());
+                switch (r.status) {
+                    case MailResult::Status::Sent:
+                        finish(true, tr("Письмо с данными формы создано."));
+                        break;
+                    case MailResult::Status::Cancelled:
+                        finish(false, tr("Письмо не отправлено."));
+                        break;
+                    case MailResult::Status::NoClient:
+                        finish(false, tr("Нет почтовой программы: сохраните данные формы («Экспорт данных…») "
+                                         "и отправьте файл сами."));
+                        break;
+                    case MailResult::Status::Failed:
+                        finish(false, tr("Не удалось создать письмо."));
+                        break;
+                }
+                return;
+            }
+            QtConcurrent::run([plan, body] { return forms::sendHttp(plan, body, httpFetcher()); })
+                .then(this, [this, finish](QFuture<net::Response> sent) {
+                    const net::Response r = sent.result();
+                    if (r.status == net::Status::Disabled) {
+                        finish(false, tr("Сеть выключена (Установки → Защита): форма не отправлена."));
+                        return;
+                    }
+                    if (!r.ok()) {
+                        finish(false, r.httpCode > 0 ? tr("Сервер не принял форму (код %1).").arg(r.httpCode)
+                                                     : tr("Форма не отправлена: сервер недоступен."));
+                        return;
+                    }
+                    const std::string_view reply(reinterpret_cast<const char*>(r.body.data()), r.body.size());
+                    if (!forms::isFdfResponse(r.contentType, reply)) {
+                        finish(true, tr("Форма отправлена."));
+                        return;
+                    }
+                    // Ответ сервера — данные формы (FDF): в форму.
+                    forms::FormData data;
+                    try {
+                        data = forms::readData(reply, forms::DataFormat::Fdf);
+                    } catch (const forms::DataError&) {
+                        finish(true, tr("Форма отправлена."));
+                        return;
+                    }
+                    forms::importData(view_.session(), std::move(data), QString())
+                        .then(this, [finish](QFuture<forms::DataImportReport> imported) {
+                            int n = 0;
+                            try {
+                                n = static_cast<int>(imported.result().updated.size());
+                            } catch (const std::exception& e) {
+                                spdlog::warn("forms: submit reply import failed: {}", e.what());
+                            }
+                            finish(true, tr("Форма отправлена. Сервер ответил данными формы: %1.").arg(n));
+                        });
+                });
+        });
+    });
 }
 
 }  // namespace ot::ui

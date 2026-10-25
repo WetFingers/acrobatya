@@ -612,12 +612,12 @@ DataFormat detectDataFormat(std::string_view bytes) {
     return DataFormat::Tsv;
 }
 
-FormData collectData(const Document& doc, const std::string& fileName) {
+FormData collectData(const Document& doc, const std::string& fileName, bool passwords) {
     FormData data;
     data.file = fileName;
     for (const Field& f : readForm(doc).fields) {
         if (f.type == FieldType::PushButton || f.type == FieldType::Signature ||
-            f.type == FieldType::Unknown || f.noExport() || f.password()) {
+            f.type == FieldType::Unknown || f.noExport() || (f.password() && !passwords)) {
             continue;
         }
         FieldValue v;

@@ -13,7 +13,10 @@
 
 #include "core/forms/data_io.h"
 #include "core/forms/fields.h"
+#include "core/forms/submit.h"
+#include "core/util/http_fetcher.h"
 #include "services/document_session.h"
+#include "services/mail.h"
 
 namespace ot::forms {
 
@@ -51,5 +54,16 @@ QFuture<QByteArray> exportData(DocumentSession& session, DataFormat format, QStr
 // Импорт разобранных данных шагом «Import form data»; documentFile — имя файла документа для проверки /F
 // (чужой — DataError в QFuture).
 QFuture<DataImportReport> importData(DocumentSession& session, FormData data, QString documentFile);
+
+// Отправка формы (forms-30, cloud-08; core/forms/submit.h): план действия /SubmitForm (имя файла документа — /F и
+// имя вложения), тело (PDF — копия документа с правками: Saver::saveCopy во временный файл, история цела),
+// письмо (mailto: — вложение во временном файле, Mailer) и запрос (http(s) — HttpFetcher, Purpose::General).
+// Подтверждение человека — до этих вызовов (ui).
+QFuture<SubmitPlan> planSubmit(DocumentSession& session, FieldAction action);
+QFuture<QByteArray> submitBody(DocumentSession& session, SubmitPlan plan);
+// pdf — тело формата PDF (submitBody); у прочих форматов — plan.body.
+MailResult sendMail(const SubmitPlan& plan, const QByteArray& pdf, Mailer& mailer);
+// Синхронно (из рабочего потока, не интерфейса).
+net::Response sendHttp(const SubmitPlan& plan, const QByteArray& pdf, net::HttpFetcher& fetcher);
 
 }  // namespace ot::forms

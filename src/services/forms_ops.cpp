@@ -1,7 +1,18 @@
 #include "services/forms_ops.h"
 
-#include <set>
+#include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QTemporaryDir>
 
+#include <set>
+#include <stdexcept>
+
+#include <spdlog/spdlog.h>
+
+#include "core/doc/document.h"
+#include "core/doc/saver.h"
+#include "core/util/paths.h"
 #include "services/task_context.h"
 
 namespace ot::forms {
@@ -157,6 +168,97 @@ QFuture<DataImportReport> importData(DocumentSession& session, FormData data, QS
                             touch(tc, r.pages);
                             return r;
                         });
+}
+
+QFuture<SubmitPlan> planSubmit(DocumentSession& session, FieldAction action) {
+    return session.post(
+        [action = std::move(action)](TaskContext& tc) {
+            const std::string file = paths::toUtf8(tc.document().path().filename());
+            return forms::planSubmit(tc.document(), action, file);
+        },
+        TaskPriority::High, QStringLiteral("plan submit"));
+}
+
+QFuture<QByteArray> submitBody(DocumentSession& session, SubmitPlan plan) {
+    if (plan.format != SubmitFormat::Pdf) {
+        return QtFuture::makeReadyValueFuture(QByteArray(plan.body.data(), static_cast<qsizetype>(plan.body.size())));
+    }
+    const QString dir = QDir::temp().filePath(QStringLiteral("AcroBatya"));
+    QDir().mkpath(dir);
+    const QString file = QDir(dir).filePath(QStringLiteral("submit-%1-%2.pdf")
+                                                .arg(QCoreApplication::applicationPid())
+                                                .arg(session.id()));
+    SaveOptions options;
+    options.allowBreakingSignatures = true;  // копия для отправки; документ на диске не меняется
+    return session.saveCopy(file, options).then([file](SaveReport report) {
+        QByteArray bytes;
+        if (report.ok()) {
+            QFile f(file);
+            if (f.open(QIODevice::ReadOnly)) {
+                bytes = f.readAll();
+            }
+        }
+        QFile::remove(file);
+        if (bytes.isEmpty()) {
+            throw std::runtime_error("submit: cannot write a copy of the document: " + report.message);
+        }
+        return bytes;
+    });
+}
+
+MailResult sendMail(const SubmitPlan& plan, const QByteArray& pdf, Mailer& mailer) {
+    MailMessage m;
+    if (plan.mail) {
+        for (const std::string& a : plan.mail->to) {
+            m.to << QString::fromStdString(a);
+        }
+        for (const std::string& a : plan.mail->cc) {
+            m.cc << QString::fromStdString(a);
+        }
+        for (const std::string& a : plan.mail->bcc) {
+            m.bcc << QString::fromStdString(a);
+        }
+        m.subject = QString::fromStdString(plan.mail->subject);
+        m.body = QString::fromStdString(plan.mail->body);
+    }
+    const QByteArray bytes = plan.format == SubmitFormat::Pdf
+                                 ? pdf
+                                 : QByteArray(plan.body.data(), static_cast<qsizetype>(plan.body.size()));
+    QTemporaryDir dir(QDir::temp().filePath(QStringLiteral("AcroBatya-mail-XXXXXX")));
+    MailResult failed;
+    if (!dir.isValid()) {
+        failed.message = QStringLiteral("cannot create a temporary folder");
+        return failed;
+    }
+    const QString name = QString::fromStdString(plan.attachmentName);
+    const QString path = dir.filePath(name);
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly) || f.write(bytes) != bytes.size()) {
+        failed.message = QStringLiteral("cannot write the attachment");
+        return failed;
+    }
+    f.close();
+    m.attachments.push_back({path, name});
+    const MailResult r = mailer.send(m);
+    spdlog::info("forms: submit by mail ({}) -> {}", submitFormatName(plan.format), mailStatusName(r.status));
+    return r;
+}
+
+net::Response sendHttp(const SubmitPlan& plan, const QByteArray& pdf, net::HttpFetcher& fetcher) {
+    net::Request r;
+    r.method = plan.get ? "GET" : "POST";
+    r.url = plan.url;
+    r.purpose = net::Purpose::General;
+    r.sameHostRedirectsOnly = true;
+    if (!plan.get) {
+        r.contentType = plan.contentType;
+        const QByteArray bytes = plan.format == SubmitFormat::Pdf
+                                     ? pdf
+                                     : QByteArray(plan.body.data(), static_cast<qsizetype>(plan.body.size()));
+        r.body.assign(bytes.begin(), bytes.end());
+    }
+    r.headers.emplace_back("Accept", "application/vnd.fdf, text/html, */*");
+    return fetcher.fetch(r);
 }
 
 }  // namespace ot::forms

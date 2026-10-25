@@ -342,6 +342,7 @@ private slots:
         QTest::mouseClick(doc->view().viewport(), Qt::LeftButton, {},
                           centerOf(*doc, field(*doc, "reset")->widgets.front()));
         QTRY_COMPARE(QString::fromStdString(current(*doc, "name").value), QStringLiteral("Ivan Petrov"));
+        doc->forms().setSubmitConfirm([](const forms::SubmitPlan&) { return false; });  // без окна: только сигнал
         QSignalSpy submit(&doc->forms(), &FormFillTool::submitRequested);
         QTest::mouseClick(doc->view().viewport(), Qt::LeftButton, {},
                           centerOf(*doc, field(*doc, "submit_http")->widgets.front()));

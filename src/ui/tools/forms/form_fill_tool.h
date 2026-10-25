@@ -36,6 +36,7 @@
 
 #include "core/forms/data_io.h"
 #include "core/forms/fields.h"
+#include "core/forms/submit.h"
 #include "core/forms/js_bridge.h"
 #include "services/js_prompter.h"
 #include "ui/view/field_interaction.h"
@@ -106,6 +107,14 @@ public:
     void setOpenChooser(FileChooser chooser) { openChooser_ = std::move(chooser); }
     // Окно отчёта импорта (тесты — выкл.: только сигнал dataImported).
     void setReportWindow(bool on) noexcept { reportWindow_ = on; }
+
+    // Отправка формы (6.1, п. 4; forms-30): кнопка с /SubmitForm — план (адрес, формат, поля), подтверждение
+    // SubmitDialog (без него ничего не уходит), тело (PDF — копия документа), mailto: — письмо (services/mail.h
+    // mailer()), http(s) — HttpFetcher в рабочем потоке; ответ сервера с FDF — импорт в форму. В защищённом
+    // просмотре — отказ (эталон 7.5).
+    void submit(const forms::FieldAction& action);
+    using SubmitConfirm = std::function<bool(const forms::SubmitPlan& plan)>;
+    void setSubmitConfirm(SubmitConfirm confirm) { submitConfirm_ = std::move(confirm); }
     // Поля с непринятым значением (рамка danger).
     const std::set<QString>& rejected() const noexcept { return rejected_; }
     // Настройки «Формы» сменились (Установки, ОК).
@@ -133,6 +142,8 @@ signals:
     void dataExported(const QString& path, bool ok);
     void dataImported(const QString& file, const ot::forms::DataImportReport& report);
     void dataImportFailed(const QString& file, const QString& reason);
+    // Отправка закончилась: ok — письмо создано или сервер принял; message — строка для человека.
+    void submitted(bool ok, const QString& message);
     void javaScriptChanged(ot::forms::JsState state);
 
 private:
@@ -177,6 +188,7 @@ private:
     ImportConfirm importConfirm_;
     FileChooser openChooser_;
     bool reportWindow_ = true;
+    SubmitConfirm submitConfirm_;
 };
 
 }  // namespace ot::ui

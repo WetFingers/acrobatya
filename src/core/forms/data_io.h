@@ -64,8 +64,9 @@ struct FormData {
     std::vector<FieldValue> pairs;
 };
 
-// Значения документа для экспорта; fileName — /F и <f href> (имя PDF без пути).
-FormData collectData(const Document& doc, const std::string& fileName);
+// Значения документа для экспорта; fileName — /F и <f href> (имя PDF без пути). Пароли в файл данных не идут
+// (как у Acrobat); отправка формы (submit.h) их берёт — passwords.
+FormData collectData(const Document& doc, const std::string& fileName, bool passwords = false);
 std::string writeData(const FormData& data, DataFormat format);
 // Разобрать файл данных; испорчен — DataError Malformed.
 FormData readData(std::string_view bytes, DataFormat format);
