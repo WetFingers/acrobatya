@@ -19,9 +19,16 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
+
+struct fz_context;
+
+namespace ot {
+class Document;
+}
 
 namespace ot::annot {
 
@@ -72,5 +79,36 @@ GlyphMetrics glyphMetrics(std::string_view family, char32_t c);
 // — одна пустая строка.
 std::vector<std::u32string> wrapText(std::u32string_view text, float width,
                                      const std::function<float(char32_t)>& advance);
+
+// Встроенный шрифт текста поля формы (план 6.1; эталон 3.6 «поля без /DA для кириллицы — /DA со встроенным
+// TrueType»): тот же шрифт, что у FreeText, — семейство kTextFonts из %WINDIR%\Fonts, Type0 Identity-H с
+// /ToUnicode в /AcroForm /DR /Font под именем ресурса (поля одного семейства делят его, пока хватает глифов).
+// Поток — поток документа (контекст ctx).
+class FieldFont {
+public:
+    // Шрифт семейства family (имя ресурса или семейства; незнакомое — Arial); nullptr — файла нет или
+    // встраивание запрещено.
+    static std::unique_ptr<FieldFont> open(fz_context* ctx, std::string_view family);
+    ~FieldFont();
+    FieldFont(const FieldFont&) = delete;
+    FieldFont& operator=(const FieldFont&) = delete;
+
+    const TextFont& font() const noexcept;
+    // Все знаки text (кроме переводов строк) есть в шрифте.
+    bool covers(std::u32string_view text) const;
+    float advance(char32_t c) const;  // доли кегля; глифа нет — 0
+    float ascender() const noexcept;
+    float descender() const noexcept;
+    // Шрифт в /AcroForm /DR /Font с глифами text: номер объекта словаря. Внутри операции вызывающего, вне
+    // mu::call.
+    int install(Document& doc, std::u32string_view text);
+    // Строка в коде Identity-H (GID двумя байтами, шестнадцатерично).
+    std::string hex(std::u32string_view text) const;
+
+private:
+    struct Impl;
+    explicit FieldFont(std::unique_ptr<Impl> impl);
+    std::unique_ptr<Impl> impl_;
+};
 
 }  // namespace ot::annot

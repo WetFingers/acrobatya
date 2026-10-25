@@ -50,6 +50,11 @@
 
 namespace ot {
 
+namespace forms {
+class JsBridge;
+class JsHost;
+}  // namespace forms
+
 namespace sign {
 struct SignRequest;
 struct SignResult;
@@ -263,6 +268,13 @@ public:
                                                  std::shared_ptr<const sign::TrustStore> trust,
                                                  const QString& target = {});
 
+    // JavaScript документа (план 6.1; core/forms/js_bridge.h, эталон 7.2): включить с хозяином host
+    // (app.alert, консоль, просьбы сценария) — сценарии уровня документа выполняются сразу; nullptr —
+    // выключить. Мост живёт в сессии: после записи и переоткрытия движок включается снова; новый документ
+    // (open) — выключен.
+    QFuture<void> setJavaScript(std::shared_ptr<forms::JsHost> host);
+    bool javaScriptEnabled() const noexcept { return jsOn_.load(); }
+
     // С ожиданием: исключение задачи бросается здесь. Из потока документа (внутри задачи) выполняется сразу.
     template <class F>
     auto postSync(F&& fn, TaskPriority priority = TaskPriority::Urgent)
@@ -377,7 +389,9 @@ private:
     UndoState undoState_;
     std::atomic<quint64> revision_{0};
     std::atomic<quint64> layersHash_{0};
-    edit::FallbackFonts editFallback_;  // под mutex_
+    edit::FallbackFonts editFallback_;     // под mutex_
+    std::shared_ptr<forms::JsBridge> js_;  // мост JavaScript (только в потоке документа)
+    std::atomic<bool> jsOn_{false};
 };
 
 // ---------------------------------------------------------------- шаблоны

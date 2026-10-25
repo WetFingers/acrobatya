@@ -24,6 +24,7 @@
 #include "ui/tools/comment/comments_script.h"
 #include "ui/tools/edit/edit_script.h"
 #include "ui/tools/fillsign/fillsign_script.h"
+#include "ui/tools/forms/form_script.h"
 #include "ui/view/page_view.h"
 #include "ui/view/tile_painter.h"
 
@@ -342,6 +343,7 @@ void registerBaseActions(ScriptRunner& runner, MainWindow& w) {
     registerCommentScriptActions(runner, w);   // 5.1: annot.create
     registerFillSignScriptActions(runner, w);  // 5.3: fillsign.placeText/placeMark/placeSignature/flatCopy
     registerCommentsScriptActions(runner, w);  // 5.4: comment.reply/setStatus, comments.export/import/summary
+    registerFormScriptActions(runner, w);      // 6.1: form.setValue
 }
 
 int runScript(const QString& file, const QString& outDir) {

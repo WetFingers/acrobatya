@@ -680,6 +680,80 @@ FontMetrics fontMetrics(std::string_view family) {
     return m;
 }
 
+// ---------------------------------------------------------------- шрифт поля формы
+
+struct FieldFont::Impl {
+    explicit Impl(fz_context* c) : ctx(c), lib(c) {}
+    fz_context* ctx;
+    edit::FontLibrary lib;
+    edit::SystemFace face;
+    const TextFont* font = nullptr;
+    float ascender = 0.905f;
+    float descender = -0.212f;
+};
+
+FieldFont::FieldFont(std::unique_ptr<Impl> impl) : impl_(std::move(impl)) {}
+
+FieldFont::~FieldFont() = default;
+
+std::unique_ptr<FieldFont> FieldFont::open(fz_context* ctx, std::string_view family) {
+    const TextFont& font = textFont(textFontFamily(family));
+    std::optional<edit::SystemFace> face = detail::faceOf(font);
+    if (!face) {
+        return nullptr;
+    }
+    auto impl = std::make_unique<Impl>(ctx);
+    if (!impl->lib.embeddable(*face)) {
+        return nullptr;
+    }
+    fz_font* f = impl->lib.font(*face);
+    if (f == nullptr) {
+        return nullptr;
+    }
+    float ascender = 0;
+    float descender = 0;
+    mu::call(ctx, [&] {
+        ascender = fz_font_ascender(ctx, f);
+        descender = fz_font_descender(ctx, f);
+    });
+    impl->face = std::move(*face);
+    impl->font = &font;
+    impl->ascender = ascender;
+    impl->descender = descender;
+    return std::unique_ptr<FieldFont>(new FieldFont(std::move(impl)));
+}
+
+const TextFont& FieldFont::font() const noexcept { return *impl_->font; }
+
+bool FieldFont::covers(std::u32string_view text) const {
+    return std::all_of(text.begin(), text.end(), [this](char32_t c) {
+        return c == U'\n' || c == U'\r' || impl_->lib.gid(impl_->face, c) > 0;
+    });
+}
+
+float FieldFont::advance(char32_t c) const {
+    const int g = impl_->lib.gid(impl_->face, c);
+    return g > 0 ? impl_->lib.advance(impl_->face, g) : 0.0f;
+}
+
+float FieldFont::ascender() const noexcept { return impl_->ascender; }
+
+float FieldFont::descender() const noexcept { return impl_->descender; }
+
+int FieldFont::install(Document& doc, std::u32string_view text) {
+    std::set<int> needed;
+    for (const char32_t c : text) {
+        if (const int g = impl_->lib.gid(impl_->face, c); g > 0) {
+            needed.insert(g);
+        }
+    }
+    return detail::fieldFont(doc, impl_->lib, impl_->face, *impl_->font, needed);
+}
+
+std::string FieldFont::hex(std::u32string_view text) const {
+    return detail::hexOf(std::u32string(text), impl_->lib, impl_->face);
+}
+
 GlyphMetrics glyphMetrics(std::string_view family, char32_t c) {
     const TextFont& font = textFont(family);
     static std::map<std::pair<std::string, char32_t>, GlyphMetrics> cache;

@@ -14,6 +14,7 @@
 #include "core/doc/props.h"
 #include "core/edit/font_embed.h"
 #include "core/edit/font_resolver.h"
+#include "core/forms/js_bridge.h"
 #include "core/links/layers.h"
 #include "core/mu/call.h"
 #include "core/mu/context.h"
@@ -705,6 +706,17 @@ void DocumentSession::afterSave(const SaveReport& report, bool reloaded) {
         } catch (const MuError&) {  // NOLINT(bugprone-empty-catch): сводка останется прежней
         }
     }
+    if (reopened && js_ && doc_) {
+        // Saver переоткрыл документ — движок JavaScript MuPDF новый: включить снова (сценарии уровня
+        // документа выполнятся ещё раз, как при открытии в Acrobat).
+        try {
+            js_->attach(*doc_);
+        } catch (const std::exception& e) {
+            spdlog::warn("js: cannot re-enable after save: {}", e.what());
+            js_.reset();
+            jsOn_.store(false);
+        }
+    }
     refreshUndoState();
     // Переоткрытый документ — снова в конфигурации слоёв /D.
     const quint64 layers = doc_ ? layersHashOf(*doc_) : 0;
@@ -714,6 +726,29 @@ void DocumentSession::afterSave(const SaveReport& report, bool reloaded) {
     if (report.ok()) {
         emit saved(path());
     }
+}
+
+QFuture<void> DocumentSession::setJavaScript(std::shared_ptr<forms::JsHost> host) {
+    return post(
+        [this, host = std::move(host)](TaskContext& tc) {
+            if (!tc.hasDocument() || tc.document().pdf() == nullptr) {
+                return;
+            }
+            Document& doc = tc.document();
+            if (js_) {
+                js_->detach(doc);
+                js_.reset();
+                jsOn_.store(false);
+            }
+            if (host) {
+                auto bridge = std::make_shared<forms::JsBridge>(host);
+                bridge->attach(doc);
+                js_ = std::move(bridge);
+                jsOn_.store(true);
+            }
+            refreshUndoState();
+        },
+        TaskPriority::Urgent, QStringLiteral("javascript"));
 }
 
 void DocumentSession::refreshLayout() {
@@ -850,6 +885,8 @@ QFuture<OpenSummary> DocumentSession::recoverAsync(const QString& autosaveDir, c
 }
 
 void DocumentSession::install(std::unique_ptr<Document> doc, OpenSummary& s, const QString& path) {
+    js_.reset();  // новый документ — JavaScript выключен, пока окно не решит по политике
+    jsOn_.store(false);
     if (doc) {
         try {
             s.isPdf = doc->isPdf();

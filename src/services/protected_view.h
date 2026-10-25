@@ -52,6 +52,10 @@ bool isTrusted(const QString& path, StateDb& db);
 // «Включить все функции»: запомнить отпечаток файла. false — файла нет или база не открыта.
 bool trust(const QString& path);
 bool trust(const QString& path, StateDb& db);
+// То же для другой области доверия (scope): «protectedView», «javascript» (6.1: «Включить для этого файла»,
+// эталон 7.2, security-40) — один ключ fileKey, своя строка trusted_files.
+bool isTrustedFor(const QString& path, const QString& scope, StateDb& db);
+bool trustFor(const QString& path, const QString& scope, StateDb& db);
 
 // Решение для открываемого файла (attachment — PDF-вложение из временной папки): режим, свои файлы и
 // привилегированные папки, вложение, Zone.Identifier, временные папки.

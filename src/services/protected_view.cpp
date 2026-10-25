@@ -124,20 +124,24 @@ QString fileKey(const QString& path) {
 
 bool isTrusted(const QString& path) { return isTrusted(path, StateDb::shared()); }
 
-bool isTrusted(const QString& path, StateDb& db) {
+bool isTrusted(const QString& path, StateDb& db) { return isTrustedFor(path, QLatin1String(kScope), db); }
+
+bool trust(const QString& path) { return trust(path, StateDb::shared()); }
+
+bool trust(const QString& path, StateDb& db) { return trustFor(path, QLatin1String(kScope), db); }
+
+bool isTrustedFor(const QString& path, const QString& scope, StateDb& db) {
     const QString key = fileKey(path);
     if (key.isEmpty() || !db.isOpen()) {
         return false;
     }
     const std::lock_guard lock(db.mutex());
     SqlStatement st(db.handle(), "SELECT 1 FROM trusted_files WHERE key = ?1 AND scope = ?2");
-    st.text(1, key).text(2, QLatin1String(kScope));
+    st.text(1, key).text(2, scope);
     return st.step() == SQLITE_ROW;
 }
 
-bool trust(const QString& path) { return trust(path, StateDb::shared()); }
-
-bool trust(const QString& path, StateDb& db) {
+bool trustFor(const QString& path, const QString& scope, StateDb& db) {
     const QString key = fileKey(path);
     if (key.isEmpty() || !db.isOpen()) {
         return false;
@@ -148,12 +152,12 @@ bool trust(const QString& path, StateDb& db) {
         "INSERT INTO trusted_files(key, scope, path, trusted_at) VALUES(?1, ?2, ?3, ?4) "
         "ON CONFLICT(key, scope) DO UPDATE SET path = excluded.path, trusted_at = excluded.trusted_at");
     st.text(1, key)
-        .text(2, QLatin1String(kScope))
+        .text(2, scope)
         .text(3, QFileInfo(path).absoluteFilePath())
         .integer(4, QDateTime::currentSecsSinceEpoch());
     const bool ok = st.run();
     if (ok) {
-        spdlog::info("protected view: all features enabled for {}", path.toStdString());
+        spdlog::info("trusted files: {} enabled for {}", scope.toStdString(), path.toStdString());
     }
     return ok;
 }

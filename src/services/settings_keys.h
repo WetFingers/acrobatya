@@ -81,6 +81,17 @@ inline constexpr StringKey kRecolorBackground{"reading/recolorBackground", "#FFF
 inline constexpr BoolKey kRecolorLineArt{"reading/recolorLineArt", true};       // «…и векторной графики»
 inline constexpr BoolKey kRecolorOnlyBlack{"reading/recolorOnlyBlack", false};  // «только чёрный текст…»
 
+// --- Формы (forms/; эталон 3.6, 3.18; план 6.1; forms-02, forms-43; страница Установок «Формы» — 6.1, п. 5)
+// --- Подсветка полей (кнопка «Подсветить поля» фиолетовой полосы — то же), свои цвета подсветки и
+// обязательных полей (пусто — токены formField и err темы), автопересчёт после правки поля, рамка фокуса
+// поля, фиолетовая полоса «Документ содержит поля». Автозаполнения нет (forms-04 вне объёма).
+inline constexpr BoolKey kFormHighlight{"forms/highlightFields", false};
+inline constexpr StringKey kFormFieldColor{"forms/fieldColor", ""};
+inline constexpr StringKey kFormRequiredColor{"forms/requiredColor", ""};
+inline constexpr BoolKey kFormAutoCalculate{"forms/autoCalculate", true};
+inline constexpr BoolKey kFormFocusRect{"forms/focusRect", true};
+inline constexpr BoolKey kFormShowBar{"forms/showBar", true};
+
 // --- Доверие (trust/; Диспетчер доверия целиком — 7.6) ---
 inline constexpr BoolKey kAllowOpenAttachments{"trust/allowOpenAttachments", true};
 // Защищённый просмотр (2.5b, security-35; эталон 7.5): «Выкл.» / «Файлы из потенциально опасных расположений»
@@ -92,6 +103,9 @@ inline constexpr ListKey kTrustedFolders{"trust/trustedFolders"};
 // Доступ PDF к сайтам (security-42; эталон 7.4): сайт не из списка — спросить / открывать все / запретить
 // все.
 inline constexpr StringKey kInternetAccess{"trust/internetAccess", "ask", "ask|allowAll|blockAll"};
+// JavaScript документов (эталон 7.2; security-37, security-40; план 6.1): «выкл.» / «только доверенные папки
+// и файлы» («Включить для этого файла» — state.sqlite) / «все документы» (кроме защищённого просмотра).
+inline constexpr StringKey kJavaScript{"trust/javascript", "trusted", "off|trusted|all"};
 // Сеть самой программы (эталон 7.4; security-36; план 4.1): «разрешена» / «только подписи» (TSA, OCSP, CRL,
 // AIA, списки доверия) / «выключена» — services/http_fetcher.h, единая точка сети.
 inline constexpr StringKey kNetworkAccess{"trust/network", "allowed", "allowed|signaturesOnly|off"};
