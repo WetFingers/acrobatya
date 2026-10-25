@@ -2732,3 +2732,63 @@
 - Проверки: verify.py зелёный (728 тестов); `compat.annots` — 34 рамки без расхождений, `compat_check.py` по
   `stamps.pdf` — qpdf, pdfcpu strict, mutool clean, pypdfium2 зелёные; сцены: stamps-palette, stamps-palette-dark,
   annot-stamp-custom, annot-stamp-dynamic, annot-attachment (просмотрены).
+
+### 2026-10-25 · Сессия 5.3 · Fill & Sign: текст, отметки, подпись и инициалы, умное размещение
+- Сделано:
+  1. **Захват подписи и хранилище**: `SignatureCaptureDialog` — «Набрать» (имя из Identity, у инициалов — первые
+     буквы; Segoe Script / Segoe Print), «Нарисовать» (`SignaturePad`, сглаженные кривые → PNG с альфой),
+     «Картинка» (PNG/JPEG, белый фон по порогу яркости → прозрачность, «Сохранить исходный цвет»), чернила
+     чёрные/синие/красные (`kSignatureInkColors`), «Сохранить подпись»; службы `saved_signatures` (`<данные>/
+     signatures/{signature,initials}.png` через QSaveFile) и `signature_image`; плоская анкета
+     `tests/fixtures/forms/flat/anketa.pdf` + `flat.json` (`tools/gen/make_flat_forms.ps1` → `.py`, в `make_all`).
+     `unit.saved_signatures`, `ui.signature_capture`; сцены fill-sign-capture-type, -draw, -image. sign-01, sign-02.
+  2. **Текст, отметки и умное размещение**: `core/annot/fillsign` — геометрия бланка по векторам
+     COLLECT_VECTORS, `placeText` (замкнутая клетка — от края по центру высоты; иначе линия под точкой — базовая
+     линия на 2 пт над линией; кегль 0,55 клетки в 6–12 пт), гребёнки из смежных рамок и из засечек (не меньше 4
+     клеток равного шага) — по символу в клетку одним шагом, отметки ✓ ✕ ● — ▭ глифами Segoe UI Symbol (центр — по
+     рамке глифа `fz_bound_glyph`), FreeText без рамки /IT FreeTextTypeWriter; `FillSignTool` в `ToolRegistry` и
+     `FillSignMode` (`ViewToolId::FillSign`): пунктир найденной клетки, `InlineTextEditor` и `CombEditor`, щелчок по
+     своему полю — правка, перемещение, ручки и Del — `AnnotSelectTool` прямо в режиме; команда `sign.fillSign`.
+     `unit.fillsign_placement` (7, ожидания из flat.json), `ui.fillsign_text`; сцены fill-sign-text, -comb, -marks.
+     forms-07, comment-09.
+  3. **Размещение подписи и плоская копия**: подпись и инициалы — /Stamp с картинкой (/Name FillSignSignature и
+     FillSignInitials, шаги «Add signature», «Add initials»), щелчок над линией — высотой в 1,3 клетки низом за
+     линию, протягивание — в рамке; меню «Подпись ▾» и «Инициалы ▾» (сохранённая, крестик, «Добавить…»); цвет
+     выбранной подписи (`stampImage`, `setStampImage`, шаг «Set signature color»); «Сохранить как → Плоская копия»
+     (флажок `SaveAsDialog`, `SaveOptions::flattenAnnotations` — `pdf_bake_document(1, 0)` в копии); подписанный
+     документ — предупреждение панели, запись инкрементом, подпись цела; AcroForm — подсказка «Заполнить форму».
+     `ui.fillsign_place`, `unit.fillsign_compat`, `compat.fillsign`; сцены fill-sign-placed, -flatten-dialog.
+  4. **Сцены и сценарий 3**: `--script` `fillsign.placeText`, `fillsign.placeMark`, `fillsign.placeSignature`
+     (штрихи, картинка или сохранённая; `save`), `fillsign.flatCopy`; `tests/scripts/fillsign.json`; тёмные сцены
+     fill-sign-text-dark, -capture-draw-dark, -placed-dark, `ui.shots` — `stage5fillsign`; `ui.script_fillsign`.
+- Решения:
+  - Гребёнка — по отдельному FreeText на клетку одним шагом истории (у FreeText нет «comb»; так буквы ровно в
+    клетках и в Reader, и после правки одной). Шрифт гребёнки — Arial (цифры одной ширины): Courier New добавлял
+    третий шрифт в файл (+60 КБ).
+  - «Текст» и отметки остаются выбранными (анкету заполняют подряд), подпись и инициалы после постановки
+    возвращают «Текст»; поставленное сразу выбрано — двигается, растягивается, удаляется без смены инструмента.
+  - Шрифт /DA поля FreeText (5.2) больше не «тяжёлая» правка (`FontEmbedder::setHeavy(false)`, `subsetFont(…,
+    false)`): иначе запись Fill & Sign на подписанном документе требовала полной перезаписи и ломала подпись
+    (эталон 3.5 — инкремент); текстовые поля комментариев теперь тоже пишутся инкрементом.
+  - Плоская копия — только копия (`Saver::saveCopy`): документ с комментариями остаётся на своём файле и с
+    историей; в `SaveAsDialog` флажок включает полную запись. Виджеты полей не впекаются (annots=1, widgets=0).
+  - Плоская анкета генерируется Python (`make_flat_forms.py`, своя геометрия с ожиданиями), а
+    `make_flat_forms.ps1` из плана — его вход; анкеты из Word добавит 6.4.
+  - Отдельное действие `fillsign.placeMark` (в плане — только placeText и placeSignature): галочка текстом Arial
+    не рисуется (нет глифа ✓).
+- Подводные камни:
+  - MuPDF 1.28.5 `pdf_set_annot_rect` у любого FreeText «пересчитывает выноску» и пишет /CL от (0, 0) к краю поля:
+    «Выбор объектов» показывал маркер вершины в углу страницы. Вид FreeText ядра снимает /CL без /IT
+    /FreeTextCallout, `readProps` отдаёт /CL только выноске (регрессия — в `unit.fillsign_placement`).
+  - `pdf_add_image` кладёт распакованный PNG без фильтра, а инкрементальная запись потоки не сжимает: подпись
+    давала 170 КБ растра и 56 КБ /SMask. Картинка штампа и маска сжимаются FlateDecode в ядре (инкремент сценария
+    453 → 165 КБ; касается и картинок-штампов 5.2). Подмножества шрифтов MuPDF всё ещё крупные (Arial около 64 КБ
+    сжатым) — заметка на 9.3.
+  - Unity-сборка: новые файлы сдвинули группы — `font_info.cpp` не включал `core/mu/context.h`; сцены Fill & Sign
+    — в именованном пространстве `fillsign_scene` (анонимные имена соседних сцен совпадают).
+  - Длинные heredoc в Bash ломаются («unexpected EOF») или ловятся хуком — правки скриптами-файлами Python.
+- Замеры: unit_tests — 6–30 с инкрементом, ui_tests — 10–40 с; `ui.fillsign_*` — 1–2 с; `compat.fillsign` — 3 с;
+  verify.py — около 90 с.
+- Проверки: verify.py зелёный; `compat.fillsign` (qpdf, pdfcpu strict, mutool clean, pypdfium2) зелёный; сцены:
+  fill-sign-capture-type, -capture-draw, -capture-image, -text, -comb, -marks, -placed, -flatten-dialog,
+  -text-dark, -capture-draw-dark, -placed-dark (просмотрены).

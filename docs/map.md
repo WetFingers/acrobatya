@@ -3,7 +3,36 @@
 Где что лежит и как добавляется типовая вещь. Сессия читает этот файл **первым**, до поиска по коду.
 Дерево и состав — эталон `docs/design.md` 5.1–5.3; здесь — короткий путеводитель и рецепты.
 
-> **Состояние: сессия 5.2 — текстовое поле и выноска, фигуры, свойства комментария, штампы и вложения**.
+> **Состояние: сессия 5.3 — «Заполнить и подписать»: текст, отметки, подпись и инициалы, умное размещение**.
+> `core/annot/` — `fillsign.h` (`geometryOf(vectors, lines)` → `PageGeometry{horizontal, vertical, checks, text}` —
+> линии, края рамок (сдвиг на полутолщину), засечки и флажки из `TextPage::Options{collectVectors}`; `placeText` →
+> `Placement{kind Line|Box|Comb|None, field, x, baseline, fontSize, cellHeight, cells}` — замкнутая клетка, иначе
+> линия под точкой (до 30 пт) или чуть над ней (до 6), кегль 0,55 клетки в 6–12 пт, гребёнка ≥ 4 клеток равного
+> шага; `placeMark` — флажок; `textProps`/`combProps`/`markProps` — FreeText без рамки /IT FreeTextTypeWriter,
+> `textBoxRect` по метрикам; `Mark` ✓ ✕ ● — ▭; `createAll` — одним шагом), в `freetext.h` — `kSymbolFont` (Segoe
+> UI Symbol), `fontMetrics`, `glyphMetrics`; вид FreeText снимает лишний /CL (MuPDF 1.28.5 `pdf_set_annot_rect` пишет
+> его любому FreeText), `readProps` отдаёт /CL только выноске; шрифт поля — лёгкая правка
+> (`FontEmbedder::setHeavy(false)`, `subsetFont(…, heavy)`: инкремент, подписи целы); в `stamps.h` — `stampImage`
+> (PNG с альфой из /SMask), `setStampImage`; картинка штампа и /SMask сжимаются FlateDecode; в `core/doc/saver.h` —
+> `SaveOptions::flattenAnnotations` (только `saveCopy`: `pdf_bake_document(1, 0)`, полная запись); службы —
+> `saved_signatures.h` (`SavedSignatures` — `<данные>/signatures/{signature,initials}.png`, `SignatureKind`),
+> `signature_image.h` (`removeBackground`, `cropToInk`, `recolor`, `strokesToImage`, `typedImage` — Segoe Script/Print,
+> `initialsOf`, `inkComponents`, `toPng`), `fillsign_ops.h` (`geometry`, `createAll`, `createSignature` — /Stamp
+> `/FillSignSignature`/`/FillSignInitials`, `setSignatureColor`, `stampImage`; шаги «Add mark», «Add signature», «Add
+> initials», «Set signature color»); ui — `ui/tools/fillsign/` (`FillSignTool` — id `fillsign`, панель: «Добавить
+> текст», отметки, «Подпись ▾»/«Инициалы ▾» (`signatureMenu`, `useSaved`, `addSignature`, `removeSaved`), кегль и
+> цвет (выбранному тексту — цвет, подписи — `setSignatureColor`), «Плоская копия…», подсказка «Заполнить форму»
+> (`summary().hasForm`), предупреждение о подписанном (`summary().isSigned`); `FillSignMode` — `ViewToolId::FillSign`
+> (`kViewToolCount` 11): кеш геометрии страниц, пунктир клетки (`hoverPlacement`), нажатие на поставленное —
+> `AnnotSelectTool` (перемещение, ручки, Del), щелчок — попадание задачей (своё поле «Текстом» — правка), `placeAt`,
+> `placeSignature`; `CombEditor`; `SignatureCaptureDialog` + `SignaturePad`; `fillsign_script` — `--script`
+> `fillsign.placeText/placeMark/placeSignature/flatCopy`), команда `sign.fillSign`, `SaveAsDialog::flatCopyBox`,
+> `SaveFlow::saveFlatCopy`; токены `kSignatureInkColors`, `signatureDialog*`, `signaturePadHeight`; фикстура
+> `tests/fixtures/forms/flat/` (`tools/gen/make_flat_forms.ps1` → `.py`, ожидания `flat.json`); сцены `fill-sign-*`
+> (+ три `-dark`); ctest `unit.saved_signatures`, `unit.fillsign_placement`, `unit.fillsign_compat`,
+> `ui.signature_capture`, `ui.fillsign_text`, `ui.fillsign_place`, `ui.script_fillsign`, `compat.fillsign`;
+> `tests/scripts/fillsign.json` (сценарий 3).
+> Из 5.2 — текстовое поле и выноска, фигуры, свойства комментария, штампы и вложения.
 > `core/annot/` — `freetext.h` (свой вид FreeText: шрифт /DA — `kTextFonts` (Segoe UI, Arial, Times New Roman, Courier
 > New), встроенный Type0 Identity-H в /AcroForm /DR, `textFont`/`textFontFamily`, `wrapText`; выноска /IT
 > FreeTextCallout + /CL + /LE, /RD, /Rotate), `stamps.h` (`StampSource{pdf, page, name, lines}` → `createStamp` — страница
