@@ -19,6 +19,7 @@ extern "C" {
 #include "core/doc/journal.h"
 #include "core/edit/content_model.h"
 #include "core/mu/call.h"
+#include "core/mu/context.h"
 #include "core/mu/error.h"
 #include "core/mu/handles.h"
 #include "core/util/paths.h"

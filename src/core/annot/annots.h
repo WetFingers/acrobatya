@@ -224,6 +224,7 @@ struct AnnotProps {
 // Изменяемые свойства (update): заданные поля пишутся, остальные остаются.
 struct AnnotPatch {
     std::optional<std::string> contents;
+    std::optional<std::string> richContents;  // 5.4: /RC (пусто — снять)
     std::optional<std::string> author;
     std::optional<std::string> subject;
     std::optional<std::string> icon;

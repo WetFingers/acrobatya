@@ -10,6 +10,7 @@
 #include <stdexcept>
 
 #include "core/annot/annot_internal.h"
+#include "core/annot/comments.h"
 #include "core/doc/document.h"
 #include "core/doc/journal.h"
 #include "core/mu/call.h"
@@ -532,8 +533,8 @@ std::optional<AnnotInfo> annotAt(Document& doc, int page, PointF point, float to
     const AnnotInfo* best = nullptr;
     float bestDistance = std::numeric_limits<float>::infinity();
     for (auto it = list.rbegin(); it != list.rend(); ++it) {
-        if (it->type == AnnotType::Popup || it->hiddenOnScreen()) {
-            continue;
+        if (it->type == AnnotType::Popup || it->hiddenOnScreen() || isServiceAnnot(*it)) {
+            continue;  // окно записки рисует ui; ответы и статусы (5.4) — в панели и окне родителя
         }
         const float d = distanceOf(*it);
         if (d <= 0) {

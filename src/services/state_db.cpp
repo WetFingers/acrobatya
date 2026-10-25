@@ -72,6 +72,13 @@ const std::vector<std::function<void(sqlite3*)>>& migrations() {
                  "CREATE TABLE IF NOT EXISTS stamp_favorites(id TEXT PRIMARY KEY, added_at INTEGER NOT NULL "
                  "DEFAULT 0)");
         },
+        // 7: прочитанные комментарии (5.4, services/read_state.h): ключ документа, /NM, прочитан ли
+        [](sqlite3* db) {
+            exec(db,
+                 "CREATE TABLE IF NOT EXISTS comments_read(doc TEXT NOT NULL, nm TEXT NOT NULL, "
+                 "read INTEGER NOT NULL DEFAULT 1, marked_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(doc, "
+                 "nm))");
+        },
     };
     return steps;
 }

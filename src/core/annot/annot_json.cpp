@@ -99,7 +99,7 @@ std::uint32_t AnnotColor::toRgb() const noexcept {
 }
 
 bool AnnotPatch::empty() const noexcept {
-    return !contents && !author && !subject && !icon && !color && !interiorColor && !opacity &&
+    return !contents && !richContents && !author && !subject && !icon && !color && !interiorColor && !opacity &&
            !borderWidth && !borderStyle && !dash && !cloudy && !flags && !open && !popupRect && !quads &&
            !ink && !vertices && !fontSize && !textColor && !align && !fontName && !callout &&
            !lineStartStyle && !lineEndStyle && !lineStart && !lineEnd && !cloudIntensity && !rect;

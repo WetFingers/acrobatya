@@ -68,6 +68,11 @@ fz_matrix rawMatrix(fz_matrix ctm, fz_matrix pageSpace);
 // разметка, каретка); значки и штампы вписываются в рамку.
 bool resynthesizeOnResize(AnnotType type) noexcept;
 
+// Создать одну аннотацию по props внутри операции вызывающего (annot_edit.cpp): irt > 0 — /IRT на этот
+// объект и /RT rt; autoPopup = false — у записки без окна /Popup (ответы и статусы 5.4). Вне mu::call.
+AnnotRef createIn(Document& doc, PageAnnots& pa, const AnnotProps& props, int irt, const char* rt,
+                  bool autoPopup = true);
+
 // Секунды Unix «сейчас».
 std::int64_t now();
 

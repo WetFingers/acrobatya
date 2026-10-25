@@ -523,8 +523,10 @@ fz_rect popupFor(const AnnotProps& p, fz_rect page) {
     return fz_make_rect(x0, y0, x0 + kW, y0 + kH);
 }
 
-// Создать одну аннотацию на странице (внутри операции вызывающего).
-AnnotRef createIn(Document& doc, PageAnnots& pa, const AnnotProps& props, int irt, const char* rt) {
+// Создать одну аннотацию на странице (внутри операции вызывающего); autoPopup = false — у записки без окна
+// (ответы и статусы 5.4).
+AnnotRef createIn(Document& doc, PageAnnots& pa, const AnnotProps& props, int irt, const char* rt,
+                  bool autoPopup = true) {
     if (!canCreate(props.type)) {
         detail::badArgument("annotation type " + std::string(annotTypeName(props.type)) +
                             " cannot be created");
@@ -550,7 +552,7 @@ AnnotRef createIn(Document& doc, PageAnnots& pa, const AnnotProps& props, int ir
     pdf_document* pdf = pa.pdf();
     fz_rect pageRect{};
     mu::call(ctx, [&] { pageRect = fz_bound_page(ctx, reinterpret_cast<fz_page*>(pa.page())); });
-    const fz_rect popup = popupFor(p, pageRect);
+    const fz_rect popup = autoPopup || p.hasPopup() ? popupFor(p, pageRect) : fz_empty_rect;
     mu::BufferHandle file(ctx);
     if (!p.fileData.empty()) {
         mu::call(ctx, [&] {
@@ -566,7 +568,27 @@ AnnotRef createIn(Document& doc, PageAnnots& pa, const AnnotProps& props, int ir
         objnum = pdf_to_num(ctx, pdf_annot_obj(ctx, annot));
         applyNew(ctx, pdf, annot, p, prep, popup, irt, rt, created, modified, nm.c_str(), file.get());
     });
-    pa.refresh();
+    bool dropped = false;
+    if (!autoPopup && !p.hasPopup()) {
+        // pdf_create_annot даёт записке и вложению окно /Popup всегда — ответу и статусу оно не нужно.
+        mu::call(ctx, [&] {
+            pdf_obj* obj = pdf_annot_obj(ctx, annot);
+            pdf_obj* pop = pdf_dict_get(ctx, obj, PDF_NAME(Popup));
+            if (pop == nullptr) {
+                return;
+            }
+            const int num = pdf_to_num(ctx, pop);
+            pdf_obj* arr = pdf_dict_get(ctx, page->obj, PDF_NAME(Annots));
+            for (int i = pdf_array_len(ctx, arr) - 1; i >= 0; --i) {
+                if (num > 0 && pdf_to_num(ctx, pdf_array_get(ctx, arr, i)) == num) {
+                    pdf_array_delete(ctx, arr, i);
+                }
+            }
+            pdf_dict_del(ctx, obj, PDF_NAME(Popup));
+            dropped = true;
+        });
+    }
+    pa.refresh(dropped);
     if (p.type == AnnotType::FreeText) {
         detail::writeFreeText(doc, pa, objnum);
     }
@@ -579,6 +601,13 @@ void applyPatch(fz_context* ctx, pdf_annot* a, const AnnotPatch& patch, const Pr
     const bool freeText = pdf_annot_type(ctx, a) == PDF_ANNOT_FREE_TEXT;
     if (patch.contents) {
         pdf_set_annot_contents(ctx, a, patch.contents->c_str());
+    }
+    if (patch.richContents) {
+        if (patch.richContents->empty()) {
+            pdf_dict_del(ctx, obj, PDF_NAME(RC));
+        } else {
+            pdf_dict_put_text_string(ctx, obj, PDF_NAME(RC), patch.richContents->c_str());
+        }
     }
     if (patch.author) {
         pdf_dict_put_text_string(ctx, obj, PDF_NAME(T), patch.author->c_str());
@@ -703,6 +732,11 @@ void applyPatch(fz_context* ctx, pdf_annot* a, const AnnotPatch& patch, const Pr
 }
 
 }  // namespace annot_edit_detail
+
+AnnotRef detail::createIn(Document& doc, PageAnnots& pa, const AnnotProps& props, int irt, const char* rt,
+                          bool autoPopup) {
+    return annot_edit_detail::createIn(doc, pa, props, irt, rt, autoPopup);
+}
 
 std::string createStepName(AnnotType type) {
     switch (type) {
