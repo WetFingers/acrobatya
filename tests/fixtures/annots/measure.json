@@ -1,0 +1,148 @@
+{
+  "generator": "tools/gen/make_measure.py",
+  "coordinates": "points, origin top-left (MuPDF page space)",
+  "page": [
+    595.2756,
+    841.8898
+  ],
+  "files": {
+    "measure-viewport.pdf": {
+      "viewports": [
+        {
+          "name": "Plan",
+          "bbox": [
+            60,
+            81.89,
+            540,
+            521.89
+          ],
+          "ratio": "1 cm = 1 m",
+          "unit": "m",
+          "units_per_point": 0.035277777777777776,
+          "precision": 2,
+          "inside": [
+            200,
+            241.89
+          ]
+        },
+        {
+          "name": "Node A",
+          "bbox": [
+            100,
+            561.89,
+            300,
+            741.89
+          ],
+          "ratio": "1 in = 10 ft",
+          "unit": "ft",
+          "units_per_point": 0.1388888888888889,
+          "precision": 1,
+          "inside": [
+            150,
+            661.89
+          ]
+        }
+      ],
+      "outside": [
+        400,
+        641.89
+      ],
+      "vertices": [
+        [
+          80.0,
+          501.89
+        ],
+        [
+          520.0,
+          501.89
+        ],
+        [
+          520.0,
+          101.89
+        ],
+        [
+          80.0,
+          101.89
+        ],
+        [
+          300,
+          301.89
+        ],
+        [
+          300,
+          101.89
+        ],
+        [
+          80,
+          301.89
+        ],
+        [
+          320,
+          461.89
+        ],
+        [
+          480,
+          381.89
+        ],
+        [
+          380,
+          301.89
+        ],
+        [
+          430,
+          251.89
+        ],
+        [
+          120,
+          701.89
+        ],
+        [
+          264,
+          701.89
+        ],
+        [
+          264,
+          629.89
+        ],
+        [
+          120,
+          629.89
+        ]
+      ],
+      "not_vertices": [
+        [
+          320,
+          381.89
+        ],
+        [
+          480,
+          461.89
+        ],
+        [
+          380,
+          271.89
+        ],
+        [
+          400,
+          251.89
+        ]
+      ],
+      "measurements": [
+        {
+          "nm": "measure-distance-1",
+          "kind": "distance",
+          "value": 15.5222,
+          "unit": "m",
+          "caption": "15.52 m"
+        },
+        {
+          "nm": "measure-area-1",
+          "kind": "area",
+          "value": 54.759,
+          "unit": "sq m",
+          "caption": "54.76 sq m"
+        }
+      ]
+    }
+  }
+}

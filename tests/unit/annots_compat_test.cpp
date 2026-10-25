@@ -3,7 +3,8 @@
 // создаваемых типов на пустой странице, инкрементом), наш рендер страницы 144 dpi (*.ours.png) и regions.json
 // — рамки аннотаций с внешним видом в пикселях; tools/compat_annots.py рендерит их pypdfium2 и сверяет imgcmp
 // --cross в каждой рамке; 5.2 — stamps.pdf: свои штампы assets/stamps (векторный вид из display list,
-// динамический со строками, повёрнутый /Matrix) и штамп-картинка, инкрементом. Отключён: запускает ctest
+// динамический со строками, повёрнутый /Matrix) и штамп-картинка, инкрементом; 5.5 — measure.pdf: измерения
+// (расстояние с подписью /Cap кириллицей и выносными линиями, периметр, площадь). Отключён: запускает ctest
 // compat.annots.generate.
 #include <gtest/gtest.h>
 
@@ -15,6 +16,7 @@
 
 #include "core/annot/annots.h"
 #include "core/annot/defaults.h"
+#include "core/annot/measure.h"
 #include "core/annot/stamps.h"
 #include "core/doc/document.h"
 #include "core/doc/saver.h"
@@ -204,9 +206,44 @@ TEST(annots_compat, DISABLED_write) {
         const ot::SaveReport r = ot::Saver::save(*doc, stamps, {.mode = ot::SaveMode::Incremental});
         ASSERT_TRUE(r.ok()) << r.message;
     }
-    const nlohmann::json manifest = {
-        {"files", {describe(out, "matrix"), describe(out, "created"), describe(out, "stamps")}}};
+    // Измерения (5.5): расстояние с подписью кириллицей и выносными линиями, периметр, площадь — инкрементом.
+    const fs::path measures = out / "measure.pdf";
+    ot::paths::writeFile(measures, ot::test::makePdf(ot::MuContext::global(), 1));
+    {
+        auto doc = ot::Document::openOrThrow(measures);
+        ot::measure::Scale scale;
+        scale.realUnit = ot::measure::Unit::M;
+        ot::measure::MeasureProps distance;
+        distance.points = {{60, 300}, {300, 300}};
+        distance.scale = scale;
+        distance.caption = "8,47 м";
+        distance.leaderLength = 8;
+        distance.leaderExtension = 4;
+        distance.style.lineStartStyle = ot::annot::LineEnding::OpenArrow;
+        distance.style.lineEndStyle = ot::annot::LineEnding::OpenArrow;
+        ot::measure::create(*doc, 0, distance);
+        ot::measure::MeasureProps perimeter;
+        perimeter.kind = ot::measure::Kind::Perimeter;
+        perimeter.points = {{60, 400}, {200, 380}, {260, 480}};
+        perimeter.scale = scale;
+        perimeter.caption = "8,61 м";
+        perimeter.style.color = AnnotColor::rgb(0, 0, 1);
+        ot::measure::create(*doc, 0, perimeter);
+        ot::measure::MeasureProps area;
+        area.kind = ot::measure::Kind::Area;
+        area.points = {{320, 380}, {500, 380}, {500, 500}, {320, 500}};
+        area.scale = scale;
+        area.caption = "26,90 м²";
+        area.style.interiorColor = AnnotColor::rgb(1, 0.9f, 0.9f);
+        ot::measure::create(*doc, 0, area);
+        const ot::SaveReport r = ot::Saver::save(*doc, measures, {.mode = ot::SaveMode::Incremental});
+        ASSERT_TRUE(r.ok()) << r.message;
+    }
+    const nlohmann::json manifest = {{"files",
+                                      {describe(out, "matrix"), describe(out, "created"),
+                                       describe(out, "stamps"), describe(out, "measure")}}};
     ot::paths::writeFile(out / "regions.json", manifest.dump(2));
     EXPECT_EQ(manifest["files"][1]["regions"].size(), 15u);
     EXPECT_EQ(manifest["files"][2]["regions"].size(), 4u);
+    EXPECT_EQ(manifest["files"][3]["regions"].size(), 3u);
 }

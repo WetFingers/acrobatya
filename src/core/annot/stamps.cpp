@@ -13,6 +13,7 @@
 #include "core/doc/journal.h"
 #include "core/edit/system_fonts.h"
 #include "core/mu/call.h"
+#include "core/mu/context.h"
 #include "core/mu/error.h"
 #include "core/mu/handles.h"
 #include "core/util/paths.h"

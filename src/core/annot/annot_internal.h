@@ -88,6 +88,10 @@ void writeFreeText(Document& doc, PageAnnots& pa, int objnum);
 // pdf_dirty_annot: синтез обязателен). Вне mu::call.
 void updateAppearance(Document& doc, PageAnnots& pa, int objnum, bool dirty);
 
+// Шрифты base14 вида /AP /N (синтез MuPDF: штамп, подпись линии-измерения /Cap) — дописать /Widths и
+// /FontDescriptor, которых требуют PDF 2.0 и строгий pdfcpu. Вне mu::call.
+void completeBase14Fonts(fz_context* ctx, pdf_document* pdf, pdf_obj* annot);
+
 // ---------------------------------------------------------------- обмен FDF/XFDF (5.4, annot_exchange.cpp)
 
 // Набор записи: refs пусто — все аннотации, кроме окон /Popup и полей форм; иначе — refs и их ветки

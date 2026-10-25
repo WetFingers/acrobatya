@@ -36,8 +36,9 @@ bool synthesizable(std::string_view subtype) {
     return kTypes.contains(subtype);
 }
 
-// Шрифты base14 в синтезированном MuPDF виде (штамп — Times-Bold, Helv…) пишутся без /FirstChar /LastChar
-// /Widths; PDF 2.0 и строгий pdfcpu их требуют. Дописать ширины WinAnsi 32–255 по метрикам base14 MuPDF.
+// Шрифты base14 в синтезированном MuPDF виде (штамп — Times-Bold, Helv, подпись линии-измерения — HelvCYR…)
+// пишутся без /FirstChar /LastChar /Widths или без /FontDescriptor; PDF 2.0 и строгий pdfcpu их требуют.
+// Дописать ширины WinAnsi 32–255 по метрикам base14 MuPDF (если их нет) и дескриптор грани.
 void completeBase14Widths(fz_context* ctx, pdf_document* pdf, pdf_obj* annot) {
     std::vector<pdf_obj*> fonts;
     std::vector<std::string> names;
@@ -48,7 +49,9 @@ void completeBase14Widths(fz_context* ctx, pdf_document* pdf, pdf_obj* annot) {
             pdf_obj* font = pdf_dict_get_val(ctx, dict, i);
             const char* base = pdf_dict_get_name(ctx, font, PDF_NAME(BaseFont));
             if (pdf_name_eq(ctx, pdf_dict_get(ctx, font, PDF_NAME(Subtype)), PDF_NAME(Type1)) &&
-                pdf_dict_get(ctx, font, PDF_NAME(Widths)) == nullptr && base != nullptr) {
+                (pdf_dict_get(ctx, font, PDF_NAME(Widths)) == nullptr ||
+                 pdf_dict_get(ctx, font, PDF_NAME(FontDescriptor)) == nullptr) &&
+                base != nullptr) {
                 fonts.push_back(font);
                 names.emplace_back(base);
             }
@@ -60,7 +63,7 @@ void completeBase14Widths(fz_context* ctx, pdf_document* pdf, pdf_obj* annot) {
         const char* name = names[k].c_str();
         mu::call(ctx, [&] {
             base.reset(fz_new_base14_font(ctx, name));
-            if (base != nullptr) {
+            if (base != nullptr && pdf_dict_get(ctx, font, PDF_NAME(Widths)) == nullptr) {
                 pdf_obj* widths = pdf_new_array(ctx, pdf, 224);
                 for (int c = 32; c <= 255; ++c) {
                     const int gid = fz_encode_character(ctx, base, fz_unicode_from_windows_1252[c]);
@@ -71,6 +74,8 @@ void completeBase14Widths(fz_context* ctx, pdf_document* pdf, pdf_obj* annot) {
                 pdf_dict_put_int(ctx, font, PDF_NAME(FirstChar), 32);
                 pdf_dict_put_int(ctx, font, PDF_NAME(LastChar), 255);
                 pdf_dict_put_drop(ctx, font, PDF_NAME(Widths), widths);
+            }
+            if (base != nullptr) {
                 if (pdf_dict_get(ctx, font, PDF_NAME(FontDescriptor)) == nullptr) {
                     // Метрики грани base14 MuPDF (единицы 1/1000 кегля).
                     const std::string_view n(name);
@@ -110,6 +115,10 @@ bool sameDocumentName(std::string_view exchangeFile, std::string_view documentFi
 }
 
 namespace detail {
+
+void completeBase14Fonts(fz_context* ctx, pdf_document* pdf, pdf_obj* annot) {
+    completeBase14Widths(ctx, pdf, annot);
+}
 
 std::vector<AnnotRef> exchangeSet(Document& doc, const std::vector<AnnotRef>& refs) {
     std::vector<AnnotRef> out;
