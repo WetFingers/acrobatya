@@ -8,6 +8,7 @@
 #include "ui/tools/certificate/certificate_tool.h"
 #include "ui/tools/comment/comment_tool.h"
 #include "ui/tools/edit/edit_tool.h"
+#include "ui/tools/fillsign/fillsign_tool.h"
 #include "ui/tools/print/print_tool.h"
 #include "ui/tools/stub_tool.h"
 #include "ui/tools/tool_registry.h"
@@ -31,7 +32,7 @@ void registerBuiltinTools(ToolRegistry& registry) {
     registry.add(std::make_unique<EditTool>(registry));
     registry.add(stub("organize", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Упорядочить страницы"), 7));
     registry.add(std::make_unique<CommentTool>(registry));
-    registry.add(stub("fillsign", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Заполнить и подписать"), 5));
+    registry.add(std::make_unique<FillSignTool>(registry));
     registry.add(stub("prepareform", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Подготовить форму"), 6));
     registry.add(stub("create", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Создать PDF"), 7));
     registry.add(stub("combine", QT_TRANSLATE_NOOP("ot::ui::ToolRegistry", "Объединить файлы"), 7));

@@ -115,7 +115,8 @@ void ToolController::documentChanged() {
     loupe().documentChanged();
     panZoom().refresh();
     annotSelect().documentChanged();
-    for (const ViewToolId slot : {ViewToolId::Edit, ViewToolId::Sign, ViewToolId::Comment}) {
+    for (const ViewToolId slot :
+         {ViewToolId::Edit, ViewToolId::Sign, ViewToolId::Comment, ViewToolId::FillSign}) {
         if (ViewTool* tool = find(slot)) {
             tool->documentChanged();
         }
@@ -126,7 +127,8 @@ void ToolController::pageChanged(int page) {
     select().forgetPage(page);
     loupe().pageChanged(page);
     annotSelect().pageChanged(page);
-    for (const ViewToolId slot : {ViewToolId::Edit, ViewToolId::Sign, ViewToolId::Comment}) {
+    for (const ViewToolId slot :
+         {ViewToolId::Edit, ViewToolId::Sign, ViewToolId::Comment, ViewToolId::FillSign}) {
         if (ViewTool* tool = find(slot)) {
             tool->pageChanged(page);
         }

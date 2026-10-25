@@ -41,12 +41,31 @@ inline constexpr TextFont kTextFonts[] = {
     {"Courier New", "CourierNew", "cour.ttf", "CourierNewPSMT"},
 };
 inline constexpr const char* kDefaultTextFont = "Arial";
+// Шрифт отметок Fill & Sign (5.3; эталон 3.5: ✓ ✕ ● — ▭ — FreeText с символом из Segoe UI Symbol как глиф, не
+// картинка): в список «Шрифт» не входит; урезается только до знаков текста.
+inline constexpr TextFont kSymbolFont = {"Segoe UI Symbol", "SegoeUISymbol", "seguisym.ttf", "SegoeUISymbol"};
 
-// Шрифт по семейству или имени ресурса (без учёта регистра); незнакомое — Arial.
+// Шрифт по семейству или имени ресурса (без учёта регистра; и шрифт отметок); незнакомое — Arial.
 const TextFont& textFont(std::string_view name);
 // Семейство по имени шрифта /DA: наши ресурсы и семейства, Helv/Helvetica — Arial, TiRo/Times — Times New
 // Roman, Cour/Courier — Courier New; незнакомое — Arial.
 std::string textFontFamily(std::string_view name);
+
+// Метрики шрифта поля в долях кегля (fz_font_ascender/descender — как у вида FreeText): по ним Fill & Sign
+// ставит базовую линию первой строки на линию бланка. Файла нет — Arial-подобные 0,905 / −0,212.
+struct FontMetrics {
+    float ascender = 0.905f;
+    float descender = -0.212f;
+};
+FontMetrics fontMetrics(std::string_view family);
+// Глиф символа c шрифта family в долях кегля: ширина и рамка (y вверх от базовой линии); нет глифа — found
+// false.
+struct GlyphMetrics {
+    bool found = false;
+    float advance = 0;
+    float x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+};
+GlyphMetrics glyphMetrics(std::string_view family, char32_t c);
 
 // Перенос строк: абзацы по \n (\r\n, \r), внутри — по словам жадно в ширину width (advance — ширина символа в
 // тех же единицах); слово шире строки режется по символам; пробелы в конце строки отбрасываются. Пустой текст

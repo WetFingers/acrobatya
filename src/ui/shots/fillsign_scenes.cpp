@@ -1,7 +1,9 @@
 // Сцены Fill & Sign (план 5.3; эталон 3.5, 6.2 п. 4, 6.3 «Fill & Sign»): fill-sign-capture-type — «Подпись →
 // Набрать» (имя рукописным шрифтом); fill-sign-capture-draw — «Нарисовать» с росчерком из трёх штрихов;
-// fill-sign-capture-image — «Картинка»: скан подписи на сером листе, фон убран по порогу. Документ —
-// плоская анкета tests/fixtures/forms/flat/anketa.pdf.
+// fill-sign-capture-image — «Картинка»: скан подписи на сером листе, фон убран по порогу; fill-sign-text —
+// фамилия, имя и отчество на подчёркиваниях и набор даты на линии; fill-sign-comb — дата рождения в клетках и
+// набор ИНН в гребёнку; fill-sign-marks — ✓ и ✕ во флажках, ● и — у строки, «—» выбрана. Документ —
+// плоская анкета tests/fixtures/forms/flat/anketa.pdf, панель «Заполнить и подписать» открыта.
 #include <QCoreApplication>
 #include <QDir>
 #include <QImage>
@@ -14,10 +16,21 @@
 #include <functional>
 #include <vector>
 
+#include "core/annot/fillsign.h"
+#include "services/annot_ops.h"
+#include "services/document_session.h"
+#include "services/fillsign_ops.h"
 #include "ui/shell/document_view.h"
 #include "ui/shell/main_window.h"
 #include "ui/shots/scenes.h"
+#include "ui/tools/comment/inline_text_editor.h"
+#include "ui/tools/fillsign/comb_editor.h"
+#include "ui/tools/fillsign/fillsign_mode.h"
+#include "ui/tools/fillsign/fillsign_tool.h"
 #include "ui/tools/fillsign/signature_capture_dialog.h"
+#include "ui/tools/tool_registry.h"
+#include "ui/view/page_view.h"
+#include "ui/view/tool_controller.h"
 
 namespace ot::ui {
 
@@ -32,17 +45,46 @@ void markDone(MainWindow& w) { w.setProperty(kDoneProperty, true); }
 
 bool fillSignReady(QWidget* w) { return w->property(kDoneProperty).toBool() && sceneDocumentReady(w); }
 
-// Окно с анкетой; then — когда документ открыт.
+// Окно с анкетой и «Заполнить и подписать»; then — когда документ открыт.
 std::function<QWidget*()> fillSignScene(SceneStep then) {
     return withMainWindow([then](MainWindow& w) {
         w.setProperty(kDoneProperty, false);
         w.openFile(sceneFixture(QLatin1String(kAnketa)));
         QTimer::singleShot(0, &w, [&w, then] {
             if (DocumentView* doc = w.currentDocument()) {
+                ToolRegistry::instance().activate(QStringLiteral("fillsign"), doc);
                 then(w, *doc);
             }
         });
     });
+}
+
+FillSignTool& sceneTool() {
+    return *static_cast<FillSignTool*>(ToolRegistry::instance().find(QStringLiteral("fillsign")));
+}
+
+constexpr double kPageHeight = 841.8898;
+// Точка генератора анкеты (y вверх от низа) → точка страницы MuPDF.
+PointF pt(double x, double pdfY) { return {static_cast<float>(x), static_cast<float>(kPageHeight - pdfY)}; }
+
+std::string sceneText(const char* text) {
+    return QCoreApplication::translate("ot::ui::FillSignScenes", text).toStdString();
+}
+
+using GeometryStep = std::function<void(MainWindow&, DocumentView&, const fillsign::PageGeometry&)>;
+
+// Геометрия бланка первой страницы — затем then.
+void withGeometry(MainWindow& w, DocumentView& doc, GeometryStep then) {
+    fillsign::geometry(doc.session(), 0).then(&w, [&w, then](fillsign::PageGeometry g) {
+        if (DocumentView* d = w.currentDocument()) {
+            then(w, *d, g);
+        }
+    });
+}
+
+// Текст на линии щелчком в точке at (как инструмент).
+annot::AnnotProps lineText(const fillsign::PageGeometry& g, PointF at, const char* text) {
+    return fillsign::textProps(fillsign::placeText(g, at), sceneText(text), annot::AnnotColor::gray(0), 595);
 }
 
 // Росчерк из трёх штрихов в поле size: волна имени, петля и подчёркивание.
@@ -127,6 +169,87 @@ void captureImageScene(MainWindow& w, DocumentView& /*doc*/) {
     });
 }
 
+void textScene(MainWindow& w, DocumentView& doc) {
+    withGeometry(w, doc, [](MainWindow& w, DocumentView& d, const fillsign::PageGeometry& g) {
+        std::vector<annot::AnnotProps> items = {
+            lineText(g, pt(170, 724), QT_TRANSLATE_NOOP("ot::ui::FillSignScenes", "Петров")),
+            lineText(g, pt(170, 692), QT_TRANSLATE_NOOP("ot::ui::FillSignScenes", "Иван")),
+            lineText(g, pt(170, 660), QT_TRANSLATE_NOOP("ot::ui::FillSignScenes", "Сергеевич"))};
+        fillsign::createAll(d.session(), 0, std::move(items)).then(&w, [&w](std::vector<annot::AnnotRef>) {
+            DocumentView* doc = w.currentDocument();
+            if (doc == nullptr) {
+                return;
+            }
+            // Набор даты на линии «Дата» — редактор поверх страницы.
+            FillSignTool::modeOf(doc->view()).placeAt(0, QPointF(410, kPageHeight - 384));
+            QTimer::singleShot(300, &w, [&w] {
+                if (DocumentView* d2 = w.currentDocument()) {
+                    if (InlineTextEditor* editor = InlineTextEditor::active(d2->view())) {
+                        editor->setPlainText(QStringLiteral("25.10.2026"));
+                    }
+                }
+                markDone(w);
+            });
+        });
+    });
+}
+
+void combScene(MainWindow& w, DocumentView& doc) {
+    withGeometry(w, doc, [](MainWindow& w, DocumentView& d, const fillsign::PageGeometry& g) {
+        const fillsign::Placement date = fillsign::placeText(g, pt(190, 612));
+        fillsign::createAll(d.session(), 0,
+                            fillsign::combProps(date, U"01021990", annot::AnnotColor::gray(0)))
+            .then(&w, [&w](std::vector<annot::AnnotRef>) {
+                DocumentView* doc = w.currentDocument();
+                if (doc == nullptr) {
+                    return;
+                }
+                FillSignTool::modeOf(doc->view()).placeAt(0, QPointF(190, kPageHeight - 562));
+                QTimer::singleShot(300, &w, [&w] {
+                    if (DocumentView* d2 = w.currentDocument()) {
+                        if (CombEditor* comb = CombEditor::active(d2->view())) {
+                            comb->setText(QStringLiteral("7701234"));
+                        }
+                    }
+                    markDone(w);
+                });
+            });
+    });
+}
+
+void marksScene(MainWindow& w, DocumentView& doc) {
+    sceneTool().start(FillSignAction::Check);
+    withGeometry(w, doc, [](MainWindow& w, DocumentView& d, const fillsign::PageGeometry& g) {
+        const annot::AnnotColor ink = annot::AnnotColor::fromRgb(0x1A3B9C);
+        std::vector<annot::AnnotProps> items = {
+            fillsign::markProps(fillsign::Mark::Check, fillsign::placeMark(g, pt(78, 474)), ink),
+            fillsign::markProps(fillsign::Mark::Cross, fillsign::placeMark(g, pt(78, 450)), ink),
+            fillsign::markProps(fillsign::Mark::Dot, fillsign::placeMark(g, pt(64, 724), 10), ink),
+            fillsign::markProps(fillsign::Mark::Line, fillsign::placeMark(g, pt(540, 724), 16), ink),
+        };
+        fillsign::createAll(d.session(), 0, std::move(items), QString::fromLatin1(fillsign::kAddMarkStep))
+            .then(&w, [&w](std::vector<annot::AnnotRef> refs) {
+                DocumentView* doc = w.currentDocument();
+                if (doc == nullptr || refs.empty()) {
+                    markDone(w);
+                    return;
+                }
+                const annot::AnnotRef first = refs.back();  // выбрана «—» у строки: галочка во флажке видна
+                annot::list(doc->session(), 0).then(&w, [&w, first](std::vector<annot::AnnotInfo> list) {
+                    if (DocumentView* d2 = w.currentDocument()) {
+                        for (const annot::AnnotInfo& a : list) {
+                            if (a.ref == first) {
+                                d2->view().tools().annotSelect().setSelection({a});
+                            }
+                        }
+                        d2->view().viewport()->update();
+                    }
+                    markDone(w);
+                });
+            });
+    });
+}
+
 }  // namespace fillsign_scene
 
 std::vector<Scene> fillSignScenes() {
@@ -141,6 +264,9 @@ std::vector<Scene> fillSignScenes() {
     add("fill-sign-capture-type", fillsign_scene::captureTypeScene);
     add("fill-sign-capture-draw", fillsign_scene::captureDrawScene);
     add("fill-sign-capture-image", fillsign_scene::captureImageScene);
+    add("fill-sign-text", fillsign_scene::textScene);
+    add("fill-sign-comb", fillsign_scene::combScene);
+    add("fill-sign-marks", fillsign_scene::marksScene);
     return scenes;
 }
 

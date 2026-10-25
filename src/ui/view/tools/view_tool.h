@@ -59,9 +59,10 @@ enum class ViewToolId {
     AnnotSelect,
     Edit,
     Sign,
-    Comment
+    Comment,
+    FillSign
 };
-inline constexpr int kViewToolCount = 10;
+inline constexpr int kViewToolCount = 11;
 
 class ViewTool {
 public:

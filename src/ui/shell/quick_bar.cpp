@@ -104,6 +104,7 @@ void QuickBar::sync(ViewToolId tool) {
         case ViewToolId::Edit:
         case ViewToolId::Sign:
         case ViewToolId::Comment:
+        case ViewToolId::FillSign:
             break;
     }
 }

@@ -6,6 +6,8 @@
 #include <cctype>
 #include <cmath>
 #include <filesystem>
+#include <map>
+#include <mutex>
 #include <optional>
 #include <set>
 #include <stdexcept>
@@ -19,6 +21,7 @@
 #include "core/edit/font_embed.h"
 #include "core/edit/system_fonts.h"
 #include "core/mu/call.h"
+#include "core/mu/context.h"
 #include "core/mu/error.h"
 #include "core/mu/handles.h"
 #include "core/util/utf8.h"
@@ -47,6 +50,9 @@ const TextFont& textFont(std::string_view name) {
         if (sameName(name, f.family) || sameName(name, f.resource) || sameName(name, f.postscript)) {
             return f;
         }
+    }
+    if (sameName(name, kSymbolFont.family) || sameName(name, kSymbolFont.resource)) {
+        return kSymbolFont;
     }
     return kTextFonts[1];
 }
@@ -284,6 +290,9 @@ int fieldFont(Document& doc, edit::FontLibrary& lib, const edit::SystemFace& fac
     const int objnum = embedder.fontObject(face, edit::EmbedKind::Cid);
     std::set<int> gids = needed;
     for (const auto& [first, last] : kAlwaysEmbedded) {
+        if (&font == &kSymbolFont) {
+            break;  // шрифт отметок — только знаки текста
+        }
         for (char32_t u = first; u <= last; ++u) {
             if (const int g = lib.gid(face, u); g > 0) {
                 gids.insert(g);
@@ -527,6 +536,11 @@ void writeFreeText(Document& doc, PageAnnots& pa, int objnum) {
         if (daFont != resource) {
             pdf_set_annot_default_appearance(ctx, a, resource, s.size, s.colorN, s.color.data());
         }
+        if (!s.isCallout) {
+            // MuPDF 1.28.5 pdf_set_annot_rect «пересчитывает выноску» любому FreeText и пишет /CL от (0, 0) к
+            // краю поля — у поля без выноски /CL не нужен (ISO 32000: только при /IT /FreeTextCallout).
+            pdf_dict_del(ctx, obj, PDF_NAME(CL));
+        }
         if (s.rotate != 0) {
             pdf_dict_put_int(ctx, obj, PDF_NAME(Rotate), s.rotate);
         } else {
@@ -632,5 +646,65 @@ void updateAppearance(Document& doc, PageAnnots& pa, int objnum, bool dirty) {
 }
 
 }  // namespace detail
+
+namespace {
+
+std::mutex& metricsMutex() {
+    static std::mutex m;
+    return m;
+}
+
+}  // namespace
+
+FontMetrics fontMetrics(std::string_view family) {
+    const TextFont& font = textFont(family);
+    static std::map<std::string, FontMetrics> cache;
+    const std::lock_guard lock(metricsMutex());
+    if (const auto it = cache.find(font.family); it != cache.end()) {
+        return it->second;
+    }
+    FontMetrics m;
+    if (const std::optional<edit::SystemFace> face = detail::faceOf(font)) {
+        fz_context* ctx = MuContext::forThisThread().get();
+        edit::FontLibrary lib(ctx);
+        if (fz_font* f = lib.font(*face)) {
+            mu::call(ctx, [&] {
+                m.ascender = fz_font_ascender(ctx, f);
+                m.descender = fz_font_descender(ctx, f);
+            });
+        }
+    }
+    cache.emplace(font.family, m);
+    return m;
+}
+
+GlyphMetrics glyphMetrics(std::string_view family, char32_t c) {
+    const TextFont& font = textFont(family);
+    static std::map<std::pair<std::string, char32_t>, GlyphMetrics> cache;
+    const std::lock_guard lock(metricsMutex());
+    const auto key = std::make_pair(std::string(font.family), c);
+    if (const auto it = cache.find(key); it != cache.end()) {
+        return it->second;
+    }
+    GlyphMetrics g;
+    if (const std::optional<edit::SystemFace> face = detail::faceOf(font)) {
+        fz_context* ctx = MuContext::forThisThread().get();
+        edit::FontLibrary lib(ctx);
+        fz_font* f = lib.font(*face);
+        const int gid = lib.gid(*face, c);
+        if (f != nullptr && gid > 0) {
+            g.found = true;
+            g.advance = lib.advance(*face, gid);
+            fz_rect box{};
+            mu::call(ctx, [&] { box = fz_bound_glyph(ctx, f, gid, fz_identity); });
+            g.x0 = box.x0;
+            g.y0 = box.y0;
+            g.x1 = box.x1;
+            g.y1 = box.y1;
+        }
+    }
+    cache.emplace(key, g);
+    return g;
+}
 
 }  // namespace ot::annot

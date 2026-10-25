@@ -217,7 +217,8 @@ std::optional<AnnotProps> readFrom(PageAnnots& pa, int objnum) {
         p.textColor = colorOf(r.daN, r.da);
     }
     p.align = r.quadding;
-    for (int i = 0; i < r.calloutN && i < 3; ++i) {
+    // /CL значим только у выноски (ISO 32000, табл. 174); у прочих FreeText его мог оставить MuPDF.
+    for (int i = 0; i < r.calloutN && i < 3 && p.intent == "FreeTextCallout"; ++i) {
         p.callout.push_back({r.callout[i].x, r.callout[i].y});
     }
     if (r.hasPopup != 0) {

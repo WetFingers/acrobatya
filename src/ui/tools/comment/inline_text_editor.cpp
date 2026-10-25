@@ -174,7 +174,7 @@ bool InlineTextEditor::focusStaysNear() const {
     // Панель инструмента («Формат текста») и всплывающие меню фокус не забирают — правка продолжается.
     for (const QWidget* w = QApplication::focusWidget(); w != nullptr; w = w->parentWidget()) {
         if (w == this || w->objectName() == QLatin1String("commentToolPanel") ||
-            qobject_cast<const QMenu*>(w)) {
+            w->objectName() == QLatin1String("fillSignToolPanel") || qobject_cast<const QMenu*>(w)) {
             return true;
         }
     }

@@ -540,12 +540,16 @@ void MainWindow::registerCommands() {
            .menu = QStringLiteral("tools"),
            .separatorBefore = true});
 
-    // Подпись: «Заполнить и подписать» — этап 5; цифровая подпись, сертификация, метка времени, проверка и
-    // удостоверения — команды инструмента «Использовать сертификат» (4.6, CertificateTool::commands).
-    r.add({.id = QStringLiteral("sign.fillSign"),
-           .title = tr("&Заполнить и подписать"),
-           .menu = QStringLiteral("sign"),
-           .stage = 5});
+    // Подпись: «Заполнить и подписать» — инструмент FillSignTool (5.3); цифровая подпись, сертификация, метка
+    // времени, проверка и удостоверения — команды инструмента «Использовать сертификат» (4.6,
+    // CertificateTool::commands).
+    r.add(
+        {.id = QStringLiteral("sign.fillSign"),
+         .title = tr("&Заполнить и подписать"),
+         .icon = QStringLiteral("pen-line"),
+         .run = [this] { ToolRegistry::instance().activate(QStringLiteral("fillsign"), currentDocument()); },
+         .enabled = [this] { return currentDocument() != nullptr; },
+         .menu = QStringLiteral("sign")});
 
     // Окно
     r.add({.id = QStringLiteral("window.nextTab"),
